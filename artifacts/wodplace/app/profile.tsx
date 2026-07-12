@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import { AppHeader } from '@/components/AppHeader';
 import { Avatar } from '@/components/Avatar';
 import { AppButton } from '@/components/AppButton';
 import { EditPhraseModal } from '@/components/EditPhraseModal';
-import { RankSheet } from '@/components/RankSheet';
 import { MenuSheet } from '@/components/MenuSheet';
 import { AttendeesModal } from '@/components/AttendeesModal';
 import { ClassCard, AgendadoBadge } from '@/components/ClassCard';
@@ -21,18 +19,12 @@ export default function ProfileScreen() {
   const { now, getUpcomingBooked, getAttendeeNames } = useBooking();
 
   const [phraseVisible, setPhraseVisible] = useState(false);
-  const [rankVisible, setRankVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
 
   if (!user) return null;
 
   const bookedSessions = getUpcomingBooked(10);
-
-  const toggleStatus = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    updateProfile({ status: user.status === 'active' ? 'inactive' : 'active' });
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -69,8 +61,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.badgeRow}>
-          <Pressable
-            onPress={toggleStatus}
+          <View
             style={[
               styles.statusBadge,
               {
@@ -82,17 +73,14 @@ export default function ProfileScreen() {
             <Text style={styles.statusText}>
               {user.status === 'active' ? 'Cuenta Activa' : 'Cuenta Inactiva'}
             </Text>
-          </Pressable>
+          </View>
 
-          <Pressable
-            onPress={() => setRankVisible(true)}
-            style={[styles.rankBadge, { backgroundColor: colors.secondary }]}
-          >
+          <View style={[styles.rankBadge, { backgroundColor: colors.secondary }]}>
+            <Feather name="lock" size={11} color={colors.secondaryForeground} />
             <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>
               {user.rank}
             </Text>
-            <Feather name="chevron-down" size={14} color={colors.secondaryForeground} />
-          </Pressable>
+          </View>
         </View>
 
         <AppButton
@@ -137,12 +125,6 @@ export default function ProfileScreen() {
         onClose={() => setPhraseVisible(false)}
         initialValue={user.phrase}
         onSave={(value) => updateProfile({ phrase: value })}
-      />
-      <RankSheet
-        visible={rankVisible}
-        onClose={() => setRankVisible(false)}
-        current={user.rank}
-        onSelect={(rank) => updateProfile({ rank })}
       />
       <MenuSheet
         visible={menuVisible}
