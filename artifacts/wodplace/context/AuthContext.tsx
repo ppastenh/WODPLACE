@@ -21,6 +21,7 @@ export interface WodplaceUser {
   phrase: string;
   status: AccountStatus;
   rank: AthleteRank;
+  birthdate: string | null;
 }
 
 interface AuthContextValue {
@@ -127,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phrase: '',
       status: 'active',
       rank: 'Beginner',
+      birthdate: null,
     };
     db[key] = { ...profile, password };
     await saveUsersDb(db);
@@ -143,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phrase: '',
       status: 'active',
       rank: 'Beginner',
+      birthdate: null,
     };
     await persist(next);
   };

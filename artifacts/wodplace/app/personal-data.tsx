@@ -1,10 +1,12 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
+import { BirthdateModal } from '@/components/BirthdateModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+import { formatLongDate } from '@/lib/dateUtils';
 
 const RANK_LABELS: Record<string, string> = {
   Beginner: 'Beginner',
@@ -17,11 +19,12 @@ const RANK_LABELS: Record<string, string> = {
 
 export default function PersonalDataScreen() {
   const colors = useColors();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
+  const [birthdateVisible, setBirthdateVisible] = useState(false);
 
   if (!user) return null;
 
-  const rows: { icon: keyof typeof Feather.glyphMap; label: string; value: string }[] = [
+  const readOnlyRows: { icon: keyof typeof Feather.glyphMap; label: string; value: string }[] = [
     { icon: 'user', label: 'Nombre completo', value: user.name },
     { icon: 'mail', label: 'Correo electrónico', value: user.email },
     {
@@ -37,19 +40,12 @@ export default function PersonalDataScreen() {
       <AppHeader onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>Datos Personales</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Esta información es administrada por WODPLACE. Si necesitas actualizarla, contacta a tu
-          box.
-        </Text>
 
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          {rows.map((row, index) => (
+        <View style={[styles.card, { backgroundColor: colors.card, marginTop: 18 }]}>
+          {readOnlyRows.map((row) => (
             <View
               key={row.label}
-              style={[
-                styles.row,
-                index < rows.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-              ]}
+              style={[styles.row, { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
             >
               <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
                 <Feather name={row.icon} size={16} color={colors.secondaryForeground} />
@@ -60,8 +56,43 @@ export default function PersonalDataScreen() {
               </View>
             </View>
           ))}
+
+          <Pressable
+            onPress={() => setBirthdateVisible(true)}
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+          >
+            <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
+              <Feather name="calendar" size={16} color={colors.secondaryForeground} />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>
+                Fecha de nacimiento
+              </Text>
+              <Text
+                style={[
+                  styles.rowValue,
+                  { color: user.birthdate ? colors.foreground : colors.mutedForeground },
+                ]}
+              >
+                {user.birthdate ? formatLongDate(user.birthdate) : 'Agregar fecha de nacimiento'}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
         </View>
+
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          Esta información es administrada por WODPLACE. Si necesitas actualizarla, contacta a tu
+          box.
+        </Text>
       </ScrollView>
+
+      <BirthdateModal
+        visible={birthdateVisible}
+        onClose={() => setBirthdateVisible(false)}
+        initialValue={user.birthdate}
+        onSave={(value) => updateProfile({ birthdate: value })}
+      />
     </View>
   );
 }
@@ -77,8 +108,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
-    marginTop: 6,
-    marginBottom: 20,
+    marginTop: 24,
     lineHeight: 18,
   },
   card: {
