@@ -127,5 +127,6 @@ export function daysInMonth(year: number, month: number): number {
 /** Formats an ISO "yyyy-mm-dd" date string as "14 de marzo de 1998". */
 export function formatLongDate(isoDate: string): string {
   const [year, month, day] = isoDate.split('-').map(Number);
-  return `${day} de ${MONTH_NAMES[month - 1]} de ${year}`;
+  const monthName = (MONTH_NAMES[month - 1] ?? '').toLowerCase();
+  return `${day} de ${monthName} de ${year}`;
 }

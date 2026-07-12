@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { BirthdateModal } from '@/components/BirthdateModal';
+import { BirthdateLockedModal } from '@/components/BirthdateLockedModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
@@ -21,6 +22,7 @@ export default function PersonalDataScreen() {
   const colors = useColors();
   const { user, updateProfile } = useAuth();
   const [birthdateVisible, setBirthdateVisible] = useState(false);
+  const [birthdateLockedVisible, setBirthdateLockedVisible] = useState(false);
 
   if (!user) return null;
 
@@ -58,7 +60,13 @@ export default function PersonalDataScreen() {
           ))}
 
           <Pressable
-            onPress={() => setBirthdateVisible(true)}
+            onPress={() => {
+              if (user.birthdate) {
+                setBirthdateLockedVisible(true);
+                return;
+              }
+              setBirthdateVisible(true);
+            }}
             style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
           >
             <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
@@ -77,7 +85,11 @@ export default function PersonalDataScreen() {
                 {user.birthdate ? formatLongDate(user.birthdate) : 'Agregar fecha de nacimiento'}
               </Text>
             </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            <Feather
+              name={user.birthdate ? 'lock' : 'chevron-right'}
+              size={16}
+              color={colors.mutedForeground}
+            />
           </Pressable>
         </View>
 
@@ -92,6 +104,11 @@ export default function PersonalDataScreen() {
         onClose={() => setBirthdateVisible(false)}
         initialValue={user.birthdate}
         onSave={(value) => updateProfile({ birthdate: value })}
+      />
+
+      <BirthdateLockedModal
+        visible={birthdateLockedVisible}
+        onClose={() => setBirthdateLockedVisible(false)}
       />
     </View>
   );

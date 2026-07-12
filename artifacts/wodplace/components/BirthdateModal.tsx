@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { AppButton } from '@/components/AppButton';
@@ -79,6 +80,17 @@ function WheelColumn<T>({ data, selectedIndex, onChangeIndex, renderLabel, width
     listRef.current?.scrollToOffset({ offset: clamped * ITEM_HEIGHT, animated: true });
   };
 
+  // Tapping a row selects it directly and snaps it to the center — this gives a
+  // precise, drag-independent way to land on a specific value (e.g. day 12),
+  // instead of relying purely on scroll-snap accuracy which can be imprecise
+  // on web/trackpad input.
+  const selectIndex = (index: number) => {
+    lastCommittedRef.current = index;
+    setPendingIndex(index);
+    onChangeIndex(index);
+    listRef.current?.scrollToOffset({ offset: index * ITEM_HEIGHT, animated: true });
+  };
+
   return (
     <View style={{ width, height: WHEEL_HEIGHT }}>
       <FlatList
@@ -98,7 +110,7 @@ function WheelColumn<T>({ data, selectedIndex, onChangeIndex, renderLabel, width
         renderItem={({ item, index }) => {
           const isSelected = index === pendingIndex;
           return (
-            <View style={styles.wheelItem}>
+            <Pressable onPress={() => selectIndex(index)} style={styles.wheelItem}>
               <Text
                 style={[
                   styles.wheelItemText,
@@ -112,7 +124,7 @@ function WheelColumn<T>({ data, selectedIndex, onChangeIndex, renderLabel, width
               >
                 {renderLabel(item)}
               </Text>
-            </View>
+            </Pressable>
           );
         }}
       />
@@ -124,6 +136,7 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const initial = useMemo(() => parseInitial(initialValue), [initialValue, visible]);
+  const isFirstTime = initialValue === null;
 
   const years = useMemo(() => {
     const maxYear = currentYear() - 5;
@@ -138,6 +151,14 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
   const [yearIndex, setYearIndex] = useState(
     Math.max(0, years.indexOf(initial.year) === -1 ? years.length - 1 : years.indexOf(initial.year)),
   );
+  const [confirmVisible, setConfirmVisible] = useState(false);
+
+  // Reset the confirm step each time the sheet is (re)opened.
+  const prevVisibleRef = useRef(visible);
+  if (visible && !prevVisibleRef.current && confirmVisible) {
+    setConfirmVisible(false);
+  }
+  prevVisibleRef.current = visible;
 
   const selectedYear = years[yearIndex] ?? years[years.length - 1];
   const dayCount = daysInMonth(selectedYear, monthIndex);
@@ -145,7 +166,7 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
 
   const clampedDayIndex = Math.min(dayIndex, days.length - 1);
 
-  const handleSave = () => {
+  const commitSave = () => {
     const day = days[clampedDayIndex] ?? 1;
     const month = monthIndex + 1;
     const year = selectedYear;
@@ -154,52 +175,118 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
     onClose();
   };
 
+  const handleSave = () => {
+    if (!isFirstTime) {
+      commitSave();
+      return;
+    }
+    // Birthdate can only be set once — make sure the user understands that
+    // before it gets locked in. React Native Web's Alert.alert is a no-op, so
+    // this confirmation is rendered in-sheet instead of using Alert.
+    setConfirmVisible(true);
+  };
+
   if (!visible) return null;
 
   return (
     <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
+      <Pressable style={styles.backdrop} onPress={confirmVisible ? undefined : onClose} />
       <View
         style={[
           styles.sheet,
           { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 20) },
         ]}
       >
-        <View style={[styles.handle, { backgroundColor: colors.border }]} />
-        <Text style={[styles.title, { color: colors.foreground }]}>Fecha de nacimiento</Text>
+        {confirmVisible ? (
+          <View style={styles.confirmWrap}>
+            <View style={[styles.confirmIconWrap, { backgroundColor: colors.secondary }]}>
+              <Feather name="lock" size={20} color={colors.foreground} />
+            </View>
+            <Text
+              style={[styles.title, { color: colors.foreground, marginBottom: 0, textAlign: 'center' }]}
+            >
+              Confirmar fecha de nacimiento
+            </Text>
+            <Text
+              style={[
+                styles.warningText,
+                { color: colors.mutedForeground, marginTop: 8, textAlign: 'center' },
+              ]}
+            >
+              Una vez guardada, tu fecha de nacimiento no podrá modificarse. ¿Deseas continuar?
+            </Text>
+            <View style={styles.confirmActions}>
+              <AppButton
+                label="Confirmar"
+                variant="primary"
+                fullWidth
+                onPress={commitSave}
+                testID="birthdate-confirm"
+              />
+              <AppButton
+                label="Revisar de nuevo"
+                variant="outlineDark"
+                fullWidth
+                onPress={() => setConfirmVisible(false)}
+                testID="birthdate-confirm-cancel"
+              />
+            </View>
+          </View>
+        ) : (
+          <>
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.title, { color: colors.foreground }]}>Fecha de nacimiento</Text>
 
-        <View style={styles.wheelRow}>
-          <View
-            style={[
-              styles.selectionBand,
-              { backgroundColor: colors.secondary, top: SIDE_PADDING },
-            ]}
-            pointerEvents="none"
-          />
-          <WheelColumn
-            data={days}
-            selectedIndex={clampedDayIndex}
-            onChangeIndex={setDayIndex}
-            renderLabel={(d) => String(d)}
-            width={64}
-          />
-          <WheelColumn
-            data={MONTHS_SHORT}
-            selectedIndex={monthIndex}
-            onChangeIndex={setMonthIndex}
-            renderLabel={(m) => m}
-            width={90}
-          />
-          <WheelColumn
-            data={years}
-            selectedIndex={yearIndex}
-            onChangeIndex={setYearIndex}
-            renderLabel={(y) => String(y)}
-            width={90}
-          />
-        </View>
+            <View style={styles.wheelRow}>
+              <View
+                style={[
+                  styles.selectionBand,
+                  { backgroundColor: colors.secondary, top: SIDE_PADDING },
+                ]}
+                pointerEvents="none"
+              />
+              <WheelColumn
+                data={days}
+                selectedIndex={clampedDayIndex}
+                onChangeIndex={setDayIndex}
+                renderLabel={(d) => String(d)}
+                width={64}
+              />
+              <WheelColumn
+                data={MONTHS_SHORT}
+                selectedIndex={monthIndex}
+                onChangeIndex={setMonthIndex}
+                renderLabel={(m) => m}
+                width={90}
+              />
+              <WheelColumn
+                data={years}
+                selectedIndex={yearIndex}
+                onChangeIndex={setYearIndex}
+                renderLabel={(y) => String(y)}
+                width={90}
+              />
+            </View>
 
-        <AppButton label="Guardar" variant="primary" fullWidth onPress={handleSave} style={styles.saveButton} />
+            {isFirstTime && (
+              <View style={[styles.warningBox, { backgroundColor: colors.secondary }]}>
+                <Feather name="lock" size={14} color={colors.mutedForeground} />
+                <Text style={[styles.warningText, { color: colors.mutedForeground }]}>
+                  Esta fecha se guardará de forma permanente y no podrás modificarla después.
+                </Text>
+              </View>
+            )}
+
+            <AppButton
+              label="Guardar"
+              variant="primary"
+              fullWidth
+              onPress={handleSave}
+              style={styles.saveButton}
+              testID="birthdate-save"
+            />
+          </>
+        )}
       </View>
     </View>
   );
@@ -263,5 +350,38 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: 20,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 18,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    lineHeight: 16,
+  },
+  confirmWrap: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingBottom: 4,
+  },
+  confirmIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  confirmActions: {
+    width: '100%',
+    gap: 10,
+    marginTop: 22,
   },
 });
