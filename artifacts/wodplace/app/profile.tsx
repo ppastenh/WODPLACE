@@ -125,6 +125,7 @@ export default function ProfileScreen() {
                 actionSlot={
                   <AgendadoBadge
                     canCancel={session.canCancel}
+                    active={cancelSession?.id === session.id}
                     onRequestCancel={() => setCancelSession(session)}
                   />
                 }

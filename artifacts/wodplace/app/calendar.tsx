@@ -144,6 +144,7 @@ export default function CalendarScreen() {
                   session={session}
                   onBook={() => handleBook(session)}
                   onRequestCancel={() => setCancelSession(session)}
+                  cancelPending={cancelSession?.id === session.id}
                 />
               }
             />

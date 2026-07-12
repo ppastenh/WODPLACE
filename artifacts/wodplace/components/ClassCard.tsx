@@ -80,9 +80,11 @@ export function ClassCard({
 
 export function AgendadoBadge({
   canCancel = true,
+  active = false,
   onRequestCancel,
 }: {
   canCancel?: boolean;
+  active?: boolean;
   onRequestCancel?: () => void;
 }) {
   const colors = useColors();
@@ -100,9 +102,23 @@ export function AgendadoBadge({
   };
 
   const badge = (
-    <View style={[styles.badge, { backgroundColor: colors.secondary, opacity: canCancel ? 1 : 0.6 }]}>
-      <Feather name="check" size={13} color={colors.secondaryForeground} />
-      <Text style={[styles.badgeText, { color: colors.secondaryForeground }]}>Agendado</Text>
+    <View
+      style={[
+        styles.badge,
+        {
+          backgroundColor: active ? colors.destructive : colors.secondary,
+          opacity: canCancel ? 1 : 0.6,
+        },
+      ]}
+    >
+      <Feather
+        name={active ? 'x' : 'check'}
+        size={13}
+        color={active ? colors.destructiveForeground : colors.secondaryForeground}
+      />
+      <Text style={[styles.badgeText, { color: active ? colors.destructiveForeground : colors.secondaryForeground }]}>
+        {active ? 'Cancelando…' : 'Agendado'}
+      </Text>
     </View>
   );
 
@@ -119,13 +135,17 @@ export function ClassActionButton({
   session,
   onBook,
   onRequestCancel,
+  cancelPending = false,
 }: {
   session: ClassSession;
   onBook: () => void;
   onRequestCancel: () => void;
+  cancelPending?: boolean;
 }) {
   if (session.isBooked) {
-    return <AgendadoBadge canCancel={session.canCancel} onRequestCancel={onRequestCancel} />;
+    return (
+      <AgendadoBadge canCancel={session.canCancel} active={cancelPending} onRequestCancel={onRequestCancel} />
+    );
   }
   if (session.hasStarted) {
     return <AppButton label="Finalizado" variant="mutedDisabled" disabled compact />;
