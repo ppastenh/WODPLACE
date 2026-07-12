@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { ClassSession } from '@/context/BookingContext';
@@ -78,35 +78,54 @@ export function ClassCard({
   );
 }
 
-export function AgendadoBadge() {
+export function AgendadoBadge({
+  canCancel = true,
+  onRequestCancel,
+}: {
+  canCancel?: boolean;
+  onRequestCancel?: () => void;
+}) {
   const colors = useColors();
-  return (
-    <View style={[styles.badge, { backgroundColor: colors.secondary }]}>
+
+  const handlePress = () => {
+    if (!onRequestCancel) return;
+    if (!canCancel) {
+      Alert.alert(
+        'No se puede cancelar',
+        'Ya no puedes cancelar esta clase porque falta menos de 1 hora para que comience.',
+      );
+      return;
+    }
+    onRequestCancel();
+  };
+
+  const badge = (
+    <View style={[styles.badge, { backgroundColor: colors.secondary, opacity: canCancel ? 1 : 0.6 }]}>
       <Feather name="check" size={13} color={colors.secondaryForeground} />
       <Text style={[styles.badgeText, { color: colors.secondaryForeground }]}>Agendado</Text>
     </View>
+  );
+
+  if (!onRequestCancel) return badge;
+
+  return (
+    <Pressable onPress={handlePress} hitSlop={6} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
+      {badge}
+    </Pressable>
   );
 }
 
 export function ClassActionButton({
   session,
   onBook,
-  onCancel,
+  onRequestCancel,
 }: {
   session: ClassSession;
   onBook: () => void;
-  onCancel: () => void;
+  onRequestCancel: () => void;
 }) {
   if (session.isBooked) {
-    return (
-      <AppButton
-        label={session.canCancel ? 'Cancelar' : 'No se puede cancelar'}
-        variant={session.canCancel ? 'destructive' : 'mutedDisabled'}
-        onPress={session.canCancel ? onCancel : undefined}
-        disabled={!session.canCancel}
-        compact
-      />
-    );
+    return <AgendadoBadge canCancel={session.canCancel} onRequestCancel={onRequestCancel} />;
   }
   if (session.hasStarted) {
     return <AppButton label="Finalizado" variant="mutedDisabled" disabled compact />;

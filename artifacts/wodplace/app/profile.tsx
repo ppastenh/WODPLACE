@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { AppHeader } from '@/components/AppHeader';
 import { Avatar } from '@/components/Avatar';
 import { AppButton } from '@/components/AppButton';
 import { EditPhraseModal } from '@/components/EditPhraseModal';
 import { MenuSheet } from '@/components/MenuSheet';
 import { AttendeesModal } from '@/components/AttendeesModal';
+import { CancelConfirmModal } from '@/components/CancelConfirmModal';
 import { ClassCard, AgendadoBadge } from '@/components/ClassCard';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
@@ -16,11 +18,12 @@ import { useColors } from '@/hooks/useColors';
 export default function ProfileScreen() {
   const colors = useColors();
   const { user, updateProfile, logout } = useAuth();
-  const { now, getUpcomingBooked, getAttendeeNames } = useBooking();
+  const { now, getUpcomingBooked, getAttendeeNames, cancel } = useBooking();
 
   const [phraseVisible, setPhraseVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
+  const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
 
   if (!user) return null;
 
@@ -29,6 +32,13 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     await logout();
     router.replace('/login');
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelSession) return;
+    await cancel(cancelSession);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    setCancelSession(null);
   };
 
   return (
@@ -112,12 +122,23 @@ export default function ProfileScreen() {
                 now={now}
                 showDayLabel
                 onPressAttendees={() => setAttendeesSession(session)}
-                actionSlot={<AgendadoBadge />}
+                actionSlot={
+                  <AgendadoBadge
+                    canCancel={session.canCancel}
+                    onRequestCancel={() => setCancelSession(session)}
+                  />
+                }
               />
             ))}
           </View>
         )}
       </ScrollView>
+
+      <CancelConfirmModal
+        visible={!!cancelSession}
+        onClose={() => setCancelSession(null)}
+        onConfirm={handleConfirmCancel}
+      />
 
       <EditPhraseModal
         visible={phraseVisible}

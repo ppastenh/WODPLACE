@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,7 @@ import { WeekCalendar } from '@/components/WeekCalendar';
 import { ClassCard, ClassActionButton } from '@/components/ClassCard';
 import { MenuSheet } from '@/components/MenuSheet';
 import { AttendeesModal } from '@/components/AttendeesModal';
+import { CancelConfirmModal } from '@/components/CancelConfirmModal';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useColors } from '@/hooks/useColors';
@@ -36,6 +37,7 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [menuVisible, setMenuVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
+  const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
 
   const sessions = getSessionsForDate(selectedDate);
 
@@ -58,18 +60,11 @@ export default function CalendarScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   };
 
-  const handleCancel = (session: ClassSession) => {
-    Alert.alert('Cancelar clase', `¿Quieres cancelar tu cupo en ${session.type}?`, [
-      { text: 'Volver', style: 'cancel' },
-      {
-        text: 'Cancelar clase',
-        style: 'destructive',
-        onPress: async () => {
-          await cancel(session);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-        },
-      },
-    ]);
+  const handleConfirmCancel = async () => {
+    if (!cancelSession) return;
+    await cancel(cancelSession);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    setCancelSession(null);
   };
 
   if (!user) return null;
@@ -148,7 +143,7 @@ export default function CalendarScreen() {
                 <ClassActionButton
                   session={session}
                   onBook={() => handleBook(session)}
-                  onCancel={() => handleCancel(session)}
+                  onRequestCancel={() => setCancelSession(session)}
                 />
               }
             />
@@ -171,6 +166,11 @@ export default function CalendarScreen() {
         onClose={() => setAttendeesSession(null)}
         session={attendeesSession}
         names={attendeesSession ? getAttendeeNames(attendeesSession, user.name) : []}
+      />
+      <CancelConfirmModal
+        visible={!!cancelSession}
+        onClose={() => setCancelSession(null)}
+        onConfirm={handleConfirmCancel}
       />
     </View>
   );
