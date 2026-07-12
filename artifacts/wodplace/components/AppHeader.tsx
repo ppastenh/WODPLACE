@@ -7,10 +7,11 @@ import { useColors } from '@/hooks/useColors';
 interface AppHeaderProps {
   onBack?: () => void;
   onMenu?: () => void;
+  menuOpen?: boolean;
   dark?: boolean;
 }
 
-export function AppHeader({ onBack, onMenu, dark }: AppHeaderProps) {
+export function AppHeader({ onBack, onMenu, menuOpen, dark }: AppHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
@@ -48,7 +49,7 @@ export function AppHeader({ onBack, onMenu, dark }: AppHeaderProps) {
             hitSlop={12}
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <Feather name="menu" size={24} color={iconColor} />
+            <Feather name={menuOpen ? 'x' : 'menu'} size={24} color={iconColor} />
           </Pressable>
         ) : null}
       </View>

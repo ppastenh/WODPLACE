@@ -16,6 +16,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '@/context/AuthContext';
 import { BookingProvider } from '@/context/BookingContext';
+import { NotificationsProvider } from '@/context/NotificationsContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -31,6 +32,10 @@ function RootLayoutNav() {
       <Stack.Screen name="register" />
       <Stack.Screen name="profile" />
       <Stack.Screen name="calendar" />
+      <Stack.Screen name="personal-data" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="plan" />
+      <Stack.Screen name="active-contracts" />
     </Stack>
   );
 }
@@ -62,9 +67,11 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <AuthProvider>
-                <BookingProvider>
-                  <RootLayoutNav />
-                </BookingProvider>
+                <NotificationsProvider>
+                  <BookingProvider>
+                    <RootLayoutNav />
+                  </BookingProvider>
+                </NotificationsProvider>
               </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

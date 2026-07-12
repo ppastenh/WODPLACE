@@ -1,27 +1,37 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { AppHeader } from '@/components/AppHeader';
 import { Avatar } from '@/components/Avatar';
 import { AppButton } from '@/components/AppButton';
 import { EditPhraseModal } from '@/components/EditPhraseModal';
-import { MenuSheet } from '@/components/MenuSheet';
+import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { AttendeesModal } from '@/components/AttendeesModal';
 import { CancelConfirmModal } from '@/components/CancelConfirmModal';
 import { ClassCard, AgendadoBadge } from '@/components/ClassCard';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
+
+const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
+  { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
+  { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
+  { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
+  { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
+];
 
 export default function ProfileScreen() {
   const colors = useColors();
   const { user, updateProfile, logout } = useAuth();
   const { now, getUpcomingBooked, getAttendeeNames, cancel } = useBooking();
+  const { unreadCount } = useNotifications();
+  const pathname = usePathname();
 
   const [phraseVisible, setPhraseVisible] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
   const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
 
@@ -30,8 +40,19 @@ export default function ProfileScreen() {
   const bookedSessions = getUpcomingBooked(10);
 
   const handleLogout = async () => {
+    setDrawerVisible(false);
     await logout();
     router.replace('/login');
+  };
+
+  const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
+    ...item,
+    badge: item.key === 'notifications' ? unreadCount : undefined,
+  }));
+
+  const handleNavigate = (route: string) => {
+    setDrawerVisible(false);
+    if (route !== pathname) router.push(route as any);
   };
 
   const handleConfirmCancel = async () => {
@@ -43,7 +64,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onMenu={() => setMenuVisible(true)} />
+      <AppHeader onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.profileRow}>
           <Avatar
@@ -147,12 +168,16 @@ export default function ProfileScreen() {
         initialValue={user.phrase}
         onSave={(value) => updateProfile({ phrase: value })}
       />
-      <MenuSheet
-        visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
-        onLogout={handleLogout}
+      <SideDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        onOpen={() => setDrawerVisible(true)}
+        onNavigate={handleNavigate}
+        currentRoute={pathname}
         userName={user.name}
-        userEmail={user.email}
+        avatarUri={user.avatarUri}
+        navItems={navItems}
+        onLogout={handleLogout}
       />
       <AttendeesModal
         visible={!!attendeesSession}

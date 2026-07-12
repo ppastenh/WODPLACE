@@ -1,0 +1,34 @@
+Quiero implementar un menú lateral (drawer) para mi app WODPLACE, que se active al tocar el ícono de hamburguesa (☰) ubicado en la esquina superior derecha del header. Especificaciones:
+Comportamiento y animación:
+
+Al tocar el ícono ☰, el drawer se desliza desde el borde derecho de la pantalla hacia la izquierda (slide-in), cubriendo aproximadamente el 75-80% del ancho de la pantalla
+Aparece un overlay/fondo oscuro semitransparente (backdrop) sobre el resto del contenido detrás del drawer
+El drawer se cierra al: tocar el overlay/fondo oscuro, tocar una "X" en la esquina superior del drawer, o tocar cualquier opción de navegación dentro de él
+Animación suave de entrada/salida (transición de 250-300ms, easing tipo ease-out)
+El ícono ☰ cambia a una "X" mientras el drawer está abierto
+
+Estructura del contenido (de arriba hacia abajo):
+
+En la parte superior: avatar/foto de perfil circular (placeholder si no hay foto) + nombre del usuario (ej: "Pía Pastén") + un botón o texto pequeño "Ver perfil" debajo del nombre
+Lista de navegación con estos ítems, cada uno con su ícono correspondiente a la izquierda del texto:
+
+Datos Personales
+Notificaciones (si hay notificaciones no leídas, mostrar un badge numérico rojo pequeño al lado)
+Planes
+Contratos Activos
+
+
+Separador visual (línea delgada) antes del último ítem
+Al final: "Cerrar sesión" en color rojo/distinto al resto, para diferenciarlo como acción distinta
+
+Estilo visual:
+
+Mantén la consistencia con el diseño ya implementado en la app (mismo fondo, tipografía, bordes redondeados que uso en el resto de las pantallas)
+Cada ítem de navegación debe tener suficiente padding vertical (mínimo 44px de alto táctil) para ser fácil de tocar en mobile
+El ítem de navegación correspondiente a la pantalla actual (si el usuario ya está en "Planes", por ejemplo) debe mostrarse resaltado/con fondo distinto para indicar dónde está parado
+
+Accesibilidad y UX:
+
+El drawer debe ser deslizable también con gesto de swipe desde el borde derecho de la pantalla (no solo con el ícono)
+Al abrir el drawer, bloquear el scroll del contenido de fondo
+Asegúrate de que sea responsive y funcione bien tanto en pantallas de celular pequeñas como en tablets

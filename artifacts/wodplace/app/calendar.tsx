@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { AppHeader } from '@/components/AppHeader';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { WeekCalendar } from '@/components/WeekCalendar';
 import { ClassCard, ClassActionButton } from '@/components/ClassCard';
-import { MenuSheet } from '@/components/MenuSheet';
+import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { AttendeesModal } from '@/components/AttendeesModal';
 import { CancelConfirmModal } from '@/components/CancelConfirmModal';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import {
   addDays,
@@ -25,17 +26,26 @@ import {
 
 type ViewMode = 'month' | 'week';
 
+const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
+  { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
+  { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
+  { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
+  { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
+];
+
 export default function CalendarScreen() {
   const colors = useColors();
   const { user, logout } = useAuth();
   const { now, getSessionsForDate, book, cancel, getAttendeeNames } = useBooking();
+  const { unreadCount } = useNotifications();
+  const pathname = usePathname();
   const today = startOfDay(now);
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [monthCursor, setMonthCursor] = useState(new Date(today));
   const [weekCursor, setWeekCursor] = useState(new Date(today));
   const [selectedDate, setSelectedDate] = useState(today);
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
   const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
 
@@ -67,11 +77,27 @@ export default function CalendarScreen() {
     setCancelSession(null);
   };
 
+  const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
+    ...item,
+    badge: item.key === 'notifications' ? unreadCount : undefined,
+  }));
+
+  const handleNavigate = (route: string) => {
+    setDrawerVisible(false);
+    if (route !== pathname) router.push(route as any);
+  };
+
+  const handleLogout = async () => {
+    setDrawerVisible(false);
+    await logout();
+    router.replace('/login');
+  };
+
   if (!user) return null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onBack={() => router.back()} onMenu={() => setMenuVisible(true)} />
+      <AppHeader onBack={() => router.back()} onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <SegmentedControl
           value={viewMode}
@@ -152,15 +178,16 @@ export default function CalendarScreen() {
         </View>
       </ScrollView>
 
-      <MenuSheet
-        visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
-        onLogout={async () => {
-          await logout();
-          router.replace('/login');
-        }}
+      <SideDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        onOpen={() => setDrawerVisible(true)}
+        onNavigate={handleNavigate}
+        currentRoute={pathname}
         userName={user.name}
-        userEmail={user.email}
+        avatarUri={user.avatarUri}
+        navItems={navItems}
+        onLogout={handleLogout}
       />
       <AttendeesModal
         visible={!!attendeesSession}
