@@ -76,7 +76,6 @@ export default function ProfileScreen() {
           </View>
 
           <View style={[styles.rankBadge, { backgroundColor: colors.secondary }]}>
-            <Feather name="lock" size={11} color={colors.secondaryForeground} />
             <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>
               {user.rank}
             </Text>
