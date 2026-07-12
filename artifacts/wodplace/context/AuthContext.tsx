@@ -28,7 +28,6 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
   loginWithProvider: (provider: 'google' | 'apple') => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (partial: Partial<WodplaceUser>) => Promise<void>;
@@ -92,20 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await persist(next);
   };
 
-  const register = async (name: string, email: string, _password: string) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const next: WodplaceUser = {
-      id: makeId(),
-      name,
-      email,
-      avatarUri: null,
-      phrase: '',
-      status: 'active',
-      rank: 'Beginner',
-    };
-    await persist(next);
-  };
-
   const loginWithProvider = async (provider: 'google' | 'apple') => {
     await new Promise((resolve) => setTimeout(resolve, 700));
     const next: WodplaceUser = {
@@ -135,7 +120,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isAuthenticated: !!user,
       login,
-      register,
       loginWithProvider,
       logout,
       updateProfile,

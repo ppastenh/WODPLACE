@@ -13,6 +13,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { login, loginWithProvider } = useAuth();
+  const [step, setStep] = useState<'options' | 'email'>('options');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -68,107 +69,124 @@ export default function LoginScreen() {
           <Text style={[styles.brandText, { color: colors.authText }]}>WODPLACE</Text>
         </View>
 
-        <Text style={[styles.headline, { color: colors.authText }]}>Iniciar Sesión</Text>
+        {step === 'options' ? (
+          <>
+            <Text style={[styles.headline, { color: colors.authText }]}>Iniciar Sesión</Text>
 
-        <View style={styles.form}>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Email"
-            placeholderTextColor={colors.authMuted}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            style={[
-              styles.input,
-              { backgroundColor: colors.authInput, color: colors.authText, borderColor: colors.authBorder },
-            ]}
-            testID="login-email"
-          />
-          <View
-            style={[
-              styles.input,
-              styles.passwordRow,
-              { backgroundColor: colors.authInput, borderColor: colors.authBorder },
-            ]}
-          >
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Contraseña"
-              placeholderTextColor={colors.authMuted}
-              secureTextEntry={!showPassword}
-              style={[styles.passwordInput, { color: colors.authText }]}
-              testID="login-password"
-            />
-            <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10}>
-              <Feather
-                name={showPassword ? 'eye-off' : 'eye'}
-                size={19}
-                color={colors.authMuted}
+            <View style={styles.form}>
+              <AppButton
+                label="Continúa con Email"
+                variant="primary"
+                fullWidth
+                onPress={() => setStep('email')}
+                icon={<Feather name="mail" size={18} color={colors.authText} />}
               />
-            </Pressable>
-          </View>
 
-          {error ? (
-            <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
-          ) : null}
+              <View style={styles.dividerRow}>
+                <View style={[styles.divider, { backgroundColor: colors.authBorder }]} />
+                <Text style={[styles.dividerText, { color: colors.authMuted }]}>O</Text>
+                <View style={[styles.divider, { backgroundColor: colors.authBorder }]} />
+              </View>
 
-          <AppButton
-            label="Entrar"
-            variant="primary"
-            fullWidth
-            loading={loading === 'email'}
-            onPress={handleLogin}
-            style={styles.entrarButton}
-            testID="login-submit"
-          />
-
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: colors.authBorder }]} />
-            <Text style={[styles.dividerText, { color: colors.authMuted }]}>O</Text>
-            <View style={[styles.divider, { backgroundColor: colors.authBorder }]} />
-          </View>
-
-          <AppButton
-            label="Continúa con Google"
-            variant="outlineLight"
-            fullWidth
-            loading={loading === 'google'}
-            onPress={() => handleProvider('google')}
-            icon={<Ionicons name="logo-google" size={18} color={colors.authText} />}
-          />
-          <AppButton
-            label="Continúa con Apple"
-            variant="outlineLight"
-            fullWidth
-            loading={loading === 'apple'}
-            onPress={() => handleProvider('apple')}
-            icon={<Ionicons name="logo-apple" size={19} color={colors.authText} />}
-            style={styles.appleButton}
-          />
-
-          <Pressable
-            onPress={() =>
-              Alert.alert('Recuperar contraseña', 'Función próximamente disponible.')
-            }
-            style={styles.recoverLink}
-            hitSlop={8}
-          >
-            <Text style={[styles.recoverText, { color: colors.authMuted }]}>
-              Recupera tu contraseña{' '}
-              <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Aquí</Text>
-            </Text>
-          </Pressable>
-
-          <Pressable onPress={() => router.push('/register')} style={styles.registerLink}>
-            <Text style={[styles.registerText, { color: colors.authMuted }]}>
-              ¿No tienes cuenta?{' '}
-              <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
-                Regístrate
+              <AppButton
+                label="Continúa con Google"
+                variant="outlineLight"
+                fullWidth
+                loading={loading === 'google'}
+                onPress={() => handleProvider('google')}
+                icon={<Ionicons name="logo-google" size={18} color={colors.authText} />}
+              />
+              <AppButton
+                label="Continúa con Apple"
+                variant="outlineLight"
+                fullWidth
+                loading={loading === 'apple'}
+                onPress={() => handleProvider('apple')}
+                icon={<Ionicons name="logo-apple" size={19} color={colors.authText} />}
+                style={styles.appleButton}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.stepHeader}>
+              <Pressable onPress={() => setStep('options')} hitSlop={10} style={styles.backButton}>
+                <Feather name="arrow-left" size={20} color={colors.authText} />
+              </Pressable>
+              <Text style={[styles.headline, styles.headlineWithBack, { color: colors.authText }]}>
+                Iniciar Sesión
               </Text>
-            </Text>
-          </Pressable>
-        </View>
+            </View>
+
+            <View style={styles.form}>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
+                placeholderTextColor={colors.authMuted}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={[
+                  styles.input,
+                  { backgroundColor: colors.authInput, color: colors.authText, borderColor: colors.authBorder },
+                ]}
+                testID="login-email"
+                autoFocus
+              />
+              <View
+                style={[
+                  styles.input,
+                  styles.passwordRow,
+                  { backgroundColor: colors.authInput, borderColor: colors.authBorder },
+                ]}
+              >
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Contraseña"
+                  placeholderTextColor={colors.authMuted}
+                  secureTextEntry={!showPassword}
+                  style={[styles.passwordInput, { color: colors.authText }]}
+                  testID="login-password"
+                />
+                <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10}>
+                  <Feather
+                    name={showPassword ? 'eye-off' : 'eye'}
+                    size={19}
+                    color={colors.authMuted}
+                  />
+                </Pressable>
+              </View>
+
+              {error ? (
+                <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
+              ) : null}
+
+              <AppButton
+                label="Continuar"
+                variant="primary"
+                fullWidth
+                loading={loading === 'email'}
+                onPress={handleLogin}
+                style={styles.entrarButton}
+                testID="login-submit"
+              />
+
+              <Pressable
+                onPress={() =>
+                  Alert.alert('Recuperar contraseña', 'Función próximamente disponible.')
+                }
+                style={styles.recoverLink}
+                hitSlop={8}
+              >
+                <Text style={[styles.recoverText, { color: colors.authMuted }]}>
+                  Recupera tu contraseña{' '}
+                  <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Aquí</Text>
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        )}
       </KeyboardAwareScrollViewCompat>
     </View>
   );
@@ -201,6 +219,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Anton_400Regular',
     textAlign: 'center',
     marginBottom: 28,
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    zIndex: 1,
+  },
+  headlineWithBack: {
+    flex: 1,
+    marginBottom: 0,
   },
   form: {
     gap: 14,
@@ -256,14 +288,6 @@ const styles = StyleSheet.create({
   },
   recoverText: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-  },
-  registerLink: {
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  registerText: {
-    fontSize: 14,
     fontFamily: 'Inter_400Regular',
   },
 });
