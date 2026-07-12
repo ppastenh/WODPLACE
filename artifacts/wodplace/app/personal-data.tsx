@@ -4,9 +4,11 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { BirthdateModal } from '@/components/BirthdateModal';
+import { PhoneModal } from '@/components/PhoneModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
+import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
 
 const RANK_LABELS: Record<string, string> = {
   Beginner: 'Beginner',
@@ -21,6 +23,7 @@ export default function PersonalDataScreen() {
   const colors = useColors();
   const { user, updateProfile } = useAuth();
   const [birthdateVisible, setBirthdateVisible] = useState(false);
+  const [phoneVisible, setPhoneVisible] = useState(false);
 
   if (!user) return null;
 
@@ -67,6 +70,26 @@ export default function PersonalDataScreen() {
           ))}
         </View>
 
+        <Pressable
+          onPress={() => router.push('/box-detail')}
+          style={({ pressed }) => [
+            styles.boxCard,
+            { backgroundColor: colors.card },
+            pressed && { opacity: 0.8 },
+          ]}
+        >
+          <View style={[styles.boxLogo, { backgroundColor: colors.primary }]}>
+            <Text style={[styles.boxLogoText, { color: colors.primaryForeground }]}>
+              {SUBSCRIBED_BOX.name.charAt(0)}
+            </Text>
+          </View>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Box suscrito</Text>
+            <Text style={[styles.boxName, { color: colors.foreground }]}>{SUBSCRIBED_BOX.name}</Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+        </Pressable>
+
         <View style={[styles.card, { backgroundColor: colors.card, marginTop: 14 }]}>
           {readOnlyRows.map((row) => (
             <View
@@ -82,6 +105,35 @@ export default function PersonalDataScreen() {
               </View>
             </View>
           ))}
+
+          <Pressable
+            onPress={() => setPhoneVisible(true)}
+            style={({ pressed }) => [
+              styles.row,
+              { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
+              <Feather name="smartphone" size={16} color={colors.secondaryForeground} />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Celular</Text>
+              <Text
+                style={[
+                  styles.rowValue,
+                  { color: user.phone ? colors.foreground : colors.mutedForeground },
+                ]}
+              >
+                {user.phone ?? 'Agregar celular'}
+              </Text>
+            </View>
+            <Feather
+              name={user.phone ? 'lock' : 'chevron-right'}
+              size={16}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
 
           <Pressable
             onPress={() => setBirthdateVisible(true)}
@@ -122,6 +174,13 @@ export default function PersonalDataScreen() {
         onClose={() => setBirthdateVisible(false)}
         initialValue={user.birthdate}
         onSave={(value) => updateProfile({ birthdate: value })}
+      />
+
+      <PhoneModal
+        visible={phoneVisible}
+        onClose={() => setPhoneVisible(false)}
+        initialValue={user.phone}
+        onSave={(value) => updateProfile({ phone: value })}
       />
     </View>
   );
@@ -171,6 +230,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter_700Bold',
     textAlign: 'center',
+  },
+  boxCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 20,
+    padding: 16,
+    marginTop: 14,
+  },
+  boxLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxLogoText: {
+    fontSize: 20,
+    fontFamily: 'Anton_400Regular',
+  },
+  boxName: {
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
   },
   card: {
     borderRadius: 20,

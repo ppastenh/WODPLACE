@@ -33,6 +33,7 @@ function RootLayoutNav() {
       <Stack.Screen name="profile" />
       <Stack.Screen name="calendar" />
       <Stack.Screen name="personal-data" />
+      <Stack.Screen name="box-detail" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="plan" />
       <Stack.Screen name="active-contracts" />
