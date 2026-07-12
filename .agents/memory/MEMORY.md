@@ -1,0 +1,1 @@
+- [WODPLACE app conventions](wodplace-app.md) — Expo mobile app: mock auth via AsyncStorage, deterministic seeded class schedule/attendees, no backend yet.

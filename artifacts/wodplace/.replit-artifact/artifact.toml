@@ -1,0 +1,23 @@
+kind = "mobile"
+previewPath = "/mobile/"
+title = "WODPLACE"
+version = "1.0.0"
+id = "artifacts/wodplace"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/mobile/" ]
+localPort = 23817
+
+[services.development]
+run = "pnpm --filter @workspace/wodplace run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/wodplace", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/wodplace", "run", "serve" ]
+
+[services.env]
+PORT = "23817"
+BASE_PATH = "/mobile/"
