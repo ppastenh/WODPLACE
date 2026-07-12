@@ -1,0 +1,29 @@
+Quiero mejorar el flujo de "Contratos Activos" en mi app WODPLACE. Especificaciones:
+1. Visor de PDF integrado
+
+Al tocar cualquier contrato de la lista (Contrato de Membresía, Contrato de Responsabilidades, Reglamento Interno), abre un visor de PDF a pantalla completa integrado en la app (usa una librería tipo react-pdf o pdf.js, para que funcione igual en iOS y Android sin depender de apps externas)
+El visor debe tener un botón de cerrar (✕) arriba y el nombre del documento como título
+Al final del documento (o en la parte inferior fija), muestra un botón "He leído el documento" que el usuario debe tocar explícitamente para marcarlo como leído — no basta con cerrar el visor
+
+2. Estados visuales de cada contrato
+
+Antes de leer: ícono de reloj de arena (⏳) y texto "Pendiente" en color ámbar/dorado
+Después de leer (al tocar "He leído el documento"): ícono de check (✓) en verde y texto "Leído", además el fondo de la card cambia levemente a un tono verde claro para reforzar el estado completado
+Guarda este estado en el backend asociado al usuario, para que si cierra y vuelve a abrir la app, mantenga el progreso
+
+3. Sección de contacto de emergencia
+
+Agrega dos campos nuevos antes de los checkboxes finales: "Nombre completo" (contacto de emergencia) y "Celular" (contacto de emergencia), con el mismo estilo visual que el resto de los inputs de la app
+Ambos campos son obligatorios para poder continuar
+
+4. Botón "ACEPTADO" condicional
+
+El botón debe estar deshabilitado (gris, no clickeable) hasta que se cumplan TODAS estas condiciones: los 3 documentos estén marcados como leídos, ambos checkboxes ("Acepto los términos" y "Confirmo mi estado de salud") estén marcados, y los campos de contacto de emergencia estén completos
+Cuando todas las condiciones se cumplen, el botón se activa (color de marca) y el texto de ayuda ("Debes aceptar ambos para continuar") desaparece
+
+5. Registro de aceptación con fecha y hora
+
+Al tocar "ACEPTADO", guarda en el backend un timestamp completo (fecha y hora exacta, no solo la fecha) de cuándo el usuario aceptó, ya que esto tiene valor legal como respaldo
+Muestra ese timestamp debajo del botón en formato legible, ej: "12 de julio de 2026, 14:32 hrs"
+
+Mantén la consistencia visual con el resto de la app (mismo estilo de cards, tipografía, colores).
