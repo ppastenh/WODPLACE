@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -9,33 +9,40 @@ import { AppButton } from '@/components/AppButton';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { login, loginWithProvider } = useAuth();
+  const { checkEmailExists, loginWithProvider } = useAuth();
   const [step, setStep] = useState<'options' | 'email'>('options');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [touched, setTouched] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState<'email' | 'google' | 'apple' | null>(null);
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const webBottomInset = Platform.OS === 'web' ? 34 : 0;
 
-  const handleLogin = async () => {
-    if (!email.trim() || !email.includes('@')) {
+  const isEmailValid = EMAIL_REGEX.test(email.trim());
+  const showInvalid = touched && !isEmailValid;
+
+  const handleContinue = async () => {
+    setTouched(true);
+    if (!isEmailValid) {
       setError('Ingresa un email válido');
-      return;
-    }
-    if (password.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres');
       return;
     }
     setError('');
     setLoading('email');
     try {
-      await login(email.trim(), password);
-      router.replace('/profile');
+      const exists = await checkEmailExists(email.trim());
+      if (exists) {
+        router.push({ pathname: '/login-password', params: { email: email.trim() } });
+      } else {
+        router.push({ pathname: '/register', params: { email: email.trim() } });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
     } finally {
       setLoading(null);
     }
@@ -121,42 +128,26 @@ export default function LoginScreen() {
             <View style={styles.form}>
               <TextInput
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  setTouched(true);
+                  if (error) setError('');
+                }}
                 placeholder="Email"
                 placeholderTextColor={colors.authMuted}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 style={[
                   styles.input,
-                  { backgroundColor: colors.authInput, color: colors.authText, borderColor: colors.authBorder },
+                  {
+                    backgroundColor: colors.authInput,
+                    color: colors.authText,
+                    borderColor: showInvalid ? colors.destructive : colors.authBorder,
+                  },
                 ]}
                 testID="login-email"
                 autoFocus
               />
-              <View
-                style={[
-                  styles.input,
-                  styles.passwordRow,
-                  { backgroundColor: colors.authInput, borderColor: colors.authBorder },
-                ]}
-              >
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Contraseña"
-                  placeholderTextColor={colors.authMuted}
-                  secureTextEntry={!showPassword}
-                  style={[styles.passwordInput, { color: colors.authText }]}
-                  testID="login-password"
-                />
-                <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10}>
-                  <Feather
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={19}
-                    color={colors.authMuted}
-                  />
-                </Pressable>
-              </View>
 
               {error ? (
                 <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
@@ -167,23 +158,10 @@ export default function LoginScreen() {
                 variant="primary"
                 fullWidth
                 loading={loading === 'email'}
-                onPress={handleLogin}
+                onPress={handleContinue}
                 style={styles.entrarButton}
                 testID="login-submit"
               />
-
-              <Pressable
-                onPress={() =>
-                  Alert.alert('Recuperar contraseña', 'Función próximamente disponible.')
-                }
-                style={styles.recoverLink}
-                hitSlop={8}
-              >
-                <Text style={[styles.recoverText, { color: colors.authMuted }]}>
-                  Recupera tu contraseña{' '}
-                  <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Aquí</Text>
-                </Text>
-              </Pressable>
             </View>
           </>
         )}
@@ -245,18 +223,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
   },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  passwordInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    paddingVertical: 12,
-  },
   error: {
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
@@ -281,13 +247,5 @@ const styles = StyleSheet.create({
   },
   appleButton: {
     marginTop: 2,
-  },
-  recoverLink: {
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  recoverText: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
   },
 });

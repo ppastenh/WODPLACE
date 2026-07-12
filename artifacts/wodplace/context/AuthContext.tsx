@@ -27,13 +27,18 @@ interface AuthContextValue {
   user: WodplaceUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  checkEmailExists: (email: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   loginWithProvider: (provider: 'google' | 'apple') => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (partial: Partial<WodplaceUser>) => Promise<void>;
 }
 
+type StoredUser = WodplaceUser & { password: string };
+
 const STORAGE_KEY = 'wodplace_user';
+const USERS_KEY = 'wodplace_users';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -77,18 +82,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (email: string, _password: string) => {
+  const getUsersDb = async (): Promise<Record<string, StoredUser>> => {
+    const raw = await AsyncStorage.getItem(USERS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, StoredUser>) : {};
+  };
+
+  const saveUsersDb = async (db: Record<string, StoredUser>) => {
+    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(db));
+  };
+
+  const checkEmailExists = async (email: string): Promise<boolean> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const db = await getUsersDb();
+    return !!db[email.trim().toLowerCase()];
+  };
+
+  const login = async (email: string, password: string) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    const next: WodplaceUser = {
+    const key = email.trim().toLowerCase();
+    const db = await getUsersDb();
+    const existing = db[key];
+    if (!existing) {
+      throw new Error('No encontramos una cuenta con ese email.');
+    }
+    if (existing.password !== password) {
+      throw new Error('Contraseña incorrecta.');
+    }
+    const { password: _pw, ...profile } = existing;
+    await persist(profile);
+  };
+
+  const register = async (name: string, email: string, password: string) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const key = email.trim().toLowerCase();
+    const db = await getUsersDb();
+    if (db[key]) {
+      throw new Error('Ya existe una cuenta con ese email.');
+    }
+    const profile: WodplaceUser = {
       id: makeId(),
-      name: nameFromEmail(email),
-      email,
+      name: name.trim() || nameFromEmail(email),
+      email: email.trim(),
       avatarUri: null,
       phrase: '',
       status: 'active',
       rank: 'Beginner',
     };
-    await persist(next);
+    db[key] = { ...profile, password };
+    await saveUsersDb(db);
+    await persist(profile);
   };
 
   const loginWithProvider = async (provider: 'google' | 'apple') => {
@@ -119,7 +161,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       isAuthenticated: !!user,
+      checkEmailExists,
       login,
+      register,
       loginWithProvider,
       logout,
       updateProfile,
