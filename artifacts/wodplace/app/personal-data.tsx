@@ -108,10 +108,11 @@ export default function PersonalDataScreen() {
 
           <Pressable
             onPress={() => setPhoneVisible(true)}
+            disabled={!!user.phone}
             style={({ pressed }) => [
               styles.row,
               { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-              pressed && { opacity: 0.6 },
+              pressed && !user.phone && { opacity: 0.6 },
             ]}
           >
             <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
@@ -137,7 +138,8 @@ export default function PersonalDataScreen() {
 
           <Pressable
             onPress={() => setBirthdateVisible(true)}
-            style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+            disabled={!!user.birthdate}
+            style={({ pressed }) => [styles.row, pressed && !user.birthdate && { opacity: 0.6 }]}
           >
             <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
               <Feather name="calendar" size={16} color={colors.secondaryForeground} />
@@ -164,8 +166,8 @@ export default function PersonalDataScreen() {
         </View>
 
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Esta información es administrada por WODPLACE. Si necesitas actualizarla, contacta a tu
-          box.
+          El celular y la fecha de nacimiento quedan bloqueados una vez registrados. Si necesitas
+          corregirlos, contacta a tu box.
         </Text>
       </ScrollView>
 
