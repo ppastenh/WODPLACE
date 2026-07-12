@@ -4,7 +4,6 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { BirthdateModal } from '@/components/BirthdateModal';
-import { BirthdateLockedModal } from '@/components/BirthdateLockedModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
@@ -22,19 +21,32 @@ export default function PersonalDataScreen() {
   const colors = useColors();
   const { user, updateProfile } = useAuth();
   const [birthdateVisible, setBirthdateVisible] = useState(false);
-  const [birthdateLockedVisible, setBirthdateLockedVisible] = useState(false);
 
   if (!user) return null;
 
-  const readOnlyRows: { icon: keyof typeof Feather.glyphMap; label: string; value: string }[] = [
-    { icon: 'user', label: 'Nombre completo', value: user.name },
-    { icon: 'mail', label: 'Correo electrónico', value: user.email },
+  const statCards: {
+    icon: keyof typeof Feather.glyphMap;
+    label: string;
+    value: string;
+    valueColor: string;
+  }[] = [
     {
       icon: 'shield',
       label: 'Estado de cuenta',
       value: user.status === 'active' ? 'Activa' : 'Inactiva',
+      valueColor: user.status === 'active' ? colors.success : colors.inactive,
     },
-    { icon: 'award', label: 'Rango de atleta', value: RANK_LABELS[user.rank] ?? user.rank },
+    {
+      icon: 'award',
+      label: 'Rango de atleta',
+      value: RANK_LABELS[user.rank] ?? user.rank,
+      valueColor: colors.foreground,
+    },
+  ];
+
+  const readOnlyRows: { icon: keyof typeof Feather.glyphMap; label: string; value: string }[] = [
+    { icon: 'user', label: 'Nombre completo', value: user.name },
+    { icon: 'mail', label: 'Correo electrónico', value: user.email },
   ];
 
   return (
@@ -43,7 +55,19 @@ export default function PersonalDataScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>Datos Personales</Text>
 
-        <View style={[styles.card, { backgroundColor: colors.card, marginTop: 18 }]}>
+        <View style={styles.statsRow}>
+          {statCards.map((stat) => (
+            <View key={stat.label} style={[styles.statCard, { backgroundColor: colors.card }]}>
+              <View style={[styles.statIconWrap, { backgroundColor: colors.secondary }]}>
+                <Feather name={stat.icon} size={18} color={colors.secondaryForeground} />
+              </View>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{stat.label}</Text>
+              <Text style={[styles.statValue, { color: stat.valueColor }]}>{stat.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.card, marginTop: 14 }]}>
           {readOnlyRows.map((row) => (
             <View
               key={row.label}
@@ -60,13 +84,7 @@ export default function PersonalDataScreen() {
           ))}
 
           <Pressable
-            onPress={() => {
-              if (user.birthdate) {
-                setBirthdateLockedVisible(true);
-                return;
-              }
-              setBirthdateVisible(true);
-            }}
+            onPress={() => setBirthdateVisible(true)}
             style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
           >
             <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
@@ -105,11 +123,6 @@ export default function PersonalDataScreen() {
         initialValue={user.birthdate}
         onSave={(value) => updateProfile({ birthdate: value })}
       />
-
-      <BirthdateLockedModal
-        visible={birthdateLockedVisible}
-        onClose={() => setBirthdateLockedVisible(false)}
-      />
     </View>
   );
 }
@@ -127,6 +140,37 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     marginTop: 24,
     lineHeight: 18,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 18,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    textAlign: 'center',
+  },
+  statValue: {
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+    textAlign: 'center',
   },
   card: {
     borderRadius: 20,

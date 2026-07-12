@@ -136,7 +136,6 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const initial = useMemo(() => parseInitial(initialValue), [initialValue, visible]);
-  const isFirstTime = initialValue === null;
 
   const years = useMemo(() => {
     const maxYear = currentYear() - 5;
@@ -176,13 +175,10 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
   };
 
   const handleSave = () => {
-    if (!isFirstTime) {
-      commitSave();
-      return;
-    }
-    // Birthdate can only be set once — make sure the user understands that
-    // before it gets locked in. React Native Web's Alert.alert is a no-op, so
-    // this confirmation is rendered in-sheet instead of using Alert.
+    // Every save (first time or a later change) requires an explicit
+    // confirmation, since the birthdate is treated as locked/confirmed data
+    // once saved. React Native Web's Alert.alert is a no-op, so this
+    // confirmation is rendered in-sheet instead of using Alert.
     setConfirmVisible(true);
   };
 
@@ -213,7 +209,7 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
                 { color: colors.mutedForeground, marginTop: 8, textAlign: 'center' },
               ]}
             >
-              Una vez guardada, tu fecha de nacimiento no podrá modificarse. ¿Deseas continuar?
+              Tu fecha de nacimiento quedará registrada y bloqueada. ¿Deseas guardar este cambio?
             </Text>
             <View style={styles.confirmActions}>
               <AppButton
@@ -268,14 +264,12 @@ export function BirthdateModal({ visible, onClose, initialValue, onSave }: Birth
               />
             </View>
 
-            {isFirstTime && (
-              <View style={[styles.warningBox, { backgroundColor: colors.secondary }]}>
-                <Feather name="lock" size={14} color={colors.mutedForeground} />
-                <Text style={[styles.warningText, { color: colors.mutedForeground }]}>
-                  Esta fecha se guardará de forma permanente y no podrás modificarla después.
-                </Text>
-              </View>
-            )}
+            <View style={[styles.warningBox, { backgroundColor: colors.secondary }]}>
+              <Feather name="lock" size={14} color={colors.mutedForeground} />
+              <Text style={[styles.warningText, { color: colors.mutedForeground }]}>
+                Al guardar, esta fecha quedará registrada y se bloqueará nuevamente.
+              </Text>
+            </View>
 
             <AppButton
               label="Guardar"
