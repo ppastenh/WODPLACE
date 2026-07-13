@@ -73,12 +73,18 @@ export default function ActiveContractsScreen() {
   const allRead = documents.length > 0 && documents.every((doc) => doc.read);
   const allChecked =
     documents.length > 0 && documents.every((doc) => checked[doc.slug]);
+  const CL_PHONE_DIGITS = 9;
   const canAccept =
     !acceptance &&
     allRead &&
     allChecked &&
     emergencyName.trim().length > 0 &&
-    emergencyPhone.trim().length > 0;
+    emergencyPhone.length === CL_PHONE_DIGITS;
+
+  const handlePhoneChange = (text: string) => {
+    const digitsOnly = text.replace(/\D/g, '').slice(0, CL_PHONE_DIGITS);
+    setEmergencyPhone(digitsOnly);
+  };
 
   const handleTitlePress = () => {
     const next = titleTapCount + 1;
@@ -98,18 +104,10 @@ export default function ActiveContractsScreen() {
     setOpeningSlug(slug);
     try {
       await WebBrowser.openBrowserAsync(getContractFileUrl(objectPath));
+      // Opening the document is what unlocks the checkbox below — tapping
+      // the checkbox itself is the "sí, lo leí" confirmation, so there's no
+      // separate button/dialog to miss.
       setOpenedSlugs((prev) => ({ ...prev, [slug]: true }));
-      Alert.alert(
-        '¿Leíste el documento completo?',
-        'Confirma que revisaste todo el contenido para poder marcarlo como leído.',
-        [
-          { text: 'Aún no', style: 'cancel' },
-          {
-            text: 'Sí, lo leí',
-            onPress: () => handleMarkRead(slug),
-          },
-        ],
-      );
     } catch {
       Alert.alert('Error', 'No se pudo abrir el documento.');
     } finally {
@@ -117,13 +115,20 @@ export default function ActiveContractsScreen() {
     }
   };
 
-  const handleMarkRead = (slug: string) => {
+  const handleCheckboxPress = (slug: string) => {
+    if (checked[slug]) {
+      setChecked((prev) => ({ ...prev, [slug]: false }));
+      return;
+    }
+    setChecked((prev) => ({ ...prev, [slug]: true }));
     markReadMutation.mutate(
       { slug, data: { userId } },
       {
         onSuccess: () => contractsQuery.refetch(),
-        onError: () =>
-          Alert.alert('Error', 'No se pudo registrar la lectura. Intenta de nuevo.'),
+        onError: () => {
+          setChecked((prev) => ({ ...prev, [slug]: false }));
+          Alert.alert('Error', 'No se pudo registrar la lectura. Intenta de nuevo.');
+        },
       },
     );
   };
@@ -134,7 +139,7 @@ export default function ActiveContractsScreen() {
         data: {
           userId,
           emergencyContactName: emergencyName.trim(),
-          emergencyContactPhone: emergencyPhone.trim(),
+          emergencyContactPhone: `+56${emergencyPhone}`,
         },
       },
       {
@@ -194,60 +199,56 @@ export default function ActiveContractsScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.actionRow}>
-                    <AppButton
-                      label={doc.read ? 'Ver documento de nuevo' : 'Leer documento'}
-                      variant="outlineDark"
-                      compact
-                      loading={openingSlug === doc.slug}
-                      onPress={() => handleOpenDocument(doc.slug, doc.objectPath ?? null)}
-                      style={styles.viewButton}
-                    />
-                    {!doc.read && openedSlugs[doc.slug] ? (
-                      <AppButton
-                        label="Marcar como leído"
-                        variant="primary"
-                        compact
-                        loading={markReadMutation.isPending}
-                        onPress={() => handleMarkRead(doc.slug)}
-                        style={styles.viewButton}
-                      />
-                    ) : null}
-                  </View>
+                  <AppButton
+                    label={doc.read ? 'Ver documento de nuevo' : 'Leer documento'}
+                    variant="outlineDark"
+                    compact
+                    loading={openingSlug === doc.slug}
+                    onPress={() => handleOpenDocument(doc.slug, doc.objectPath ?? null)}
+                    style={styles.viewButton}
+                  />
 
                   {!acceptance ? (
-                    <Pressable
-                      onPress={() =>
-                        doc.read &&
-                        setChecked((prev) => ({ ...prev, [doc.slug]: !prev[doc.slug] }))
-                      }
-                      disabled={!doc.read}
-                      style={styles.checkRow}
-                      hitSlop={6}
-                    >
-                      <View
-                        style={[
-                          styles.checkbox,
-                          {
-                            borderColor: colors.border,
-                            backgroundColor: checked[doc.slug] ? colors.primary : 'transparent',
-                            opacity: doc.read ? 1 : 0.4,
-                          },
-                        ]}
-                      >
-                        {checked[doc.slug] ? (
-                          <Feather name="check" size={13} color={colors.primaryForeground} />
-                        ) : null}
-                      </View>
-                      <Text
-                        style={[
-                          styles.checkLabel,
-                          { color: doc.read ? colors.foreground : colors.mutedForeground },
-                        ]}
-                      >
-                        He leído y acepto: {doc.title}
-                      </Text>
-                    </Pressable>
+                    (() => {
+                      const isReady = doc.read || !!openedSlugs[doc.slug];
+                      const isChecked = doc.read || !!checked[doc.slug];
+                      return (
+                        <Pressable
+                          onPress={() => isReady && handleCheckboxPress(doc.slug)}
+                          disabled={!isReady}
+                          style={styles.checkRow}
+                          hitSlop={6}
+                        >
+                          <View
+                            style={[
+                              styles.checkbox,
+                              {
+                                borderColor: isReady ? colors.foreground : colors.border,
+                                backgroundColor: isChecked ? colors.primary : 'transparent',
+                                opacity: isReady ? 1 : 0.4,
+                              },
+                            ]}
+                          >
+                            {isChecked ? (
+                              <Feather name="check" size={16} color={colors.primaryForeground} />
+                            ) : null}
+                          </View>
+                          <Text
+                            style={[
+                              styles.checkLabel,
+                              { color: colors.foreground, opacity: isReady ? 1 : 0.5 },
+                            ]}
+                          >
+                            He leído y acepto: {doc.title}
+                          </Text>
+                        </Pressable>
+                      );
+                    })()
+                  ) : null}
+                  {!doc.read && !openedSlugs[doc.slug] ? (
+                    <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
+                      Abrí el documento para poder marcarlo como leído.
+                    </Text>
                   ) : null}
                 </View>
               ))}
@@ -284,17 +285,23 @@ export default function ActiveContractsScreen() {
                     { backgroundColor: colors.input, color: colors.foreground, borderColor: colors.border },
                   ]}
                 />
-                <TextInput
-                  value={emergencyPhone}
-                  onChangeText={setEmergencyPhone}
-                  placeholder="Teléfono del contacto"
-                  placeholderTextColor={colors.mutedForeground}
-                  keyboardType="phone-pad"
+                <View
                   style={[
-                    styles.input,
-                    { backgroundColor: colors.input, color: colors.foreground, borderColor: colors.border },
+                    styles.phoneRow,
+                    { backgroundColor: colors.input, borderColor: colors.border },
                   ]}
-                />
+                >
+                  <Text style={[styles.phonePrefix, { color: colors.foreground }]}>+56</Text>
+                  <TextInput
+                    value={emergencyPhone}
+                    onChangeText={handlePhoneChange}
+                    placeholder="9 1234 5678"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="number-pad"
+                    maxLength={CL_PHONE_DIGITS}
+                    style={[styles.phoneInput, { color: colors.foreground }]}
+                  />
+                </View>
 
                 <AppButton
                   label="ACEPTADO"
@@ -370,11 +377,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Inter_600SemiBold',
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
   viewButton: {
     alignSelf: 'flex-start',
   },
@@ -384,17 +386,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkLabel: {
     flex: 1,
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
   },
   emergencySection: {
     marginTop: 24,
@@ -409,6 +411,24 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+  },
+  phonePrefix: {
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+    marginRight: 8,
+  },
+  phoneInput: {
+    flex: 1,
     paddingVertical: 14,
     fontSize: 14,
     fontFamily: 'Inter_400Regular',

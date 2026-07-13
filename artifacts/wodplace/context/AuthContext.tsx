@@ -68,7 +68,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
-          setUser(JSON.parse(raw) as WodplaceUser);
+          const restored = JSON.parse(raw) as WodplaceUser;
+          setUser(restored);
+          // Accounts created before the backend existed (or that failed to
+          // sync last time) never get another chance to sync, since this
+          // boot path used to skip it — only login/register/updateProfile
+          // called persist(). Re-sync on every app open (idempotent upsert)
+          // so contract read/acceptance calls (FK on userId) don't 400.
+          syncUser({ id: restored.id, name: restored.name, email: restored.email }).catch(
+            (err) => {
+              console.warn('Failed to sync restored user to backend', err);
+            },
+          );
         }
       } finally {
         setIsLoading(false);
