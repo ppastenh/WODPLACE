@@ -1,1 +1,2 @@
 - [WODPLACE app conventions](wodplace-app.md) — Expo mobile app: mock auth via AsyncStorage, deterministic seeded class schedule/attendees, no backend yet.
+- [WODPLACE db schema drift](wodplace-db-drift.md) — lib/db schema source can drift ahead of the actual dev Postgres DB; run `pnpm --filter @workspace/db run push` if inserts fail with "column ... does not exist".

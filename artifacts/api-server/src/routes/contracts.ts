@@ -11,11 +11,13 @@ import {
   contractDocumentsTable,
   contractReadProgressTable,
   db,
+  wodplaceUsersTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
+import { sendContractAcceptanceEmail } from "../lib/ownerNotifications";
 
 const router: IRouter = Router();
 
@@ -228,6 +230,32 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         guardianRelationship: guardianRelationship ?? null,
       }),
     );
+
+    // Notify the owner right away instead of relying on them opening the
+    // hidden admin panel to see the in-app badge. Fire-and-forget: a
+    // notification failure must not affect the response already sent.
+    void (async () => {
+      const [user] = await db
+        .select({
+          name: wodplaceUsersTable.name,
+          email: wodplaceUsersTable.email,
+        })
+        .from(wodplaceUsersTable)
+        .where(eq(wodplaceUsersTable.id, userId));
+
+      if (user) {
+        await sendContractAcceptanceEmail({
+          memberName: user.name,
+          memberEmail: user.email,
+          acceptedAt,
+        });
+      }
+    })().catch((error) => {
+      req.log.error(
+        { err: error },
+        "Error sending contract acceptance notification email",
+      );
+    });
   } catch (error) {
     req.log.error({ err: error }, "Error recording contract acceptance");
     res.status(400).json({
