@@ -77,6 +77,10 @@ export const contractAcceptancesTable = pgTable("contract_acceptances", {
   emergencyContactName: text("emergency_contact_name").notNull(),
   emergencyContactPhone: text("emergency_contact_phone").notNull(),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+  // Null until the box owner views this acceptance in the admin panel.
+  // Re-set to null whenever a member (re-)accepts, so the owner is notified
+  // again — this is the whole notification mechanism, no push/email infra.
+  seenByOwnerAt: timestamp("seen_by_owner_at", { withTimezone: true }),
 });
 
 export type ContractAcceptanceRow = typeof contractAcceptancesTable.$inferSelect;

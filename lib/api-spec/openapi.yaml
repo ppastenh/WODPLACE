@@ -342,6 +342,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /admin/contract-acceptances:
+    get:
+      tags: [Admin]
+      operationId: listAdminContractAcceptances
+      summary: List contract acceptances for the owner notification badge
+      description: |
+        Returns every recorded contract acceptance (newest first) so the
+        admin panel can show a badge/counter for ones the owner hasn't
+        viewed yet (`seen: false`).
+      parameters:
+        - name: x-admin-code
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Contract acceptances.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContractAcceptanceNotification"
+        "401":
+          description: Missing or invalid admin code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/contract-acceptances/ack:
+    post:
+      tags: [Admin]
+      operationId: ackContractAcceptances
+      summary: Mark all pending contract acceptances as seen by the owner
+      description: |
+        Called when the owner opens the notifications section of the admin
+        panel. Clears the unseen badge/counter.
+      parameters:
+        - name: x-admin-code
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Number of acceptances that were marked seen.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AckContractAcceptancesResult"
+        "401":
+          description: Missing or invalid admin code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
@@ -489,3 +548,36 @@ components:
           minLength: 1
         title:
           type: string
+
+    ContractAcceptanceNotification:
+      type: object
+      required:
+        - userId
+        - name
+        - email
+        - emergencyContactName
+        - emergencyContactPhone
+        - acceptedAt
+        - seen
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        acceptedAt:
+          type: string
+        seen:
+          type: boolean
+
+    AckContractAcceptancesResult:
+      type: object
+      required: [acknowledged]
+      properties:
+        acknowledged:
+          type: integer

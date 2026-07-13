@@ -4,6 +4,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
+  useAckContractAcceptances,
+  useListAdminContractAcceptances,
   useListAdminContracts,
   useRequestUploadUrl,
   useUpdateAdminContract,
@@ -12,6 +14,24 @@ import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
 import { useColors } from '@/hooks/useColors';
 import { getAdminCode } from '@/lib/adminSession';
+
+/**
+ * Formats an acceptance timestamp the same way active-contracts.tsx does,
+ * e.g. "13 de julio de 2026, 09:41".
+ */
+function formatAcceptedAt(iso: string): string {
+  const date = new Date(iso);
+  const datePart = date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+  const timePart = date.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${datePart}, ${timePart}`;
+}
 
 export default function AdminContractsScreen() {
   const colors = useColors();
@@ -40,6 +60,22 @@ export default function AdminContractsScreen() {
   const updateContractMutation = useUpdateAdminContract({
     request: { headers: adminHeaders },
   });
+  const acceptancesQuery = useListAdminContractAcceptances({
+    query: { enabled: !!code } as never,
+    request: { headers: adminHeaders },
+  });
+  const ackMutation = useAckContractAcceptances({
+    request: { headers: adminHeaders },
+  });
+
+  const acceptances = acceptancesQuery.data ?? [];
+  const unseenCount = acceptances.filter((item) => !item.seen).length;
+
+  const handleAckAcceptances = () => {
+    ackMutation.mutate(undefined, {
+      onSuccess: () => acceptancesQuery.refetch(),
+    });
+  };
 
   const handleReplace = async (slug: string, title: string) => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -100,6 +136,65 @@ export default function AdminContractsScreen() {
           Reglamento del Box.
         </Text>
 
+        <View style={styles.notifSection}>
+          <View style={styles.notifHeaderRow}>
+            <View style={styles.notifTitleRow}>
+              <Text style={[styles.notifTitle, { color: colors.foreground }]}>
+                Aceptaciones de contrato
+              </Text>
+              {unseenCount > 0 ? (
+                <View style={[styles.notifBadge, { backgroundColor: colors.destructive }]}>
+                  <Text style={styles.notifBadgeText}>{unseenCount}</Text>
+                </View>
+              ) : null}
+            </View>
+            {unseenCount > 0 ? (
+              <AppButton
+                label="Marcar como vistas"
+                variant="outlineDark"
+                compact
+                loading={ackMutation.isPending}
+                onPress={handleAckAcceptances}
+              />
+            ) : null}
+          </View>
+
+          {acceptancesQuery.isLoading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 12 }} />
+          ) : acceptances.length === 0 ? (
+            <Text style={[styles.notifEmpty, { color: colors.mutedForeground }]}>
+              Nadie ha aceptado los contratos todavía.
+            </Text>
+          ) : (
+            <View style={styles.notifList}>
+              {acceptances.map((item) => (
+                <View
+                  key={item.userId}
+                  style={[
+                    styles.notifCard,
+                    { backgroundColor: item.seen ? colors.card : colors.secondary },
+                  ]}
+                >
+                  {!item.seen ? (
+                    <View style={[styles.notifDot, { backgroundColor: colors.destructive }]} />
+                  ) : null}
+                  <View style={styles.notifCardText}>
+                    <Text style={[styles.notifName, { color: colors.foreground }]}>
+                      {item.name}
+                    </Text>
+                    <Text style={[styles.notifDetail, { color: colors.mutedForeground }]}>
+                      {item.email}
+                    </Text>
+                    <Text style={[styles.notifDetail, { color: colors.mutedForeground }]}>
+                      Aceptó el {formatAcceptedAt(item.acceptedAt)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
         {contractsQuery.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
         ) : (
@@ -149,4 +244,35 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   cardSubtitle: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   uploadButton: { alignSelf: 'flex-start' },
+  notifSection: { marginBottom: 24, gap: 10 },
+  notifHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  notifTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  notifTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  notifBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: { color: '#fff', fontSize: 11, fontFamily: 'Inter_700Bold' },
+  notifEmpty: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  notifList: { gap: 8 },
+  notifCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 14,
+    padding: 12,
+  },
+  notifDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
+  notifCardText: { flex: 1, gap: 2 },
+  notifName: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  notifDetail: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 });

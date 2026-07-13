@@ -194,10 +194,17 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         emergencyContactName,
         emergencyContactPhone,
         acceptedAt,
+        seenByOwnerAt: null,
       })
       .onConflictDoUpdate({
         target: contractAcceptancesTable.userId,
-        set: { emergencyContactName, emergencyContactPhone, acceptedAt },
+        // Reset seenByOwnerAt so a re-acceptance notifies the owner again.
+        set: {
+          emergencyContactName,
+          emergencyContactPhone,
+          acceptedAt,
+          seenByOwnerAt: null,
+        },
       });
 
     res.json(

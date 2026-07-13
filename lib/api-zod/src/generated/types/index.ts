@@ -7,8 +7,10 @@
  */
 
 export * from './acceptContractsRequest';
+export * from './ackContractAcceptancesResult';
 export * from './adminCodeCheckResult';
 export * from './contractAcceptance';
+export * from './contractAcceptanceNotification';
 export * from './contractAcceptanceResponse';
 export * from './contractDocument';
 export * from './errorEnvelope';

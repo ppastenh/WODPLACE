@@ -1,12 +1,21 @@
 import {
+  AckContractAcceptancesResponse,
+  ListAdminContractAcceptancesResponse,
   ListAdminContractsResponse,
   UpdateAdminContractBody,
   UpdateAdminContractResponse,
   VerifyAdminCodeBody,
+  type AckContractAcceptancesResult,
   type AdminCodeCheckResult,
+  type ContractAcceptanceNotification,
 } from "@workspace/api-zod";
-import { contractDocumentsTable, db } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import {
+  contractAcceptancesTable,
+  contractDocumentsTable,
+  db,
+  wodplaceUsersTable,
+} from "@workspace/db";
+import { desc, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { requireAdminCode } from "../lib/adminAuth";
@@ -127,6 +136,84 @@ router.put(
     } catch (error) {
       req.log.error({ err: error }, "Error updating contract document");
       res.status(500).json({ error: "Failed to update document" });
+    }
+  },
+);
+
+/**
+ * GET /admin/contract-acceptances
+ *
+ * Lists every recorded contract acceptance (newest first) with the owning
+ * member's name/email, plus whether the owner has viewed it yet. Drives the
+ * admin panel's "new acceptance" notification badge/counter.
+ */
+router.get(
+  "/admin/contract-acceptances",
+  requireAdminCode,
+  async (req: Request, res: Response) => {
+    try {
+      const rows = await db
+        .select({
+          userId: contractAcceptancesTable.userId,
+          name: wodplaceUsersTable.name,
+          email: wodplaceUsersTable.email,
+          emergencyContactName: contractAcceptancesTable.emergencyContactName,
+          emergencyContactPhone:
+            contractAcceptancesTable.emergencyContactPhone,
+          acceptedAt: contractAcceptancesTable.acceptedAt,
+          seenByOwnerAt: contractAcceptancesTable.seenByOwnerAt,
+        })
+        .from(contractAcceptancesTable)
+        .innerJoin(
+          wodplaceUsersTable,
+          eq(contractAcceptancesTable.userId, wodplaceUsersTable.id),
+        )
+        .orderBy(desc(contractAcceptancesTable.acceptedAt));
+
+      const result: ContractAcceptanceNotification[] = rows.map((row) => ({
+        userId: row.userId,
+        name: row.name,
+        email: row.email,
+        emergencyContactName: row.emergencyContactName,
+        emergencyContactPhone: row.emergencyContactPhone,
+        acceptedAt: row.acceptedAt.toISOString(),
+        seen: row.seenByOwnerAt !== null,
+      }));
+
+      res.json(ListAdminContractAcceptancesResponse.parse(result));
+    } catch (error) {
+      req.log.error({ err: error }, "Error listing contract acceptances");
+      res.status(500).json({ error: "Failed to list contract acceptances" });
+    }
+  },
+);
+
+/**
+ * POST /admin/contract-acceptances/ack
+ *
+ * Marks every unseen contract acceptance as seen by the owner, clearing the
+ * notification badge/counter in the admin panel.
+ */
+router.post(
+  "/admin/contract-acceptances/ack",
+  requireAdminCode,
+  async (req: Request, res: Response) => {
+    try {
+      const rows = await db
+        .update(contractAcceptancesTable)
+        .set({ seenByOwnerAt: new Date() })
+        .where(isNull(contractAcceptancesTable.seenByOwnerAt))
+        .returning({ userId: contractAcceptancesTable.userId });
+
+      const result: AckContractAcceptancesResult = {
+        acknowledged: rows.length,
+      };
+      res.json(AckContractAcceptancesResponse.parse(result));
+    } catch (error) {
+      req.log.error({ err: error }, "Error acknowledging contract acceptances");
+      res
+        .status(500)
+        .json({ error: "Failed to acknowledge contract acceptances" });
     }
   },
 );

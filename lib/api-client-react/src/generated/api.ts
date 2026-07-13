@@ -21,8 +21,10 @@ import type {
 
 import type {
   AcceptContractsRequest,
+  AckContractAcceptancesResult,
   AdminCodeCheckResult,
   ContractAcceptance,
+  ContractAcceptanceNotification,
   ContractAcceptanceResponse,
   ContractDocument,
   ErrorEnvelope,
@@ -901,5 +903,158 @@ export const useUpdateAdminContract = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getUpdateAdminContractMutationOptions(options));
+    }
+
+export const getListAdminContractAcceptancesUrl = () => {
+
+
+
+
+  return `/api/admin/contract-acceptances`
+}
+
+/**
+ * Returns every recorded contract acceptance (newest first) so the
+ * admin panel can show a badge/counter for ones the owner hasn't
+ * viewed yet (`seen: false`).
+ * @summary List contract acceptances for the owner notification badge
+ */
+export const listAdminContractAcceptances = async ( options?: RequestInit): Promise<ContractAcceptanceNotification[]> => {
+
+  return customFetch<ContractAcceptanceNotification[]>(getListAdminContractAcceptancesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminContractAcceptancesQueryKey = () => {
+    return [
+    `/api/admin/contract-acceptances`
+    ] as const;
+    }
+
+
+export const getListAdminContractAcceptancesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminContractAcceptances>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContractAcceptances>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminContractAcceptancesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminContractAcceptances>>> = ({ signal }) => listAdminContractAcceptances({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminContractAcceptances>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminContractAcceptancesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminContractAcceptances>>>
+export type ListAdminContractAcceptancesQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary List contract acceptances for the owner notification badge
+ */
+
+export function useListAdminContractAcceptances<TData = Awaited<ReturnType<typeof listAdminContractAcceptances>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContractAcceptances>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminContractAcceptancesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAckContractAcceptancesUrl = () => {
+
+
+
+
+  return `/api/admin/contract-acceptances/ack`
+}
+
+/**
+ * Called when the owner opens the notifications section of the admin
+ * panel. Clears the unseen badge/counter.
+ * @summary Mark all pending contract acceptances as seen by the owner
+ */
+export const ackContractAcceptances = async ( options?: RequestInit): Promise<AckContractAcceptancesResult> => {
+
+  return customFetch<AckContractAcceptancesResult>(getAckContractAcceptancesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAckContractAcceptancesMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ackContractAcceptances>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ackContractAcceptances>>, TError,void, TContext> => {
+
+const mutationKey = ['ackContractAcceptances'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ackContractAcceptances>>, void> = () => {
+
+
+          return  ackContractAcceptances(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AckContractAcceptancesMutationResult = NonNullable<Awaited<ReturnType<typeof ackContractAcceptances>>>
+
+    export type AckContractAcceptancesMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Mark all pending contract acceptances as seen by the owner
+ */
+export const useAckContractAcceptances = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ackContractAcceptances>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ackContractAcceptances>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAckContractAcceptancesMutationOptions(options));
     }
 

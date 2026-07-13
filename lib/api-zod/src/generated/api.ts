@@ -232,3 +232,39 @@ export const UpdateAdminContractResponse = zod.object({
 })
 
 
+/**
+ * Returns every recorded contract acceptance (newest first) so the
+ * admin panel can show a badge/counter for ones the owner hasn't
+ * viewed yet (`seen: false`).
+ * @summary List contract acceptances for the owner notification badge
+ */
+export const ListAdminContractAcceptancesHeader = zod.object({
+  "x-admin-code": zod.string()
+})
+
+export const ListAdminContractAcceptancesResponseItem = zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "emergencyContactName": zod.string(),
+  "emergencyContactPhone": zod.string(),
+  "acceptedAt": zod.string(),
+  "seen": zod.boolean()
+})
+export const ListAdminContractAcceptancesResponse = zod.array(ListAdminContractAcceptancesResponseItem)
+
+
+/**
+ * Called when the owner opens the notifications section of the admin
+ * panel. Clears the unseen badge/counter.
+ * @summary Mark all pending contract acceptances as seen by the owner
+ */
+export const AckContractAcceptancesHeader = zod.object({
+  "x-admin-code": zod.string()
+})
+
+export const AckContractAcceptancesResponse = zod.object({
+  "acknowledged": zod.number()
+})
+
+

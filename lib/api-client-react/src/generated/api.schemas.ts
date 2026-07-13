@@ -92,6 +92,20 @@ export interface UpdateAdminContractRequest {
   title?: string;
 }
 
+export interface ContractAcceptanceNotification {
+  userId: string;
+  name: string;
+  email: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  acceptedAt: string;
+  seen: boolean;
+}
+
+export interface AckContractAcceptancesResult {
+  acknowledged: number;
+}
+
 export type ListContractsParams = {
 userId?: string;
 };
