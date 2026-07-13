@@ -10,6 +10,14 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+  - name: Users
+    description: Lightweight user sync for the mobile app (no full auth system yet).
+  - name: Contracts
+    description: Contract documents, per-user read progress, and final acceptance.
+  - name: Admin
+    description: Hidden admin operations for managing contract documents.
 paths:
   /healthz:
     get:
@@ -24,6 +32,316 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      description: |
+        Returns a presigned GCS URL for direct upload. The client sends JSON
+        metadata here, then uploads the file directly to the returned URL.
+        Requires the `x-admin-code` header (only the hidden admin screen uploads files).
+      parameters:
+        - name: x-admin-code
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Missing or invalid admin code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity from PRIVATE_OBJECT_DIR
+      description: |
+        Serves object entities uploaded via presigned URLs (contract PDFs).
+        Unauthenticated — contract documents are readable by any app user.
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Object path within the private object dir (e.g. `uploads/some-uuid`).
+      responses:
+        "200":
+          description: Object content streamed with correct Content-Type.
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Failed to serve object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users:
+    post:
+      tags: [Users]
+      operationId: syncUser
+      summary: Upsert the mobile app's local user into the backend
+      description: |
+        WODPLACE has no real auth system — the mobile app generates a local
+        user id in AsyncStorage. This endpoint mirrors that user server-side
+        so contract progress/acceptance can be tied to a stable id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncUserRequest"
+      responses:
+        "200":
+          description: User upserted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRecord"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /contracts:
+    get:
+      tags: [Contracts]
+      operationId: listContracts
+      summary: List contract documents, optionally with a user's read status
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Contract documents.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContractDocument"
+
+  /contracts/{slug}/read:
+    post:
+      tags: [Contracts]
+      operationId: markContractRead
+      summary: Mark a contract document as read by a user
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkContractReadRequest"
+      responses:
+        "200":
+          description: Updated read progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractDocument"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Document not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /contracts/acceptance:
+    get:
+      tags: [Contracts]
+      operationId: getContractAcceptance
+      summary: Get a user's contract acceptance record
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Acceptance record, or null if not yet accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractAcceptanceResponse"
+    post:
+      tags: [Contracts]
+      operationId: acceptContracts
+      summary: Record a user's final contract acceptance with a server timestamp
+      description: |
+        Fails with 409 if the user has not yet marked all contract documents
+        as read.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptContractsRequest"
+      responses:
+        "200":
+          description: Acceptance recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractAcceptance"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Not all contract documents have been read yet.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/verify:
+    post:
+      tags: [Admin]
+      operationId: verifyAdminCode
+      summary: Check whether a code unlocks the hidden admin panel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyAdminCodeRequest"
+      responses:
+        "200":
+          description: Whether the code is valid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCodeCheckResult"
+
+  /admin/contracts:
+    get:
+      tags: [Admin]
+      operationId: listAdminContracts
+      summary: List contract documents for the admin panel
+      parameters:
+        - name: x-admin-code
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Contract documents.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContractDocument"
+        "401":
+          description: Missing or invalid admin code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/contracts/{slug}:
+    put:
+      tags: [Admin]
+      operationId: updateAdminContract
+      summary: Attach a newly uploaded PDF to a contract document slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-admin-code
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAdminContractRequest"
+      responses:
+        "200":
+          description: Updated document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractDocument"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Missing or invalid admin code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +352,140 @@ components:
       required:
         - status
 
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          minLength: 1
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
+
+    SyncUserRequest:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          minLength: 1
+    UserRecord:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+
+    ContractDocument:
+      type: object
+      required: [slug, title, read]
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        objectPath:
+          type: string
+          nullable: true
+        read:
+          type: boolean
+        readAt:
+          type: string
+          nullable: true
+
+    MarkContractReadRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          minLength: 1
+
+    ContractAcceptance:
+      type: object
+      required: [userId, emergencyContactName, emergencyContactPhone, acceptedAt]
+      properties:
+        userId:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        acceptedAt:
+          type: string
+    ContractAcceptanceResponse:
+      type: object
+      properties:
+        acceptance:
+          $ref: "#/components/schemas/ContractAcceptance"
+          nullable: true
+
+    AcceptContractsRequest:
+      type: object
+      required: [userId, emergencyContactName, emergencyContactPhone]
+      properties:
+        userId:
+          type: string
+          minLength: 1
+        emergencyContactName:
+          type: string
+          minLength: 1
+        emergencyContactPhone:
+          type: string
+          minLength: 1
+
+    VerifyAdminCodeRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 1
+    AdminCodeCheckResult:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+
+    UpdateAdminContractRequest:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath:
+          type: string
+          minLength: 1
+        title:
+          type: string

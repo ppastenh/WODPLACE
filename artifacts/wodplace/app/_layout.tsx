@@ -17,9 +17,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '@/context/AuthContext';
 import { BookingProvider } from '@/context/BookingContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
+import { configureApiClient } from '@/lib/apiConfig';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+configureApiClient();
 
 const queryClient = new QueryClient();
 
@@ -37,6 +40,8 @@ function RootLayoutNav() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="plan" />
       <Stack.Screen name="active-contracts" />
+      <Stack.Screen name="admin-login" />
+      <Stack.Screen name="admin-contracts" />
     </Stack>
   );
 }

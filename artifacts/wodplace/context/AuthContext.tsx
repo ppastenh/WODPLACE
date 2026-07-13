@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncUser } from '@workspace/api-client-react';
 
 export type AccountStatus = 'active' | 'inactive';
 export type AthleteRank = 'Beginner' | 'Rookie' | 'Scaled' | 'Rx' | 'Elite' | 'Coach';
@@ -79,6 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(next);
     if (next) {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      // Best-effort: make sure the backend has a row for this user so
+      // contract read-progress/acceptance calls (which have a FK on userId)
+      // succeed. Never blocks or crashes the app if the API is unreachable.
+      syncUser({ id: next.id, name: next.name, email: next.email }).catch((err) => {
+        console.warn('Failed to sync user to backend', err);
+      });
     } else {
       await AsyncStorage.removeItem(STORAGE_KEY);
     }
