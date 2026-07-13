@@ -140,6 +140,8 @@ router.get("/contracts/acceptance", async (req: Request, res: Response) => {
               emergencyContactName: row.emergencyContactName,
               emergencyContactPhone: row.emergencyContactPhone,
               acceptedAt: row.acceptedAt.toISOString(),
+              guardianName: row.guardianName,
+              guardianRelationship: row.guardianRelationship,
             }
           : null,
       }),
@@ -166,8 +168,13 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
 
   try {
     await ensureDefaultDocuments();
-    const { userId, emergencyContactName, emergencyContactPhone } =
-      parsed.data;
+    const {
+      userId,
+      emergencyContactName,
+      emergencyContactPhone,
+      guardianName,
+      guardianRelationship,
+    } = parsed.data;
 
     const documents = await db.select().from(contractDocumentsTable);
     const progress = await db
@@ -194,6 +201,8 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         emergencyContactName,
         emergencyContactPhone,
         acceptedAt,
+        guardianName: guardianName ?? null,
+        guardianRelationship: guardianRelationship ?? null,
         seenByOwnerAt: null,
       })
       .onConflictDoUpdate({
@@ -203,6 +212,8 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
           emergencyContactName,
           emergencyContactPhone,
           acceptedAt,
+          guardianName: guardianName ?? null,
+          guardianRelationship: guardianRelationship ?? null,
           seenByOwnerAt: null,
         },
       });
@@ -213,6 +224,8 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         emergencyContactName,
         emergencyContactPhone,
         acceptedAt: acceptedAt.toISOString(),
+        guardianName: guardianName ?? null,
+        guardianRelationship: guardianRelationship ?? null,
       }),
     );
   } catch (error) {

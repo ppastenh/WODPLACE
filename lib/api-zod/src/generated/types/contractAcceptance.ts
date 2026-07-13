@@ -11,4 +11,6 @@ export interface ContractAcceptance {
   emergencyContactName: string;
   emergencyContactPhone: string;
   acceptedAt: string;
+  guardianName?: string | null;
+  guardianRelationship?: string | null;
 }

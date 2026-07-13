@@ -188,6 +188,12 @@ export default function AdminContractsScreen() {
                     <Text style={[styles.notifDetail, { color: colors.mutedForeground }]}>
                       Aceptó el {formatAcceptedAt(item.acceptedAt)}
                     </Text>
+                    {item.guardianName ? (
+                      <Text style={[styles.notifGuardian, { color: colors.foreground }]}>
+                        Aceptado por el apoderado: {item.guardianName}
+                        {item.guardianRelationship ? ` (${item.guardianRelationship})` : ''}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               ))}
@@ -275,4 +281,5 @@ const styles = StyleSheet.create({
   notifCardText: { flex: 1, gap: 2 },
   notifName: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   notifDetail: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  notifGuardian: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginTop: 2 },
 });

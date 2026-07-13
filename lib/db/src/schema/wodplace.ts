@@ -77,6 +77,11 @@ export const contractAcceptancesTable = pgTable("contract_acceptances", {
   emergencyContactName: text("emergency_contact_name").notNull(),
   emergencyContactPhone: text("emergency_contact_phone").notNull(),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+  // Populated only when the member was under 18 at acceptance time — the
+  // guardian stands in for the minor's own signature/acceptance. Null for
+  // adult members.
+  guardianName: text("guardian_name"),
+  guardianRelationship: text("guardian_relationship"),
   // Null until the box owner views this acceptance in the admin panel.
   // Re-set to null whenever a member (re-)accepts, so the owner is notified
   // again — this is the whole notification mechanism, no push/email infra.

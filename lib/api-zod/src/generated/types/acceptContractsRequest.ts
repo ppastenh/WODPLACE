@@ -13,4 +13,15 @@ export interface AcceptContractsRequest {
   emergencyContactName: string;
   /** @minLength 1 */
   emergencyContactPhone: string;
+  /**
+     * Required when the member is under 18. The guardian's acceptance
+     * stands in for the minor's own signature.
+     * @minLength 1
+     */
+  guardianName?: string;
+  /**
+     * Optional, e.g. "Madre", "Padre", "Tutor legal".
+     * @minLength 1
+     */
+  guardianRelationship?: string;
 }

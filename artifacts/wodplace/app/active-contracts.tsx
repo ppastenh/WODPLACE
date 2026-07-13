@@ -23,6 +23,9 @@ import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { getContractFileUrl } from '@/lib/apiConfig';
+import { getAge } from '@/lib/dateUtils';
+
+const MINOR_AGE_THRESHOLD = 18;
 
 /**
  * Formats a ContractAcceptance timestamp in a readable, legally-relevant
@@ -53,6 +56,16 @@ export default function ActiveContractsScreen() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [openingSlug, setOpeningSlug] = useState<string | null>(null);
   const [openedSlugs, setOpenedSlugs] = useState<Record<string, boolean>>({});
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianRelationship, setGuardianRelationship] = useState('');
+  // Members with a saved birthdate under 18 are auto-detected. Members with
+  // no birthdate on file can't be auto-detected, so they can flag it
+  // themselves — the guardian fields then become mandatory either way.
+  const [selfReportedMinor, setSelfReportedMinor] = useState(false);
+
+  const knownAge = user?.birthdate ? getAge(user.birthdate) : null;
+  const isDetectedMinor = knownAge !== null && knownAge < MINOR_AGE_THRESHOLD;
+  const isMinor = isDetectedMinor || selfReportedMinor;
 
   // Note: the generated UseQueryOptions type requires `queryKey` even for
   // this partial override object, but the hook fills it in internally —
@@ -79,7 +92,8 @@ export default function ActiveContractsScreen() {
     allRead &&
     allChecked &&
     emergencyName.trim().length > 0 &&
-    emergencyPhone.length === CL_PHONE_DIGITS;
+    emergencyPhone.length === CL_PHONE_DIGITS &&
+    (!isMinor || guardianName.trim().length > 0);
 
   const handlePhoneChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, '').slice(0, CL_PHONE_DIGITS);
@@ -140,6 +154,14 @@ export default function ActiveContractsScreen() {
           userId,
           emergencyContactName: emergencyName.trim(),
           emergencyContactPhone: `+56${emergencyPhone}`,
+          ...(isMinor
+            ? {
+                guardianName: guardianName.trim(),
+                ...(guardianRelationship.trim()
+                  ? { guardianRelationship: guardianRelationship.trim() }
+                  : {}),
+              }
+            : {}),
         },
       },
       {
@@ -268,6 +290,14 @@ export default function ActiveContractsScreen() {
                     Contacto de emergencia: {acceptance.emergencyContactName} ·{' '}
                     {acceptance.emergencyContactPhone}
                   </Text>
+                  {acceptance.guardianName ? (
+                    <Text style={[styles.acceptedSubtitle, { color: colors.secondaryForeground }]}>
+                      Aceptado por el apoderado: {acceptance.guardianName}
+                      {acceptance.guardianRelationship
+                        ? ` (${acceptance.guardianRelationship})`
+                        : ''}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             ) : (
@@ -302,6 +332,71 @@ export default function ActiveContractsScreen() {
                     style={[styles.phoneInput, { color: colors.foreground }]}
                   />
                 </View>
+
+                {isDetectedMinor ? null : (
+                  <Pressable
+                    onPress={() => setSelfReportedMinor((prev) => !prev)}
+                    style={styles.checkRow}
+                    hitSlop={6}
+                  >
+                    <View
+                      style={[
+                        styles.checkbox,
+                        {
+                          borderColor: colors.foreground,
+                          backgroundColor: selfReportedMinor ? colors.primary : 'transparent',
+                        },
+                      ]}
+                    >
+                      {selfReportedMinor ? (
+                        <Feather name="check" size={16} color={colors.primaryForeground} />
+                      ) : null}
+                    </View>
+                    <Text style={[styles.checkLabel, { color: colors.foreground }]}>
+                      Soy menor de 18 años
+                    </Text>
+                  </Pressable>
+                )}
+
+                {isMinor ? (
+                  <View style={styles.guardianSection}>
+                    <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                      Datos del apoderado
+                    </Text>
+                    <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
+                      Como eres menor de edad, un apoderado debe aceptar estos contratos en tu
+                      nombre.
+                    </Text>
+                    <TextInput
+                      value={guardianName}
+                      onChangeText={setGuardianName}
+                      placeholder="Nombre del apoderado"
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: colors.input,
+                          color: colors.foreground,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    />
+                    <TextInput
+                      value={guardianRelationship}
+                      onChangeText={setGuardianRelationship}
+                      placeholder="Relación con el menor (ej. Madre, Padre, Tutor legal)"
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: colors.input,
+                          color: colors.foreground,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    />
+                  </View>
+                ) : null}
 
                 <AppButton
                   label="ACEPTADO"
@@ -401,6 +496,10 @@ const styles = StyleSheet.create({
   emergencySection: {
     marginTop: 24,
     gap: 12,
+  },
+  guardianSection: {
+    gap: 12,
+    marginTop: 4,
   },
   sectionLabel: {
     fontSize: 14,

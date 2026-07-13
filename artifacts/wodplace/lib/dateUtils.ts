@@ -130,3 +130,14 @@ export function formatLongDate(isoDate: string): string {
   const monthName = (MONTH_NAMES[month - 1] ?? '').toLowerCase();
   return `${day} de ${monthName} de ${year}`;
 }
+
+/** Computes age in whole years from an ISO "yyyy-mm-dd" birthdate, as of `now`. */
+export function getAge(isoBirthdate: string, now: Date = new Date()): number {
+  const [year, month, day] = isoBirthdate.split('-').map(Number);
+  let age = now.getFullYear() - year;
+  const hasHadBirthdayThisYear =
+    now.getMonth() + 1 > month ||
+    (now.getMonth() + 1 === month && now.getDate() >= day);
+  if (!hasHadBirthdayThisYear) age -= 1;
+  return age;
+}

@@ -143,7 +143,9 @@ export const GetContractAcceptanceResponse = zod.object({
   "userId": zod.string(),
   "emergencyContactName": zod.string(),
   "emergencyContactPhone": zod.string(),
-  "acceptedAt": zod.string()
+  "acceptedAt": zod.string(),
+  "guardianName": zod.string().nullish(),
+  "guardianRelationship": zod.string().nullish()
 }).nullish()
 })
 
@@ -158,17 +160,23 @@ export const GetContractAcceptanceResponse = zod.object({
 
 
 
+
+
 export const AcceptContractsBody = zod.object({
   "userId": zod.string().min(1),
   "emergencyContactName": zod.string().min(1),
-  "emergencyContactPhone": zod.string().min(1)
+  "emergencyContactPhone": zod.string().min(1),
+  "guardianName": zod.string().min(1).optional().describe('Required when the member is under 18. The guardian\'s acceptance\nstands in for the minor\'s own signature.\n'),
+  "guardianRelationship": zod.string().min(1).optional().describe('Optional, e.g. \"Madre\", \"Padre\", \"Tutor legal\".')
 })
 
 export const AcceptContractsResponse = zod.object({
   "userId": zod.string(),
   "emergencyContactName": zod.string(),
   "emergencyContactPhone": zod.string(),
-  "acceptedAt": zod.string()
+  "acceptedAt": zod.string(),
+  "guardianName": zod.string().nullish(),
+  "guardianRelationship": zod.string().nullish()
 })
 
 
@@ -249,6 +257,8 @@ export const ListAdminContractAcceptancesResponseItem = zod.object({
   "emergencyContactName": zod.string(),
   "emergencyContactPhone": zod.string(),
   "acceptedAt": zod.string(),
+  "guardianName": zod.string().nullish(),
+  "guardianRelationship": zod.string().nullish(),
   "seen": zod.boolean()
 })
 export const ListAdminContractAcceptancesResponse = zod.array(ListAdminContractAcceptancesResponseItem)

@@ -161,6 +161,8 @@ router.get(
           emergencyContactPhone:
             contractAcceptancesTable.emergencyContactPhone,
           acceptedAt: contractAcceptancesTable.acceptedAt,
+          guardianName: contractAcceptancesTable.guardianName,
+          guardianRelationship: contractAcceptancesTable.guardianRelationship,
           seenByOwnerAt: contractAcceptancesTable.seenByOwnerAt,
         })
         .from(contractAcceptancesTable)
@@ -177,6 +179,8 @@ router.get(
         emergencyContactName: row.emergencyContactName,
         emergencyContactPhone: row.emergencyContactPhone,
         acceptedAt: row.acceptedAt.toISOString(),
+        guardianName: row.guardianName,
+        guardianRelationship: row.guardianRelationship,
         seen: row.seenByOwnerAt !== null,
       }));
 

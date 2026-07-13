@@ -504,6 +504,12 @@ components:
           type: string
         acceptedAt:
           type: string
+        guardianName:
+          type: string
+          nullable: true
+        guardianRelationship:
+          type: string
+          nullable: true
     ContractAcceptanceResponse:
       type: object
       properties:
@@ -524,6 +530,16 @@ components:
         emergencyContactPhone:
           type: string
           minLength: 1
+        guardianName:
+          type: string
+          minLength: 1
+          description: |
+            Required when the member is under 18. The guardian's acceptance
+            stands in for the minor's own signature.
+        guardianRelationship:
+          type: string
+          minLength: 1
+          description: Optional, e.g. "Madre", "Padre", "Tutor legal".
 
     VerifyAdminCodeRequest:
       type: object
@@ -572,6 +588,12 @@ components:
           type: string
         acceptedAt:
           type: string
+        guardianName:
+          type: string
+          nullable: true
+        guardianRelationship:
+          type: string
+          nullable: true
         seen:
           type: boolean
 
