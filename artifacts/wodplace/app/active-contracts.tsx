@@ -52,6 +52,7 @@ export default function ActiveContractsScreen() {
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [openingSlug, setOpeningSlug] = useState<string | null>(null);
+  const [openedSlugs, setOpenedSlugs] = useState<Record<string, boolean>>({});
 
   // Note: the generated UseQueryOptions type requires `queryKey` even for
   // this partial override object, but the hook fills it in internally —
@@ -97,6 +98,7 @@ export default function ActiveContractsScreen() {
     setOpeningSlug(slug);
     try {
       await WebBrowser.openBrowserAsync(getContractFileUrl(objectPath));
+      setOpenedSlugs((prev) => ({ ...prev, [slug]: true }));
       Alert.alert(
         '¿Leíste el documento completo?',
         'Confirma que revisaste todo el contenido para poder marcarlo como leído.',
@@ -104,16 +106,7 @@ export default function ActiveContractsScreen() {
           { text: 'Aún no', style: 'cancel' },
           {
             text: 'Sí, lo leí',
-            onPress: () => {
-              markReadMutation.mutate(
-                { slug, data: { userId } },
-                {
-                  onSuccess: () => contractsQuery.refetch(),
-                  onError: () =>
-                    Alert.alert('Error', 'No se pudo registrar la lectura. Intenta de nuevo.'),
-                },
-              );
-            },
+            onPress: () => handleMarkRead(slug),
           },
         ],
       );
@@ -122,6 +115,17 @@ export default function ActiveContractsScreen() {
     } finally {
       setOpeningSlug(null);
     }
+  };
+
+  const handleMarkRead = (slug: string) => {
+    markReadMutation.mutate(
+      { slug, data: { userId } },
+      {
+        onSuccess: () => contractsQuery.refetch(),
+        onError: () =>
+          Alert.alert('Error', 'No se pudo registrar la lectura. Intenta de nuevo.'),
+      },
+    );
   };
 
   const handleAccept = () => {
@@ -190,14 +194,26 @@ export default function ActiveContractsScreen() {
                     </View>
                   </View>
 
-                  <AppButton
-                    label={doc.read ? 'Ver documento de nuevo' : 'Leer documento'}
-                    variant="outlineDark"
-                    compact
-                    loading={openingSlug === doc.slug}
-                    onPress={() => handleOpenDocument(doc.slug, doc.objectPath ?? null)}
-                    style={styles.viewButton}
-                  />
+                  <View style={styles.actionRow}>
+                    <AppButton
+                      label={doc.read ? 'Ver documento de nuevo' : 'Leer documento'}
+                      variant="outlineDark"
+                      compact
+                      loading={openingSlug === doc.slug}
+                      onPress={() => handleOpenDocument(doc.slug, doc.objectPath ?? null)}
+                      style={styles.viewButton}
+                    />
+                    {!doc.read && openedSlugs[doc.slug] ? (
+                      <AppButton
+                        label="Marcar como leído"
+                        variant="primary"
+                        compact
+                        loading={markReadMutation.isPending}
+                        onPress={() => handleMarkRead(doc.slug)}
+                        style={styles.viewButton}
+                      />
+                    ) : null}
+                  </View>
 
                   {!acceptance ? (
                     <Pressable
@@ -353,6 +369,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontFamily: 'Inter_600SemiBold',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
   },
   viewButton: {
     alignSelf: 'flex-start',
