@@ -13,8 +13,8 @@ const colors = {
     tint: '#4B3CF5',
 
     // Core surfaces
-    background: '#F4EEE1',
-    foreground: '#191A1E',
+    background: '#F6F1E8',
+    foreground: '#18191A',
 
     // Cards / elevated surfaces
     card: '#FFFFFF',
@@ -43,6 +43,13 @@ const colors = {
     // Borders and input outlines
     border: '#E3D9C2',
     input: '#EFE8D8',
+
+    // Bottom navigation
+    navActive: '#B98250',
+    navInactive: '#706B63',
+    navFloating: '#18191A',
+    navFloatingForeground: '#F6F1E8',
+    navBorder: '#D4CDBF',
 
     // Status
     success: '#2F9E56',

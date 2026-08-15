@@ -17,3 +17,8 @@ description: Expo mobile app (CrossFit box) conventions — auth, backend wiring
 
 ## Expo native module version pinning
 - Always match new `expo-*` package versions to the versions in the installed `expo` package's `node_modules/expo/bundledNativeModules.json`, not whatever `^` range npm suggests — the latest published version of an Expo module is often for a newer/canary Expo SDK than the one in this project and can break the build.
+
+## Primary navigation
+- The main authenticated experience uses a custom five-item bottom bar rather than Expo Router's stock tabs because the center Agendar action is a branded floating circular button. Home is the dashboard route; Perfil is the personal-data route, so the two never appear active at once.
+  **Why:** The requested WODPLACE navigation needs a raised center action, exact brand colors, and persistent navigation while secondary flows such as contracts/admin stay focused.
+  **How to apply:** Keep the bar mounted from the root layout only for top-level authenticated routes; preserve a 44pt+ touch target, safe-area padding, and a visible label under every icon.

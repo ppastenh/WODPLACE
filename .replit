@@ -26,3 +26,6 @@ OWNER_EMAIL = "pasten.hueche@gmail.com"
 
 [nix]
 channel = "stable-25_05"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-34ebcb2e-d157-4003-8c67-1ced663d3054"

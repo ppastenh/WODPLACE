@@ -12,12 +12,13 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import { Anton_400Regular, useFonts as useAntonFonts } from '@expo-google-fonts/anton';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { BookingProvider } from '@/context/BookingContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { configureApiClient } from '@/lib/apiConfig';
+import { BottomNavBar, BOTTOM_NAV_ROUTES } from '@/components/BottomNavBar';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -27,22 +28,31 @@ configureApiClient();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const showBottomNav = !!user && BOTTOM_NAV_ROUTES.includes(pathname as (typeof BOTTOM_NAV_ROUTES)[number]);
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="login" />
-      <Stack.Screen name="login-password" />
-      <Stack.Screen name="register" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="calendar" />
-      <Stack.Screen name="personal-data" />
-      <Stack.Screen name="box-detail" />
-      <Stack.Screen name="notifications" />
-      <Stack.Screen name="plan" />
-      <Stack.Screen name="active-contracts" />
-      <Stack.Screen name="admin-login" />
-      <Stack.Screen name="admin-contracts" />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="login-password" />
+        <Stack.Screen name="register" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="community" />
+        <Stack.Screen name="calendar" />
+        <Stack.Screen name="progress" />
+        <Stack.Screen name="personal-data" />
+        <Stack.Screen name="box-detail" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="plan" />
+        <Stack.Screen name="active-contracts" />
+        <Stack.Screen name="admin-login" />
+        <Stack.Screen name="admin-contracts" />
+      </Stack>
+      {showBottomNav ? <BottomNavBar /> : null}
+    </>
   );
 }
 
