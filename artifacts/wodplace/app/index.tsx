@@ -24,7 +24,7 @@ export default function SplashRoute() {
     const elapsed = Date.now() - mountedAt.current;
     const remaining = Math.max(0, 1100 - elapsed);
     const timer = setTimeout(() => {
-      router.replace(isAuthenticated ? '/profile' : '/login');
+      router.replace(isAuthenticated ? '/home' : '/login');
     }, remaining);
     return () => clearTimeout(timer);
   }, [isLoading, isAuthenticated]);

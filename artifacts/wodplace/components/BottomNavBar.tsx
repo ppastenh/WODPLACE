@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 
-type NavRoute = '/profile' | '/community' | '/calendar' | '/progress' | '/personal-data';
+type NavRoute = '/home' | '/community' | '/calendar' | '/progress' | '/profile';
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 type NavIcon = FeatherIconName | 'dumbbell';
 
@@ -16,17 +16,17 @@ const NAV_ITEMS: Array<{
   route: NavRoute;
   icon: NavIcon;
 }> = [
-  { key: 'home', label: 'Home', route: '/profile', icon: 'home' },
+  { key: 'home', label: 'Home', route: '/home', icon: 'home' },
   { key: 'community', label: 'Comunidad', route: '/community', icon: 'users' },
   { key: 'schedule', label: 'Agendar', route: '/calendar', icon: 'calendar' },
   { key: 'progress', label: 'Progreso', route: '/progress', icon: 'dumbbell' },
-  { key: 'profile', label: 'Perfil', route: '/personal-data', icon: 'user' },
+  { key: 'profile', label: 'Perfil', route: '/profile', icon: 'user' },
 ];
 
 export const BOTTOM_NAV_ROUTES = NAV_ITEMS.map((item) => item.route);
 
 function isSelected(route: NavRoute, pathname: string): boolean {
-  if (route === '/profile') return pathname === '/profile';
+  if (route === '/home') return pathname === '/home';
   return pathname === route;
 }
 

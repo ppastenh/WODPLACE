@@ -50,6 +50,9 @@ const colors = {
     navFloating: '#18191A',
     navFloatingForeground: '#F6F1E8',
     navBorder: '#D4CDBF',
+    warning: '#F5A623',
+    warningBackground: '#FFF0D5',
+    successBackground: '#E7F8EC',
 
     // Status
     success: '#2F9E56',

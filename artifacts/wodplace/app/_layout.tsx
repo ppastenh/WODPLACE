@@ -39,6 +39,7 @@ function RootLayoutNav() {
         <Stack.Screen name="login" />
         <Stack.Screen name="login-password" />
         <Stack.Screen name="register" />
+        <Stack.Screen name="home" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="community" />
         <Stack.Screen name="calendar" />

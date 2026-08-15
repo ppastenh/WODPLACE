@@ -1,0 +1,29 @@
+Crea la pantalla "Inicio" (Home) de una app móvil de CrossFit llamada WODPLACE, para el rol de alumno.
+
+Paleta oficial WODPLACE:
+- Fondo general: #F6F1E8
+- Cards: #FFFFFF
+- Texto principal: #18191A / Texto secundario: #706B63
+- Acento cobre: #B98250
+- Borde sutil: #D4CDBF
+- Colores funcionales: ámbar #F5A623 (alertas), verde #28C76F (éxito/PR)
+
+Estructura de arriba hacia abajo:
+
+1. Header: saludo "Hola, [nombre]" a la izquierda, ícono de campanita de notificaciones (con punto rojo si hay notificaciones nuevas) a la derecha. Zona minimalista, sin más elementos.
+
+2. Card de progreso mensual: nombre del mes a la izquierda, "X de Y clases" a la derecha, barra de progreso horizontal delgada en color cobre sobre fondo claro.
+
+3. Bloque de aviso del coach (solo si hay uno activo): fondo ámbar suave, ícono de alerta, texto corto del aviso (ej: "Trae guantes — WOD con cuerdas"). Este aviso es enviado por el coach desde su panel de administración (formulario "Nuevo aviso") y llega automáticamente a este espacio en el Inicio de todos los alumnos, mientras el banner esté activo.
+
+4. Card de próxima clase: fondo oscuro (#18191A), chip con la hora ("Hoy a las 18:00"), nombre de la clase, nombre del coach.
+
+5. Dos cards lado a lado:
+   - Frase motivacional del día (rota diariamente, siempre con enfoque deportivo: ejercicio, salud mental, positividad, progreso). Ícono de comillas, texto de la frase, ícono de compartir (solo ícono, sin texto, estilo "3 puntos conectados/nodos", no el ícono de flecha-hacia-afuera).
+   - PR del día (rota diariamente entre los PRs registrados por el alumno): fondo verde suave, ícono de trofeo, nombre del ejercicio y peso, diferencia respecto al PR anterior.
+
+6. Fila de cumpleaños próximos: avatar con iniciales, nombre y día, ícono de regalo a la derecha.
+
+7. Menú inferior fijo: Home, Comunidad, Agendar (botón central circular flotante en negro con ícono de calendario), Progreso (ícono de pesa/barbell), Perfil.
+
+Nota importante: la pantalla que actualmente está activa como "Home" (con avatar, badges de "Cuenta Activa"/"Beginner", botón "Agenda Ahora" y sección "Agendado" con las clases reservadas) debe moverse a la sección de Perfil, ya que Inicio pasa a ser este nuevo dashboard diario.
