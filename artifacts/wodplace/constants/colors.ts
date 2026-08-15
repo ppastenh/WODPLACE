@@ -53,6 +53,7 @@ const colors = {
     warning: '#F5A623',
     warningBackground: '#FFF0D5',
     successBackground: '#E7F8EC',
+    eventBlue: '#4A7CFF',
 
     // Status
     success: '#2F9E56',

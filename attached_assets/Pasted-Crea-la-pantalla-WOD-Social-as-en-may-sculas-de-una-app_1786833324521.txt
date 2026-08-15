@@ -1,0 +1,32 @@
+Crea la pantalla "WOD Social" (así, en mayúsculas) de una app móvil de CrossFit llamada WODPLACE, para el rol de alumno.
+
+Paleta oficial WODPLACE:
+- Fondo general: #F6F1E8
+- Cards: #FFFFFF
+- Texto principal: #18191A / Texto secundario: #706B63
+- Acento cobre: #B98250
+- Borde sutil: #D4CDBF
+- Colores funcionales: azul #4A7CFF (eventos/competencias)
+
+Estructura y comportamiento:
+
+1. Header: logo del box a la izquierda, seguido del título "WOD Social" en mayúsculas; botón "+" a la derecha para crear una publicación nueva.
+
+2. Feed único y mezclado (no separado por pestañas ni categorías): incluye en un mismo scroll noticias del box, eventos/competencias, y publicaciones de alumnos. Todo ordenado cronológicamente, lo más nuevo siempre arriba.
+
+3. Tipos de card dentro del feed:
+   
+   a) Post de alumno: avatar con iniciales, nombre, tiempo transcurrido, texto del post, foto opcional (los alumnos pueden subir fotos junto a su publicación), contador de likes y comentarios.
+   
+   b) Card de evento/competencia: formato flyer — imagen full-width (el flyer que sube el box) con un tag "Competencia" superpuesto en cobre, y debajo el título del evento y fecha/hora. Este contenido normalmente es una imagen tipo afiche, no texto plano.
+   
+   c) Anuncio del box: mismo formato que un post pero publicado por la cuenta del box/administración (avatar distinto, ej. ícono de edificio en vez de iniciales), con texto y foto opcional.
+
+4. Permisos de publicación: los alumnos pueden publicar libremente (texto y fotos), sin necesidad de aprobación previa.
+
+5. Moderación: el administrador puede eliminar/ocultar publicaciones y bloquear alumnos de forma reactiva (después de que el contenido ya fue publicado), no hay revisión previa a la publicación. [Nota: el diseño detallado de este panel de moderación queda pendiente para más adelante.]
+
+6. Relación con el panel de administración del coach:
+   - El formulario "Nuevo aviso" del coach tiene dos destinos distintos: el texto del aviso llega como banner al Home del alumno, y la foto que el coach adjunta (por ejemplo, foto de una clase) se publica como post en este feed de WOD Social, no en el Home.
+
+7. Menú inferior fijo: Home, Comunidad (activo/resaltado en cobre, accede a la pantalla WOD Social), Agendar (botón central circular flotante en negro con ícono de calendario), Progreso (ícono de pesa/barbell), Perfil.
