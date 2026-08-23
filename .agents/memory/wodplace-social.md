@@ -23,3 +23,8 @@ description: Feed social en backend, zod/v4 ausente, drizzle-zod conflicto con z
 - `lib/db/src/schema/wodplace.ts` — Tablas: socialPostsTable, socialCommentsTable, socialReactionsTable, socialReportsTable, blockedUsersTable, boxSettingsTable
 
 **Why:** El feed social necesita ser multi-usuario y persistente — AsyncStorage solo funciona por dispositivo.
+
+## Subida de imágenes (presigned URLs)
+- No validar respuestas de rutas hand-written con esquemas generados por orval de OTRA ruta: pueden imponer restricciones ajenas (p. ej. size >= 1) y convertir una respuesta válida en 500. Usar un esquema zod local dedicado.
+- **Why:** los clientes móviles no siempre conocen el tamaño del archivo (ImagePicker puede omitir fileSize), así que size 0/ausente debe ser válido en rutas de presign.
+- El size/contentType que declara el cliente al pedir la URL firmada NO es un control de seguridad (el cliente controla el PUT real). La validación efectiva de tamaño/contenido se hace al publicar, contra los bytes reales del objeto (metadata + magic bytes). La falta de auth en presign sigue abierta como tarea aparte.

@@ -19,23 +19,56 @@ const objectStorageService = new ObjectStorageService();
  * POST /storage/social-uploads/request-url
  *
  * Request a presigned URL for social feed image uploads.
- * Open to any authenticated user (userId required, no admin code).
+ *
+ * SECURITY NOTE: WODPLACE has no real auth system yet (the app syncs a
+ * locally generated user id), so this endpoint cannot verify the caller's
+ * identity — adding real authentication is tracked as separate work.
+ * The declared `size`/`contentType` below are informational metadata only,
+ * NOT security controls (the client controls the actual PUT). Real
+ * enforcement of size/content happens at publish time in the social posts
+ * route, against the stored object's actual bytes
+ * (see lib/socialImageValidation.ts).
  */
+const MAX_SOCIAL_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB
+
+const SocialUploadRequestBody = z.object({
+  userId: z.string().min(1),
+  name: z.string().min(1),
+  // Informational only — mobile clients can't always know the file size up
+  // front (ImagePicker may omit it), so 0/absent must never cause a failure.
+  size: z.number().nonnegative().max(MAX_SOCIAL_IMAGE_BYTES).optional().default(0),
+  // Early feedback for honest clients only; enforced for real at publish.
+  contentType: z.string().regex(/^image\//, 'Only image uploads are allowed'),
+});
+
+// Dedicated response schema: unlike the generated RequestUploadUrlResponse
+// (whose metadata.size requires >= 1 and used to 500 this route), it still
+// runtime-checks the two fields clients actually consume.
+const SocialUploadResponse = z.object({
+  uploadURL: z.string().min(1),
+  objectPath: z.string().min(1),
+  metadata: z.object({
+    name: z.string(),
+    size: z.number().nonnegative(),
+    contentType: z.string(),
+  }),
+});
+
 router.post(
   '/storage/social-uploads/request-url',
   async (req: Request, res: Response) => {
-    const parsed = z
-      .object({ userId: z.string(), name: z.string(), size: z.number().optional().default(0), contentType: z.string() })
-      .safeParse(req.body);
+    const parsed = SocialUploadRequestBody.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: 'Missing required fields' });
+      res.status(400).json({ error: 'Missing or invalid required fields' });
       return;
     }
     try {
       const { name, size, contentType } = parsed.data;
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-      res.json(RequestUploadUrlResponse.parse({ uploadURL, objectPath, metadata: { name, size, contentType } }));
+      res.json(
+        SocialUploadResponse.parse({ uploadURL, objectPath, metadata: { name, size, contentType } }),
+      );
     } catch (error) {
       req.log.error({ err: error }, 'Error generating social upload URL');
       res.status(500).json({ error: 'Failed to generate upload URL' });

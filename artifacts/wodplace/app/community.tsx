@@ -52,7 +52,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
 ];
 
-type SelectedImage = { uri: string; mimeType?: string };
+type SelectedImage = { uri: string; mimeType?: string; fileSize?: number };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -628,6 +628,7 @@ export default function CommunityScreen() {
       const newImgs: SelectedImage[] = result.assets.map((a) => ({
         uri: a.uri,
         mimeType: a.mimeType ?? undefined,
+        fileSize: a.fileSize ?? undefined,
       }));
       setSelectedImages((prev) => [...prev, ...newImgs].slice(0, 4));
     }
@@ -669,7 +670,7 @@ export default function CommunityScreen() {
                 }
               }
             : undefined;
-          const url = await uploadSocialImage(img.uri, mime, nativeUploader);
+          const url = await uploadSocialImage(img.uri, mime, nativeUploader, img.fileSize);
           uploadedUris.push(url);
         } catch (err) {
           console.warn('Image upload failed:', err);

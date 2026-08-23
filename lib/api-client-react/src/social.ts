@@ -301,6 +301,12 @@ export function useSocialMutations(userId: string, authorName: string) {
        * On web this parameter is ignored; the blob:// URI is handled via XHR.
        */
       nativeUploader?: (uploadURL: string, fileUri: string, mimeType: string) => Promise<void>,
+      /**
+       * Actual file size in bytes, when the caller knows it (e.g. from
+       * ImagePicker's `fileSize`). Purely informational — omitted from the
+       * request when unknown; the server tolerates a missing size.
+       */
+      fileSize?: number,
     ): Promise<string> => {
       // Step 1: request a presigned GCS upload URL from our API
       const { uploadURL, objectPath } = await customFetch<{
@@ -310,7 +316,13 @@ export function useSocialMutations(userId: string, authorName: string) {
       }>("/api/storage/social-uploads/request-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, name: "photo.jpg", size: 0, contentType: mimeType }),
+        body: JSON.stringify({
+          userId,
+          name: "photo.jpg",
+          // Only send a size we actually know; JSON.stringify drops undefined.
+          size: fileSize && fileSize > 0 ? fileSize : undefined,
+          contentType: mimeType,
+        }),
       });
 
       // Step 2: PUT the file bytes to the presigned GCS URL.

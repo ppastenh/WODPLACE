@@ -23,6 +23,8 @@ import {
   or,
 } from "drizzle-orm";
 import { z } from "zod";
+
+import { validateSocialImageUris } from "../lib/socialImageValidation";
 import { requireAdminCode } from "../lib/adminAuth";
 
 const router: IRouter = Router();
@@ -198,6 +200,16 @@ router.post("/social/posts", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Se requiere texto o al menos una foto." }); return;
   }
   try {
+    // Enforce image size/content limits against the ACTUAL uploaded bytes.
+    // The presign endpoint can't restrict what the client PUTs to storage,
+    // so this is where posts referencing invalid objects get rejected.
+    if (imageUris.length > 0) {
+      const imageError = await validateSocialImageUris(imageUris);
+      if (imageError) {
+        res.status(400).json({ error: imageError });
+        return;
+      }
+    }
     const id = makeId("post");
     await db.insert(socialPostsTable).values({
       id, userId, authorName,
