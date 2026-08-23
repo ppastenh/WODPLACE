@@ -111,7 +111,7 @@ export default function CalendarScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onBack={() => router.back()} onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
+      <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <SegmentedControl
           value={viewMode}

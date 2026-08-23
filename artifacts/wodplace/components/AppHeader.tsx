@@ -1,20 +1,26 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { useNotifications } from '@/context/NotificationsContext';
 
 interface AppHeaderProps {
   onBack?: () => void;
   onMenu?: () => void;
   menuOpen?: boolean;
   dark?: boolean;
+  /** Show the notification bell on the right with an unread badge. */
+  showBell?: boolean;
 }
 
-export function AppHeader({ onBack, onMenu, menuOpen, dark }: AppHeaderProps) {
+export function AppHeader({ onBack, onMenu, menuOpen, dark, showBell }: AppHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { unreadCount } = useNotifications();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
+
   const iconColor = dark ? colors.authText : colors.foreground;
   const bg = dark ? colors.authBackground : colors.background;
   const borderColor = dark ? colors.authBorder : colors.border;
@@ -30,6 +36,7 @@ export function AppHeader({ onBack, onMenu, menuOpen, dark }: AppHeaderProps) {
         },
       ]}
     >
+      {/* LEFT: back arrow OR hamburger */}
       <View style={styles.side}>
         {onBack ? (
           <Pressable
@@ -39,17 +46,34 @@ export function AppHeader({ onBack, onMenu, menuOpen, dark }: AppHeaderProps) {
           >
             <Feather name="arrow-left" size={24} color={iconColor} />
           </Pressable>
-        ) : null}
-      </View>
-      <Text style={[styles.title, { color: iconColor }]}>WODPLACE</Text>
-      <View style={[styles.side, styles.sideEnd]}>
-        {onMenu ? (
+        ) : onMenu ? (
           <Pressable
             onPress={onMenu}
             hitSlop={12}
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
             <Feather name={menuOpen ? 'x' : 'menu'} size={24} color={iconColor} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {/* CENTER: brand title */}
+      <Text style={[styles.title, { color: iconColor }]}>WODPLACE</Text>
+
+      {/* RIGHT: notification bell */}
+      <View style={[styles.side, styles.sideEnd]}>
+        {showBell ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver notificaciones"
+            onPress={() => router.push('/notifications')}
+            hitSlop={12}
+            style={({ pressed }) => [styles.bellButton, pressed && styles.bellPressed]}
+          >
+            <Feather name="bell" size={22} color={iconColor} />
+            {unreadCount > 0 ? (
+              <View style={[styles.bellDot, { backgroundColor: colors.destructive }]} />
+            ) : null}
           </Pressable>
         ) : null}
       </View>
@@ -67,7 +91,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   side: {
-    width: 32,
+    width: 36,
     alignItems: 'flex-start',
   },
   sideEnd: {
@@ -77,5 +101,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Anton_400Regular',
     letterSpacing: 1,
+  },
+  bellButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 6,
+    right: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  bellPressed: {
+    opacity: 0.6,
   },
 });

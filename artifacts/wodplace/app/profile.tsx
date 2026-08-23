@@ -64,7 +64,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
+      <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.profileRow}>
           <Avatar

@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Alert,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
@@ -255,7 +255,6 @@ export default function CommunityScreen() {
   const [composerVisible, setComposerVisible] = useState(false);
   const [draft, setDraft] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
   useEffect(() => {
     let mounted = true;
@@ -338,10 +337,11 @@ export default function CommunityScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <AppHeader showBell />
       <KeyboardAwareScrollViewCompat
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + webTopInset + 16, paddingBottom: 122 + insets.bottom },
+          { paddingTop: 16, paddingBottom: 122 + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
       >

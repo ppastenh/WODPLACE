@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import {
-  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -10,10 +9,9 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking } from '@/context/BookingContext';
-import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import {
   addDays,
@@ -88,11 +86,8 @@ function findNextAvailableSession(
 
 export default function HomeScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { now, getSessionsForDate, getUpcomingBooked } = useBooking();
-  const { unreadCount } = useNotifications();
-  const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
   const monthlyBooked = useMemo(
     () => getMonthlyBookedCount(now, getSessionsForDate),
@@ -124,32 +119,14 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <AppHeader showBell />
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + webTopInset + 20 },
-        ]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.eyebrow, { color: colors.navInactive }]}>WODPLACE</Text>
-            <Text style={[styles.greeting, { color: colors.foreground }]}>
-              Hola, {getFirstName(user.name)}
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ver notificaciones"
-            onPress={() => router.push('/notifications')}
-            style={({ pressed }) => [styles.notificationButton, pressed && styles.pressed]}
-          >
-            <Feather name="bell" size={22} color={colors.foreground} />
-            {unreadCount > 0 ? (
-              <View style={[styles.notificationDot, { backgroundColor: colors.destructive }]} />
-            ) : null}
-          </Pressable>
-        </View>
+        <Text style={[styles.greeting, { color: colors.foreground }]}>
+          Hola, {getFirstName(user.name)}
+        </Text>
 
         <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
           <View style={styles.cardHeadingRow}>
@@ -288,39 +265,11 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  eyebrow: {
-    fontSize: 10,
-    letterSpacing: 1.5,
-    fontFamily: 'Inter_700Bold',
-  },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, gap: 14 },
   greeting: {
     fontSize: 26,
     fontFamily: 'Anton_400Regular',
-    marginTop: 3,
-  },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    marginBottom: 2,
   },
   progressCard: {
     borderRadius: 20,

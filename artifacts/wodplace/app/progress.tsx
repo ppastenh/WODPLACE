@@ -13,7 +13,7 @@ export default function ProgressScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader />
+      <AppHeader showBell />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>Progreso</Text>
         <View style={[styles.emptyCard, { backgroundColor: colors.card }]}>
