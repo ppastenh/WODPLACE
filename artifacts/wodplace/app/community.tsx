@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Modal,
   Pressable,
@@ -33,8 +34,7 @@ import {
 } from '@workspace/api-client-react';
 
 const LOGO = require('../assets/images/wodplace-logo.png');
-
-const EMOJIS = ['💪', '🔥', '👏', '❤️', '🎉'] as const;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const REPORT_REASONS = [
   { key: 'spam', label: 'Spam o publicidad' },
@@ -48,6 +48,8 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
 ];
+
+type SelectedImage = { uri: string; mimeType?: string };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,60 +87,65 @@ function PostAvatar({ name, isBox, size = 40 }: { name: string; isBox?: boolean;
   );
 }
 
-// ─── ImageGallery ─────────────────────────────────────────────────────────────
+// ─── ImageCarousel ────────────────────────────────────────────────────────────
 
-function ImageGallery({ uris }: { uris: string[] }) {
+function ImageCarousel({ uris, colors }: { uris: string[]; colors: ReturnType<typeof useColors> }) {
+  const [index, setIndex] = useState(0);
+  // Card has 16px padding each side inside a 18px horizontal padding container
+  const cardWidth = SCREEN_WIDTH - 36 - 32; // screen - content padding - card padding
+
   if (uris.length === 0) return null;
+
   if (uris.length === 1) {
-    return <Image source={{ uri: uris[0] }} style={styles.singleImage} contentFit="cover" />;
+    return (
+      <Image
+        source={{ uri: uris[0] }}
+        style={styles.singleImage}
+        contentFit="cover"
+        transition={300}
+      />
+    );
   }
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-      {uris.map((uri, i) => (
-        <Image key={i} source={{ uri }} style={styles.galleryImage} contentFit="cover" />
-      ))}
-    </ScrollView>
-  );
-}
 
-// ─── ReactionBar ─────────────────────────────────────────────────────────────
-
-function ReactionBar({
-  reactions,
-  myReaction,
-  onReact,
-  colors,
-}: {
-  reactions: SocialPost['reactions'];
-  myReaction: string | null;
-  onReact: (emoji: string) => void;
-  colors: ReturnType<typeof useColors>;
-}) {
   return (
-    <View style={styles.reactionBar}>
-      {EMOJIS.map((emoji) => {
-        const item = reactions.find((r: { emoji: string; count: number }) => r.emoji === emoji);
-        const active = myReaction === emoji;
-        return (
-          <Pressable
-            key={emoji}
-            onPress={() => onReact(emoji)}
-            style={({ pressed }) => [
-              styles.reactionBtn,
-              { backgroundColor: active ? colors.navActive + '1A' : colors.card },
-              active && { borderColor: colors.navActive, borderWidth: 1 },
-              pressed && { opacity: 0.65 },
+    <View>
+      <FlatList
+        data={uris}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        snapToInterval={cardWidth}
+        onMomentumScrollEnd={(e) => {
+          const newIdx = Math.round(e.nativeEvent.contentOffset.x / cardWidth);
+          setIndex(newIdx);
+        }}
+        keyExtractor={(_, i) => String(i)}
+        renderItem={({ item }) => (
+          <Image
+            source={{ uri: item }}
+            style={{ width: cardWidth, aspectRatio: 4 / 3, borderRadius: 14 }}
+            contentFit="cover"
+            transition={300}
+          />
+        )}
+      />
+      {/* Dots */}
+      <View style={styles.dotsRow}>
+        {uris.map((_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.dot,
+              {
+                backgroundColor: i === index ? colors.navActive : colors.navBorder,
+                width: i === index ? 16 : 6,
+              },
             ]}
-          >
-            <Text style={styles.reactionEmoji}>{emoji}</Text>
-            {item && item.count > 0 ? (
-              <Text style={[styles.reactionCount, { color: active ? colors.navActive : colors.navInactive }]}>
-                {item.count}
-              </Text>
-            ) : null}
-          </Pressable>
-        );
-      })}
+          />
+        ))}
+      </View>
     </View>
   );
 }
@@ -259,6 +266,7 @@ function CommentsModal({
               <Feather name="x" size={22} color={colors.foreground} />
             </Pressable>
           </View>
+
           {isLoading ? (
             <ActivityIndicator style={{ margin: 32 }} color={colors.navActive} />
           ) : comments.length === 0 ? (
@@ -290,15 +298,19 @@ function CommentsModal({
               )}
             />
           )}
+
+          {/* ─── Comment input (pill style, centered, not reaching edges) ─── */}
           <View style={[styles.commentInputRow, { borderTopColor: colors.navBorder, backgroundColor: colors.background }]}>
             <TextInput
-              style={[styles.commentDraft, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.navBorder }]}
+              style={[styles.commentDraft, { color: colors.foreground, backgroundColor: colors.card }]}
               placeholder="Escribe un comentario..."
               placeholderTextColor={colors.navInactive}
               value={draft}
               onChangeText={setDraft}
               maxLength={500}
               multiline
+              returnKeyType="send"
+              onSubmitEditing={handleSubmit}
             />
             <Pressable
               onPress={handleSubmit}
@@ -309,7 +321,7 @@ function CommentsModal({
                 pressed && { opacity: 0.7 },
               ]}
             >
-              <Feather name="send" size={16} color="#fff" />
+              <Feather name="arrow-up" size={15} color="#fff" />
             </Pressable>
           </View>
         </View>
@@ -408,7 +420,6 @@ function ReportModal({
 function PostCard({
   post,
   userId,
-  authorName,
   isAdmin,
   adminCode,
   colors,
@@ -435,6 +446,9 @@ function PostCard({
   const [menuVisible, setMenuVisible] = useState(false);
   const isAuthor = post.userId === userId;
   const isBox = post.type === 'announcement';
+
+  const heartItem = post.reactions.find((r) => r.emoji === '❤️');
+  const isLiked = post.myReaction === '❤️';
 
   const menuActions: MenuAction[] = isAdmin
     ? [
@@ -478,28 +492,43 @@ function PostCard({
       {/* Body */}
       {post.body ? <Text style={[styles.postBody, { color: colors.foreground }]}>{post.body}</Text> : null}
 
-      {/* Images */}
+      {/* Images carousel */}
       {post.imageUris.length > 0 && (
         <View style={{ marginTop: 10 }}>
-          <ImageGallery uris={post.imageUris} />
+          <ImageCarousel uris={post.imageUris} colors={colors} />
         </View>
       )}
 
-      {/* Reactions */}
-      <ReactionBar reactions={post.reactions} myReaction={post.myReaction} onReact={(emoji) => onReact(post.id, emoji)} colors={colors} />
+      {/* ❤️ + 💬 row */}
+      <View style={styles.actionsRow}>
+        <Pressable
+          onPress={() => onReact(post.id, '❤️')}
+          style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.65 }]}
+        >
+          <Feather
+            name="heart"
+            size={21}
+            color={isLiked ? '#E0245E' : colors.navInactive}
+          />
+          {heartItem && heartItem.count > 0 ? (
+            <Text style={[styles.actionCount, { color: isLiked ? '#E0245E' : colors.navInactive }]}>
+              {heartItem.count}
+            </Text>
+          ) : null}
+        </Pressable>
 
-      {/* Comment trigger */}
-      <Pressable
-        onPress={() => onComment(post)}
-        style={({ pressed }) => [styles.commentTrigger, pressed && { opacity: 0.65 }]}
-      >
-        <Feather name="message-circle" size={16} color={colors.navInactive} />
-        <Text style={[styles.commentCount, { color: colors.navInactive }]}>
-          {post.commentCount > 0
-            ? `${post.commentCount} comentario${post.commentCount !== 1 ? 's' : ''}`
-            : 'Comentar'}
-        </Text>
-      </Pressable>
+        <Pressable
+          onPress={() => onComment(post)}
+          style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.65 }]}
+        >
+          <Feather name="message-circle" size={21} color={colors.navInactive} />
+          {post.commentCount > 0 ? (
+            <Text style={[styles.actionCount, { color: colors.navInactive }]}>
+              {post.commentCount}
+            </Text>
+          ) : null}
+        </Pressable>
+      </View>
 
       <PostMenuSheet visible={menuVisible} onClose={() => setMenuVisible(false)} actions={menuActions} colors={colors} />
     </View>
@@ -531,7 +560,7 @@ export default function CommunityScreen() {
   // Composer
   const [composerVisible, setComposerVisible] = useState(false);
   const [draft, setDraft] = useState('');
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
 
@@ -574,9 +603,20 @@ export default function CommunityScreen() {
       Alert.alert('Permiso necesario', 'Activa el acceso a tus fotos para adjuntar imágenes.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.82 });
-    if (!result.canceled && result.assets[0]) {
-      setSelectedImages((prev) => [...prev, result.assets[0].uri].slice(0, 4));
+    const remaining = 4 - selectedImages.length;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      const newImgs: SelectedImage[] = result.assets.map((a) => ({
+        uri: a.uri,
+        mimeType: a.mimeType ?? undefined,
+      }));
+      setSelectedImages((prev) => [...prev, ...newImgs].slice(0, 4));
     }
   };
 
@@ -599,8 +639,15 @@ export default function CommunityScreen() {
       }
       // Upload images
       const uploadedUris: string[] = [];
-      for (const uri of selectedImages) {
-        try { uploadedUris.push(await uploadSocialImage(uri, 'image/jpeg')); } catch { /* skip */ }
+      for (const img of selectedImages) {
+        try {
+          const mime = img.mimeType || (img.uri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
+          const url = await uploadSocialImage(img.uri, mime);
+          uploadedUris.push(url);
+        } catch (err) {
+          console.warn('Image upload failed:', err);
+          Alert.alert('Error al subir imagen', 'No se pudo subir una foto. El resto se publicará igual.');
+        }
       }
       const created = await createPost(
         draft.trim() || (uploadedUris.length > 0 ? 'Compartió una foto con la comunidad.' : ''),
@@ -653,7 +700,6 @@ export default function CommunityScreen() {
         onPress: async () => {
           try {
             await blockUser(post.userId!, adminCode);
-            // Remove all their posts from local list
             posts.filter((p: SocialPost) => p.userId === post.userId).forEach((p: SocialPost) => removePost(p.id));
             Alert.alert('Bloqueado', `${post.authorName} ha sido bloqueado.`);
           } catch { Alert.alert('Error', 'No se pudo bloquear.'); }
@@ -667,7 +713,6 @@ export default function CommunityScreen() {
     if (post) updatePost(postId, { commentCount: Math.max(0, post.commentCount + delta) });
   }, [posts, updatePost]);
 
-  // Display title — wrap to two lines if the box name is very long
   const titleLine = boxName.length > 16 ? `${boxName}\nSocial` : `${boxName} Social`;
 
   const ListHeader = (
@@ -783,9 +828,9 @@ export default function CommunityScreen() {
 
             {selectedImages.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.composerImageRow}>
-                {selectedImages.map((uri, i) => (
+                {selectedImages.map((img, i) => (
                   <View key={i} style={styles.composerThumbWrap}>
-                    <Image source={{ uri }} style={styles.composerThumb} contentFit="cover" />
+                    <Image source={{ uri: img.uri }} style={styles.composerThumb} contentFit="cover" />
                     <Pressable
                       onPress={() => setSelectedImages((prev) => prev.filter((_, j) => j !== i))}
                       style={[styles.composerRemove, { backgroundColor: colors.destructive }]}
@@ -905,17 +950,14 @@ const styles = StyleSheet.create({
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   initials: { fontFamily: 'Inter_700Bold' },
   // Images
-  singleImage: { width: '100%', height: 200, borderRadius: 14 },
-  galleryScroll: { marginHorizontal: -2 },
-  galleryImage: { width: 200, height: 200, borderRadius: 14, marginHorizontal: 2 },
-  // Reactions
-  reactionBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
-  reactionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, borderWidth: StyleSheet.hairlineWidth, borderColor: 'transparent' },
-  reactionEmoji: { fontSize: 16 },
-  reactionCount: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  // Comment trigger
-  commentTrigger: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
-  commentCount: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  singleImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 14 },
+  // Carousel dots
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 },
+  dot: { height: 6, borderRadius: 3 },
+  // Actions row (❤️ + 💬)
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 14 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actionCount: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   // Sheets / Modals
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
@@ -936,9 +978,32 @@ const styles = StyleSheet.create({
   commentAuthor: { fontSize: 12, fontFamily: 'Inter_700Bold', marginBottom: 2 },
   commentText: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19 },
   commentTime: { fontSize: 11, fontFamily: 'Inter_500Medium', marginTop: 3 },
-  commentInputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, padding: 14, borderTopWidth: StyleSheet.hairlineWidth },
-  commentDraft: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 13, paddingVertical: 10, fontSize: 14, fontFamily: 'Inter_400Regular', maxHeight: 80 },
-  commentSend: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  // Comment input — pill, not reaching edges
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  commentDraft: {
+    flex: 1,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    maxHeight: 80,
+  },
+  commentSend: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 1,
+  },
   // Report modal
   reportTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', marginVertical: 12 },
   reportOption: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 12, padding: 13, marginBottom: 9 },

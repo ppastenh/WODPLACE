@@ -28,8 +28,10 @@ import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { useMyPosts, type SocialPost } from '@workspace/api-client-react';
 
-const ITEM_GAP = 2;
-const ITEM_SIZE = Math.floor((Dimensions.get('window').width - ITEM_GAP * 2) / 3);
+const WIN_WIDTH = Dimensions.get('window').width;
+const GRID_GAP = 2;
+// 3 columns, full width, with gaps between them
+const ITEM_SIZE = Math.floor((WIN_WIDTH - GRID_GAP * 2) / 3);
 
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
@@ -53,16 +55,29 @@ function PostThumb({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.postThumb, { width: ITEM_SIZE, height: ITEM_SIZE, opacity: pressed ? 0.7 : 1 }]}
+      style={({ pressed }) => [
+        styles.postThumb,
+        { width: ITEM_SIZE, height: ITEM_SIZE, opacity: pressed ? 0.75 : 1 },
+      ]}
     >
       {hasImage ? (
-        <Image source={{ uri: post.imageUris[0] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <Image
+          source={{ uri: post.imageUris[0] }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={200}
+        />
       ) : (
-        <View style={[styles.postThumbTextWrap, { backgroundColor: colors.card, borderColor: colors.navBorder }]}>
-          {post.reactions.length > 0 && (
-            <Text style={styles.postThumbEmoji}>{post.reactions[0].emoji}</Text>
-          )}
-          <Text style={[styles.postThumbBody, { color: colors.mutedForeground }]} numberOfLines={5}>
+        <View
+          style={[
+            styles.postThumbTextWrap,
+            { backgroundColor: colors.card, borderColor: colors.navBorder },
+          ]}
+        >
+          <Text
+            style={[styles.postThumbBody, { color: colors.mutedForeground }]}
+            numberOfLines={5}
+          >
             {post.body}
           </Text>
         </View>
@@ -98,10 +113,19 @@ function PostDetailModal({
           <Pressable onPress={onClose} style={styles.detailClose} hitSlop={14}>
             <Feather name="x" size={22} color={colors.foreground} />
           </Pressable>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-            <Text style={[styles.detailAuthor, { color: colors.foreground }]}>{post.authorName}</Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 28 }}
+          >
+            <Text style={[styles.detailAuthor, { color: colors.foreground }]}>
+              {post.authorName}
+            </Text>
             <Text style={[styles.detailTime, { color: colors.navInactive }]}>
-              {new Date(post.createdAt).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}
+              {new Date(post.createdAt).toLocaleDateString('es-CL', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
             </Text>
             {post.body ? (
               <Text style={[styles.detailBody, { color: colors.foreground }]}>{post.body}</Text>
@@ -111,18 +135,23 @@ function PostDetailModal({
                 key={i}
                 source={{ uri }}
                 style={[styles.detailImage, { marginTop: i === 0 ? 16 : 8 }]}
-                contentFit="cover"
+                contentFit="contain"
+                transition={200}
               />
             ))}
             <View style={styles.detailMeta}>
-              <Text style={[styles.detailMetaText, { color: colors.navInactive }]}>
-                {post.commentCount} comentario{post.commentCount !== 1 ? 's' : ''}
-              </Text>
-              {post.reactions.filter((r: { emoji: string; count: number }) => r.count > 0).map((r: { emoji: string; count: number }) => (
-                <Text key={r.emoji} style={[styles.detailMetaText, { color: colors.navInactive }]}>
-                  {r.emoji} {r.count}
+              {post.commentCount > 0 && (
+                <Text style={[styles.detailMetaText, { color: colors.navInactive }]}>
+                  {post.commentCount} comentario{post.commentCount !== 1 ? 's' : ''}
                 </Text>
-              ))}
+              )}
+              {post.reactions
+                .filter((r: { emoji: string; count: number }) => r.count > 0)
+                .map((r: { emoji: string; count: number }) => (
+                  <Text key={r.emoji} style={[styles.detailMetaText, { color: colors.navInactive }]}>
+                    {r.emoji} {r.count}
+                  </Text>
+                ))}
             </View>
           </ScrollView>
         </View>
@@ -183,79 +212,115 @@ export default function ProfileScreen() {
     setCancelSession(null);
   };
 
-  // Profile top (shared FlatList header for posts tab, and inline for agendado tab)
-  const ProfileTop = (
-    <View style={[styles.profileTopSection, { backgroundColor: colors.background }]}>
-      <View style={styles.profileRow}>
-        <Avatar uri={user.avatarUri} onChange={(uri) => updateProfile({ avatarUri: uri })} />
-        <View style={styles.profileInfo}>
-          <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
-            {user.name}
-          </Text>
-          <Pressable onPress={() => setPhraseVisible(true)} style={styles.phraseRow} hitSlop={6}>
-            <Text
-              style={[styles.phrase, { color: colors.mutedForeground }, !user.phrase && styles.phrasePlaceholder]}
-              numberOfLines={1}
-            >
-              {user.phrase ? `"${user.phrase}"` : '"Inserte texto"'}
-            </Text>
-            <Feather name="edit-2" size={12} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.badgeRow}>
-        <View style={[styles.statusBadge, { backgroundColor: user.status === 'active' ? colors.success : colors.inactive }]}>
-          <View style={styles.statusDot} />
-          <Text style={styles.statusText}>{user.status === 'active' ? 'Cuenta Activa' : 'Cuenta Inactiva'}</Text>
-        </View>
-        <View style={[styles.rankBadge, { backgroundColor: colors.secondary }]}>
-          <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>{user.rank}</Text>
-        </View>
-      </View>
-
-      <AppButton
-        label="Agenda Ahora"
-        variant="dark"
-        fullWidth
-        onPress={() => router.push('/calendar')}
-        style={styles.scheduleButton}
-        icon={<Feather name="calendar" size={18} color={colors.authText} />}
-      />
-
-      {/* Tab bar */}
-      <View style={[styles.tabBar, { borderBottomColor: colors.navBorder }]}>
-        <Pressable
-          onPress={() => setActiveTab('agendado')}
-          style={[styles.tab, activeTab === 'agendado' && { borderBottomColor: colors.navActive, borderBottomWidth: 2 }]}
-        >
-          <Text style={[styles.tabText, { color: activeTab === 'agendado' ? colors.navActive : colors.navInactive }]}>
-            Agendado
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab('posts')}
-          style={[styles.tab, activeTab === 'posts' && { borderBottomColor: colors.navActive, borderBottomWidth: 2 }]}
-        >
-          <Text style={[styles.tabText, { color: activeTab === 'posts' ? colors.navActive : colors.navInactive }]}>
-            Mis publicaciones
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
 
+      {/* ── Profile top — always rendered, never unmounts ── */}
+      <View style={[styles.profileTopSection, { backgroundColor: colors.background }]}>
+        <View style={styles.profileRow}>
+          <Avatar uri={user.avatarUri} onChange={(uri) => updateProfile({ avatarUri: uri })} />
+          <View style={styles.profileInfo}>
+            <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+              {user.name}
+            </Text>
+            <Pressable onPress={() => setPhraseVisible(true)} style={styles.phraseRow} hitSlop={6}>
+              <Text
+                style={[
+                  styles.phrase,
+                  { color: colors.mutedForeground },
+                  !user.phrase && styles.phrasePlaceholder,
+                ]}
+                numberOfLines={1}
+              >
+                {user.phrase ? `"${user.phrase}"` : '"Inserte texto"'}
+              </Text>
+              <Feather name="edit-2" size={12} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.badgeRow}>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: user.status === 'active' ? colors.success : colors.inactive },
+            ]}
+          >
+            <View style={styles.statusDot} />
+            <Text style={styles.statusText}>
+              {user.status === 'active' ? 'Cuenta Activa' : 'Cuenta Inactiva'}
+            </Text>
+          </View>
+          <View style={[styles.rankBadge, { backgroundColor: colors.secondary }]}>
+            <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>{user.rank}</Text>
+          </View>
+        </View>
+
+        <AppButton
+          label="Agenda Ahora"
+          variant="dark"
+          fullWidth
+          onPress={() => router.push('/calendar')}
+          style={styles.scheduleButton}
+          icon={<Feather name="calendar" size={18} color={colors.authText} />}
+        />
+
+        {/* Tab bar */}
+        <View style={[styles.tabBar, { borderBottomColor: colors.navBorder }]}>
+          <Pressable
+            onPress={() => setActiveTab('agendado')}
+            style={[
+              styles.tab,
+              activeTab === 'agendado' && {
+                borderBottomColor: colors.navActive,
+                borderBottomWidth: 2,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'agendado' ? colors.navActive : colors.navInactive },
+              ]}
+            >
+              Agendado
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveTab('posts')}
+            style={[
+              styles.tab,
+              activeTab === 'posts' && {
+                borderBottomColor: colors.navActive,
+                borderBottomWidth: 2,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'posts' ? colors.navActive : colors.navInactive },
+              ]}
+            >
+              Mis publicaciones
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* ── Tab content (scrollable, below the fixed ProfileTop) ── */}
       {activeTab === 'agendado' ? (
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {ProfileTop}
+        <ScrollView
+          contentContainerStyle={styles.agendadoContent}
+          showsVerticalScrollIndicator={false}
+        >
           {bookedSessions.length === 0 ? (
             <View style={styles.emptyState}>
               <Feather name="calendar" size={26} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Aún no tienes clases agendadas</Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                Aún no tienes clases agendadas
+              </Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
                 Toca "Agenda Ahora" para reservar tu próximo WOD.
               </Text>
@@ -286,8 +351,8 @@ export default function ProfileScreen() {
           data={myPosts}
           keyExtractor={(p) => p.id}
           numColumns={3}
-          ListHeaderComponent={ProfileTop}
           contentContainerStyle={styles.gridContent}
+          columnWrapperStyle={styles.gridRow}
           showsVerticalScrollIndicator={false}
           onEndReached={postsHasMore ? () => fetchMorePosts() : undefined}
           onEndReachedThreshold={0.4}
@@ -302,7 +367,9 @@ export default function ProfileScreen() {
             ) : (
               <View style={styles.emptyState}>
                 <Feather name="image" size={26} color={colors.mutedForeground} />
-                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Sin publicaciones aún</Text>
+                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                  Sin publicaciones aún
+                </Text>
                 <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
                   Comparte algo en la Comunidad para verlo aquí.
                 </Text>
@@ -322,7 +389,11 @@ export default function ProfileScreen() {
         />
       )}
 
-      <CancelConfirmModal visible={!!cancelSession} onClose={() => setCancelSession(null)} onConfirm={handleConfirmCancel} />
+      <CancelConfirmModal
+        visible={!!cancelSession}
+        onClose={() => setCancelSession(null)}
+        onConfirm={handleConfirmCancel}
+      />
       <EditPhraseModal
         visible={phraseVisible}
         onClose={() => setPhraseVisible(false)}
@@ -349,7 +420,10 @@ export default function ProfileScreen() {
       <PostDetailModal
         post={selectedPost}
         visible={postDetailVisible}
-        onClose={() => { setPostDetailVisible(false); setSelectedPost(null); }}
+        onClose={() => {
+          setPostDetailVisible(false);
+          setSelectedPost(null);
+        }}
         colors={colors}
       />
     </View>
@@ -359,8 +433,12 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Profile top section (shared header for both tabs)
-  profileTopSection: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 0 },
+  // Profile top — fixed, outside scroll containers
+  profileTopSection: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 0,
+  },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 },
   profileInfo: { flex: 1, gap: 6 },
   name: { fontSize: 19, fontFamily: 'Inter_700Bold' },
@@ -368,42 +446,100 @@ const styles = StyleSheet.create({
   phrase: { fontSize: 14, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
   phrasePlaceholder: { opacity: 0.7 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 14 },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+  },
   statusDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#FFFFFF' },
   statusText: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  rankBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 14 },
+  rankBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+  },
   rankText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   scheduleButton: { marginTop: 24, marginBottom: 6 },
 
   // Tabs
-  tabBar: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 4 },
-  tab: { flex: 1, paddingVertical: 13, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginTop: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 13,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
   tabText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 
   // Agendado tab
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 110, gap: 4 },
-  list: { gap: 12, marginTop: 8 },
-  emptyState: { alignItems: 'center', gap: 8, paddingVertical: 32, paddingHorizontal: 20 },
+  agendadoContent: { paddingHorizontal: 20, paddingBottom: 110, paddingTop: 8 },
+  list: { gap: 12 },
+  emptyState: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
   emptyTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
 
   // Posts grid tab
   gridContent: { paddingBottom: 110 },
-  postThumb: { margin: ITEM_GAP / 2, overflow: 'hidden', backgroundColor: '#e0e0e0' },
-  postThumbTextWrap: { flex: 1, justifyContent: 'center', padding: 8, borderWidth: StyleSheet.hairlineWidth },
-  postThumbEmoji: { fontSize: 18, marginBottom: 4 },
+  // Each row is exactly 3 items with 2 gaps of GRID_GAP between them
+  gridRow: { gap: GRID_GAP },
+  postThumb: {
+    overflow: 'hidden',
+    backgroundColor: '#e0e0e0',
+    marginBottom: GRID_GAP,
+  },
+  postThumbTextWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   postThumbBody: { fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 14 },
-  multiImgBadge: { position: 'absolute', top: 5, right: 5, flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 3 },
+  multiImgBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+  },
   multiImgText: { fontSize: 10, color: '#fff', fontFamily: 'Inter_700Bold' },
 
   // Post detail modal
-  detailBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  detailSheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, maxHeight: '90%' },
+  detailBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  detailSheet: {
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    padding: 20,
+    maxHeight: '90%',
+  },
   detailClose: { alignSelf: 'flex-end', marginBottom: 10 },
   detailAuthor: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   detailTime: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: 2 },
   detailBody: { fontSize: 14, lineHeight: 21, fontFamily: 'Inter_400Regular', marginTop: 14 },
-  detailImage: { width: '100%', height: 240, borderRadius: 12 },
+  detailImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12 },
   detailMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14 },
   detailMetaText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
 });
