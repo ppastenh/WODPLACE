@@ -32,7 +32,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   checkEmailExists: (email: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, birthdate: string) => Promise<void>;
   loginWithProvider: (provider: 'google' | 'apple') => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (partial: Partial<WodplaceUser>) => Promise<void>;
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await persist(profile);
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, birthdate: string) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     const key = email.trim().toLowerCase();
     const db = await getUsersDb();
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phrase: '',
       status: 'active',
       rank: 'Beginner',
-      birthdate: null,
+      birthdate,
       phone: null,
     };
     db[key] = { ...profile, password };

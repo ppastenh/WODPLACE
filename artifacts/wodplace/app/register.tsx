@@ -6,8 +6,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { AppButton } from '@/components/AppButton';
+import { BirthdateModal } from '@/components/BirthdateModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+import { formatLongDate } from '@/lib/dateUtils';
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -18,6 +20,8 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [birthdate, setBirthdate] = useState<string | null>(null);
+  const [birthdateModalVisible, setBirthdateModalVisible] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
@@ -38,10 +42,14 @@ export default function RegisterScreen() {
       setError('La contraseña debe tener al menos 4 caracteres');
       return;
     }
+    if (!birthdate) {
+      setError('Ingresa tu fecha de nacimiento');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      await register(name.trim(), email, password);
+      await register(name.trim(), email, password, birthdate);
       router.replace('/profile');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
@@ -133,6 +141,28 @@ export default function RegisterScreen() {
             </Pressable>
           </View>
 
+          <Pressable
+            onPress={() => setBirthdateModalVisible(true)}
+            style={[
+              styles.input,
+              styles.birthdateRow,
+              { backgroundColor: colors.authInput, borderColor: colors.authBorder },
+            ]}
+          >
+            <Feather name="calendar" size={17} color={colors.authMuted} style={styles.calendarIcon} />
+            <Text
+              style={[
+                styles.birthdateText,
+                { color: birthdate ? colors.authText : colors.authMuted },
+              ]}
+            >
+              {birthdate ? formatLongDate(birthdate) : 'Fecha de nacimiento'}
+            </Text>
+            {birthdate ? (
+              <Feather name="check-circle" size={17} color={colors.primary} />
+            ) : null}
+          </Pressable>
+
           {error ? (
             <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
           ) : null}
@@ -162,6 +192,17 @@ export default function RegisterScreen() {
           </Pressable>
         </View>
       </KeyboardAwareScrollViewCompat>
+
+      <BirthdateModal
+        visible={birthdateModalVisible}
+        onClose={() => setBirthdateModalVisible(false)}
+        initialValue={birthdate}
+        onSave={(value) => {
+          setBirthdate(value);
+          setBirthdateModalVisible(false);
+          if (error) setError('');
+        }}
+      />
     </View>
   );
 }
@@ -245,6 +286,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
     paddingVertical: 12,
+  },
+  birthdateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calendarIcon: {
+    marginRight: 10,
+  },
+  birthdateText: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Inter_400Regular',
   },
   error: {
     fontSize: 13,
