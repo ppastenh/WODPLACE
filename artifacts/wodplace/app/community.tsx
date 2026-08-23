@@ -5,6 +5,7 @@ import {
   Dimensions,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, usePathname } from 'expo-router';
@@ -646,7 +648,21 @@ export default function CommunityScreen() {
       for (const img of selectedImages) {
         try {
           const mime = img.mimeType || (img.uri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
-          const url = await uploadSocialImage(img.uri, mime);
+          // On native: pass a binary-PUT uploader via expo-file-system/legacy.
+          // On web: leave it undefined so uploadSocialImage uses fetch→blob→XHR.
+          const nativeUploader = Platform.OS !== 'web'
+            ? async (uploadURL: string, fileUri: string, contentType: string) => {
+                const result = await FileSystem.uploadAsync(uploadURL, fileUri, {
+                  httpMethod: 'PUT',
+                  uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+                  headers: { 'Content-Type': contentType },
+                });
+                if (result.status < 200 || result.status >= 300) {
+                  throw new Error(`La imagen no se pudo subir (HTTP ${result.status}). Intenta de nuevo.`);
+                }
+              }
+            : undefined;
+          const url = await uploadSocialImage(img.uri, mime, nativeUploader);
           uploadedUris.push(url);
         } catch (err) {
           console.warn('Image upload failed:', err);
