@@ -26,7 +26,7 @@ const router: IRouter = Router();
 /**
  * POST /admin/verify
  *
- * Used by the hidden admin screen's code prompt. Always responds 200 so the
+ * Used by the admin dashboard's code prompt. Always responds 200 so the
  * UI can show a plain "incorrect code" message instead of a network error.
  */
 router.post("/admin/verify", async (req: Request, res: Response) => {

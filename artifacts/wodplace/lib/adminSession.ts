@@ -1,8 +1,7 @@
 /**
  * In-memory only (never persisted) holder for the admin access code once
  * verified via /admin/verify. Cleared on app reload, which is fine since
- * the admin panel is only reachable through the hidden gesture + code
- * prompt each time.
+ * the dashboard is reached via the side drawer + code prompt each time.
  */
 let adminCode: string | null = null;
 

@@ -162,14 +162,14 @@ export default function AdminContractsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onBack={() => router.replace('/active-contracts')} />
+      <AppHeader onBack={() => router.replace('/profile')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.title, { color: colors.foreground }]}>
-          Administrar contratos
+          Panel de administración
         </Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Sube o reemplaza los PDFs de Membresía, Responsabilidad y Salud, y
-          Reglamento del Box.
+          Revisa las aceptaciones de contrato y administra los documentos del
+          box.
         </Text>
 
         {/* ── Nombre del Box ── */}
@@ -343,6 +343,9 @@ export default function AdminContractsScreen() {
           )}
         </View>
 
+        <Text style={[styles.notifTitle, { color: colors.foreground, marginBottom: 10 }]}>
+          Documentos de contrato
+        </Text>
         {contractsQuery.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
         ) : (

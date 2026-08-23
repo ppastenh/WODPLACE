@@ -7,10 +7,11 @@ import { useColors } from '@/hooks/useColors';
 import { setAdminCode } from '@/lib/adminSession';
 
 /**
- * Hidden entry point (reached by tapping the "Contratos Activos" title 7
- * times) for the owner-only admin panel. There is no per-owner account —
- * anyone who knows the shared code can manage contract PDFs, matching the
- * scope of this feature (a single hidden owner panel, not multi-admin auth).
+ * Entry point for the owner-only admin dashboard, reachable from the side
+ * drawer ("Panel de administración"). There is no per-owner account — anyone
+ * who knows the shared code can access the dashboard. That still matches the
+ * scope of this feature (a single owner, not multi-admin auth); what changed
+ * is that the door is now visible instead of a secret 7-tap gesture.
  */
 export default function AdminLoginScreen() {
   const colors = useColors();
@@ -27,7 +28,7 @@ export default function AdminLoginScreen() {
         onSuccess: (result) => {
           if (result.ok) {
             setAdminCode(code.trim());
-            router.replace('/admin-contracts');
+            router.replace('/admin-dashboard');
           } else {
             setError('Código incorrecto.');
           }

@@ -38,6 +38,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
+  { key: 'admin', label: 'Panel de administración', icon: 'shield', route: '/admin-login' },
 ];
 
 // ─── PostThumb ────────────────────────────────────────────────────────────────

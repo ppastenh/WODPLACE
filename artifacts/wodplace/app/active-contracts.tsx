@@ -50,7 +50,6 @@ export default function ActiveContractsScreen() {
   const { user } = useAuth();
   const userId = user?.id ?? '';
 
-  const [titleTapCount, setTitleTapCount] = useState(0);
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -98,16 +97,6 @@ export default function ActiveContractsScreen() {
   const handlePhoneChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, '').slice(0, CL_PHONE_DIGITS);
     setEmergencyPhone(digitsOnly);
-  };
-
-  const handleTitlePress = () => {
-    const next = titleTapCount + 1;
-    if (next >= 7) {
-      setTitleTapCount(0);
-      router.push('/admin-login');
-      return;
-    }
-    setTitleTapCount(next);
   };
 
   const handleOpenDocument = async (slug: string, objectPath: string | null) => {
@@ -184,9 +173,7 @@ export default function ActiveContractsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Pressable onPress={handleTitlePress}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Contratos Activos</Text>
-        </Pressable>
+        <Text style={[styles.title, { color: colors.foreground }]}>Contratos Activos</Text>
 
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
