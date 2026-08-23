@@ -4,6 +4,7 @@
  * token are applied automatically.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { customFetch, getApiBaseUrl } from "./custom-fetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -286,6 +287,7 @@ export function useSocialMutations(userId: string, authorName: string) {
 
   const uploadSocialImage = useCallback(
     async (localUri: string, mimeType = "image/jpeg"): Promise<string> => {
+      // Step 1: request a presigned GCS upload URL from our API
       const { uploadURL, objectPath } = await customFetch<{
         uploadURL: string;
         objectPath: string;
@@ -295,9 +297,39 @@ export function useSocialMutations(userId: string, authorName: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, name: "photo.jpg", size: 0, contentType: mimeType }),
       });
-      const fileResponse = await fetch(localUri);
-      const blob = await fileResponse.blob();
-      await fetch(uploadURL, { method: "PUT", body: blob, headers: { "Content-Type": mimeType } });
+
+      // Step 2: PUT the file to the presigned URL.
+      // We use XMLHttpRequest instead of fetch because React Native's fetch()
+      // does NOT support reading local file:// URIs.  XHR's send({ uri }) is
+      // a React Native extension that reads the file from the filesystem.
+      // On Expo web the localUri is a blob: URL which XHR also handles.
+      const uploadStatus = await new Promise<number>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadURL);
+        xhr.setRequestHeader("Content-Type", mimeType);
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) resolve(xhr.status);
+        };
+        xhr.onerror = () => reject(new Error("Network error during image upload"));
+        xhr.ontimeout = () => reject(new Error("Image upload timed out"));
+
+        if (Platform.OS === "web") {
+          // On web, localUri is a blob: URL — fetch it into a Blob first
+          fetch(localUri)
+            .then((r) => r.blob())
+            .then((blob) => xhr.send(blob))
+            .catch(reject);
+        } else {
+          // React Native: XHR handles { uri } (file:// path) natively
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          xhr.send({ uri: localUri, type: mimeType, name: "photo.jpg" } as any);
+        }
+      });
+
+      if (uploadStatus < 200 || uploadStatus >= 300) {
+        throw new Error(`La imagen no se pudo subir (HTTP ${uploadStatus}). Intenta de nuevo.`);
+      }
+
       const base = getApiBaseUrl();
       return `${base}/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
     },

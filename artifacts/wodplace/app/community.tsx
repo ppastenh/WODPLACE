@@ -249,7 +249,11 @@ function CommentsModal({
             await deleteComment(post!.id, c.id, isAdmin ? (adminCode ?? undefined) : undefined);
             onDelta(post!.id, -1);
             refresh();
-          } catch { Alert.alert('Error', 'No se pudo eliminar.'); }
+          } catch (err: unknown) {
+            const apiErr = err as { data?: { error?: string }; message?: string } | null;
+            const msg = apiErr?.data?.error ?? apiErr?.message ?? 'No se pudo eliminar.';
+            Alert.alert('Error', msg);
+          }
         },
       },
     ]);
@@ -678,7 +682,11 @@ export default function CommunityScreen() {
           try {
             await deletePost(postId, isAdmin ? (adminCode ?? undefined) : undefined);
             removePost(postId);
-          } catch { Alert.alert('Error', 'No se pudo eliminar.'); }
+          } catch (err: unknown) {
+            const apiErr = err as { data?: { error?: string }; message?: string } | null;
+            const msg = apiErr?.data?.error ?? apiErr?.message ?? 'No se pudo eliminar.';
+            Alert.alert('Error al eliminar', msg);
+          }
         },
       },
     ]);
