@@ -85,10 +85,130 @@ export const SyncUserBody = zod.object({
 })
 
 export const SyncUserResponse = zod.object({
-  "id": zod.string(),
-  "name": zod.string(),
-  "email": zod.string()
+  "id": zod.string()
 })
+
+
+/**
+ * @summary List a user's active class bookings and waitlist entries
+ */
+export const ListBookingsQueryParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const ListBookingsResponseItem = zod.object({
+  "id": zod.string(),
+  "sessionId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.enum(['confirmed', 'waiting']),
+  "createdAt": zod.string(),
+  "position": zod.number().nullable()
+})
+export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
+
+
+/**
+ * A class uses its deterministic capacity and base attendee count from
+ * the mobile schedule. If no seat remains, the user is added to a
+ * maximum-five-person FIFO waitlist.
+ * @summary Book a class or join its FIFO waitlist
+ */
+
+
+
+export const createBookingBodyBaseAttendeesMin = 0;
+
+
+
+export const CreateBookingBody = zod.object({
+  "sessionId": zod.string().min(1),
+  "userId": zod.string().min(1),
+  "capacity": zod.number().min(1),
+  "baseAttendees": zod.number().min(createBookingBodyBaseAttendeesMin)
+})
+
+export const CreateBookingResponse = zod.object({
+  "sessionId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.enum(['confirmed', 'waiting', 'cancelled']),
+  "position": zod.number().nullable(),
+  "promotedUserId": zod.string().nullable()
+})
+
+
+/**
+ * Cancelling a confirmed booking promotes the earliest waiting student
+ * atomically and creates an in-app notification for that student.
+ * @summary Cancel a booking or leave a class waitlist
+ */
+
+
+
+
+export const CancelBookingBody = zod.object({
+  "sessionId": zod.string().min(1),
+  "userId": zod.string().min(1)
+})
+
+export const CancelBookingResponse = zod.object({
+  "sessionId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.enum(['confirmed', 'waiting', 'cancelled']),
+  "position": zod.number().nullable(),
+  "promotedUserId": zod.string().nullable()
+})
+
+
+/**
+ * @summary List a user's in-app notifications
+ */
+export const ListNotificationsQueryParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const ListNotificationsResponseItem = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.string(),
+  "read": zod.boolean()
+})
+export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem)
+
+
+/**
+ * @summary Mark one notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const MarkNotificationReadBody = zod.object({
+  "userId": zod.string().min(1),
+  "name": zod.string().optional(),
+  "email": zod.string().optional()
+})
+
+export const MarkNotificationReadResponse = zod.void()
+
+
+/**
+ * @summary Mark all notifications as read
+ */
+
+
+
+export const MarkAllNotificationsReadBody = zod.object({
+  "userId": zod.string().min(1),
+  "name": zod.string().optional(),
+  "email": zod.string().optional()
+})
+
+export const MarkAllNotificationsReadResponse = zod.void()
 
 
 /**

@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserRecord {
-  id: string;
+export interface NotificationUserRequest {
+  /** @minLength 1 */
+  userId: string;
+  name?: string;
+  email?: string;
 }

@@ -23,11 +23,16 @@ const NAV_ITEMS: Array<{
   { key: 'profile', label: 'Perfil', route: '/profile', icon: 'user' },
 ];
 
-export const BOTTOM_NAV_ROUTES = NAV_ITEMS.map((item) => item.route);
+export const BOTTOM_NAV_ROUTES = NAV_ITEMS.map((item) => item.route) as NavRoute[];
+
+export function isBottomNavRoute(pathname: string): pathname is NavRoute {
+  const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  return BOTTOM_NAV_ROUTES.includes(normalizedPath as NavRoute);
+}
 
 function isSelected(route: NavRoute, pathname: string): boolean {
-  if (route === '/home') return pathname === '/home';
-  return pathname === route;
+  const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  return normalizedPath === route;
 }
 
 export function BottomNavBar() {

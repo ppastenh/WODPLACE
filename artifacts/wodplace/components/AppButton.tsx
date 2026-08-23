@@ -17,7 +17,8 @@ export type AppButtonVariant =
   | 'outlineDark'
   | 'destructive'
   | 'mutedDisabled'
-  | 'softBooked';
+  | 'softBooked'
+  | 'waitlist';
 
 interface AppButtonProps {
   label: string;
@@ -54,6 +55,7 @@ export function AppButton({
     destructive: { bg: colors.destructive, fg: colors.destructiveForeground },
     mutedDisabled: { bg: colors.muted, fg: colors.mutedForeground },
     softBooked: { bg: colors.secondary, fg: colors.secondaryForeground },
+    waitlist: { bg: colors.navActive, fg: colors.card },
   };
 
   const scheme = palette[variant];

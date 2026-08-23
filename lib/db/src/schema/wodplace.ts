@@ -89,3 +89,55 @@ export const contractAcceptancesTable = pgTable("contract_acceptances", {
 });
 
 export type ContractAcceptanceRow = typeof contractAcceptancesTable.$inferSelect;
+
+// Server-side class booking state. The mobile app still generates the
+// deterministic sessionId from the class date/time, while these rows make
+// bookings and waitlist order visible to every device.
+export const classBookingsTable = pgTable(
+  "class_bookings",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    status: text("status").notNull(), // "confirmed" | "waiting"
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("class_bookings_session_user_idx").on(
+      table.sessionId,
+      table.userId,
+    ),
+  ],
+);
+
+export type ClassBookingRow = typeof classBookingsTable.$inferSelect;
+
+export const wodplaceNotificationsTable = pgTable(
+  "wodplace_notifications",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("wodplace_notifications_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
+
+export type WodplaceNotificationRow =
+  typeof wodplaceNotificationsTable.$inferSelect;

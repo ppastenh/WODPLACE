@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -66,8 +66,22 @@ export default function CalendarScreen() {
   };
 
   const handleBook = async (session: ClassSession) => {
-    await book(session);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      const status = await book(session);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      if (status === 'waiting') {
+        Alert.alert(
+          'Estás en la lista de espera',
+          'Te avisaremos automáticamente si se libera un cupo. La lista admite hasta 5 alumnos.',
+        );
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === 'WAITLIST_FULL') {
+        Alert.alert('Lista de espera llena', 'Ya hay 5 alumnos esperando esta clase.');
+        return;
+      }
+      Alert.alert('No se pudo agendar', 'Intenta nuevamente en unos segundos.');
+    }
   };
 
   const handleConfirmCancel = async () => {

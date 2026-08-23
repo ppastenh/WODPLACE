@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserRecord {
-  id: string;
+export interface CancelBookingRequest {
+  /** @minLength 1 */
+  sessionId: string;
+  /** @minLength 1 */
+  userId: string;
 }

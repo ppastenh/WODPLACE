@@ -82,10 +82,12 @@ export function AgendadoBadge({
   canCancel = true,
   active = false,
   onRequestCancel,
+  label = 'Agendado',
 }: {
   canCancel?: boolean;
   active?: boolean;
   onRequestCancel?: () => void;
+  label?: string;
 }) {
   const colors = useColors();
 
@@ -117,7 +119,7 @@ export function AgendadoBadge({
         color={active ? colors.destructiveForeground : colors.secondaryForeground}
       />
       <Text style={[styles.badgeText, { color: active ? colors.destructiveForeground : colors.secondaryForeground }]}>
-        {active ? 'Cancelando…' : 'Agendado'}
+        {active ? 'Cancelando…' : label}
       </Text>
     </View>
   );
@@ -143,15 +145,23 @@ export function ClassActionButton({
   cancelPending?: boolean;
 }) {
   if (session.isBooked) {
+    return <AgendadoBadge canCancel={session.canCancel} active={cancelPending} onRequestCancel={onRequestCancel} />;
+  }
+  if (session.isWaitlisted) {
     return (
-      <AgendadoBadge canCancel={session.canCancel} active={cancelPending} onRequestCancel={onRequestCancel} />
+      <AgendadoBadge
+        canCancel={session.canCancel}
+        active={cancelPending}
+        onRequestCancel={onRequestCancel}
+        label={`En espera${session.waitlistPosition ? ` #${session.waitlistPosition}` : ''}`}
+      />
     );
   }
   if (session.hasStarted) {
     return <AppButton label="Finalizado" variant="mutedDisabled" disabled compact />;
   }
   if (session.remaining <= 0) {
-    return <AppButton label="No hay cupo" variant="mutedDisabled" disabled compact />;
+    return <AppButton label="Lista de espera" variant="waitlist" onPress={onBook} compact />;
   }
   return <AppButton label="Agendar" variant="primary" onPress={onBook} compact />;
 }

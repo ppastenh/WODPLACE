@@ -16,6 +16,10 @@ tags:
     description: Lightweight user sync for the mobile app (no full auth system yet).
   - name: Contracts
     description: Contract documents, per-user read progress, and final acceptance.
+  - name: Bookings
+    description: Class bookings and FIFO waitlists.
+  - name: Notifications
+    description: In-app notifications for mobile users.
   - name: Admin
     description: Hidden admin operations for managing contract documents.
 paths:
@@ -140,6 +144,176 @@ paths:
                 $ref: "#/components/schemas/UserRecord"
         "400":
           description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /bookings:
+    get:
+      tags: [Bookings]
+      operationId: listBookings
+      summary: List a user's active class bookings and waitlist entries
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Active bookings and waitlist entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingRecord"
+        "400":
+          description: Missing user id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+    post:
+      tags: [Bookings]
+      operationId: createBooking
+      summary: Book a class or join its FIFO waitlist
+      description: |
+        A class uses its deterministic capacity and base attendee count from
+        the mobile schedule. If no seat remains, the user is added to a
+        maximum-five-person FIFO waitlist.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "200":
+          description: Booking or waitlist entry created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingActionResponse"
+        "400":
+          description: Invalid booking request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The class is full and its waitlist has five people.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /bookings/cancel:
+    post:
+      tags: [Bookings]
+      operationId: cancelBooking
+      summary: Cancel a booking or leave a class waitlist
+      description: |
+        Cancelling a confirmed booking promotes the earliest waiting student
+        atomically and creates an in-app notification for that student.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelBookingRequest"
+      responses:
+        "200":
+          description: Booking cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingActionResponse"
+        "400":
+          description: Invalid cancellation request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Booking not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: List a user's in-app notifications
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notifications, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "400":
+          description: Missing user id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /notifications/{id}/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      summary: Mark one notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationUserRequest"
+      responses:
+        "204":
+          description: Notification marked as read.
+        "400":
+          description: Invalid notification request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark all notifications as read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationUserRequest"
+      responses:
+        "204":
+          description: Notifications marked as read.
+        "400":
+          description: Invalid notification request.
           content:
             application/json:
               schema:
@@ -462,6 +636,96 @@ components:
       properties:
         id:
           type: string
+
+    CreateBookingRequest:
+      type: object
+      required: [sessionId, userId, capacity, baseAttendees]
+      properties:
+        sessionId:
+          type: string
+          minLength: 1
+        userId:
+          type: string
+          minLength: 1
+        capacity:
+          type: integer
+          minimum: 1
+        baseAttendees:
+          type: integer
+          minimum: 0
+
+    CancelBookingRequest:
+      type: object
+      required: [sessionId, userId]
+      properties:
+        sessionId:
+          type: string
+          minLength: 1
+        userId:
+          type: string
+          minLength: 1
+
+    BookingRecord:
+      type: object
+      required: [id, sessionId, userId, status, createdAt, position]
+      properties:
+        id:
+          type: string
+        sessionId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum: [confirmed, waiting]
+        createdAt:
+          type: string
+        position:
+          type: integer
+          nullable: true
+
+    BookingActionResponse:
+      type: object
+      required: [sessionId, userId, status, position, promotedUserId]
+      properties:
+        sessionId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum: [confirmed, waiting, cancelled]
+        position:
+          type: integer
+          nullable: true
+        promotedUserId:
+          type: string
+          nullable: true
+
+    Notification:
+      type: object
+      required: [id, userId, title, body, createdAt, read]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+        read:
+          type: boolean
+
+    NotificationUserRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          minLength: 1
         name:
           type: string
         email:

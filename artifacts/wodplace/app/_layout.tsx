@@ -18,7 +18,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { BookingProvider } from '@/context/BookingContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { configureApiClient } from '@/lib/apiConfig';
-import { BottomNavBar, BOTTOM_NAV_ROUTES } from '@/components/BottomNavBar';
+import { BottomNavBar, isBottomNavRoute } from '@/components/BottomNavBar';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -30,7 +30,9 @@ const queryClient = new QueryClient();
 function RootLayoutNav() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const showBottomNav = !!user && BOTTOM_NAV_ROUTES.includes(pathname as (typeof BOTTOM_NAV_ROUTES)[number]);
+  // Keep the five primary destinations in the shared shell. Secondary flows
+  // such as contracts, notifications and personal data intentionally hide it.
+  const showBottomNav = !!user && isBottomNavRoute(pathname);
 
   return (
     <>

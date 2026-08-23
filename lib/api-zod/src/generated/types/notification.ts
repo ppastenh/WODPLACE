@@ -6,6 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserRecord {
+export interface Notification {
   id: string;
+  userId: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
 }

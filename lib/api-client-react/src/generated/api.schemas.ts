@@ -40,8 +40,74 @@ export interface SyncUserRequest {
 
 export interface UserRecord {
   id: string;
-  name: string;
-  email: string;
+}
+
+export interface CreateBookingRequest {
+  /** @minLength 1 */
+  sessionId: string;
+  /** @minLength 1 */
+  userId: string;
+  /** @minimum 1 */
+  capacity: number;
+  /** @minimum 0 */
+  baseAttendees: number;
+}
+
+export interface CancelBookingRequest {
+  /** @minLength 1 */
+  sessionId: string;
+  /** @minLength 1 */
+  userId: string;
+}
+
+export type BookingRecordStatus = typeof BookingRecordStatus[keyof typeof BookingRecordStatus];
+
+
+export const BookingRecordStatus = {
+  confirmed: 'confirmed',
+  waiting: 'waiting',
+} as const;
+
+export interface BookingRecord {
+  id: string;
+  sessionId: string;
+  userId: string;
+  status: BookingRecordStatus;
+  createdAt: string;
+  position: number | null;
+}
+
+export type BookingActionResponseStatus = typeof BookingActionResponseStatus[keyof typeof BookingActionResponseStatus];
+
+
+export const BookingActionResponseStatus = {
+  confirmed: 'confirmed',
+  waiting: 'waiting',
+  cancelled: 'cancelled',
+} as const;
+
+export interface BookingActionResponse {
+  sessionId: string;
+  userId: string;
+  status: BookingActionResponseStatus;
+  position: number | null;
+  promotedUserId: string | null;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface NotificationUserRequest {
+  /** @minLength 1 */
+  userId: string;
+  name?: string;
+  email?: string;
 }
 
 export interface ContractDocument {
@@ -120,6 +186,14 @@ export interface ContractAcceptanceNotification {
 export interface AckContractAcceptancesResult {
   acknowledged: number;
 }
+
+export type ListBookingsParams = {
+userId: string;
+};
+
+export type ListNotificationsParams = {
+userId: string;
+};
 
 export type ListContractsParams = {
 userId?: string;

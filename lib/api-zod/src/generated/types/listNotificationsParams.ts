@@ -6,6 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserRecord {
-  id: string;
-}
+export type ListNotificationsParams = {
+userId: string;
+};
