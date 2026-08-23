@@ -14,13 +14,23 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, usePathname } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
+import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
 const LOGO = require('../assets/images/wodplace-logo.png');
 const FEED_STORAGE_KEY = 'wodplace_social_feed';
+
+const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
+  { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
+  { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
+  { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
+  { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
+];
 
 type FeedPost = {
   id: string;
@@ -250,11 +260,30 @@ function EventCard({
 export default function CommunityScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
+  const pathname = usePathname();
   const [feed, setFeed] = useState<FeedItem[]>(INITIAL_FEED);
   const [composerVisible, setComposerVisible] = useState(false);
   const [draft, setDraft] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+
+  const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
+    ...item,
+    badge: item.key === 'notifications' ? unreadCount : undefined,
+  }));
+
+  const handleNavigate = (route: string) => {
+    setDrawerVisible(false);
+    if (route !== pathname) router.push(route as any);
+  };
+
+  const handleLogout = async () => {
+    setDrawerVisible(false);
+    await logout();
+    router.replace('/login');
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -337,7 +366,7 @@ export default function CommunityScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader showBell />
+      <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
       <KeyboardAwareScrollViewCompat
         contentContainerStyle={[
           styles.content,
@@ -509,6 +538,17 @@ export default function CommunityScreen() {
           </KeyboardAwareScrollViewCompat>
         </View>
       </Modal>
+      <SideDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        onOpen={() => setDrawerVisible(true)}
+        onNavigate={handleNavigate}
+        currentRoute={pathname}
+        userName={user.name}
+        avatarUri={user.avatarUri}
+        navItems={navItems}
+        onLogout={handleLogout}
+      />
     </View>
   );
 }

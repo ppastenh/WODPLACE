@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,10 +8,12 @@ import {
   View,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
+import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking } from '@/context/BookingContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import {
   addDays,
@@ -84,10 +86,36 @@ function findNextAvailableSession(
   return null;
 }
 
+const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
+  { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
+  { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
+  { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
+  { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
+];
+
 export default function HomeScreen() {
   const colors = useColors();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { now, getSessionsForDate, getUpcomingBooked } = useBooking();
+  const { unreadCount } = useNotifications();
+  const pathname = usePathname();
+  const [drawerVisible, setDrawerVisible] = useState(false);
+
+  const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
+    ...item,
+    badge: item.key === 'notifications' ? unreadCount : undefined,
+  }));
+
+  const handleNavigate = (route: string) => {
+    setDrawerVisible(false);
+    if (route !== pathname) router.push(route as any);
+  };
+
+  const handleLogout = async () => {
+    setDrawerVisible(false);
+    await logout();
+    router.replace('/login');
+  };
 
   const monthlyBooked = useMemo(
     () => getMonthlyBookedCount(now, getSessionsForDate),
@@ -119,7 +147,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader showBell />
+      <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -259,6 +287,17 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+      <SideDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        onOpen={() => setDrawerVisible(true)}
+        onNavigate={handleNavigate}
+        currentRoute={pathname}
+        userName={user.name}
+        avatarUri={user.avatarUri}
+        navItems={navItems}
+        onLogout={handleLogout}
+      />
     </View>
   );
 }
