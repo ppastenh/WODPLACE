@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
@@ -263,7 +264,12 @@ function CommentsModal({
 
   return (
     <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
-      <View style={[styles.commentsBackdrop, { backgroundColor: colors.foreground + '55' }]}>
+      {/* KeyboardAvoidingView as the backdrop-level container so the sheet
+          rises above the keyboard (same library as EditPhraseModal). */}
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={[styles.commentsBackdrop, { backgroundColor: colors.foreground + '55' }]}
+      >
         <View style={[styles.commentsSheet, { backgroundColor: colors.background }]}>
           <View style={[styles.handle, { backgroundColor: colors.navBorder, alignSelf: 'center', marginTop: 12, marginBottom: 4 }]} />
           <View style={[styles.commentsHeader, { borderBottomColor: colors.navBorder }]}>
@@ -284,6 +290,7 @@ function CommentsModal({
               data={comments}
               keyExtractor={(c) => c.id}
               style={{ flex: 1 }}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10 }}
               onEndReached={hasMore ? fetchNextPage : undefined}
               onEndReachedThreshold={0.4}
@@ -331,7 +338,7 @@ function CommentsModal({
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -822,7 +829,10 @@ export default function CommunityScreen() {
 
       {/* ── Composer Modal ── */}
       <Modal animationType="slide" transparent visible={composerVisible} onRequestClose={closeComposer}>
-        <View style={[styles.composerBackdrop, { backgroundColor: colors.foreground + '66' }]}>
+        <KeyboardAvoidingView
+          behavior="padding"
+          style={[styles.composerBackdrop, { backgroundColor: colors.foreground + '66' }]}
+        >
           <View style={[styles.composerSheet, { backgroundColor: colors.background }]}>
             <View style={[styles.handle, { backgroundColor: colors.navBorder, alignSelf: 'center', marginBottom: 18 }]} />
             <View style={styles.sheetTopRow}>
@@ -901,7 +911,7 @@ export default function CommunityScreen() {
               <Feather name="arrow-up-right" size={17} color={(draft.trim() || selectedImages.length > 0) && !publishing ? colors.card : colors.navInactive} />
             </Pressable>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Comments ── */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -14,6 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useColors } from '@/hooks/useColors';
 import { getAdminCode } from '@/lib/adminSession';
 
@@ -163,7 +164,7 @@ export default function AdminContractsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader onBack={() => router.replace('/profile')} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollViewCompat contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.title, { color: colors.foreground }]}>
           Panel de administración
         </Text>
@@ -377,7 +378,7 @@ export default function AdminContractsScreen() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
     </View>
   );
 }

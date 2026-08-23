@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useVerifyAdminCode } from '@workspace/api-client-react';
 import { AppButton } from '@/components/AppButton';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useColors } from '@/hooks/useColors';
 import { setAdminCode } from '@/lib/adminSession';
 
@@ -40,6 +41,10 @@ export default function AdminLoginScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.authBackground }]}>
+      <KeyboardAwareScrollViewCompat
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={[styles.title, { color: colors.authText }]}>Panel de administración</Text>
       <Text style={[styles.subtitle, { color: colors.authMuted }]}>
         Ingresa el código de acceso para continuar.
@@ -68,12 +73,14 @@ export default function AdminLoginScreen() {
         onPress={handleSubmit}
         style={styles.button}
       />
+      </KeyboardAwareScrollViewCompat>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
+  container: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 12 },
   title: { fontSize: 22, fontFamily: 'Anton_400Regular', textAlign: 'center' },
   subtitle: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 12 },
   input: {

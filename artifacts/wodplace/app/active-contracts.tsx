@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +19,7 @@ import {
 } from '@workspace/api-client-react';
 import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { getContractFileUrl } from '@/lib/apiConfig';
@@ -172,7 +172,7 @@ export default function ActiveContractsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollViewCompat contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>Contratos Activos</Text>
 
         {isLoading ? (
@@ -403,7 +403,7 @@ export default function ActiveContractsScreen() {
             )}
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
     </View>
   );
 }
