@@ -1,2 +1,4 @@
-- [WODPLACE app conventions](wodplace-app.md) — Expo mobile app: mock auth via AsyncStorage, deterministic seeded class schedule/attendees, no backend yet.
+- [WODPLACE app conventions](wodplace-app.md) — Expo mobile app: auth via AsyncStorage, real backend API, no mock data.
 - [WODPLACE db schema drift](wodplace-db-drift.md) — lib/db schema source can drift ahead of the actual dev Postgres DB; run `pnpm --filter @workspace/db run push` if inserts fail with "column ... does not exist".
+- [WODPLACE social feed](wodplace-social.md) — Feed social completamente en backend (no AsyncStorage). zod/v4 no existe en este workspace; usar `from "zod"`. drizzle-zod causa conflictos de tipos con zod 3.x; evitar createInsertSchema y z.infer en el DB schema — usar $inferInsert directamente.
+- [WODPLACE api-server typecheck](wodplace-api-server-typecheck.md) — api-server usa esbuild (no tsc) para runtime; errores de typecheck de drizzle-orm TS2769 no afectan funcionamiento. Agregar zod a package.json directo si se importa en rutas.

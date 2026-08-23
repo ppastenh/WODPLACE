@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -9,6 +9,8 @@ import {
   useListAdminContracts,
   useRequestUploadUrl,
   useUpdateAdminContract,
+  useAdminBoxName,
+  useAdminSocialReports,
 } from '@workspace/api-client-react';
 import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
@@ -37,6 +39,10 @@ export default function AdminContractsScreen() {
   const colors = useColors();
   const [code, setCode] = useState<string | null>(null);
   const [uploadingSlug, setUploadingSlug] = useState<string | null>(null);
+  const [boxNameDraft, setBoxNameDraft] = useState('');
+  const [boxNameEditing, setBoxNameEditing] = useState(false);
+  const [boxNameSaving, setBoxNameSaving] = useState(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = getAdminCode();
@@ -68,8 +74,13 @@ export default function AdminContractsScreen() {
     request: { headers: adminHeaders },
   });
 
+  const boxNameQuery = useAdminBoxName(code);
+  const reportsQuery = useAdminSocialReports(code);
+
   const acceptances = acceptancesQuery.data ?? [];
   const unseenCount = acceptances.filter((item) => !item.seen).length;
+  const reports = reportsQuery.reports ?? [];
+  const pendingReports = reports.filter((r: any) => !r.resolvedAt);
 
   const handleAckAcceptances = () => {
     ackMutation.mutate(undefined, {
@@ -122,6 +133,31 @@ export default function AdminContractsScreen() {
     }
   };
 
+  const handleSaveBoxName = async () => {
+    if (!boxNameDraft.trim() || !code) return;
+    setBoxNameSaving(true);
+    try {
+      await boxNameQuery.save(boxNameDraft.trim());
+      setBoxNameEditing(false);
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el nombre del box.');
+    } finally {
+      setBoxNameSaving(false);
+    }
+  };
+
+  const handleResolveReport = async (reportId: string, deletePost: boolean) => {
+    if (!code) return;
+    setResolvingId(reportId);
+    try {
+      await reportsQuery.resolve(reportId, deletePost, code);
+    } catch {
+      Alert.alert('Error', 'No se pudo resolver el reporte.');
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
   if (!code) return null;
 
   return (
@@ -135,6 +171,112 @@ export default function AdminContractsScreen() {
           Sube o reemplaza los PDFs de Membresía, Responsabilidad y Salud, y
           Reglamento del Box.
         </Text>
+
+        {/* ── Nombre del Box ── */}
+        <View style={[styles.notifSection, { marginBottom: 12 }]}>
+          <View style={styles.notifHeaderRow}>
+            <Text style={[styles.notifTitle, { color: colors.foreground }]}>Nombre del Box</Text>
+            {!boxNameEditing && (
+              <Pressable
+                onPress={() => { setBoxNameDraft(boxNameQuery.name ?? ''); setBoxNameEditing(true); }}
+                style={({ pressed }) => [styles.editNameBtn, { borderColor: colors.navBorder }, pressed && { opacity: 0.6 }]}
+              >
+                <Feather name="edit-2" size={13} color={colors.foreground} />
+                <Text style={[styles.editNameText, { color: colors.foreground }]}>Editar</Text>
+              </Pressable>
+            )}
+          </View>
+          {boxNameEditing ? (
+            <View style={styles.boxNameRow}>
+              <TextInput
+                style={[styles.boxNameInput, { color: colors.foreground, borderColor: colors.navBorder, backgroundColor: colors.card }]}
+                value={boxNameDraft}
+                onChangeText={setBoxNameDraft}
+                placeholder="Nombre del box"
+                placeholderTextColor={colors.navInactive}
+                autoFocus
+                maxLength={50}
+              />
+              <Pressable
+                onPress={handleSaveBoxName}
+                disabled={!boxNameDraft.trim() || boxNameSaving}
+                style={({ pressed }) => [styles.saveNameBtn, { backgroundColor: colors.navActive }, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.saveNameText}>{boxNameSaving ? '...' : 'Guardar'}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setBoxNameEditing(false)}
+                hitSlop={10}
+                style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+              >
+                <Feather name="x" size={18} color={colors.navInactive} />
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={[styles.boxNameCurrent, { color: colors.mutedForeground }]}>
+              {boxNameQuery.name || 'Sin nombre configurado'}
+            </Text>
+          )}
+        </View>
+
+        {/* ── Cola de reportes ── */}
+        <View style={[styles.notifSection]}>
+          <View style={styles.notifHeaderRow}>
+            <View style={styles.notifTitleRow}>
+              <Text style={[styles.notifTitle, { color: colors.foreground }]}>Reportes de moderación</Text>
+              {pendingReports.length > 0 && (
+                <View style={[styles.notifBadge, { backgroundColor: colors.destructive }]}>
+                  <Text style={styles.notifBadgeText}>{pendingReports.length}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          {reportsQuery.isLoading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 12 }} />
+          ) : pendingReports.length === 0 ? (
+            <Text style={[styles.notifEmpty, { color: colors.mutedForeground }]}>
+              Sin reportes pendientes. ✅
+            </Text>
+          ) : (
+            <View style={styles.notifList}>
+              {pendingReports.map((report: any) => (
+                <View key={report.id} style={[styles.reportCard, { backgroundColor: colors.card, borderColor: colors.navBorder }]}>
+                  <View style={styles.reportCardHeader}>
+                    <Text style={[styles.notifName, { color: colors.foreground }]}>
+                      Motivo: {report.reason}
+                    </Text>
+                    <Text style={[styles.notifDetail, { color: colors.navInactive }]}>
+                      Reportado por: {report.reporterName ?? 'usuario'}
+                    </Text>
+                  </View>
+                  {report.postBody ? (
+                    <Text style={[styles.reportPostBody, { color: colors.mutedForeground, borderLeftColor: colors.navBorder }]} numberOfLines={3}>
+                      {report.postBody}
+                    </Text>
+                  ) : null}
+                  <View style={styles.reportActions}>
+                    <Pressable
+                      onPress={() => handleResolveReport(report.id, true)}
+                      disabled={resolvingId === report.id}
+                      style={({ pressed }) => [styles.reportBtn, { backgroundColor: colors.destructive }, pressed && { opacity: 0.7 }]}
+                    >
+                      <Feather name="trash-2" size={14} color="#fff" />
+                      <Text style={styles.reportBtnText}>Eliminar post</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleResolveReport(report.id, false)}
+                      disabled={resolvingId === report.id}
+                      style={({ pressed }) => [styles.reportBtn, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}
+                    >
+                      <Feather name="check" size={14} color={colors.secondaryForeground} />
+                      <Text style={[styles.reportBtnText, { color: colors.secondaryForeground }]}>Desestimar</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={styles.notifSection}>
           <View style={styles.notifHeaderRow}>
@@ -282,4 +424,19 @@ const styles = StyleSheet.create({
   notifName: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   notifDetail: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   notifGuardian: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginTop: 2 },
+  // Box name editor
+  editNameBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  editNameText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  boxNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  boxNameInput: { flex: 1, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontFamily: 'Inter_400Regular' },
+  saveNameBtn: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  saveNameText: { fontSize: 13, fontFamily: 'Inter_700Bold', color: '#fff' },
+  boxNameCurrent: { fontSize: 14, fontFamily: 'Inter_500Medium', marginTop: 4 },
+  // Reports
+  reportCard: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 10 },
+  reportCardHeader: { gap: 2 },
+  reportPostBody: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18, borderLeftWidth: 3, paddingLeft: 10, fontStyle: 'italic' },
+  reportActions: { flexDirection: 'row', gap: 8 },
+  reportBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, paddingVertical: 10 },
+  reportBtnText: { fontSize: 12, fontFamily: 'Inter_700Bold', color: '#fff' },
 });

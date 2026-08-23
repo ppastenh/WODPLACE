@@ -4,6 +4,7 @@ import {
   RequestUploadUrlResponse,
 } from '@workspace/api-zod';
 import { Router, type IRouter, type Request, type Response } from 'express';
+import { z } from 'zod';
 
 import { requireAdminCode } from '../lib/adminAuth';
 import {
@@ -13,6 +14,34 @@ import {
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+/**
+ * POST /storage/social-uploads/request-url
+ *
+ * Request a presigned URL for social feed image uploads.
+ * Open to any authenticated user (userId required, no admin code).
+ */
+router.post(
+  '/storage/social-uploads/request-url',
+  async (req: Request, res: Response) => {
+    const parsed = z
+      .object({ userId: z.string(), name: z.string(), size: z.number().optional().default(0), contentType: z.string() })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+    try {
+      const { name, size, contentType } = parsed.data;
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      res.json(RequestUploadUrlResponse.parse({ uploadURL, objectPath, metadata: { name, size, contentType } }));
+    } catch (error) {
+      req.log.error({ err: error }, 'Error generating social upload URL');
+      res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  },
+);
 
 /**
  * POST /storage/uploads/request-url

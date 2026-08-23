@@ -1,18 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  FlatList,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, usePathname } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -20,10 +21,26 @@ import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import { getAdminCode } from '@/lib/adminSession';
+import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
+import {
+  useBoxName,
+  useSocialFeed,
+  useSocialMutations,
+  useComments,
+  type SocialPost,
+  type SocialComment,
+} from '@workspace/api-client-react';
 
 const LOGO = require('../assets/images/wodplace-logo.png');
-const FEED_STORAGE_KEY = 'wodplace_social_feed';
+
+const EMOJIS = ['💪', '🔥', '👏', '❤️', '🎉'] as const;
+
+const REPORT_REASONS = [
+  { key: 'spam', label: 'Spam o publicidad' },
+  { key: 'inappropriate', label: 'Contenido inapropiado' },
+  { key: 'other', label: 'Otro motivo' },
+];
 
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
@@ -32,230 +49,464 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
 ];
 
-type FeedPost = {
-  id: string;
-  type: 'post' | 'announcement';
-  author: string;
-  avatarUri?: string | null;
-  body: string;
-  imageUri?: string;
-  createdAt: string;
-  likes: number;
-  comments: number;
-  likedByMe?: boolean;
-};
-
-type FeedEvent = {
-  id: string;
-  type: 'event';
-  title: string;
-  dateLabel: string;
-  createdAt: string;
-  likes: number;
-  comments: number;
-};
-
-type FeedItem = FeedPost | FeedEvent;
-
-function ago(minutes: number): string {
-  return new Date(Date.now() - minutes * 60 * 1000).toISOString();
-}
-
-const INITIAL_FEED: FeedItem[] = [
-  {
-    id: 'post-box-1',
-    type: 'announcement',
-    author: 'DLoveBox',
-    body: '¡Equipo, nos vemos mañana! Recuerden traer agua, toalla y muchas ganas para el WOD de las 19:00.',
-    createdAt: ago(18),
-    likes: 24,
-    comments: 4,
-  },
-  {
-    id: 'event-1',
-    type: 'event',
-    title: 'Copa Providencia 2026',
-    dateLabel: 'Sábado 24 de agosto · 09:00',
-    createdAt: ago(52),
-    likes: 31,
-    comments: 7,
-  },
-  {
-    id: 'post-athlete-1',
-    type: 'post',
-    author: 'Camila Rojas',
-    body: 'Primer pull-up estricto. Costó meses, pero salió. Gracias por los consejos y la energía de todos.',
-    createdAt: ago(126),
-    likes: 42,
-    comments: 8,
-  },
-  {
-    id: 'post-athlete-2',
-    type: 'post',
-    author: 'Felipe Muñoz',
-    body: 'WOD terminado junto al team de las 7:00. La mejor forma de empezar el día.',
-    createdAt: ago(24 * 60 + 10),
-    likes: 18,
-    comments: 2,
-  },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
+  return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
 }
 
 function relativeTime(iso: string): string {
-  const elapsed = Math.max(0, Date.now() - new Date(iso).getTime());
-  const minutes = Math.floor(elapsed / 60000);
-  if (minutes < 1) return 'Ahora';
-  if (minutes < 60) return `Hace ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Hace ${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `Hace ${days} d`;
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60_000) return 'Ahora';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h`;
+  if (diff < 2_592_000_000) return `${Math.floor(diff / 86_400_000)} d`;
+  return new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
 }
 
-function FeedAvatar({
-  item,
-  colors,
-  size = 42,
-}: {
-  item: FeedPost;
-  colors: ReturnType<typeof useColors>;
-  size?: number;
-}) {
-  const isBox = item.type === 'announcement';
-  return (
-    <View
-      style={[
-        styles.avatar,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: isBox ? colors.navFloating : colors.input,
-        },
-      ]}
-    >
-      {item.avatarUri ? (
-        <Image source={{ uri: item.avatarUri }} style={{ width: size, height: size, borderRadius: size / 2 }} />
-      ) : isBox ? (
-        <MaterialCommunityIcons name="home-city-outline" size={size * 0.52} color={colors.navFloatingForeground} />
-      ) : (
-        <Text style={[styles.avatarInitials, { color: colors.navActive }]}>{getInitials(item.author)}</Text>
-      )}
-    </View>
-  );
-}
+// ─── PostAvatar ───────────────────────────────────────────────────────────────
 
-function FeedActions({
-  item,
-  colors,
-  onLike,
-}: {
-  item: FeedItem;
-  colors: ReturnType<typeof useColors>;
-  onLike: (id: string) => void;
-}) {
-  const liked = item.type !== 'event' && item.likedByMe;
-  return (
-    <View style={styles.actions}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={liked ? 'Quitar me gusta' : 'Dar me gusta'}
-        onPress={() => onLike(item.id)}
-        hitSlop={8}
-        style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-      >
-        <Feather name="heart" size={17} color={liked ? colors.destructive : colors.navInactive} />
-        <Text style={[styles.actionText, { color: colors.navInactive }]}>{item.likes}</Text>
-      </Pressable>
-      <View style={styles.action}>
-        <Feather name="message-circle" size={17} color={colors.navInactive} />
-        <Text style={[styles.actionText, { color: colors.navInactive }]}>{item.comments}</Text>
+function PostAvatar({ name, isBox, size = 40 }: { name: string; isBox?: boolean; size?: number }) {
+  const colors = useColors();
+  const circleStyle = { width: size, height: size, borderRadius: size / 2 };
+  if (isBox) {
+    return (
+      <View style={[circleStyle, styles.avatarFallback, { backgroundColor: colors.navActive }]}>
+        <Feather name="home" size={size * 0.44} color="#fff" />
       </View>
+    );
+  }
+  return (
+    <View style={[circleStyle, styles.avatarFallback, { backgroundColor: colors.secondary }]}>
+      <Text style={[styles.initials, { color: colors.secondaryForeground, fontSize: size * 0.38 }]}>
+        {getInitials(name)}
+      </Text>
     </View>
   );
 }
+
+// ─── ImageGallery ─────────────────────────────────────────────────────────────
+
+function ImageGallery({ uris }: { uris: string[] }) {
+  if (uris.length === 0) return null;
+  if (uris.length === 1) {
+    return <Image source={{ uri: uris[0] }} style={styles.singleImage} contentFit="cover" />;
+  }
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
+      {uris.map((uri, i) => (
+        <Image key={i} source={{ uri }} style={styles.galleryImage} contentFit="cover" />
+      ))}
+    </ScrollView>
+  );
+}
+
+// ─── ReactionBar ─────────────────────────────────────────────────────────────
+
+function ReactionBar({
+  reactions,
+  myReaction,
+  onReact,
+  colors,
+}: {
+  reactions: SocialPost['reactions'];
+  myReaction: string | null;
+  onReact: (emoji: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={styles.reactionBar}>
+      {EMOJIS.map((emoji) => {
+        const item = reactions.find((r: { emoji: string; count: number }) => r.emoji === emoji);
+        const active = myReaction === emoji;
+        return (
+          <Pressable
+            key={emoji}
+            onPress={() => onReact(emoji)}
+            style={({ pressed }) => [
+              styles.reactionBtn,
+              { backgroundColor: active ? colors.navActive + '1A' : colors.card },
+              active && { borderColor: colors.navActive, borderWidth: 1 },
+              pressed && { opacity: 0.65 },
+            ]}
+          >
+            <Text style={styles.reactionEmoji}>{emoji}</Text>
+            {item && item.count > 0 ? (
+              <Text style={[styles.reactionCount, { color: active ? colors.navActive : colors.navInactive }]}>
+                {item.count}
+              </Text>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── PostMenuSheet ────────────────────────────────────────────────────────────
+
+type MenuAction = { label: string; icon: string; destructive?: boolean; onPress: () => void };
+
+function PostMenuSheet({
+  visible,
+  onClose,
+  actions,
+  colors,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  actions: MenuAction[];
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <View style={[styles.handle, { backgroundColor: colors.navBorder }]} />
+          {actions.map((a, i) => (
+            <Pressable
+              key={i}
+              onPress={() => { onClose(); a.onPress(); }}
+              style={({ pressed }) => [styles.sheetItem, pressed && { opacity: 0.6 }]}
+            >
+              <Feather name={a.icon as never} size={18} color={a.destructive ? colors.destructive : colors.foreground} />
+              <Text style={[styles.sheetItemText, { color: a.destructive ? colors.destructive : colors.foreground }]}>
+                {a.label}
+              </Text>
+            </Pressable>
+          ))}
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.sheetCancel, { borderTopColor: colors.navBorder }, pressed && { opacity: 0.6 }]}
+          >
+            <Text style={[styles.sheetCancelText, { color: colors.navInactive }]}>Cancelar</Text>
+          </Pressable>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ─── CommentsModal ────────────────────────────────────────────────────────────
+
+function CommentsModal({
+  post,
+  userId,
+  authorName,
+  isAdmin,
+  adminCode,
+  visible,
+  onClose,
+  onDelta,
+  colors,
+}: {
+  post: SocialPost | null;
+  userId: string;
+  authorName: string;
+  isAdmin: boolean;
+  adminCode: string | null;
+  visible: boolean;
+  onClose: () => void;
+  onDelta: (postId: string, delta: number) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [draft, setDraft] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { comments, isLoading, hasMore, fetchNextPage, refresh } = useComments(visible ? (post?.id ?? null) : null);
+  const { addComment, deleteComment } = useSocialMutations(userId, authorName);
+
+  useEffect(() => { if (visible) { setDraft(''); refresh(); } }, [visible, post?.id]);
+
+  const handleSubmit = async () => {
+    if (!draft.trim() || !post) return;
+    setSubmitting(true);
+    try {
+      await addComment(post.id, draft.trim());
+      onDelta(post.id, 1);
+      setDraft('');
+      refresh();
+    } catch {
+      Alert.alert('Error', 'No se pudo publicar el comentario.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = (c: SocialComment) => {
+    Alert.alert('Eliminar comentario', '¿Estás seguro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar', style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteComment(post!.id, c.id, isAdmin ? (adminCode ?? undefined) : undefined);
+            onDelta(post!.id, -1);
+            refresh();
+          } catch { Alert.alert('Error', 'No se pudo eliminar.'); }
+        },
+      },
+    ]);
+  };
+
+  return (
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
+      <View style={[styles.commentsBackdrop, { backgroundColor: colors.foreground + '55' }]}>
+        <View style={[styles.commentsSheet, { backgroundColor: colors.background }]}>
+          <View style={[styles.handle, { backgroundColor: colors.navBorder, alignSelf: 'center', marginTop: 12, marginBottom: 4 }]} />
+          <View style={[styles.commentsHeader, { borderBottomColor: colors.navBorder }]}>
+            <Text style={[styles.commentsTitle, { color: colors.foreground }]}>Comentarios</Text>
+            <Pressable onPress={onClose} hitSlop={12}>
+              <Feather name="x" size={22} color={colors.foreground} />
+            </Pressable>
+          </View>
+          {isLoading ? (
+            <ActivityIndicator style={{ margin: 32 }} color={colors.navActive} />
+          ) : comments.length === 0 ? (
+            <View style={styles.emptyComments}>
+              <Text style={[styles.emptyCommentsText, { color: colors.navInactive }]}>Sé el primero en comentar.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={comments}
+              keyExtractor={(c) => c.id}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10 }}
+              onEndReached={hasMore ? fetchNextPage : undefined}
+              onEndReachedThreshold={0.4}
+              renderItem={({ item }) => (
+                <View style={[styles.commentRow, { borderBottomColor: colors.navBorder }]}>
+                  <PostAvatar name={item.authorName} size={32} />
+                  <View style={styles.commentBody}>
+                    <Text style={[styles.commentAuthor, { color: colors.foreground }]}>{item.authorName}</Text>
+                    <Text style={[styles.commentText, { color: colors.mutedForeground }]}>{item.body}</Text>
+                    <Text style={[styles.commentTime, { color: colors.navInactive }]}>{relativeTime(item.createdAt)}</Text>
+                  </View>
+                  {(item.userId === userId || isAdmin) ? (
+                    <Pressable onPress={() => handleDeleteComment(item)} hitSlop={8}>
+                      <Feather name="trash-2" size={14} color={colors.navInactive} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              )}
+            />
+          )}
+          <View style={[styles.commentInputRow, { borderTopColor: colors.navBorder, backgroundColor: colors.background }]}>
+            <TextInput
+              style={[styles.commentDraft, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.navBorder }]}
+              placeholder="Escribe un comentario..."
+              placeholderTextColor={colors.navInactive}
+              value={draft}
+              onChangeText={setDraft}
+              maxLength={500}
+              multiline
+            />
+            <Pressable
+              onPress={handleSubmit}
+              disabled={!draft.trim() || submitting}
+              style={({ pressed }) => [
+                styles.commentSend,
+                { backgroundColor: draft.trim() ? colors.navActive : colors.navBorder },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Feather name="send" size={16} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── ReportModal ──────────────────────────────────────────────────────────────
+
+function ReportModal({
+  postId,
+  userId,
+  authorName,
+  visible,
+  onClose,
+  colors,
+}: {
+  postId: string | null;
+  userId: string;
+  authorName: string;
+  visible: boolean;
+  onClose: () => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { reportPost } = useSocialMutations(userId, authorName);
+
+  const handleSubmit = async () => {
+    if (!selected || !postId) return;
+    setSubmitting(true);
+    try {
+      await reportPost(postId, selected);
+      onClose();
+      setSelected(null);
+      Alert.alert('Reportado', 'Tu reporte fue enviado al equipo de moderación. Gracias.');
+    } catch {
+      Alert.alert('Error', 'No se pudo enviar el reporte.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <View style={[styles.handle, { backgroundColor: colors.navBorder }]} />
+          <Text style={[styles.reportTitle, { color: colors.foreground }]}>¿Por qué reportas esto?</Text>
+          {REPORT_REASONS.map((r) => (
+            <Pressable
+              key={r.key}
+              onPress={() => setSelected(r.key)}
+              style={({ pressed }) => [
+                styles.reportOption,
+                { borderColor: selected === r.key ? colors.navActive : colors.navBorder },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <View style={[
+                styles.reportDot,
+                { borderColor: selected === r.key ? colors.navActive : colors.navInactive },
+                selected === r.key && { backgroundColor: colors.navActive },
+              ]} />
+              <Text style={[styles.reportLabel, { color: colors.foreground }]}>{r.label}</Text>
+            </Pressable>
+          ))}
+          <Pressable
+            onPress={handleSubmit}
+            disabled={!selected || submitting}
+            style={({ pressed }) => [
+              styles.reportSubmit,
+              { backgroundColor: selected ? colors.navActive : colors.navBorder },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={[styles.reportSubmitText, { color: selected ? '#fff' : colors.navInactive }]}>
+              {submitting ? 'Enviando...' : 'Reportar'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.sheetCancel, { borderTopColor: colors.navBorder }, pressed && { opacity: 0.6 }]}
+          >
+            <Text style={[styles.sheetCancelText, { color: colors.navInactive }]}>Cancelar</Text>
+          </Pressable>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ─── PostCard ─────────────────────────────────────────────────────────────────
 
 function PostCard({
-  item,
+  post,
+  userId,
+  authorName,
+  isAdmin,
+  adminCode,
   colors,
-  onLike,
+  onReact,
+  onDelete,
+  onEdit,
+  onComment,
+  onReport,
+  onBlock,
 }: {
-  item: FeedPost;
+  post: SocialPost;
+  userId: string;
+  authorName: string;
+  isAdmin: boolean;
+  adminCode: string | null;
   colors: ReturnType<typeof useColors>;
-  onLike: (id: string) => void;
+  onReact: (postId: string, emoji: string) => void;
+  onDelete: (postId: string) => void;
+  onEdit: (post: SocialPost) => void;
+  onComment: (post: SocialPost) => void;
+  onReport: (postId: string) => void;
+  onBlock: (post: SocialPost) => void;
 }) {
+  const [menuVisible, setMenuVisible] = useState(false);
+  const isAuthor = post.userId === userId;
+  const isBox = post.type === 'announcement';
+
+  const menuActions: MenuAction[] = isAdmin
+    ? [
+        { label: 'Eliminar publicación', icon: 'trash-2', destructive: true, onPress: () => onDelete(post.id) },
+        ...(post.userId ? [{ label: 'Bloquear autor', icon: 'slash', destructive: true, onPress: () => onBlock(post) }] : []),
+      ]
+    : isAuthor
+    ? [
+        ...(post.canEdit ? [{ label: 'Editar', icon: 'edit-2', onPress: () => onEdit(post) }] : []),
+        { label: 'Eliminar', icon: 'trash-2', destructive: true, onPress: () => onDelete(post.id) },
+      ]
+    : [{ label: 'Reportar publicación', icon: 'flag', onPress: () => onReport(post.id) }];
+
   return (
     <View style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.navBorder }]}>
+      {/* Header */}
       <View style={styles.postHeader}>
-        <FeedAvatar item={item} colors={colors} />
-        <View style={styles.authorBlock}>
-          <Text style={[styles.authorName, { color: colors.foreground }]}>{item.author}</Text>
-          <Text style={[styles.timestamp, { color: colors.navInactive }]}>
-            {relativeTime(item.createdAt)}
-          </Text>
-        </View>
-        {item.type === 'announcement' ? (
-          <View style={[styles.boxTag, { backgroundColor: colors.warningBackground }]}>
-            <Text style={[styles.boxTagText, { color: colors.navActive }]}>BOX</Text>
+        <PostAvatar name={post.authorName} isBox={isBox} />
+        <View style={styles.postAuthorBlock}>
+          <View style={styles.postAuthorRow}>
+            <Text style={[styles.postAuthor, { color: colors.foreground }]} numberOfLines={1}>
+              {post.authorName}
+            </Text>
+            {isBox && (
+              <View style={[styles.boxTag, { backgroundColor: colors.warningBackground }]}>
+                <Text style={[styles.boxTagText, { color: colors.warning }]}>BOX</Text>
+              </View>
+            )}
           </View>
-        ) : null}
+          <Text style={[styles.postTime, { color: colors.navInactive }]}>{relativeTime(post.createdAt)}</Text>
+        </View>
+        <Pressable
+          onPress={() => setMenuVisible(true)}
+          hitSlop={10}
+          style={({ pressed }) => [styles.menuDotBtn, pressed && { opacity: 0.5 }]}
+        >
+          <Feather name="more-vertical" size={18} color={colors.navInactive} />
+        </Pressable>
       </View>
-      <Text style={[styles.postBody, { color: colors.foreground }]}>{item.body}</Text>
-      {item.imageUri ? (
-        <Image source={{ uri: item.imageUri }} style={styles.postImage} contentFit="cover" />
-      ) : null}
-      <FeedActions item={item} colors={colors} onLike={onLike} />
+
+      {/* Body */}
+      {post.body ? <Text style={[styles.postBody, { color: colors.foreground }]}>{post.body}</Text> : null}
+
+      {/* Images */}
+      {post.imageUris.length > 0 && (
+        <View style={{ marginTop: 10 }}>
+          <ImageGallery uris={post.imageUris} />
+        </View>
+      )}
+
+      {/* Reactions */}
+      <ReactionBar reactions={post.reactions} myReaction={post.myReaction} onReact={(emoji) => onReact(post.id, emoji)} colors={colors} />
+
+      {/* Comment trigger */}
+      <Pressable
+        onPress={() => onComment(post)}
+        style={({ pressed }) => [styles.commentTrigger, pressed && { opacity: 0.65 }]}
+      >
+        <Feather name="message-circle" size={16} color={colors.navInactive} />
+        <Text style={[styles.commentCount, { color: colors.navInactive }]}>
+          {post.commentCount > 0
+            ? `${post.commentCount} comentario${post.commentCount !== 1 ? 's' : ''}`
+            : 'Comentar'}
+        </Text>
+      </Pressable>
+
+      <PostMenuSheet visible={menuVisible} onClose={() => setMenuVisible(false)} actions={menuActions} colors={colors} />
     </View>
   );
 }
 
-function EventCard({
-  item,
-  colors,
-  onLike,
-}: {
-  item: FeedEvent;
-  colors: ReturnType<typeof useColors>;
-  onLike: (id: string) => void;
-}) {
-  return (
-    <View style={[styles.eventCard, { backgroundColor: colors.card, borderColor: colors.navBorder }]}>
-      <View style={styles.flyer}>
-        <LinearGradient
-          colors={[colors.navFloating, colors.navActive]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Image source={LOGO} style={styles.flyerLogo} contentFit="contain" />
-        <View style={[styles.eventTag, { backgroundColor: colors.navActive }]}>
-          <Text style={[styles.eventTagText, { color: colors.card }]}>Competencia</Text>
-        </View>
-        <View style={styles.flyerCopy}>
-          <Text style={[styles.flyerKicker, { color: colors.navFloatingForeground }]}>WODPLACE PRESENTA</Text>
-          <Text style={[styles.flyerTitle, { color: colors.card }]}>COPA{"\n"}PROVIDENCIA</Text>
-          <View style={[styles.flyerLine, { backgroundColor: colors.eventBlue }]} />
-        </View>
-      </View>
-      <View style={styles.eventDetails}>
-        <Text style={[styles.eventTitle, { color: colors.foreground }]}>{item.title}</Text>
-        <View style={styles.eventMeta}>
-          <Feather name="calendar" size={14} color={colors.eventBlue} />
-          <Text style={[styles.eventDate, { color: colors.navInactive }]}>{item.dateLabel}</Text>
-        </View>
-        <FeedActions item={item} colors={colors} onLike={onLike} />
-      </View>
-    </View>
-  );
-}
+// ─── CommunityScreen ──────────────────────────────────────────────────────────
 
 export default function CommunityScreen() {
   const colors = useColors();
@@ -263,11 +514,39 @@ export default function CommunityScreen() {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
-  const [feed, setFeed] = useState<FeedItem[]>(INITIAL_FEED);
+  const adminCode = getAdminCode();
+  const isAdmin = !!adminCode;
+
+  const { name: rawBoxName } = useBoxName();
+  const boxName = rawBoxName || SUBSCRIBED_BOX.name;
+
+  const {
+    posts, isLoading, isFetchingNextPage, hasMore,
+    fetchNextPage, updatePost, removePost, prependPost,
+  } = useSocialFeed(user?.id);
+
+  const { createPost, editPost, deletePost, toggleReaction, uploadSocialImage, blockUser } =
+    useSocialMutations(user?.id ?? '', user?.name ?? '');
+
+  // Composer
   const [composerVisible, setComposerVisible] = useState(false);
   const [draft, setDraft] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [publishing, setPublishing] = useState(false);
+  const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
+
+  // Comments
+  const [commentsPost, setCommentsPost] = useState<SocialPost | null>(null);
+  const [commentsVisible, setCommentsVisible] = useState(false);
+
+  // Report
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportVisible, setReportVisible] = useState(false);
+
+  // Drawer
   const [drawerVisible, setDrawerVisible] = useState(false);
+
+  if (!user) return null;
 
   const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
     ...item,
@@ -276,7 +555,7 @@ export default function CommunityScreen() {
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);
-    if (route !== pathname) router.push(route as any);
+    if (route !== pathname) router.push(route as never);
   };
 
   const handleLogout = async () => {
@@ -285,259 +564,301 @@ export default function CommunityScreen() {
     router.replace('/login');
   };
 
-  useEffect(() => {
-    let mounted = true;
-    AsyncStorage.getItem(FEED_STORAGE_KEY)
-      .then((raw) => {
-        if (!mounted || !raw) return;
-        try {
-          const stored = JSON.parse(raw) as FeedItem[];
-          if (Array.isArray(stored) && stored.length > 0) setFeed(stored);
-        } catch {
-          // Ignore malformed local data and keep the seeded feed visible.
-        }
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const orderedFeed = useMemo(
-    () => [...feed].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [feed],
-  );
-
-  if (!user) return null;
-
-  const persistFeed = (nextFeed: FeedItem[]) => {
-    AsyncStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(nextFeed)).catch(() => {});
-  };
-
-  const toggleLike = (id: string) => {
-    const nextFeed = feed.map((item) => {
-      if (item.id !== id || item.type === 'event') return item;
-      const likedByMe = !item.likedByMe;
-      return { ...item, likedByMe, likes: Math.max(0, item.likes + (likedByMe ? 1 : -1)) };
-    });
-    setFeed(nextFeed);
-    persistFeed(nextFeed);
-  };
-
   const chooseImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permiso necesario', 'Activa el acceso a tus fotos para adjuntar una imagen.');
+    if (selectedImages.length >= 4) {
+      Alert.alert('Máximo 4 fotos', 'Ya alcanzaste el límite de fotos por publicación.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.82,
-    });
-    if (!result.canceled && result.assets[0]) setSelectedImage(result.assets[0].uri);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permiso necesario', 'Activa el acceso a tus fotos para adjuntar imágenes.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.82 });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImages((prev) => [...prev, result.assets[0].uri].slice(0, 4));
+    }
   };
 
   const closeComposer = () => {
     setComposerVisible(false);
     setDraft('');
-    setSelectedImage(null);
+    setSelectedImages([]);
+    setEditingPost(null);
   };
 
-  const publishPost = () => {
-    const body = draft.trim();
-    if (!body && !selectedImage) return;
-    const post: FeedPost = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      type: 'post',
-      author: user.name,
-      avatarUri: user.avatarUri,
-      body: body || 'Compartió una foto con la comunidad.',
-      imageUri: selectedImage ?? undefined,
-      createdAt: new Date().toISOString(),
-      likes: 0,
-      comments: 0,
-    };
-    const nextFeed = [post, ...feed];
-    setFeed(nextFeed);
-    persistFeed(nextFeed);
-    closeComposer();
+  const handlePublish = async () => {
+    if (!draft.trim() && selectedImages.length === 0) return;
+    setPublishing(true);
+    try {
+      if (editingPost) {
+        const updated = await editPost(editingPost.id, draft.trim());
+        updatePost(editingPost.id, { body: updated.body });
+        closeComposer();
+        return;
+      }
+      // Upload images
+      const uploadedUris: string[] = [];
+      for (const uri of selectedImages) {
+        try { uploadedUris.push(await uploadSocialImage(uri, 'image/jpeg')); } catch { /* skip */ }
+      }
+      const created = await createPost(
+        draft.trim() || (uploadedUris.length > 0 ? 'Compartió una foto con la comunidad.' : ''),
+        uploadedUris,
+      );
+      prependPost(created);
+      closeComposer();
+    } catch {
+      Alert.alert('Error', 'No se pudo publicar. Intenta de nuevo.');
+    } finally {
+      setPublishing(false);
+    }
   };
+
+  const handleReact = async (postId: string, emoji: string) => {
+    try {
+      const result = await toggleReaction(postId, emoji);
+      updatePost(postId, { reactions: result.reactions, myReaction: result.myReaction });
+    } catch { /* silent */ }
+  };
+
+  const handleDelete = (postId: string) => {
+    Alert.alert('Eliminar publicación', '¿Estás seguro? Esta acción no se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar', style: 'destructive',
+        onPress: async () => {
+          try {
+            await deletePost(postId, isAdmin ? (adminCode ?? undefined) : undefined);
+            removePost(postId);
+          } catch { Alert.alert('Error', 'No se pudo eliminar.'); }
+        },
+      },
+    ]);
+  };
+
+  const handleEdit = (post: SocialPost) => {
+    setEditingPost(post);
+    setDraft(post.body);
+    setSelectedImages([]);
+    setComposerVisible(true);
+  };
+
+  const handleBlock = (post: SocialPost) => {
+    if (!post.userId || !adminCode) return;
+    Alert.alert('Bloquear autor', `¿Bloquear a ${post.authorName}? Sus publicaciones dejarán de aparecer en el feed.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Bloquear', style: 'destructive',
+        onPress: async () => {
+          try {
+            await blockUser(post.userId!, adminCode);
+            // Remove all their posts from local list
+            posts.filter((p: SocialPost) => p.userId === post.userId).forEach((p: SocialPost) => removePost(p.id));
+            Alert.alert('Bloqueado', `${post.authorName} ha sido bloqueado.`);
+          } catch { Alert.alert('Error', 'No se pudo bloquear.'); }
+        },
+      },
+    ]);
+  };
+
+  const handleDelta = useCallback((postId: string, delta: number) => {
+    const post = posts.find((p: SocialPost) => p.id === postId);
+    if (post) updatePost(postId, { commentCount: Math.max(0, post.commentCount + delta) });
+  }, [posts, updatePost]);
+
+  // Display title — wrap to two lines if the box name is very long
+  const titleLine = boxName.length > 16 ? `${boxName}\nSocial` : `${boxName} Social`;
+
+  const ListHeader = (
+    <View>
+      <View style={styles.header}>
+        <View style={styles.brand}>
+          <Image source={LOGO} style={styles.logo} contentFit="contain" />
+          <View>
+            <Text style={[styles.headerKicker, { color: colors.navInactive }]}>COMUNIDAD</Text>
+            <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={3}>
+              {titleLine.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={() => setComposerVisible(true)}
+          style={({ pressed }) => [styles.addButton, { backgroundColor: colors.navFloating }, pressed && styles.addButtonPressed]}
+        >
+          <Feather name="plus" size={23} color={colors.navFloatingForeground} />
+        </Pressable>
+      </View>
+      <View style={[styles.feedIntro, { borderBottomColor: colors.navBorder }]}>
+        <Text style={[styles.feedIntroTitle, { color: colors.foreground }]}>Lo último del box</Text>
+        <Text style={[styles.feedIntroText, { color: colors.navInactive }]}>
+          Comparte, celebra y acompaña a tu comunidad.
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
-      <KeyboardAwareScrollViewCompat
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: 16, paddingBottom: 122 + insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <View style={styles.brand}>
-            <Image source={LOGO} style={styles.logo} contentFit="contain" />
-            <View>
-              <Text style={[styles.headerKicker, { color: colors.navInactive }]}>COMUNIDAD</Text>
-              <Text style={[styles.title, { color: colors.foreground }]}>WOD SOCIAL</Text>
+
+      {isLoading && posts.length === 0 ? (
+        <ActivityIndicator style={{ flex: 1 }} color={colors.navActive} />
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(p) => p.id}
+          contentContainerStyle={[styles.content, { paddingBottom: 122 + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={ListHeader}
+          onEndReached={hasMore ? () => fetchNextPage() : undefined}
+          onEndReachedThreshold={0.4}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <ActivityIndicator color={colors.navActive} style={{ marginVertical: 16 }} />
+            ) : !hasMore && posts.length > 0 ? (
+              <Text style={[styles.endText, { color: colors.navInactive }]}>
+                Publicaciones de los últimos 60 días.
+              </Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Feather name="users" size={32} color={colors.navInactive} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Sin publicaciones aún</Text>
+              <Text style={[styles.emptyText, { color: colors.navInactive }]}>
+                Sé el primero en compartir algo con la comunidad.
+              </Text>
             </View>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Crear una publicación"
-            onPress={() => setComposerVisible(true)}
-            style={({ pressed }) => [
-              styles.addButton,
-              { backgroundColor: colors.navFloating },
-              pressed && styles.addButtonPressed,
-            ]}
-          >
-            <Feather name="plus" size={23} color={colors.navFloatingForeground} />
-          </Pressable>
-        </View>
-
-        <View style={[styles.feedIntro, { borderBottomColor: colors.navBorder }]}>
-          <Text style={[styles.feedIntroTitle, { color: colors.foreground }]}>
-            Lo último del box
-          </Text>
-          <Text style={[styles.feedIntroText, { color: colors.navInactive }]}>
-            Comparte, celebra y acompaña a tu comunidad.
-          </Text>
-        </View>
-
-        <View style={styles.feed}>
-          {orderedFeed.map((item) =>
-            item.type === 'event' ? (
-              <EventCard key={item.id} item={item} colors={colors} onLike={toggleLike} />
-            ) : (
-              <PostCard key={item.id} item={item} colors={colors} onLike={toggleLike} />
-            ),
+          }
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              userId={user.id}
+              authorName={user.name}
+              isAdmin={isAdmin}
+              adminCode={adminCode}
+              colors={colors}
+              onReact={handleReact}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              onComment={(p) => { setCommentsPost(p); setCommentsVisible(true); }}
+              onReport={(id) => { setReportPostId(id); setReportVisible(true); }}
+              onBlock={handleBlock}
+            />
           )}
-        </View>
-      </KeyboardAwareScrollViewCompat>
+        />
+      )}
 
-      <Modal
-        animationType="slide"
-        transparent
-        visible={composerVisible}
-        onRequestClose={closeComposer}
-      >
-        <View style={[styles.modalBackdrop, { backgroundColor: colors.foreground + '66' }]}>
-          <KeyboardAwareScrollViewCompat
-            contentContainerStyle={[styles.composerSheet, { backgroundColor: colors.background }]}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={[styles.sheetHandle, { backgroundColor: colors.navBorder }]} />
-            <View style={styles.sheetHeader}>
+      {/* ── Composer Modal ── */}
+      <Modal animationType="slide" transparent visible={composerVisible} onRequestClose={closeComposer}>
+        <View style={[styles.composerBackdrop, { backgroundColor: colors.foreground + '66' }]}>
+          <View style={[styles.composerSheet, { backgroundColor: colors.background }]}>
+            <View style={[styles.handle, { backgroundColor: colors.navBorder, alignSelf: 'center', marginBottom: 18 }]} />
+            <View style={styles.sheetTopRow}>
               <View>
-                <Text style={[styles.sheetKicker, { color: colors.navInactive }]}>WOD SOCIAL</Text>
-                <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Nueva publicación</Text>
+                <Text style={[styles.sheetKicker, { color: colors.navInactive }]}>
+                  {editingPost ? 'EDITAR' : 'WOD SOCIAL'}
+                </Text>
+                <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
+                  {editingPost ? 'Editar publicación' : 'Nueva publicación'}
+                </Text>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar"
-                onPress={closeComposer}
-                hitSlop={8}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
+              <Pressable onPress={closeComposer} hitSlop={8}>
                 <Feather name="x" size={22} color={colors.foreground} />
               </Pressable>
             </View>
 
-            <View style={styles.composerAuthor}>
-              <FeedAvatar
-                colors={colors}
-                item={{
-                  id: 'composer',
-                  type: 'post',
-                  author: user.name,
-                  avatarUri: user.avatarUri,
-                  body: '',
-                  createdAt: '',
-                  likes: 0,
-                  comments: 0,
-                }}
-                size={38}
-              />
-              <Text style={[styles.composerAuthorName, { color: colors.foreground }]}>
-                {user.name}
-              </Text>
-            </View>
-
             <TextInput
-              autoFocus
-              multiline
+              style={[styles.draftInput, { color: colors.foreground, borderColor: colors.navBorder }]}
+              placeholder="¿Qué quieres compartir hoy?"
+              placeholderTextColor={colors.navInactive}
               value={draft}
               onChangeText={setDraft}
-              placeholder="¿Qué quieres compartir con el box?"
-              placeholderTextColor={colors.navInactive}
-              style={[styles.composerInput, { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.navBorder }]}
-              textAlignVertical="top"
-              maxLength={500}
+              multiline
+              maxLength={1000}
+              autoFocus
             />
 
-            {selectedImage ? (
-              <View style={styles.selectedImageWrap}>
-                <Image source={{ uri: selectedImage }} style={styles.selectedImage} contentFit="cover" />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Quitar foto"
-                  onPress={() => setSelectedImage(null)}
-                  style={[styles.removeImage, { backgroundColor: colors.navFloating }]}
-                >
-                  <Feather name="x" size={16} color={colors.navFloatingForeground} />
-                </Pressable>
-              </View>
-            ) : null}
+            {selectedImages.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.composerImageRow}>
+                {selectedImages.map((uri, i) => (
+                  <View key={i} style={styles.composerThumbWrap}>
+                    <Image source={{ uri }} style={styles.composerThumb} contentFit="cover" />
+                    <Pressable
+                      onPress={() => setSelectedImages((prev) => prev.filter((_, j) => j !== i))}
+                      style={[styles.composerRemove, { backgroundColor: colors.destructive }]}
+                    >
+                      <Feather name="x" size={11} color="#fff" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
 
             <View style={styles.composerActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Adjuntar foto"
-                onPress={chooseImage}
-                style={({ pressed }) => [styles.attachButton, { borderColor: colors.navBorder }, pressed && styles.pressed]}
-              >
-                <Feather name="image" size={18} color={colors.navActive} />
-                <Text style={[styles.attachText, { color: colors.foreground }]}>Añadir foto</Text>
-              </Pressable>
-              <Text style={[styles.characterCount, { color: colors.navInactive }]}>
-                {draft.length}/500
-              </Text>
+              {!editingPost && (
+                <Pressable
+                  onPress={chooseImage}
+                  disabled={selectedImages.length >= 4}
+                  style={({ pressed }) => [
+                    styles.attachButton,
+                    { borderColor: colors.navBorder, opacity: selectedImages.length >= 4 ? 0.35 : 1 },
+                    pressed && { opacity: 0.65 },
+                  ]}
+                >
+                  <Feather name="image" size={17} color={colors.navActive} />
+                  <Text style={[styles.attachText, { color: colors.foreground }]}>
+                    Foto{selectedImages.length > 0 ? ` (${selectedImages.length}/4)` : ''}
+                  </Text>
+                </Pressable>
+              )}
+              <Text style={[styles.charCount, { color: colors.navInactive }]}>{draft.length}/1000</Text>
             </View>
 
             <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Publicar"
-              disabled={!draft.trim() && !selectedImage}
-              onPress={publishPost}
+              disabled={(!draft.trim() && selectedImages.length === 0) || publishing}
+              onPress={handlePublish}
               style={({ pressed }) => [
-                styles.publishButton,
-                {
-                  backgroundColor:
-                    draft.trim() || selectedImage ? colors.navActive : colors.navBorder,
-                },
+                styles.publishBtn,
+                { backgroundColor: (draft.trim() || selectedImages.length > 0) && !publishing ? colors.navActive : colors.navBorder },
                 pressed && styles.publishPressed,
               ]}
             >
-              <Text
-                style={[
-                  styles.publishText,
-                  {
-                    color: draft.trim() || selectedImage ? colors.card : colors.navInactive,
-                  },
-                ]}
-              >
-                Publicar
+              <Text style={[styles.publishText, { color: (draft.trim() || selectedImages.length > 0) && !publishing ? colors.card : colors.navInactive }]}>
+                {publishing ? 'Publicando...' : editingPost ? 'Guardar' : 'Publicar'}
               </Text>
-              <Feather
-                name="arrow-up-right"
-                size={17}
-                color={draft.trim() || selectedImage ? colors.card : colors.navInactive}
-              />
+              <Feather name="arrow-up-right" size={17} color={(draft.trim() || selectedImages.length > 0) && !publishing ? colors.card : colors.navInactive} />
             </Pressable>
-          </KeyboardAwareScrollViewCompat>
+          </View>
         </View>
       </Modal>
+
+      {/* ── Comments ── */}
+      <CommentsModal
+        post={commentsPost}
+        userId={user.id}
+        authorName={user.name}
+        isAdmin={isAdmin}
+        adminCode={adminCode}
+        visible={commentsVisible}
+        onClose={() => { setCommentsVisible(false); setCommentsPost(null); }}
+        onDelta={handleDelta}
+        colors={colors}
+      />
+
+      {/* ── Report ── */}
+      <ReportModal
+        postId={reportPostId}
+        userId={user.id}
+        authorName={user.name}
+        visible={reportVisible}
+        onClose={() => { setReportVisible(false); setReportPostId(null); }}
+        colors={colors}
+      />
+
+      {/* ── Drawer ── */}
       <SideDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
@@ -553,176 +874,99 @@ export default function CommunityScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 18 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
+  content: { paddingHorizontal: 18, paddingTop: 16 },
+  // Header
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logo: { width: 46, height: 46 },
-  headerKicker: {
-    fontSize: 9,
-    letterSpacing: 1.5,
-    fontFamily: 'Inter_700Bold',
-  },
-  title: {
-    fontSize: 25,
-    lineHeight: 30,
-    letterSpacing: 0.4,
-    fontFamily: 'Anton_400Regular',
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  headerKicker: { fontSize: 9, letterSpacing: 1.5, fontFamily: 'Inter_700Bold' },
+  title: { fontSize: 24, lineHeight: 28, letterSpacing: 0.4, fontFamily: 'Anton_400Regular', maxWidth: 210 },
+  addButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   addButtonPressed: { transform: [{ scale: 0.94 }], opacity: 0.88 },
-  feedIntro: {
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  feedIntroTitle: {
-    fontSize: 18,
-    fontFamily: 'Anton_400Regular',
-  },
-  feedIntroText: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 2,
-    fontFamily: 'Inter_500Medium',
-  },
-  feed: { gap: 12, paddingTop: 14 },
-  postCard: {
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-  },
+  feedIntro: { paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: 14 },
+  feedIntroTitle: { fontSize: 18, fontFamily: 'Anton_400Regular' },
+  feedIntroText: { fontSize: 12, lineHeight: 18, marginTop: 2, fontFamily: 'Inter_500Medium' },
+  // Post card
+  postCard: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 16 },
   postHeader: { flexDirection: 'row', alignItems: 'center' },
-  avatar: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  avatarInitials: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  authorBlock: { flex: 1, marginLeft: 10 },
-  authorName: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  timestamp: { fontSize: 11, marginTop: 2, fontFamily: 'Inter_500Medium' },
+  postAuthorBlock: { flex: 1, marginLeft: 10 },
+  postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  postAuthor: { fontSize: 13, fontFamily: 'Inter_700Bold', flexShrink: 1 },
+  postTime: { fontSize: 11, marginTop: 2, fontFamily: 'Inter_500Medium' },
+  menuDotBtn: { padding: 4 },
   boxTag: { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4 },
   boxTagText: { fontSize: 9, letterSpacing: 1, fontFamily: 'Inter_700Bold' },
-  postBody: {
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 14,
-    fontFamily: 'Inter_500Medium',
-  },
-  postImage: { width: '100%', height: 190, borderRadius: 14, marginTop: 13 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 15 },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  eventCard: {
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-  },
-  flyer: { height: 190, overflow: 'hidden', position: 'relative', padding: 18 },
-  flyerLogo: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    right: -34,
-    top: -16,
-    opacity: 0.18,
-  },
-  eventTag: {
-    alignSelf: 'flex-start',
-    borderRadius: 7,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  eventTagText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
-  flyerCopy: { marginTop: 25 },
-  flyerKicker: { fontSize: 9, letterSpacing: 1.5, fontFamily: 'Inter_700Bold' },
-  flyerTitle: {
-    fontSize: 32,
-    lineHeight: 31,
-    marginTop: 6,
-    fontFamily: 'Anton_400Regular',
-  },
-  flyerLine: { width: 55, height: 4, borderRadius: 2, marginTop: 13 },
-  eventDetails: { padding: 15 },
-  eventTitle: { fontSize: 17, fontFamily: 'Inter_700Bold' },
-  eventMeta: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 7 },
-  eventDate: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end' },
-  composerSheet: {
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    padding: 20,
-    paddingBottom: 30,
-    minHeight: 420,
-  },
-  sheetHandle: {
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 18,
-  },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  postBody: { fontSize: 14, lineHeight: 21, marginTop: 13, fontFamily: 'Inter_500Medium' },
+  // Avatar
+  avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  initials: { fontFamily: 'Inter_700Bold' },
+  // Images
+  singleImage: { width: '100%', height: 200, borderRadius: 14 },
+  galleryScroll: { marginHorizontal: -2 },
+  galleryImage: { width: 200, height: 200, borderRadius: 14, marginHorizontal: 2 },
+  // Reactions
+  reactionBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
+  reactionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, borderWidth: StyleSheet.hairlineWidth, borderColor: 'transparent' },
+  reactionEmoji: { fontSize: 16 },
+  reactionCount: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  // Comment trigger
+  commentTrigger: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  commentCount: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  // Sheets / Modals
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
+  handle: { width: 38, height: 4, borderRadius: 2 },
+  sheetItem: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 15 },
+  sheetItemText: { fontSize: 15, fontFamily: 'Inter_500Medium' },
+  sheetCancel: { paddingTop: 15, borderTopWidth: StyleSheet.hairlineWidth, alignItems: 'center', marginTop: 4 },
+  sheetCancelText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  // Comments modal
+  commentsBackdrop: { flex: 1, justifyContent: 'flex-end' },
+  commentsSheet: { maxHeight: '85%', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  commentsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  commentsTitle: { fontSize: 17, fontFamily: 'Anton_400Regular' },
+  emptyComments: { padding: 32, alignItems: 'center' },
+  emptyCommentsText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  commentBody: { flex: 1 },
+  commentAuthor: { fontSize: 12, fontFamily: 'Inter_700Bold', marginBottom: 2 },
+  commentText: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19 },
+  commentTime: { fontSize: 11, fontFamily: 'Inter_500Medium', marginTop: 3 },
+  commentInputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, padding: 14, borderTopWidth: StyleSheet.hairlineWidth },
+  commentDraft: { flex: 1, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 13, paddingVertical: 10, fontSize: 14, fontFamily: 'Inter_400Regular', maxHeight: 80 },
+  commentSend: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  // Report modal
+  reportTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', marginVertical: 12 },
+  reportOption: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 12, padding: 13, marginBottom: 9 },
+  reportDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
+  reportLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  reportSubmit: { height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  reportSubmitText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  // Composer
+  composerBackdrop: { flex: 1, justifyContent: 'flex-end' },
+  composerSheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, paddingBottom: 30, minHeight: 420 },
+  sheetTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetKicker: { fontSize: 9, letterSpacing: 1.4, fontFamily: 'Inter_700Bold' },
   sheetTitle: { fontSize: 24, marginTop: 2, fontFamily: 'Anton_400Regular' },
-  composerAuthor: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 22, marginBottom: 12 },
-  composerAuthorName: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  composerInput: {
-    minHeight: 126,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 15,
-    fontSize: 15,
-    lineHeight: 21,
-    fontFamily: 'Inter_400Regular',
-  },
-  selectedImageWrap: { height: 170, marginTop: 12, borderRadius: 15, overflow: 'hidden' },
-  selectedImage: { width: '100%', height: '100%' },
-  removeImage: {
-    position: 'absolute',
-    right: 10,
-    top: 10,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  composerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 13,
-  },
-  attachButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
+  draftInput: { minHeight: 120, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 15, fontSize: 15, lineHeight: 21, fontFamily: 'Inter_400Regular', marginTop: 18 },
+  composerImageRow: { marginTop: 10 },
+  composerThumbWrap: { position: 'relative', marginRight: 8 },
+  composerThumb: { width: 80, height: 80, borderRadius: 10 },
+  composerRemove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  composerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 13 },
+  attachButton: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
   attachText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  characterCount: { fontSize: 11, fontFamily: 'Inter_500Medium' },
-  publishButton: {
-    height: 50,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    marginTop: 18,
-  },
+  charCount: { fontSize: 11, fontFamily: 'Inter_500Medium' },
+  publishBtn: { height: 50, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18 },
   publishText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   publishPressed: { opacity: 0.85 },
-  pressed: { opacity: 0.65 },
+  // Feed states
+  endText: { textAlign: 'center', fontSize: 12, fontFamily: 'Inter_500Medium', paddingVertical: 20 },
+  emptyState: { alignItems: 'center', gap: 10, paddingVertical: 48 },
+  emptyTitle: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  emptyText: { fontSize: 13, fontFamily: 'Inter_500Medium', textAlign: 'center', paddingHorizontal: 24 },
 });

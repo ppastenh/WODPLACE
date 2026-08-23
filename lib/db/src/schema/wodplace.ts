@@ -4,8 +4,6 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
 
 // Mirrors the WodplaceUser id created client-side in AsyncStorage. There is
 // no real auth system yet — this table exists so contract state can be tied
@@ -19,10 +17,7 @@ export const wodplaceUsersTable = pgTable("wodplace_users", {
     .defaultNow(),
 });
 
-export const insertWodplaceUserSchema = createInsertSchema(
-  wodplaceUsersTable,
-).omit({ createdAt: true });
-export type InsertWodplaceUser = z.infer<typeof insertWodplaceUserSchema>;
+export type InsertWodplaceUser = Omit<typeof wodplaceUsersTable.$inferInsert, 'createdAt'>;
 export type WodplaceUserRow = typeof wodplaceUsersTable.$inferSelect;
 
 // One row per contract document (membership, health/responsibility, box
@@ -37,12 +32,7 @@ export const contractDocumentsTable = pgTable("contract_documents", {
     .defaultNow(),
 });
 
-export const insertContractDocumentSchema = createInsertSchema(
-  contractDocumentsTable,
-);
-export type InsertContractDocument = z.infer<
-  typeof insertContractDocumentSchema
->;
+export type InsertContractDocument = typeof contractDocumentsTable.$inferInsert;
 export type ContractDocumentRow = typeof contractDocumentsTable.$inferSelect;
 
 // Per-user read progress for each contract document.
@@ -141,3 +131,102 @@ export const wodplaceNotificationsTable = pgTable(
 
 export type WodplaceNotificationRow =
   typeof wodplaceNotificationsTable.$inferSelect;
+
+// Admin-configurable key/value settings (e.g. box display name).
+export const boxSettingsTable = pgTable("box_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type BoxSettingRow = typeof boxSettingsTable.$inferSelect;
+
+// Social feed posts. imageUris is a JSON-serialised string[].
+export const socialPostsTable = pgTable("social_posts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").references(() => wodplaceUsersTable.id, {
+    onDelete: "set null",
+  }),
+  authorName: text("author_name").notNull(),
+  body: text("body").notNull().default(""),
+  imageUris: text("image_uris"), // JSON: string[]
+  type: text("type").notNull().default("post"), // "post" | "announcement"
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type SocialPostRow = typeof socialPostsTable.$inferSelect;
+
+// Comments on social posts.
+export const socialCommentsTable = pgTable("social_comments", {
+  id: text("id").primaryKey(),
+  postId: text("post_id")
+    .notNull()
+    .references(() => socialPostsTable.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => wodplaceUsersTable.id, {
+    onDelete: "set null",
+  }),
+  authorName: text("author_name").notNull(),
+  body: text("body").notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type SocialCommentRow = typeof socialCommentsTable.$inferSelect;
+
+// One emoji reaction per user per post (upsert to change emoji).
+export const socialReactionsTable = pgTable(
+  "social_reactions",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => socialPostsTable.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("social_reactions_post_user_idx").on(
+      table.postId,
+      table.userId,
+    ),
+  ],
+);
+export type SocialReactionRow = typeof socialReactionsTable.$inferSelect;
+
+// Moderation reports from users.
+export const socialReportsTable = pgTable("social_reports", {
+  id: text("id").primaryKey(),
+  postId: text("post_id")
+    .notNull()
+    .references(() => socialPostsTable.id, { onDelete: "cascade" }),
+  reporterId: text("reporter_id").references(() => wodplaceUsersTable.id, {
+    onDelete: "set null",
+  }),
+  reporterName: text("reporter_name").notNull(),
+  reason: text("reason").notNull(), // "spam" | "inappropriate" | "other"
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+export type SocialReportRow = typeof socialReportsTable.$inferSelect;
+
+// Users blocked by admin — their posts are hidden from the community feed.
+export const blockedUsersTable = pgTable("blocked_users", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+  blockedAt: timestamp("blocked_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type BlockedUserRow = typeof blockedUsersTable.$inferSelect;
