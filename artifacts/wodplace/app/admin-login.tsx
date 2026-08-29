@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useVerifyAdminCode } from '@workspace/api-client-react';
 import { AppButton } from '@/components/AppButton';
+import { AppHeader } from '@/components/AppHeader';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useColors } from '@/hooks/useColors';
 import { setAdminCode } from '@/lib/adminSession';
@@ -41,6 +42,7 @@ export default function AdminLoginScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.authBackground }]}>
+      <AppHeader dark onBack={() => router.back()} />
       <KeyboardAwareScrollViewCompat
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
