@@ -26,6 +26,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { getAdminCode } from '@/lib/adminSession';
+import { canAccessAdminNavigation } from '@/lib/navigation';
 import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
 import {
   useBoxName,
@@ -594,6 +595,14 @@ export default function CommunityScreen() {
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
+  if (canAccessAdminNavigation(user)) {
+    navItems.push({
+      key: 'admin',
+      label: 'Administrador',
+      icon: 'shield',
+      route: '/admin-login',
+    });
+  }
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);

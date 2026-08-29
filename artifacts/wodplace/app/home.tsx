@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBooking } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
+import { canAccessAdminNavigation } from '@/lib/navigation';
 import {
   addDays,
   daysInMonth,
@@ -105,6 +106,14 @@ export default function HomeScreen() {
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
+  if (canAccessAdminNavigation(user)) {
+    navItems.push({
+      key: 'admin',
+      label: 'Administrador',
+      icon: 'shield',
+      route: '/admin-login',
+    });
+  }
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);

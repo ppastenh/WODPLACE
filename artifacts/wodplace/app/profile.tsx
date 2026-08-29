@@ -27,6 +27,7 @@ import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { useMyPosts, type SocialPost } from '@workspace/api-client-react';
+import { canAccessAdminNavigation } from '@/lib/navigation';
 
 const WIN_WIDTH = Dimensions.get('window').width;
 const GRID_GAP = 2;
@@ -38,7 +39,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
-  { key: 'admin', label: 'Panel de administración', icon: 'shield', route: '/admin-login' },
+  { key: 'admin', label: 'Administrador', icon: 'shield', route: '/admin-login' },
 ];
 
 // ─── PostThumb ────────────────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ export default function ProfileScreen() {
   const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
-  }));
+  })).filter((item) => item.key !== 'admin' || canAccessAdminNavigation(user));
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);

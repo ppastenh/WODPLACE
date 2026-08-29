@@ -3,7 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncUser } from '@workspace/api-client-react';
 
 export type AccountStatus = 'active' | 'inactive';
-export type AthleteRank = 'Beginner' | 'Rookie' | 'Scaled' | 'Rx' | 'Elite' | 'Coach';
+export type AthleteRank =
+  | 'Beginner'
+  | 'Rookie'
+  | 'Scaled'
+  | 'Rx'
+  | 'Elite'
+  | 'Coach'
+  | 'Administrador';
 
 export const RANK_OPTIONS: AthleteRank[] = [
   'Beginner',
