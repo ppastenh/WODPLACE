@@ -25,8 +25,9 @@ import {
 import { desc, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
-import { requireAdminSession } from "../lib/adminAuth";
+import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
 import { signAdminToken } from "../lib/adminToken";
+import { resolveBoxId } from "../lib/boxContext";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { hashPin, verifyPin } from "../lib/pinHash";
 
@@ -249,8 +250,12 @@ router.get(
   requireAdminSession,
   async (req: Request, res: Response) => {
     try {
-      await ensureDefaultDocuments();
-      const documents = await db.select().from(contractDocumentsTable);
+      const boxId = await resolveBoxId(getAdminSession(req)?.userId);
+      await ensureDefaultDocuments(boxId);
+      const documents = await db
+        .select()
+        .from(contractDocumentsTable)
+        .where(eq(contractDocumentsTable.boxId, boxId));
       res.json(
         ListAdminContractsResponse.parse(
           documents.map((doc) => ({
@@ -288,6 +293,7 @@ router.put(
     try {
       const slug = String(req.params.slug);
       const { objectPath, title } = parsed.data;
+      const boxId = await resolveBoxId(getAdminSession(req)?.userId);
 
       const [existing] = await db
         .select()
@@ -306,6 +312,7 @@ router.put(
         .insert(contractDocumentsTable)
         .values({
           slug,
+          boxId,
           title: title ?? existing?.title ?? slug,
           objectPath,
           updatedAt,

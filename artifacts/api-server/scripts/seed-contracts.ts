@@ -9,6 +9,7 @@ import { contractDocumentsTable, db } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 import { ObjectStorageService } from "../src/lib/objectStorage";
+import { resolveBoxId } from "../src/lib/boxContext";
 import { DEFAULT_CONTRACT_DOCUMENTS } from "../src/lib/contractDocuments";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..");
@@ -21,6 +22,7 @@ const SEED_FILES: Record<string, string> = {
 
 async function main() {
   const objectStorageService = new ObjectStorageService();
+  const boxId = await resolveBoxId();
 
   for (const doc of DEFAULT_CONTRACT_DOCUMENTS) {
     const relativePath = SEED_FILES[doc.slug];
@@ -45,7 +47,7 @@ async function main() {
 
     await db
       .insert(contractDocumentsTable)
-      .values({ slug: doc.slug, title: doc.title, objectPath, updatedAt: new Date() })
+      .values({ slug: doc.slug, boxId, title: doc.title, objectPath, updatedAt: new Date() })
       .onConflictDoUpdate({
         target: contractDocumentsTable.slug,
         set: { objectPath, updatedAt: new Date() },

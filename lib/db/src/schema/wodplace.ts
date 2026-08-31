@@ -26,6 +26,11 @@ export type WodplaceUserRow = typeof wodplaceUsersTable.$inferSelect;
 // null until an admin uploads a file for that slug.
 export const contractDocumentsTable = pgTable("contract_documents", {
   slug: text("slug").primaryKey(),
+  // The Supabase project is multi-box: contract_documents (and the
+  // contract_acceptances / contract_read_progress rows) are all scoped to a
+  // box. `slug` stays the primary key for now because WODPLACE runs a single
+  // box; a real multi-box rollout would move that to (box_id, slug).
+  boxId: text("box_id").notNull(),
   title: text("title").notNull(),
   objectPath: text("object_path"),
   updatedAt: timestamp("updated_at", { withTimezone: true })

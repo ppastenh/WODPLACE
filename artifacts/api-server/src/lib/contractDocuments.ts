@@ -14,12 +14,14 @@ export const DEFAULT_CONTRACT_DOCUMENTS = [
 export type ContractSlug = (typeof DEFAULT_CONTRACT_DOCUMENTS)[number]["slug"];
 
 /**
- * Makes sure a row exists for each default contract document so the app has
- * something to list/read even before an admin has uploaded a PDF for it.
+ * Makes sure a row exists for each default contract document (scoped to
+ * `boxId`) so the app has something to list/read even before an admin has
+ * uploaded a PDF for it. `boxId` comes from `resolveBoxId()` — `box_id` is a
+ * NOT NULL FK to `boxes` in the real schema.
  */
-export async function ensureDefaultDocuments(): Promise<void> {
+export async function ensureDefaultDocuments(boxId: string): Promise<void> {
   await db
     .insert(contractDocumentsTable)
-    .values(DEFAULT_CONTRACT_DOCUMENTS.map((doc) => ({ ...doc })))
+    .values(DEFAULT_CONTRACT_DOCUMENTS.map((doc) => ({ ...doc, boxId })))
     .onConflictDoNothing({ target: contractDocumentsTable.slug });
 }

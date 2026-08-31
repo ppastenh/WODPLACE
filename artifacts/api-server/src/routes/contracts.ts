@@ -16,6 +16,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
+import { resolveBoxId } from "../lib/boxContext";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { sendContractAcceptanceEmail } from "../lib/ownerNotifications";
 
@@ -29,11 +30,15 @@ const router: IRouter = Router();
  */
 router.get("/contracts", async (req: Request, res: Response) => {
   try {
-    await ensureDefaultDocuments();
+    const boxId = await resolveBoxId();
+    await ensureDefaultDocuments(boxId);
     const userId =
       typeof req.query.userId === "string" ? req.query.userId : undefined;
 
-    const documents = await db.select().from(contractDocumentsTable);
+    const documents = await db
+      .select()
+      .from(contractDocumentsTable)
+      .where(eq(contractDocumentsTable.boxId, boxId));
 
     const readSlugs = new Map<string, string>();
     if (userId) {
@@ -169,7 +174,8 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
   }
 
   try {
-    await ensureDefaultDocuments();
+    const boxId = await resolveBoxId();
+    await ensureDefaultDocuments(boxId);
     const {
       userId,
       emergencyContactName,
@@ -178,7 +184,10 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
       guardianRelationship,
     } = parsed.data;
 
-    const documents = await db.select().from(contractDocumentsTable);
+    const documents = await db
+      .select()
+      .from(contractDocumentsTable)
+      .where(eq(contractDocumentsTable.boxId, boxId));
     const progress = await db
       .select()
       .from(contractReadProgressTable)
