@@ -1,4 +1,5 @@
 import {
+  integer,
   pgTable,
   text,
   timestamp,
@@ -230,3 +231,25 @@ export const blockedUsersTable = pgTable("blocked_users", {
     .defaultNow(),
 });
 export type BlockedUserRow = typeof blockedUsersTable.$inferSelect;
+
+// Per-account PIN for the hidden admin panel, replacing the single shared
+// ADMIN_ACCESS_CODE. Written only by the api-server (privileged connection);
+// the raw PIN is never stored, only its scrypt hash. `failedAttempts` resets
+// on a successful verify/setup; `lockedUntil` is set to now()+15min once it
+// hits 5. The real table already exists in Supabase (applied by hand, see
+// lib/db/migrations/0001_admin_pins.sql — kept only as a historical record).
+export const adminPinsTable = pgTable("admin_pins", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+  pinHash: text("pin_hash").notNull(),
+  failedAttempts: integer("failed_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type AdminPinRow = typeof adminPinsTable.$inferSelect;
