@@ -1,18 +1,19 @@
 /**
- * In-memory only (never persisted) holder for the admin access code once
- * verified via /admin/verify. Cleared on app reload, which is fine since
- * the dashboard is reached via the side drawer + code prompt each time.
+ * In-memory only (never persisted) holder for the admin session token once
+ * obtained via the PIN flow (/admin/pin/verify | /setup | /session). Cleared
+ * on app reload, which is fine: the dashboard is reached from the drawer's
+ * "Administrador" item and the PIN prompt each time.
  */
-let adminCode: string | null = null;
+let adminToken: string | null = null;
 
-export function setAdminCode(code: string): void {
-  adminCode = code;
+export function setAdminToken(token: string): void {
+  adminToken = token;
 }
 
-export function getAdminCode(): string | null {
-  return adminCode;
+export function getAdminToken(): string | null {
+  return adminToken;
 }
 
-export function clearAdminCode(): void {
-  adminCode = null;
+export function clearAdminToken(): void {
+  adminToken = null;
 }

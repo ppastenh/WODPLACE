@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { syncUser } from '@workspace/api-client-react';
+import {
+  redeemBoxCode as redeemBoxCodeApi,
+  syncUser,
+  type RedeemBoxCodeResult,
+} from '@workspace/api-client-react';
 
 export type AccountStatus = 'active' | 'inactive';
 export type AthleteRank =
@@ -39,10 +43,32 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   checkEmailExists: (email: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, birthdate: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    birthdate: string,
+  ) => Promise<WodplaceUser>;
   loginWithProvider: (provider: 'google' | 'apple') => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (partial: Partial<WodplaceUser>) => Promise<void>;
+  /**
+   * Redeem a box invite code, joining that box as an athlete. Resolves with
+   * the backend result ({ joined, alreadyMember, boxName, ... }); it does not
+   * throw for an unknown code, only for network/backend failures. `account`
+   * is used right after register(), before `user` state has settled.
+   */
+  redeemBoxCode: (
+    code: string,
+    account?: Pick<WodplaceUser, 'id' | 'name' | 'email'>,
+  ) => Promise<RedeemBoxCodeResult>;
+  /**
+   * Checks a password against the signed-in account without touching the
+   * session. Used by the admin PIN flow ("forgot PIN" / unlock while locked).
+   * Client-side only, like login() — the mock auth model has no server-side
+   * password.
+   */
+  verifyPassword: (password: string) => Promise<boolean>;
 }
 
 type StoredUser = WodplaceUser & { password: string };
@@ -160,6 +186,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     db[key] = { ...profile, password };
     await saveUsersDb(db);
     await persist(profile);
+    return profile;
+  };
+
+  const redeemBoxCode = async (
+    code: string,
+    account?: Pick<WodplaceUser, 'id' | 'name' | 'email'>,
+  ): Promise<RedeemBoxCodeResult> => {
+    const target = account ?? user;
+    if (!target) {
+      throw new Error('Debes iniciar sesión para agregar un código de box.');
+    }
+    return redeemBoxCodeApi({
+      userId: target.id,
+      name: target.name,
+      email: target.email,
+      code,
+    });
+  };
+
+  const verifyPassword = async (password: string): Promise<boolean> => {
+    if (!user) return false;
+    const db = await getUsersDb();
+    const entry = db[user.email.trim().toLowerCase()];
+    return !!entry && entry.password === password;
   };
 
   const loginWithProvider = async (provider: 'google' | 'apple') => {
@@ -195,6 +245,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       checkEmailExists,
       login,
       register,
+      redeemBoxCode,
+      verifyPassword,
       loginWithProvider,
       logout,
       updateProfile,
