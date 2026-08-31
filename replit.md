@@ -38,6 +38,29 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
+- **Supabase schema drift vs Drizzle.** Several tables in the shared Supabase
+  project have columns the `@workspace/db` schema doesn't model —
+  `box_settings` / `box_members` / `boxes` aren't modelled at all (queried via
+  raw SQL), and the `contract_*` tables carry a `NOT NULL box_id` FK. Adding a
+  new insert against these tables via Drizzle will hit a not-null violation
+  until the column is set.
+- **`social.ts` (api-server) has ~18 standing `tsc` errors** — `req.params.x`
+  is `string | string[]` under `@types/express` 5, passed straight into
+  drizzle `eq()`. Known since onboarding; `esbuild` build is unaffected.
+  `pnpm --filter @workspace/api-server run typecheck` is expected to be red.
+
+### Pending
+
+- **Member contract flow is not box-scoped.** `contract_acceptances` and
+  `contract_read_progress` inserts (`routes/contracts.ts`,
+  `POST /contracts/acceptance` and `/contracts/{slug}/read`) still omit
+  `box_id`, so they 500 against the real DB. A member can belong to several
+  boxes by design, so the server must NOT guess — the box the member is
+  currently viewing has to come explicitly from the mobile app. That needs
+  the contract screens to track "which box am I in right now", which is a
+  separate design task. Admin-side contract routes already resolve the box
+  via `resolveBoxId(adminUserId)` (`lib/boxContext.ts`).
+
 _Populate as you build — sharp edges, "always run X before Y" rules._
 
 ## Pointers
