@@ -14,7 +14,7 @@ import { formatLongDate } from '@/lib/dateUtils';
 export default function RegisterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { register } = useAuth();
+  const { register, redeemBoxCode } = useAuth();
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const email = emailParam ?? '';
   const [name, setName] = useState('');
@@ -22,6 +22,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [birthdate, setBirthdate] = useState<string | null>(null);
   const [birthdateModalVisible, setBirthdateModalVisible] = useState(false);
+  const [boxCode, setBoxCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
@@ -49,7 +50,29 @@ export default function RegisterScreen() {
     setError('');
     setLoading(true);
     try {
-      await register(name.trim(), email, password, birthdate);
+      const account = await register(name.trim(), email, password, birthdate);
+
+      // Optional box code — never blocks account creation.
+      const trimmedCode = boxCode.trim();
+      if (trimmedCode) {
+        try {
+          const result = await redeemBoxCode(trimmedCode, account);
+          if (result.joined && result.boxName) {
+            Alert.alert('Listo', `Te uniste a ${result.boxName}.`);
+          } else if (!result.joined && !result.alreadyMember) {
+            Alert.alert(
+              'Código del box',
+              'Código inválido. Puedes agregarlo más tarde desde tu perfil.',
+            );
+          }
+        } catch {
+          Alert.alert(
+            'Código del box',
+            'No pudimos validar el código ahora. Puedes agregarlo más tarde desde tu perfil.',
+          );
+        }
+      }
+
       router.replace('/profile');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
@@ -162,6 +185,23 @@ export default function RegisterScreen() {
               <Feather name="check-circle" size={17} color={colors.primary} />
             ) : null}
           </Pressable>
+
+          <TextInput
+            value={boxCode}
+            onChangeText={(v) => setBoxCode(v.toUpperCase())}
+            placeholder="Código del box (opcional)"
+            placeholderTextColor={colors.authMuted}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={12}
+            style={[
+              styles.input,
+              { backgroundColor: colors.authInput, color: colors.authText, borderColor: colors.authBorder },
+            ]}
+          />
+          <Text style={[styles.hint, { color: colors.authMuted }]}>
+            Si tu box te dio un código, ingrésalo para unirte. Puedes agregarlo después desde tu perfil.
+          </Text>
 
           {error ? (
             <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
@@ -302,6 +342,12 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
+    marginTop: -6,
+  },
+  hint: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 16,
     marginTop: -6,
   },
   submitButton: {

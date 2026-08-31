@@ -25,7 +25,7 @@ import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { getAdminCode } from '@/lib/adminSession';
+import { getAdminToken } from '@/lib/adminSession';
 import { canAccessAdminNavigation } from '@/lib/navigation';
 import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
 import {
@@ -557,7 +557,7 @@ export default function CommunityScreen() {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
-  const adminCode = getAdminCode();
+  const adminCode = getAdminToken(); // admin session token (PIN flow), passed as Bearer
   const isAdmin = !!adminCode;
 
   const { name: rawBoxName } = useBoxName();

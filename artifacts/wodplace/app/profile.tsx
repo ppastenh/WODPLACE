@@ -21,6 +21,7 @@ import { EditPhraseModal } from '@/components/EditPhraseModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { AttendeesModal } from '@/components/AttendeesModal';
 import { CancelConfirmModal } from '@/components/CancelConfirmModal';
+import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { ClassCard, AgendadoBadge } from '@/components/ClassCard';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
@@ -166,7 +167,7 @@ function PostDetailModal({
 
 export default function ProfileScreen() {
   const colors = useColors();
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, logout, redeemBoxCode } = useAuth();
   const { now, getUpcomingBooked, getAttendeeNames, cancel } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
@@ -175,6 +176,7 @@ export default function ProfileScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
   const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
+  const [joinBoxVisible, setJoinBoxVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'agendado' | 'posts'>('agendado');
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [postDetailVisible, setPostDetailVisible] = useState(false);
@@ -267,6 +269,17 @@ export default function ProfileScreen() {
           style={styles.scheduleButton}
           icon={<Feather name="calendar" size={18} color={colors.authText} />}
         />
+
+        <Pressable
+          onPress={() => setJoinBoxVisible(true)}
+          style={styles.joinBoxRow}
+          hitSlop={6}
+        >
+          <Feather name="plus-circle" size={15} color={colors.mutedForeground} />
+          <Text style={[styles.joinBoxText, { color: colors.mutedForeground }]}>
+            Agregar código de box
+          </Text>
+        </Pressable>
 
         {/* Tab bar */}
         <View style={[styles.tabBar, { borderBottomColor: colors.navBorder }]}>
@@ -396,6 +409,11 @@ export default function ProfileScreen() {
         onClose={() => setCancelSession(null)}
         onConfirm={handleConfirmCancel}
       />
+      <JoinBoxModal
+        visible={joinBoxVisible}
+        onClose={() => setJoinBoxVisible(false)}
+        onRedeem={(code) => redeemBoxCode(code)}
+      />
       <EditPhraseModal
         visible={phraseVisible}
         onClose={() => setPhraseVisible(false)}
@@ -434,6 +452,19 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  joinBoxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  joinBoxText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
 
   // Profile top — fixed, outside scroll containers
   profileTopSection: {

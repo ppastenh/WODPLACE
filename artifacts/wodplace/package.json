@@ -58,6 +58,7 @@
   "dependencies": {
     "@expo-google-fonts/anton": "^0.4.2",
     "expo-document-picker": "~14.0.8",
-    "expo-file-system": "^19.0.24"
+    "expo-file-system": "^19.0.24",
+    "expo-local-authentication": "~17.0.9"
   }
 }

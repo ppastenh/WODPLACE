@@ -16,7 +16,7 @@ import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useColors } from '@/hooks/useColors';
-import { getAdminCode } from '@/lib/adminSession';
+import { getAdminToken } from '@/lib/adminSession';
 
 /**
  * Formats an acceptance timestamp the same way active-contracts.tsx does,
@@ -38,7 +38,7 @@ function formatAcceptedAt(iso: string): string {
 
 export default function AdminContractsScreen() {
   const colors = useColors();
-  const [code, setCode] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [uploadingSlug, setUploadingSlug] = useState<string | null>(null);
   const [boxNameDraft, setBoxNameDraft] = useState('');
   const [boxNameEditing, setBoxNameEditing] = useState(false);
@@ -46,19 +46,19 @@ export default function AdminContractsScreen() {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = getAdminCode();
+    const stored = getAdminToken();
     if (!stored) {
       router.replace('/admin-login');
       return;
     }
-    setCode(stored);
+    setToken(stored);
   }, []);
 
-  const adminHeaders = code ? { 'x-admin-code': code } : undefined;
+  const adminHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
   const contractsQuery = useListAdminContracts({
     // See note in active-contracts.tsx re: `as never`.
-    query: { enabled: !!code } as never,
+    query: { enabled: !!token } as never,
     request: { headers: adminHeaders },
   });
   const requestUploadUrlMutation = useRequestUploadUrl({
@@ -68,15 +68,15 @@ export default function AdminContractsScreen() {
     request: { headers: adminHeaders },
   });
   const acceptancesQuery = useListAdminContractAcceptances({
-    query: { enabled: !!code } as never,
+    query: { enabled: !!token } as never,
     request: { headers: adminHeaders },
   });
   const ackMutation = useAckContractAcceptances({
     request: { headers: adminHeaders },
   });
 
-  const boxNameQuery = useAdminBoxName(code);
-  const reportsQuery = useAdminSocialReports(code);
+  const boxNameQuery = useAdminBoxName(token);
+  const reportsQuery = useAdminSocialReports(token);
 
   const acceptances = acceptancesQuery.data ?? [];
   const unseenCount = acceptances.filter((item) => !item.seen).length;
@@ -135,7 +135,7 @@ export default function AdminContractsScreen() {
   };
 
   const handleSaveBoxName = async () => {
-    if (!boxNameDraft.trim() || !code) return;
+    if (!boxNameDraft.trim() || !token) return;
     setBoxNameSaving(true);
     try {
       await boxNameQuery.save(boxNameDraft.trim());
@@ -148,10 +148,10 @@ export default function AdminContractsScreen() {
   };
 
   const handleResolveReport = async (reportId: string, deletePost: boolean) => {
-    if (!code) return;
+    if (!token) return;
     setResolvingId(reportId);
     try {
-      await reportsQuery.resolve(reportId, deletePost, code);
+      await reportsQuery.resolve(reportId, deletePost, token);
     } catch {
       Alert.alert('Error', 'No se pudo resolver el reporte.');
     } finally {
@@ -159,7 +159,7 @@ export default function AdminContractsScreen() {
     }
   };
 
-  if (!code) return null;
+  if (!token) return null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

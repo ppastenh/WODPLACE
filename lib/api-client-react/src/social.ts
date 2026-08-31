@@ -49,6 +49,10 @@ export type SocialReport = {
 type FeedPage = { posts: SocialPost[]; nextCursor: string | null; hasMore: boolean };
 
 // ─── Box name ─────────────────────────────────────────────────────────────────
+//
+// NOTE: the `adminCode` / `code` params below now carry the admin *session
+// token* from the PIN flow (sent as `Authorization: Bearer <token>`), not the
+// old shared access code. The names are kept to avoid churn at the call sites.
 
 export function useBoxName() {
   const [name, setName] = useState("");
@@ -74,7 +78,7 @@ export function useAdminBoxName(adminCode: string | null) {
       if (!adminCode) return;
       const data = await customFetch<{ name: string }>("/api/admin/settings/box-name", {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "x-admin-code": adminCode },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminCode}` },
         body: JSON.stringify({ name: newName }),
       });
       setName(data.name);
@@ -233,7 +237,7 @@ export function useSocialMutations(userId: string, authorName: string) {
   const deletePost = useCallback(
     async (postId: string, adminCode?: string): Promise<void> => {
       const headers: Record<string, string> = {};
-      if (adminCode) headers["x-admin-code"] = adminCode;
+      if (adminCode) headers.Authorization = `Bearer ${adminCode}`;
       await customFetch(
         `/api/social/posts/${postId}?userId=${encodeURIComponent(userId)}`,
         { method: "DELETE", headers },
@@ -264,7 +268,7 @@ export function useSocialMutations(userId: string, authorName: string) {
   const deleteComment = useCallback(
     async (postId: string, commentId: string, adminCode?: string): Promise<void> => {
       const headers: Record<string, string> = {};
-      if (adminCode) headers["x-admin-code"] = adminCode;
+      if (adminCode) headers.Authorization = `Bearer ${adminCode}`;
       await customFetch(
         `/api/social/posts/${postId}/comments/${commentId}?userId=${encodeURIComponent(userId)}`,
         { method: "DELETE", headers },
@@ -374,7 +378,7 @@ export function useSocialMutations(userId: string, authorName: string) {
     async (targetUserId: string, adminCode: string): Promise<void> => {
       await customFetch(`/api/admin/users/${targetUserId}/block`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-code": adminCode },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminCode}` },
         body: JSON.stringify({}),
       });
     },
@@ -395,7 +399,7 @@ export function useAdminSocialReports(adminCode: string | null) {
     setIsLoading(true);
     try {
       const data = await customFetch<SocialReport[]>("/api/admin/social/reports", {
-        headers: { "x-admin-code": adminCode },
+        headers: { Authorization: `Bearer ${adminCode}` },
       });
       setReports(data);
     } catch {
@@ -413,19 +417,19 @@ export function useAdminSocialReports(adminCode: string | null) {
       if (!code) return;
       if (deletePost) {
         const report = (await customFetch<SocialReport[]>("/api/admin/social/reports", {
-          headers: { "x-admin-code": code },
+          headers: { Authorization: `Bearer ${code}` },
         }).catch(() => [] as SocialReport[])).find((r: SocialReport) => r.id === reportId);
         if (report?.postId) {
           await customFetch(`/api/social/posts/${report.postId}`, {
             method: "DELETE",
-            headers: { "Content-Type": "application/json", "x-admin-code": code },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${code}` },
             body: JSON.stringify({ userId: "admin" }),
           }).catch(() => {});
         }
       }
       await customFetch(`/api/admin/social/reports/${reportId}/resolve`, {
         method: "PATCH",
-        headers: { "x-admin-code": code },
+        headers: { Authorization: `Bearer ${code}` },
       });
       setReports((prev: SocialReport[]) => prev.filter((r: SocialReport) => r.id !== reportId));
     },
