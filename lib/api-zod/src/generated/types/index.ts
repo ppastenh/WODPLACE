@@ -8,7 +8,13 @@
 
 export * from './acceptContractsRequest';
 export * from './ackContractAcceptancesResult';
-export * from './adminCodeCheckResult';
+export * from './adminPinSession';
+export * from './adminPinSetupRequest';
+export * from './adminPinStatusRequest';
+export * from './adminPinStatusResult';
+export * from './adminPinVerifyRequest';
+export * from './adminPinVerifyResult';
+export * from './adminSessionRequest';
 export * from './bookingActionResponse';
 export * from './bookingActionResponseStatus';
 export * from './bookingRecord';
@@ -28,9 +34,10 @@ export * from './listNotificationsParams';
 export * from './markContractReadRequest';
 export * from './notification';
 export * from './notificationUserRequest';
+export * from './redeemBoxCodeRequest';
+export * from './redeemBoxCodeResult';
 export * from './syncUserRequest';
 export * from './updateAdminContractRequest';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';
 export * from './userRecord';
-export * from './verifyAdminCodeRequest';

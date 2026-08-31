@@ -22,7 +22,13 @@ import type {
 import type {
   AcceptContractsRequest,
   AckContractAcceptancesResult,
-  AdminCodeCheckResult,
+  AdminPinSession,
+  AdminPinSetupRequest,
+  AdminPinStatusRequest,
+  AdminPinStatusResult,
+  AdminPinVerifyRequest,
+  AdminPinVerifyResult,
+  AdminSessionRequest,
   BookingActionResponse,
   BookingRecord,
   CancelBookingRequest,
@@ -40,12 +46,13 @@ import type {
   MarkContractReadRequest,
   Notification,
   NotificationUserRequest,
+  RedeemBoxCodeRequest,
+  RedeemBoxCodeResult,
   SyncUserRequest,
   UpdateAdminContractRequest,
   UploadUrlRequest,
   UploadUrlResponse,
-  UserRecord,
-  VerifyAdminCodeRequest
+  UserRecord
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -164,7 +171,8 @@ export const getRequestUploadUrlUrl = () => {
 /**
  * Returns a presigned GCS URL for direct upload. The client sends JSON
  * metadata here, then uploads the file directly to the returned URL.
- * Requires the `x-admin-code` header (only the hidden admin screen uploads files).
+ * Requires a valid admin session (`Authorization: Bearer <token>` from
+ * the PIN flow) — only the hidden admin screen uploads files.
  * @summary Request a presigned URL for file upload
  */
 export const requestUploadUrl = async (uploadUrlRequest: UploadUrlRequest, options?: RequestInit): Promise<UploadUrlResponse> => {
@@ -838,6 +846,85 @@ export const useMarkAllNotificationsRead = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getMarkAllNotificationsReadMutationOptions(options));
     }
 
+export const getRedeemBoxCodeUrl = () => {
+
+
+
+
+  return `/api/box-memberships/redeem`
+}
+
+/**
+ * WODPLACE has no real auth — the mobile app sends its locally generated
+ * user id/name/email plus the code the athlete typed. The endpoint upserts
+ * the user, then looks up the box whose `box_settings` row (key
+ * `invite_code`) matches the code case-insensitively and inserts a
+ * `box_members` row (status `activo`) for that box. Always responds 200 so
+ * the app can show a plain "invalid code" message instead of a network
+ * error. An athlete may belong to several boxes (one `box_members` row
+ * each).
+ * @summary Redeem a box invite code to join a box as an athlete
+ */
+export const redeemBoxCode = async (redeemBoxCodeRequest: RedeemBoxCodeRequest, options?: RequestInit): Promise<RedeemBoxCodeResult> => {
+
+  return customFetch<RedeemBoxCodeResult>(getRedeemBoxCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(redeemBoxCodeRequest)
+  }
+);}
+
+
+
+
+
+export const getRedeemBoxCodeMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof redeemBoxCode>>, TError,{data: BodyType<RedeemBoxCodeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof redeemBoxCode>>, TError,{data: BodyType<RedeemBoxCodeRequest>}, TContext> => {
+
+const mutationKey = ['redeemBoxCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof redeemBoxCode>>, {data: BodyType<RedeemBoxCodeRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  redeemBoxCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RedeemBoxCodeMutationResult = NonNullable<Awaited<ReturnType<typeof redeemBoxCode>>>
+    export type RedeemBoxCodeMutationBody = BodyType<RedeemBoxCodeRequest>
+    export type RedeemBoxCodeMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Redeem a box invite code to join a box as an athlete
+ */
+export const useRedeemBoxCode = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof redeemBoxCode>>, TError,{data: BodyType<RedeemBoxCodeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof redeemBoxCode>>,
+        TError,
+        {data: BodyType<RedeemBoxCodeRequest>},
+        TContext
+      > => {
+      return useMutation(getRedeemBoxCodeMutationOptions(options));
+    }
+
 export const getListContractsUrl = (params?: ListContractsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1151,25 +1238,27 @@ export const useAcceptContracts = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getAcceptContractsMutationOptions(options));
     }
 
-export const getVerifyAdminCodeUrl = () => {
+export const getGetAdminPinStatusUrl = () => {
 
 
 
 
-  return `/api/admin/verify`
+  return `/api/admin/pin/status`
 }
 
 /**
- * @summary Check whether a code unlocks the hidden admin panel
+ * Called when the user opens the admin panel so the app can decide
+ * between the "create PIN", "enter PIN" and "locked" flows.
+ * @summary Whether the account has an admin PIN, and its lockout state
  */
-export const verifyAdminCode = async (verifyAdminCodeRequest: VerifyAdminCodeRequest, options?: RequestInit): Promise<AdminCodeCheckResult> => {
+export const getAdminPinStatus = async (adminPinStatusRequest: AdminPinStatusRequest, options?: RequestInit): Promise<AdminPinStatusResult> => {
 
-  return customFetch<AdminCodeCheckResult>(getVerifyAdminCodeUrl(),
+  return customFetch<AdminPinStatusResult>(getGetAdminPinStatusUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(verifyAdminCodeRequest)
+    body: JSON.stringify(adminPinStatusRequest)
   }
 );}
 
@@ -1177,11 +1266,11 @@ export const verifyAdminCode = async (verifyAdminCodeRequest: VerifyAdminCodeReq
 
 
 
-export const getVerifyAdminCodeMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyAdminCode>>, TError,{data: BodyType<VerifyAdminCodeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof verifyAdminCode>>, TError,{data: BodyType<VerifyAdminCodeRequest>}, TContext> => {
+export const getGetAdminPinStatusMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getAdminPinStatus>>, TError,{data: BodyType<AdminPinStatusRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getAdminPinStatus>>, TError,{data: BodyType<AdminPinStatusRequest>}, TContext> => {
 
-const mutationKey = ['verifyAdminCode'];
+const mutationKey = ['getAdminPinStatus'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1191,10 +1280,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyAdminCode>>, {data: BodyType<VerifyAdminCodeRequest>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getAdminPinStatus>>, {data: BodyType<AdminPinStatusRequest>}> = (props) => {
           const {data} = props ?? {};
 
-          return  verifyAdminCode(data,requestOptions)
+          return  getAdminPinStatus(data,requestOptions)
         }
 
 
@@ -1204,22 +1293,248 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type VerifyAdminCodeMutationResult = NonNullable<Awaited<ReturnType<typeof verifyAdminCode>>>
-    export type VerifyAdminCodeMutationBody = BodyType<VerifyAdminCodeRequest>
-    export type VerifyAdminCodeMutationError = ErrorType<unknown>
+    export type GetAdminPinStatusMutationResult = NonNullable<Awaited<ReturnType<typeof getAdminPinStatus>>>
+    export type GetAdminPinStatusMutationBody = BodyType<AdminPinStatusRequest>
+    export type GetAdminPinStatusMutationError = ErrorType<ErrorEnvelope>
 
     /**
- * @summary Check whether a code unlocks the hidden admin panel
+ * @summary Whether the account has an admin PIN, and its lockout state
  */
-export const useVerifyAdminCode = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyAdminCode>>, TError,{data: BodyType<VerifyAdminCodeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useGetAdminPinStatus = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getAdminPinStatus>>, TError,{data: BodyType<AdminPinStatusRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof verifyAdminCode>>,
+        Awaited<ReturnType<typeof getAdminPinStatus>>,
         TError,
-        {data: BodyType<VerifyAdminCodeRequest>},
+        {data: BodyType<AdminPinStatusRequest>},
         TContext
       > => {
-      return useMutation(getVerifyAdminCodeMutationOptions(options));
+      return useMutation(getGetAdminPinStatusMutationOptions(options));
+    }
+
+export const getSetupAdminPinUrl = () => {
+
+
+
+
+  return `/api/admin/pin/setup`
+}
+
+/**
+ * Used for the first-time PIN and for "I forgot my PIN" (after the app
+ * has re-verified the account password client-side). Resets the failed
+ * attempt counter and any lockout, and returns a fresh admin session
+ * token.
+ * @summary Create or replace the account's admin PIN
+ */
+export const setupAdminPin = async (adminPinSetupRequest: AdminPinSetupRequest, options?: RequestInit): Promise<AdminPinSession> => {
+
+  return customFetch<AdminPinSession>(getSetupAdminPinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminPinSetupRequest)
+  }
+);}
+
+
+
+
+
+export const getSetupAdminPinMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupAdminPin>>, TError,{data: BodyType<AdminPinSetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setupAdminPin>>, TError,{data: BodyType<AdminPinSetupRequest>}, TContext> => {
+
+const mutationKey = ['setupAdminPin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setupAdminPin>>, {data: BodyType<AdminPinSetupRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setupAdminPin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetupAdminPinMutationResult = NonNullable<Awaited<ReturnType<typeof setupAdminPin>>>
+    export type SetupAdminPinMutationBody = BodyType<AdminPinSetupRequest>
+    export type SetupAdminPinMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Create or replace the account's admin PIN
+ */
+export const useSetupAdminPin = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupAdminPin>>, TError,{data: BodyType<AdminPinSetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setupAdminPin>>,
+        TError,
+        {data: BodyType<AdminPinSetupRequest>},
+        TContext
+      > => {
+      return useMutation(getSetupAdminPinMutationOptions(options));
+    }
+
+export const getVerifyAdminPinUrl = () => {
+
+
+
+
+  return `/api/admin/pin/verify`
+}
+
+/**
+ * On success returns an admin session token and resets the failed
+ * attempt counter. On failure increments it; after 5 consecutive
+ * failures the PIN is locked for 15 minutes and `lockedUntil` is set.
+ * While locked, no PIN is checked.
+ * @summary Verify the account's admin PIN
+ */
+export const verifyAdminPin = async (adminPinVerifyRequest: AdminPinVerifyRequest, options?: RequestInit): Promise<AdminPinVerifyResult> => {
+
+  return customFetch<AdminPinVerifyResult>(getVerifyAdminPinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminPinVerifyRequest)
+  }
+);}
+
+
+
+
+
+export const getVerifyAdminPinMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyAdminPin>>, TError,{data: BodyType<AdminPinVerifyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyAdminPin>>, TError,{data: BodyType<AdminPinVerifyRequest>}, TContext> => {
+
+const mutationKey = ['verifyAdminPin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyAdminPin>>, {data: BodyType<AdminPinVerifyRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyAdminPin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyAdminPinMutationResult = NonNullable<Awaited<ReturnType<typeof verifyAdminPin>>>
+    export type VerifyAdminPinMutationBody = BodyType<AdminPinVerifyRequest>
+    export type VerifyAdminPinMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Verify the account's admin PIN
+ */
+export const useVerifyAdminPin = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyAdminPin>>, TError,{data: BodyType<AdminPinVerifyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyAdminPin>>,
+        TError,
+        {data: BodyType<AdminPinVerifyRequest>},
+        TContext
+      > => {
+      return useMutation(getVerifyAdminPinMutationOptions(options));
+    }
+
+export const getCreateAdminSessionUrl = () => {
+
+
+
+
+  return `/api/admin/pin/session`
+}
+
+/**
+ * Called after the app has verified the user locally — either a device
+ * biometric check, or (while the PIN is locked) re-entering the account
+ * password. Resets the failed attempt counter and lockout, and returns
+ * an admin session token. There is no server-side proof of the local
+ * check, matching WODPLACE's current trusted-client model.
+ * @summary Issue an admin session without a PIN (biometric / password path)
+ */
+export const createAdminSession = async (adminSessionRequest: AdminSessionRequest, options?: RequestInit): Promise<AdminPinSession> => {
+
+  return customFetch<AdminPinSession>(getCreateAdminSessionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminSessionRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminSessionMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSession>>, TError,{data: BodyType<AdminSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminSession>>, TError,{data: BodyType<AdminSessionRequest>}, TContext> => {
+
+const mutationKey = ['createAdminSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminSession>>, {data: BodyType<AdminSessionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminSession(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminSession>>>
+    export type CreateAdminSessionMutationBody = BodyType<AdminSessionRequest>
+    export type CreateAdminSessionMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Issue an admin session without a PIN (biometric / password path)
+ */
+export const useCreateAdminSession = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSession>>, TError,{data: BodyType<AdminSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminSession>>,
+        TError,
+        {data: BodyType<AdminSessionRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminSessionMutationOptions(options));
     }
 
 export const getListAdminContractsUrl = () => {

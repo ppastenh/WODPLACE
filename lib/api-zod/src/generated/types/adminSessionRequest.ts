@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface VerifyAdminCodeRequest {
+export interface AdminSessionRequest {
   /** @minLength 1 */
-  code: string;
+  userId: string;
 }

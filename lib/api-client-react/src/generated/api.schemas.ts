@@ -42,6 +42,29 @@ export interface UserRecord {
   id: string;
 }
 
+export interface RedeemBoxCodeRequest {
+  /** @minLength 1 */
+  userId: string;
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  email: string;
+  /**
+     * The invite code the athlete typed. Matched case-insensitively.
+     * @minLength 1
+     */
+  code: string;
+}
+
+export interface RedeemBoxCodeResult {
+  /** True when a new `box_members` row was created. */
+  joined: boolean;
+  /** True when the athlete already belonged to this box. */
+  alreadyMember: boolean;
+  boxId: string | null;
+  boxName: string | null;
+}
+
 export interface CreateBookingRequest {
   /** @minLength 1 */
   sessionId: string;
@@ -156,13 +179,54 @@ export interface AcceptContractsRequest {
   guardianRelationship?: string;
 }
 
-export interface VerifyAdminCodeRequest {
+export interface AdminPinStatusRequest {
   /** @minLength 1 */
-  code: string;
+  userId: string;
 }
 
-export interface AdminCodeCheckResult {
+export interface AdminPinStatusResult {
+  hasPin: boolean;
+  failedAttempts: number;
+  /** ISO timestamp until which PIN entry is locked, or null. */
+  lockedUntil: string | null;
+}
+
+export interface AdminPinSetupRequest {
+  /** @minLength 1 */
+  userId: string;
+  /**
+     * 4 to 6 digits.
+     * @pattern ^[0-9]{4,6}$
+     */
+  pin: string;
+}
+
+export interface AdminPinVerifyRequest {
+  /** @minLength 1 */
+  userId: string;
+  /** @minLength 1 */
+  pin: string;
+}
+
+export interface AdminPinVerifyResult {
   ok: boolean;
+  /** Admin session token; present only when `ok` is true. */
+  token?: string | null;
+  /** PIN attempts left before the 15-minute lockout. */
+  remainingAttempts: number;
+  /** ISO timestamp until which PIN entry is locked, or null. */
+  lockedUntil: string | null;
+}
+
+export interface AdminSessionRequest {
+  /** @minLength 1 */
+  userId: string;
+}
+
+export interface AdminPinSession {
+  ok: boolean;
+  /** Admin session token, sent as an Authorization bearer header. */
+  token: string;
 }
 
 export interface UpdateAdminContractRequest {

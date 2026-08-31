@@ -14,6 +14,8 @@ tags:
     description: Object storage upload and serving endpoints.
   - name: Users
     description: Lightweight user sync for the mobile app (no full auth system yet).
+  - name: Boxes
+    description: Box membership — redeeming a box invite code to join as an athlete.
   - name: Contracts
     description: Contract documents, per-user read progress, and final acceptance.
   - name: Bookings
@@ -45,13 +47,8 @@ paths:
       description: |
         Returns a presigned GCS URL for direct upload. The client sends JSON
         metadata here, then uploads the file directly to the returned URL.
-        Requires the `x-admin-code` header (only the hidden admin screen uploads files).
-      parameters:
-        - name: x-admin-code
-          in: header
-          required: true
-          schema:
-            type: string
+        Requires a valid admin session (`Authorization: Bearer <token>` from
+        the PIN flow) — only the hidden admin screen uploads files.
       requestBody:
         required: true
         content:
@@ -72,7 +69,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "401":
-          description: Missing or invalid admin code.
+          description: Missing or invalid admin session.
           content:
             application/json:
               schema:
@@ -319,6 +316,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /box-memberships/redeem:
+    post:
+      tags: [Boxes]
+      operationId: redeemBoxCode
+      summary: Redeem a box invite code to join a box as an athlete
+      description: |
+        WODPLACE has no real auth — the mobile app sends its locally generated
+        user id/name/email plus the code the athlete typed. The endpoint upserts
+        the user, then looks up the box whose `box_settings` row (key
+        `invite_code`) matches the code case-insensitively and inserts a
+        `box_members` row (status `activo`) for that box. Always responds 200 so
+        the app can show a plain "invalid code" message instead of a network
+        error. An athlete may belong to several boxes (one `box_members` row
+        each).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedeemBoxCodeRequest"
+      responses:
+        "200":
+          description: |
+            Redemption processed. `joined` is true only when a new membership
+            row was created; `alreadyMember` is true when the athlete already
+            belonged to that box; both false with null box fields means the
+            code matched no box.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedeemBoxCodeResult"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Failed to redeem code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /contracts:
     get:
       tags: [Contracts]
@@ -428,36 +469,138 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
-  /admin/verify:
+  /admin/pin/status:
     post:
       tags: [Admin]
-      operationId: verifyAdminCode
-      summary: Check whether a code unlocks the hidden admin panel
+      operationId: getAdminPinStatus
+      summary: Whether the account has an admin PIN, and its lockout state
+      description: |
+        Called when the user opens the admin panel so the app can decide
+        between the "create PIN", "enter PIN" and "locked" flows.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/VerifyAdminCodeRequest"
+              $ref: "#/components/schemas/AdminPinStatusRequest"
       responses:
         "200":
-          description: Whether the code is valid.
+          description: PIN status for the account.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminCodeCheckResult"
+                $ref: "#/components/schemas/AdminPinStatusResult"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/pin/setup:
+    post:
+      tags: [Admin]
+      operationId: setupAdminPin
+      summary: Create or replace the account's admin PIN
+      description: |
+        Used for the first-time PIN and for "I forgot my PIN" (after the app
+        has re-verified the account password client-side). Resets the failed
+        attempt counter and any lockout, and returns a fresh admin session
+        token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPinSetupRequest"
+      responses:
+        "200":
+          description: PIN stored; admin session issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPinSession"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/pin/verify:
+    post:
+      tags: [Admin]
+      operationId: verifyAdminPin
+      summary: Verify the account's admin PIN
+      description: |
+        On success returns an admin session token and resets the failed
+        attempt counter. On failure increments it; after 5 consecutive
+        failures the PIN is locked for 15 minutes and `lockedUntil` is set.
+        While locked, no PIN is checked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPinVerifyRequest"
+      responses:
+        "200":
+          description: |
+            Verification result. `ok` true carries a `token`; `ok` false
+            carries `remainingAttempts` and, when locked, `lockedUntil`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPinVerifyResult"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/pin/session:
+    post:
+      tags: [Admin]
+      operationId: createAdminSession
+      summary: Issue an admin session without a PIN (biometric / password path)
+      description: |
+        Called after the app has verified the user locally — either a device
+        biometric check, or (while the PIN is locked) re-entering the account
+        password. Resets the failed attempt counter and lockout, and returns
+        an admin session token. There is no server-side proof of the local
+        check, matching WODPLACE's current trusted-client model.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSessionRequest"
+      responses:
+        "200":
+          description: Admin session issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPinSession"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: No admin PIN exists for this account yet.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /admin/contracts:
     get:
       tags: [Admin]
       operationId: listAdminContracts
       summary: List contract documents for the admin panel
-      parameters:
-        - name: x-admin-code
-          in: header
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           description: Contract documents.
@@ -468,7 +611,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/ContractDocument"
         "401":
-          description: Missing or invalid admin code.
+          description: Missing or invalid admin session.
           content:
             application/json:
               schema:
@@ -482,11 +625,6 @@ paths:
       parameters:
         - name: slug
           in: path
-          required: true
-          schema:
-            type: string
-        - name: x-admin-code
-          in: header
           required: true
           schema:
             type: string
@@ -510,7 +648,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "401":
-          description: Missing or invalid admin code.
+          description: Missing or invalid admin session.
           content:
             application/json:
               schema:
@@ -525,12 +663,6 @@ paths:
         Returns every recorded contract acceptance (newest first) so the
         admin panel can show a badge/counter for ones the owner hasn't
         viewed yet (`seen: false`).
-      parameters:
-        - name: x-admin-code
-          in: header
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           description: Contract acceptances.
@@ -541,7 +673,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/ContractAcceptanceNotification"
         "401":
-          description: Missing or invalid admin code.
+          description: Missing or invalid admin session.
           content:
             application/json:
               schema:
@@ -555,12 +687,6 @@ paths:
       description: |
         Called when the owner opens the notifications section of the admin
         panel. Clears the unseen badge/counter.
-      parameters:
-        - name: x-admin-code
-          in: header
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           description: Number of acceptances that were marked seen.
@@ -569,7 +695,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AckContractAcceptancesResult"
         "401":
-          description: Missing or invalid admin code.
+          description: Missing or invalid admin session.
           content:
             application/json:
               schema:
@@ -636,6 +762,40 @@ components:
       properties:
         id:
           type: string
+
+    RedeemBoxCodeRequest:
+      type: object
+      required: [userId, name, email, code]
+      properties:
+        userId:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+          description: The invite code the athlete typed. Matched case-insensitively.
+    RedeemBoxCodeResult:
+      type: object
+      required: [joined, alreadyMember, boxId, boxName]
+      properties:
+        joined:
+          type: boolean
+          description: True when a new `box_members` row was created.
+        alreadyMember:
+          type: boolean
+          description: True when the athlete already belonged to this box.
+        boxId:
+          type: string
+          nullable: true
+        boxName:
+          type: string
+          nullable: true
 
     CreateBookingRequest:
       type: object
@@ -805,19 +965,83 @@ components:
           minLength: 1
           description: Optional, e.g. "Madre", "Padre", "Tutor legal".
 
-    VerifyAdminCodeRequest:
+    AdminPinStatusRequest:
       type: object
-      required: [code]
+      required: [userId]
       properties:
-        code:
+        userId:
           type: string
           minLength: 1
-    AdminCodeCheckResult:
+    AdminPinStatusResult:
       type: object
-      required: [ok]
+      required: [hasPin, failedAttempts, lockedUntil]
+      properties:
+        hasPin:
+          type: boolean
+        failedAttempts:
+          type: integer
+        lockedUntil:
+          type: string
+          nullable: true
+          description: ISO timestamp until which PIN entry is locked, or null.
+
+    AdminPinSetupRequest:
+      type: object
+      required: [userId, pin]
+      properties:
+        userId:
+          type: string
+          minLength: 1
+        pin:
+          type: string
+          pattern: '^[0-9]{4,6}$'
+          description: 4 to 6 digits.
+
+    AdminPinVerifyRequest:
+      type: object
+      required: [userId, pin]
+      properties:
+        userId:
+          type: string
+          minLength: 1
+        pin:
+          type: string
+          minLength: 1
+    AdminPinVerifyResult:
+      type: object
+      required: [ok, remainingAttempts, lockedUntil]
       properties:
         ok:
           type: boolean
+        token:
+          type: string
+          nullable: true
+          description: Admin session token; present only when `ok` is true.
+        remainingAttempts:
+          type: integer
+          description: PIN attempts left before the 15-minute lockout.
+        lockedUntil:
+          type: string
+          nullable: true
+          description: ISO timestamp until which PIN entry is locked, or null.
+
+    AdminSessionRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          minLength: 1
+
+    AdminPinSession:
+      type: object
+      required: [ok, token]
+      properties:
+        ok:
+          type: boolean
+        token:
+          type: string
+          description: Admin session token, sent as an Authorization bearer header.
 
     UpdateAdminContractRequest:
       type: object

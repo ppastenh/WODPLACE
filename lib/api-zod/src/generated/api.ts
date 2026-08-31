@@ -20,13 +20,10 @@ export const HealthCheckResponse = zod.object({
 /**
  * Returns a presigned GCS URL for direct upload. The client sends JSON
  * metadata here, then uploads the file directly to the returned URL.
- * Requires the `x-admin-code` header (only the hidden admin screen uploads files).
+ * Requires a valid admin session (`Authorization: Bearer <token>` from
+ * the PIN flow) — only the hidden admin screen uploads files.
  * @summary Request a presigned URL for file upload
  */
-export const RequestUploadUrlHeader = zod.object({
-  "x-admin-code": zod.string()
-})
-
 
 
 
@@ -212,6 +209,38 @@ export const MarkAllNotificationsReadResponse = zod.void()
 
 
 /**
+ * WODPLACE has no real auth — the mobile app sends its locally generated
+ * user id/name/email plus the code the athlete typed. The endpoint upserts
+ * the user, then looks up the box whose `box_settings` row (key
+ * `invite_code`) matches the code case-insensitively and inserts a
+ * `box_members` row (status `activo`) for that box. Always responds 200 so
+ * the app can show a plain "invalid code" message instead of a network
+ * error. An athlete may belong to several boxes (one `box_members` row
+ * each).
+ * @summary Redeem a box invite code to join a box as an athlete
+ */
+
+
+
+
+
+
+export const RedeemBoxCodeBody = zod.object({
+  "userId": zod.string().min(1),
+  "name": zod.string().min(1),
+  "email": zod.string().min(1),
+  "code": zod.string().min(1).describe('The invite code the athlete typed. Matched case-insensitively.')
+})
+
+export const RedeemBoxCodeResponse = zod.object({
+  "joined": zod.boolean().describe('True when a new `box_members` row was created.'),
+  "alreadyMember": zod.boolean().describe('True when the athlete already belonged to this box.'),
+  "boxId": zod.string().nullable(),
+  "boxName": zod.string().nullable()
+})
+
+
+/**
  * @summary List contract documents, optionally with a user's read status
  */
 export const ListContractsQueryParams = zod.object({
@@ -301,27 +330,94 @@ export const AcceptContractsResponse = zod.object({
 
 
 /**
- * @summary Check whether a code unlocks the hidden admin panel
+ * Called when the user opens the admin panel so the app can decide
+ * between the "create PIN", "enter PIN" and "locked" flows.
+ * @summary Whether the account has an admin PIN, and its lockout state
  */
 
 
 
-export const VerifyAdminCodeBody = zod.object({
-  "code": zod.string().min(1)
+export const GetAdminPinStatusBody = zod.object({
+  "userId": zod.string().min(1)
 })
 
-export const VerifyAdminCodeResponse = zod.object({
-  "ok": zod.boolean()
+export const GetAdminPinStatusResponse = zod.object({
+  "hasPin": zod.boolean(),
+  "failedAttempts": zod.number(),
+  "lockedUntil": zod.string().nullable().describe('ISO timestamp until which PIN entry is locked, or null.')
+})
+
+
+/**
+ * Used for the first-time PIN and for "I forgot my PIN" (after the app
+ * has re-verified the account password client-side). Resets the failed
+ * attempt counter and any lockout, and returns a fresh admin session
+ * token.
+ * @summary Create or replace the account's admin PIN
+ */
+
+export const setupAdminPinBodyPinRegExp = new RegExp('^[0-9]{4,6}$');
+
+
+export const SetupAdminPinBody = zod.object({
+  "userId": zod.string().min(1),
+  "pin": zod.string().regex(setupAdminPinBodyPinRegExp).describe('4 to 6 digits.')
+})
+
+export const SetupAdminPinResponse = zod.object({
+  "ok": zod.boolean(),
+  "token": zod.string().describe('Admin session token, sent as an Authorization bearer header.')
+})
+
+
+/**
+ * On success returns an admin session token and resets the failed
+ * attempt counter. On failure increments it; after 5 consecutive
+ * failures the PIN is locked for 15 minutes and `lockedUntil` is set.
+ * While locked, no PIN is checked.
+ * @summary Verify the account's admin PIN
+ */
+
+
+
+
+export const VerifyAdminPinBody = zod.object({
+  "userId": zod.string().min(1),
+  "pin": zod.string().min(1)
+})
+
+export const VerifyAdminPinResponse = zod.object({
+  "ok": zod.boolean(),
+  "token": zod.string().nullish().describe('Admin session token; present only when `ok` is true.'),
+  "remainingAttempts": zod.number().describe('PIN attempts left before the 15-minute lockout.'),
+  "lockedUntil": zod.string().nullable().describe('ISO timestamp until which PIN entry is locked, or null.')
+})
+
+
+/**
+ * Called after the app has verified the user locally — either a device
+ * biometric check, or (while the PIN is locked) re-entering the account
+ * password. Resets the failed attempt counter and lockout, and returns
+ * an admin session token. There is no server-side proof of the local
+ * check, matching WODPLACE's current trusted-client model.
+ * @summary Issue an admin session without a PIN (biometric / password path)
+ */
+
+
+
+export const CreateAdminSessionBody = zod.object({
+  "userId": zod.string().min(1)
+})
+
+export const CreateAdminSessionResponse = zod.object({
+  "ok": zod.boolean(),
+  "token": zod.string().describe('Admin session token, sent as an Authorization bearer header.')
 })
 
 
 /**
  * @summary List contract documents for the admin panel
  */
-export const ListAdminContractsHeader = zod.object({
-  "x-admin-code": zod.string()
-})
-
 export const ListAdminContractsResponseItem = zod.object({
   "slug": zod.string(),
   "title": zod.string(),
@@ -337,10 +433,6 @@ export const ListAdminContractsResponse = zod.array(ListAdminContractsResponseIt
  */
 export const UpdateAdminContractParams = zod.object({
   "slug": zod.coerce.string()
-})
-
-export const UpdateAdminContractHeader = zod.object({
-  "x-admin-code": zod.string()
 })
 
 
@@ -366,10 +458,6 @@ export const UpdateAdminContractResponse = zod.object({
  * viewed yet (`seen: false`).
  * @summary List contract acceptances for the owner notification badge
  */
-export const ListAdminContractAcceptancesHeader = zod.object({
-  "x-admin-code": zod.string()
-})
-
 export const ListAdminContractAcceptancesResponseItem = zod.object({
   "userId": zod.string(),
   "name": zod.string(),
@@ -389,10 +477,6 @@ export const ListAdminContractAcceptancesResponse = zod.array(ListAdminContractA
  * panel. Clears the unseen badge/counter.
  * @summary Mark all pending contract acceptances as seen by the owner
  */
-export const AckContractAcceptancesHeader = zod.object({
-  "x-admin-code": zod.string()
-})
-
 export const AckContractAcceptancesResponse = zod.object({
   "acknowledged": zod.number()
 })

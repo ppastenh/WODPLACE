@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AdminCodeCheckResult {
-  ok: boolean;
+export interface AdminPinVerifyRequest {
+  /** @minLength 1 */
+  userId: string;
+  /** @minLength 1 */
+  pin: string;
 }
