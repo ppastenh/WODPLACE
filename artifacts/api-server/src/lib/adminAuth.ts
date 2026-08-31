@@ -1,29 +1,32 @@
 import type { NextFunction, Request, Response } from "express";
 
+import { verifyAdminToken } from "./adminToken";
+
 /**
- * WODPLACE has no multi-user auth system. The owner-only admin dashboard
- * (contract PDF management, acceptance notifications) is gated by a single
- * shared access code stored in the ADMIN_ACCESS_CODE secret, sent by the
- * client as the `x-admin-code` header. The dashboard's entry point in the
- * app is now a visible nav item, not a hidden gesture — access control still
- * rests entirely on this shared code.
+ * Extracts and verifies the admin session token from the `Authorization:
+ * Bearer <token>` header. Returns the decoded session (`{ userId }`) or null.
+ * Replaces the old single shared ADMIN_ACCESS_CODE header check: the client
+ * now obtains a short-lived token from the per-account PIN flow (`/admin/pin/*`).
  */
-export function requireAdminCode(
+export function getAdminSession(req: Request): { userId: string } | null {
+  const header = req.header("authorization") ?? "";
+  const token = /^bearer /i.test(header) ? header.slice(7).trim() : "";
+  return verifyAdminToken(token);
+}
+
+/** True when the request carries a valid admin session token. */
+export function isAdminRequest(req: Request): boolean {
+  return getAdminSession(req) !== null;
+}
+
+/** Express guard that 401s unless the request carries a valid admin session. */
+export function requireAdminSession(
   req: Request,
   res: Response,
   next: NextFunction,
 ): void {
-  const expected = process.env.ADMIN_ACCESS_CODE;
-  const provided = req.header("x-admin-code");
-
-  if (!expected) {
-    req.log.error("ADMIN_ACCESS_CODE is not configured");
-    res.status(500).json({ error: "Admin access is not configured" });
-    return;
-  }
-
-  if (!provided || provided !== expected) {
-    res.status(401).json({ error: "Invalid admin code" });
+  if (!getAdminSession(req)) {
+    res.status(401).json({ error: "Invalid or expired admin session" });
     return;
   }
 

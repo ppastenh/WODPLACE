@@ -1,15 +1,22 @@
 import {
   AckContractAcceptancesResponse,
+  CreateAdminSessionBody,
+  CreateAdminSessionResponse,
+  GetAdminPinStatusBody,
+  GetAdminPinStatusResponse,
   ListAdminContractAcceptancesResponse,
   ListAdminContractsResponse,
+  SetupAdminPinBody,
+  SetupAdminPinResponse,
   UpdateAdminContractBody,
   UpdateAdminContractResponse,
-  VerifyAdminCodeBody,
+  VerifyAdminPinBody,
+  VerifyAdminPinResponse,
   type AckContractAcceptancesResult,
-  type AdminCodeCheckResult,
   type ContractAcceptanceNotification,
 } from "@workspace/api-zod";
 import {
+  adminPinsTable,
   contractAcceptancesTable,
   contractDocumentsTable,
   db,
@@ -18,28 +25,217 @@ import {
 import { desc, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
-import { requireAdminCode } from "../lib/adminAuth";
+import { requireAdminSession } from "../lib/adminAuth";
+import { signAdminToken } from "../lib/adminToken";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
+import { hashPin, verifyPin } from "../lib/pinHash";
 
 const router: IRouter = Router();
 
+const MAX_PIN_ATTEMPTS = 5;
+const PIN_LOCK_MS = 15 * 60 * 1000;
+
+function activeLockIso(lockedUntil: Date | null): string | null {
+  return lockedUntil && lockedUntil.getTime() > Date.now()
+    ? lockedUntil.toISOString()
+    : null;
+}
+
 /**
- * POST /admin/verify
+ * POST /admin/pin/status
  *
- * Used by the admin dashboard's code prompt. Always responds 200 so the
- * UI can show a plain "incorrect code" message instead of a network error.
+ * Lets the app choose between the create-PIN, enter-PIN and locked flows.
  */
-router.post("/admin/verify", async (req: Request, res: Response) => {
-  const parsed = VerifyAdminCodeBody.safeParse(req.body);
+router.post("/admin/pin/status", async (req: Request, res: Response) => {
+  const parsed = GetAdminPinStatusBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
 
-  const expected = process.env.ADMIN_ACCESS_CODE;
-  const ok = Boolean(expected) && parsed.data.code === expected;
-  const result: AdminCodeCheckResult = { ok };
-  res.json(result);
+  try {
+    const [row] = await db
+      .select()
+      .from(adminPinsTable)
+      .where(eq(adminPinsTable.userId, parsed.data.userId));
+
+    res.json(
+      GetAdminPinStatusResponse.parse({
+        hasPin: !!row,
+        failedAttempts: row?.failedAttempts ?? 0,
+        lockedUntil: row ? activeLockIso(row.lockedUntil) : null,
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Error reading admin PIN status");
+    res.status(500).json({ error: "Failed to read PIN status" });
+  }
+});
+
+/**
+ * POST /admin/pin/setup
+ *
+ * First-time PIN, or a new PIN after "I forgot my PIN" (the app has already
+ * re-verified the account password client-side). Clears attempts + lockout
+ * and returns a fresh admin session token.
+ */
+router.post("/admin/pin/setup", async (req: Request, res: Response) => {
+  const parsed = SetupAdminPinBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+
+  const { userId, pin } = parsed.data;
+  try {
+    const pinHash = hashPin(pin);
+    await db
+      .insert(adminPinsTable)
+      .values({ userId, pinHash })
+      .onConflictDoUpdate({
+        target: adminPinsTable.userId,
+        set: {
+          pinHash,
+          failedAttempts: 0,
+          lockedUntil: null,
+          updatedAt: new Date(),
+        },
+      });
+
+    res.json(
+      SetupAdminPinResponse.parse({ ok: true, token: signAdminToken(userId) }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Error setting up admin PIN");
+    res.status(500).json({ error: "Failed to set up PIN" });
+  }
+});
+
+/**
+ * POST /admin/pin/verify
+ *
+ * 5 consecutive wrong PINs => 15-minute lockout, enforced here (not on the
+ * client). On success returns an admin session token and resets the counter.
+ */
+router.post("/admin/pin/verify", async (req: Request, res: Response) => {
+  const parsed = VerifyAdminPinBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+
+  const { userId, pin } = parsed.data;
+  try {
+    const [row] = await db
+      .select()
+      .from(adminPinsTable)
+      .where(eq(adminPinsTable.userId, userId));
+
+    if (!row) {
+      res.json(
+        VerifyAdminPinResponse.parse({
+          ok: false,
+          token: null,
+          remainingAttempts: MAX_PIN_ATTEMPTS,
+          lockedUntil: null,
+        }),
+      );
+      return;
+    }
+
+    if (row.lockedUntil && row.lockedUntil.getTime() > Date.now()) {
+      res.json(
+        VerifyAdminPinResponse.parse({
+          ok: false,
+          token: null,
+          remainingAttempts: 0,
+          lockedUntil: row.lockedUntil.toISOString(),
+        }),
+      );
+      return;
+    }
+
+    if (verifyPin(pin, row.pinHash)) {
+      await db
+        .update(adminPinsTable)
+        .set({ failedAttempts: 0, lockedUntil: null, updatedAt: new Date() })
+        .where(eq(adminPinsTable.userId, userId));
+
+      res.json(
+        VerifyAdminPinResponse.parse({
+          ok: true,
+          token: signAdminToken(userId),
+          remainingAttempts: MAX_PIN_ATTEMPTS,
+          lockedUntil: null,
+        }),
+      );
+      return;
+    }
+
+    const failedAttempts = row.failedAttempts + 1;
+    const locked = failedAttempts >= MAX_PIN_ATTEMPTS;
+    const lockedUntil = locked ? new Date(Date.now() + PIN_LOCK_MS) : null;
+
+    await db
+      .update(adminPinsTable)
+      .set({ failedAttempts, lockedUntil, updatedAt: new Date() })
+      .where(eq(adminPinsTable.userId, userId));
+
+    res.json(
+      VerifyAdminPinResponse.parse({
+        ok: false,
+        token: null,
+        remainingAttempts: Math.max(0, MAX_PIN_ATTEMPTS - failedAttempts),
+        lockedUntil: lockedUntil ? lockedUntil.toISOString() : null,
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Error verifying admin PIN");
+    res.status(500).json({ error: "Failed to verify PIN" });
+  }
+});
+
+/**
+ * POST /admin/pin/session
+ *
+ * Issues a session with no PIN — after a device biometric check, or after
+ * re-entering the account password while the PIN is locked. Clears the
+ * lockout. Requires an existing PIN (first-time setup must use /setup).
+ */
+router.post("/admin/pin/session", async (req: Request, res: Response) => {
+  const parsed = CreateAdminSessionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+
+  const { userId } = parsed.data;
+  try {
+    const [row] = await db
+      .select()
+      .from(adminPinsTable)
+      .where(eq(adminPinsTable.userId, userId));
+
+    if (!row) {
+      res.status(404).json({ error: "No admin PIN set for this account" });
+      return;
+    }
+
+    await db
+      .update(adminPinsTable)
+      .set({ failedAttempts: 0, lockedUntil: null, updatedAt: new Date() })
+      .where(eq(adminPinsTable.userId, userId));
+
+    res.json(
+      CreateAdminSessionResponse.parse({
+        ok: true,
+        token: signAdminToken(userId),
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Error creating admin session");
+    res.status(500).json({ error: "Failed to create admin session" });
+  }
 });
 
 /**
@@ -50,7 +246,7 @@ router.post("/admin/verify", async (req: Request, res: Response) => {
  */
 router.get(
   "/admin/contracts",
-  requireAdminCode,
+  requireAdminSession,
   async (req: Request, res: Response) => {
     try {
       await ensureDefaultDocuments();
@@ -81,7 +277,7 @@ router.get(
  */
 router.put(
   "/admin/contracts/:slug",
-  requireAdminCode,
+  requireAdminSession,
   async (req: Request, res: Response) => {
     const parsed = UpdateAdminContractBody.safeParse(req.body);
     if (!parsed.success) {
@@ -149,7 +345,7 @@ router.put(
  */
 router.get(
   "/admin/contract-acceptances",
-  requireAdminCode,
+  requireAdminSession,
   async (req: Request, res: Response) => {
     try {
       const rows = await db
@@ -200,7 +396,7 @@ router.get(
  */
 router.post(
   "/admin/contract-acceptances/ack",
-  requireAdminCode,
+  requireAdminSession,
   async (req: Request, res: Response) => {
     try {
       const rows = await db

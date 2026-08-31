@@ -6,7 +6,7 @@ import {
 import { Router, type IRouter, type Request, type Response } from 'express';
 import { z } from 'zod';
 
-import { requireAdminCode } from '../lib/adminAuth';
+import { requireAdminSession } from '../lib/adminAuth';
 import {
   ObjectNotFoundError,
   ObjectStorageService,
@@ -82,12 +82,12 @@ router.post(
  * Request a presigned URL for file upload.
  * The client sends JSON metadata (name, size, contentType) — NOT the file.
  * Then uploads the file directly to the returned presigned URL.
- * Only the hidden admin panel uploads files, so this is gated by the
- * shared admin access code rather than a full auth system.
+ * Only the hidden admin panel uploads files, so this is gated by an admin
+ * session token from the per-account PIN flow.
  */
 router.post(
   '/storage/uploads/request-url',
-  requireAdminCode,
+  requireAdminSession,
   async (req: Request, res: Response) => {
     const parsed = RequestUploadUrlBody.safeParse(req.body);
     if (!parsed.success) {

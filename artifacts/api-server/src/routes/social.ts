@@ -25,7 +25,7 @@ import {
 import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
-import { requireAdminCode } from "../lib/adminAuth";
+import { isAdminRequest, requireAdminSession } from "../lib/adminAuth";
 
 const router: IRouter = Router();
 
@@ -108,7 +108,7 @@ router.get("/settings/box-name", async (_req: Request, res: Response) => {
   } catch { res.json({ name: "" }); }
 });
 
-router.put("/admin/settings/box-name", requireAdminCode, async (req: Request, res: Response) => {
+router.put("/admin/settings/box-name", requireAdminSession, async (req: Request, res: Response) => {
   const parsed = z.object({ name: z.string().trim().min(1).max(60) }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Nombre inválido" }); return; }
   try {
@@ -249,8 +249,7 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
 
 router.delete("/social/posts/:id", async (req: Request, res: Response) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  const adminCode = req.headers["x-admin-code"];
-  const isAdmin = !!adminCode && adminCode === process.env.ADMIN_ACCESS_CODE;
+  const isAdmin = isAdminRequest(req);
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
@@ -324,8 +323,7 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
 
 router.delete("/social/posts/:id/comments/:commentId", async (req: Request, res: Response) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  const adminCode = req.headers["x-admin-code"];
-  const isAdmin = !!adminCode && adminCode === process.env.ADMIN_ACCESS_CODE;
+  const isAdmin = isAdminRequest(req);
   try {
     const [comment] = await db.select().from(socialCommentsTable).where(eq(socialCommentsTable.id, req.params.commentId));
     if (!comment || comment.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
@@ -403,7 +401,7 @@ router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/admin/social/reports", requireAdminCode, async (req: Request, res: Response) => {
+router.get("/admin/social/reports", requireAdminSession, async (req: Request, res: Response) => {
   try {
     const reports = await db
       .select({ report: socialReportsTable, post: socialPostsTable })
@@ -426,7 +424,7 @@ router.get("/admin/social/reports", requireAdminCode, async (req: Request, res: 
   }
 });
 
-router.patch("/admin/social/reports/:id/resolve", requireAdminCode, async (req: Request, res: Response) => {
+router.patch("/admin/social/reports/:id/resolve", requireAdminSession, async (req: Request, res: Response) => {
   try {
     await db.update(socialReportsTable).set({ resolvedAt: new Date() }).where(eq(socialReportsTable.id, req.params.id));
     res.json({ ok: true });
@@ -438,7 +436,7 @@ router.patch("/admin/social/reports/:id/resolve", requireAdminCode, async (req: 
 
 // ─── Block ────────────────────────────────────────────────────────────────────
 
-router.post("/admin/users/:userId/block", requireAdminCode, async (req: Request, res: Response) => {
+router.post("/admin/users/:userId/block", requireAdminSession, async (req: Request, res: Response) => {
   try {
     await db.insert(blockedUsersTable).values({ userId: req.params.userId }).onConflictDoNothing();
     res.status(201).json({ ok: true });
@@ -448,7 +446,7 @@ router.post("/admin/users/:userId/block", requireAdminCode, async (req: Request,
   }
 });
 
-router.delete("/admin/users/:userId/block", requireAdminCode, async (req: Request, res: Response) => {
+router.delete("/admin/users/:userId/block", requireAdminSession, async (req: Request, res: Response) => {
   try {
     await db.delete(blockedUsersTable).where(eq(blockedUsersTable.userId, req.params.userId));
     res.status(204).end();
