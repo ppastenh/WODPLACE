@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*", "mockupPreviewPlugin.ts", "vite.config.ts"],
+  "//": "vite.config.ts is intentionally out of the typecheck: mockup-sandbox is pinned to vite 7 (catalog) while box-admin/super-admin pull vite 8, so the shared @vitejs/plugin-react / @tailwindcss/vite singletons resolve their vite peer against v8 and defineConfig([...]) fails a purely type-level Plugin<v8> vs Plugin<v7> check. Runtime is unaffected.",
+  "include": ["src/**/*", "mockupPreviewPlugin.ts"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,
