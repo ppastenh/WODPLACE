@@ -1,6 +1,10 @@
 -- ============================================================================
 -- WODPLACE — Port del panel de administración (crossfit-dash-pro)
 -- ----------------------------------------------------------------------------
+-- STATUS: applied — do not re-run.
+-- APPLIED: to wiwpaekdykxernegicdv via the Supabase SQL Editor (2026-08-30).
+-- This file is HISTORY, kept for reference only. See supabase/README.md.
+-- ----------------------------------------------------------------------------
 -- Este archivo NO se aplica por el CLI (el repo no está conectado a WODPLACE
 -- por migraciones). Se pega y se corre UNA vez en el SQL Editor de Supabase
 -- del proyecto WODPLACE (wiwpaekdykxernegicdv).

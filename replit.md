@@ -20,6 +20,26 @@ _Replace the heading above with the project's name, and this line with one sente
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
+## Schema & migrations
+
+The shared Supabase project `wiwpaekdykxernegicdv` is touched by **two
+mechanisms that are deliberately not unified** — see `supabase/README.md` for
+the full "who owns what":
+
+- **Drizzle (`lib/db`)** — declarative, `pnpm --filter db push` (also run by
+  `scripts/post-merge.sh`). Owns the api-server's own tables. Never run with
+  `--force` against this DB.
+- **`supabase/migrations/*.sql`** — hand-run once in the Supabase SQL Editor,
+  then committed with a `STATUS: applied` banner. History, not a queue. Owns
+  RLS / policies / triggers / functions / grants and dashboard-only tables
+  (`boxes`, `box_members`, `user_roles`, `profiles`, `admin_invites`, …).
+  `supabase/archive/` holds crossfit-dash-pro's pre-port history — a different
+  DB, never applied here.
+- **`lib/supabase-types`** (`@workspace/supabase-types`) — generated
+  `Database` type shared by `artifacts/box-admin` and `artifacts/super-admin`.
+  Regenerate after any migration:
+  `npx supabase gen types typescript --project-id wiwpaekdykxernegicdv > lib/supabase-types/src/index.ts`.
+
 ## Where things live
 
 _Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
@@ -43,7 +63,8 @@ _Populate as you build — explicit user instructions worth remembering across s
   `box_settings` / `box_members` / `boxes` aren't modelled at all (queried via
   raw SQL), and the `contract_*` tables carry a `NOT NULL box_id` FK. Adding a
   new insert against these tables via Drizzle will hit a not-null violation
-  until the column is set.
+  until the column is set. See "Schema & migrations" above and
+  `supabase/README.md` for the Drizzle vs SQL-migration boundary.
 - **`social.ts` (api-server) has ~18 standing `tsc` errors** — `req.params.x`
   is `string | string[]` under `@types/express` 5, passed straight into
   drizzle `eq()`. Known since onboarding; `esbuild` build is unaffected.

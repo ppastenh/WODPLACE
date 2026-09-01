@@ -2,6 +2,10 @@
 -- SUPER-ADMIN-HUB — profiles + owner de box como cuenta real de Auth
 --                   (proyecto WODPLACE / wiwpaekdykxernegicdv)
 -- ----------------------------------------------------------------------------
+-- STATUS: applied — do not re-run.
+-- APPLIED: to wiwpaekdykxernegicdv via the Supabase SQL Editor (2026-08-31).
+-- This file is HISTORY, kept for reference only. See supabase/README.md.
+-- ----------------------------------------------------------------------------
 -- Igual que las migraciones anteriores del panel (ver crossfit-dash-pro,
 -- 20260830190000_wodplace_admin_panel_port.sql): este archivo NO lo aplica el
 -- CLI. Se pega y se corre UNA sola vez en el SQL Editor de Supabase del

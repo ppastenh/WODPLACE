@@ -2,6 +2,11 @@
 -- SUPER-ADMIN-HUB — Guard anti-escalada en user_roles  (OPCIONAL)
 --                   (proyecto WODPLACE / wiwpaekdykxernegicdv)
 -- ----------------------------------------------------------------------------
+-- STATUS: applied — do not re-run. (`is_super_admin()` confirmed present in
+-- the live DB.) APPLIED: to wiwpaekdykxernegicdv via the Supabase SQL Editor
+-- (2026-08-31). This file is HISTORY, kept for reference only.
+-- See supabase/README.md.
+-- ----------------------------------------------------------------------------
 -- El panel NO necesita esta migración para funcionar: hoy RLS está desactivado
 -- en public.user_roles y public.boxes, y `authenticated` tiene todos los grants,
 -- así que un super_admin logueado ya puede operar el panel.
