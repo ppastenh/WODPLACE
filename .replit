@@ -29,3 +29,37 @@ channel = "stable-25_05"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-34ebcb2e-d157-4003-8c67-1ced663d3054"
+
+# Workflows for the two apps merged in from crossfit-dash-pro / super-admin-hub.
+# NOTE: this checkout's .replit has no parent "Project" workflow block committed.
+# In your live Replit .replit, add to the "Project" workflow:
+#   [[workflows.workflow.tasks]]
+#   task = "workflow.run"
+#   args = "box-admin"        # and a second task with args = "super-admin"
+# so the Run button starts these alongside api-server / mockup-sandbox / wodplace.
+
+[[workflows.workflow]]
+name = "box-admin"
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/box-admin run dev:local"
+waitForPort = 5002
+
+[[workflows.workflow]]
+name = "super-admin"
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/super-admin run dev:local"
+waitForPort = 5003
+
+[[ports]]
+localPort = 5002
+externalPort = 3002
+
+[[ports]]
+localPort = 5003
+externalPort = 3003
