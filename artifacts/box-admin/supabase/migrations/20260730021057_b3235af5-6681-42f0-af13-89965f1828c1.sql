@@ -1,0 +1,2 @@
+ALTER TYPE public.member_status ADD VALUE IF NOT EXISTS 'pausado';
+ALTER TYPE public.member_status ADD VALUE IF NOT EXISTS 'bloqueado';

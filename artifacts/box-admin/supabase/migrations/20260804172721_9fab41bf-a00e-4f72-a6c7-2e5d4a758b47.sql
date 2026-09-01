@@ -1,0 +1,1 @@
+ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS benefits text[] NOT NULL DEFAULT '{}';
