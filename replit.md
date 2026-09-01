@@ -9,7 +9,17 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env (api-server): `DATABASE_URL` — Postgres connection string
+- Optional env (api-server, admin dashboard auto-login via `POST /admin/dash-link`):
+  `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (service role — server only, never
+  ship to a client), `DASHBOARD_URL` (box-admin origin). Without them the mobile
+  app's admin WebView falls back to box-admin's normal login.
+- Env (wodplace): `EXPO_PUBLIC_API_URL` (api-server origin), `EXPO_PUBLIC_DASHBOARD_URL`
+  (box-admin origin shown in the admin WebView).
+- **Supabase dashboard config** for the auto-login link: Authentication → URL
+  Configuration → Redirect URLs must allow the exact dashboard origin(s)
+  (e.g. `http://192.168.1.87:5002/**` for LAN dev). Keep the magic-link / OTP
+  expiry short.
 
 ## Stack
 

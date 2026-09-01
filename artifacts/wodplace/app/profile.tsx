@@ -41,6 +41,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
   { key: 'admin', label: 'Administrador', icon: 'shield', route: '/admin-login' },
+  { key: 'more', label: 'Más', icon: 'grid', route: '/more' },
 ];
 
 // ─── PostThumb ────────────────────────────────────────────────────────────────
@@ -196,7 +197,11 @@ export default function ProfileScreen() {
   const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
-  })).filter((item) => item.key !== 'admin' || canAccessAdminNavigation(user));
+  })).filter(
+    (item) =>
+      (item.key !== 'admin' && item.key !== 'more') ||
+      canAccessAdminNavigation(user),
+  );
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);

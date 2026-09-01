@@ -53,6 +53,7 @@ function RootLayoutNav() {
         <Stack.Screen name="active-contracts" />
         <Stack.Screen name="admin-login" />
         <Stack.Screen name="admin-dashboard" />
+        <Stack.Screen name="more" />
       </Stack>
       {showBottomNav ? <BottomNavBar /> : null}
     </>

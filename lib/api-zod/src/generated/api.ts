@@ -482,3 +482,19 @@ export const AckContractAcceptancesResponse = zod.object({
 })
 
 
+/**
+ * Given a valid admin session token, resolves the caller's Supabase
+ * Auth account (via `boxes.owner_user_id`, falling back to an email
+ * match against `profiles` that also carries a `box_admin` /
+ * `super_admin` role) and returns a single-use Supabase magic link that
+ * logs that account into the dashboard. The link is short-lived and
+ * must be opened immediately. Returns 409 when no linked Supabase admin
+ * account can be resolved — the caller should then load the
+ * dashboard's normal email/password login.
+ * @summary Mint a one-time auto-login link for the box dashboard
+ */
+export const CreateAdminDashLinkResponse = zod.object({
+  "url": zod.string().describe('Single-use Supabase magic link. Open it in a WebView\nimmediately; it expires quickly and is consumed on first use.\n')
+})
+
+

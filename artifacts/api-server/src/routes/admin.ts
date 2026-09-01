@@ -1,5 +1,6 @@
 import {
   AckContractAcceptancesResponse,
+  CreateAdminDashLinkResponse,
   CreateAdminSessionBody,
   CreateAdminSessionResponse,
   GetAdminPinStatusBody,
@@ -22,7 +23,7 @@ import {
   db,
   wodplaceUsersTable,
 } from "@workspace/db";
-import { desc, eq, isNull } from "drizzle-orm";
+import { desc, eq, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
@@ -30,6 +31,7 @@ import { signAdminToken } from "../lib/adminToken";
 import { resolveBoxId } from "../lib/boxContext";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { hashPin, verifyPin } from "../lib/pinHash";
+import { getDashboardUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
 
 const router: IRouter = Router();
 
@@ -421,6 +423,106 @@ router.post(
       res
         .status(500)
         .json({ error: "Failed to acknowledge contract acceptances" });
+    }
+  },
+);
+
+/**
+ * Resolves the Supabase Auth email to auto-login into the box dashboard for
+ * the PIN identity `pinUserId` (a `wodplace_users.id`, i.e. the app's local
+ * mock id — NOT an `auth.users.id`).
+ *
+ * Primary: the box's `owner_user_id` (a real `auth.users.id`, set by
+ * super-admin-hub when a box is approved) -> its `profiles.email`.
+ * Fallback: match `wodplace_users.email` against a `profiles` row that also
+ * carries a `box_admin` / `super_admin` role. Ambiguous or missing -> null,
+ * and the caller falls back to the dashboard's normal email/password login.
+ */
+async function resolveDashLoginEmail(
+  pinUserId: string,
+): Promise<string | null> {
+  let boxId: string;
+  try {
+    boxId = await resolveBoxId(pinUserId);
+  } catch {
+    return null;
+  }
+
+  const owner = await db.execute<{ email: string | null }>(sql`
+    SELECT p.email
+    FROM boxes b
+    JOIN profiles p ON p.id = b.owner_user_id
+    WHERE b.id = ${boxId}
+    LIMIT 1
+  `);
+  if (owner.rows[0]?.email) return owner.rows[0].email;
+
+  const [appUser] = await db
+    .select({ email: wodplaceUsersTable.email })
+    .from(wodplaceUsersTable)
+    .where(eq(wodplaceUsersTable.id, pinUserId));
+  if (!appUser?.email) return null;
+
+  const matches = await db.execute<{ email: string }>(sql`
+    SELECT DISTINCT p.email
+    FROM profiles p
+    JOIN user_roles ur ON ur.user_id = p.id
+    WHERE lower(p.email) = lower(${appUser.email})
+      AND ur.role IN ('box_admin', 'super_admin')
+    LIMIT 2
+  `);
+  return matches.rows.length === 1 ? matches.rows[0].email : null;
+}
+
+/**
+ * POST /admin/dash-link
+ *
+ * Mints a single-use Supabase magic link that logs the caller's box-admin
+ * account straight into the dashboard, so the mobile app's WebView never
+ * shows a second login. Requires a valid admin session token. Returns 409
+ * when no linked Supabase admin account can be resolved — the app then loads
+ * the dashboard's normal login instead.
+ */
+router.post(
+  "/admin/dash-link",
+  requireAdminSession,
+  async (req: Request, res: Response) => {
+    try {
+      const pinUserId = getAdminSession(req)?.userId;
+      if (!pinUserId) {
+        res.status(401).json({ error: "Invalid or expired admin session" });
+        return;
+      }
+
+      const email = await resolveDashLoginEmail(pinUserId);
+      if (!email) {
+        res
+          .status(409)
+          .json({ error: "No linked dashboard account for this identity" });
+        return;
+      }
+
+      const { data, error } = await getSupabaseAdmin().auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo: `${getDashboardUrl()}/` },
+      });
+
+      const url = data?.properties?.action_link;
+      if (error || !url) {
+        req.log.error(
+          { err: error },
+          "Supabase generateLink failed for dash auto-login",
+        );
+        res.status(502).json({ error: "Could not create dashboard link" });
+        return;
+      }
+
+      // NB: never log `url` — it is a one-time credential.
+      res.json(CreateAdminDashLinkResponse.parse({ url }));
+    } catch (error) {
+      req.log.error({ err: error }, "Error creating admin dashboard link");
+      res.status(500).json({ error: "Failed to create dashboard link" });
     }
   },
 );

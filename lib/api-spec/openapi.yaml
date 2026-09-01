@@ -701,6 +701,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /admin/dash-link:
+    post:
+      tags: [Admin]
+      operationId: createAdminDashLink
+      summary: Mint a one-time auto-login link for the box dashboard
+      description: |
+        Given a valid admin session token, resolves the caller's Supabase
+        Auth account (via `boxes.owner_user_id`, falling back to an email
+        match against `profiles` that also carries a `box_admin` /
+        `super_admin` role) and returns a single-use Supabase magic link that
+        logs that account into the dashboard. The link is short-lived and
+        must be opened immediately. Returns 409 when no linked Supabase admin
+        account can be resolved — the caller should then load the
+        dashboard's normal email/password login.
+      responses:
+        "200":
+          description: One-time auto-login URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashLinkResult"
+        "401":
+          description: Missing or invalid admin session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: No linked Supabase admin account for this PIN identity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: Upstream Supabase call failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
@@ -1091,3 +1131,13 @@ components:
       properties:
         acknowledged:
           type: integer
+
+    AdminDashLinkResult:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          description: |
+            Single-use Supabase magic link. Open it in a WebView
+            immediately; it expires quickly and is consumed on first use.

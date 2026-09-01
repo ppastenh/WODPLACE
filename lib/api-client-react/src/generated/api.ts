@@ -22,6 +22,7 @@ import type {
 import type {
   AcceptContractsRequest,
   AckContractAcceptancesResult,
+  AdminDashLinkResult,
   AdminPinSession,
   AdminPinSetupRequest,
   AdminPinStatusRequest,
@@ -1837,5 +1838,84 @@ export const useAckContractAcceptances = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getAckContractAcceptancesMutationOptions(options));
+    }
+
+export const getCreateAdminDashLinkUrl = () => {
+
+
+
+
+  return `/api/admin/dash-link`
+}
+
+/**
+ * Given a valid admin session token, resolves the caller's Supabase
+ * Auth account (via `boxes.owner_user_id`, falling back to an email
+ * match against `profiles` that also carries a `box_admin` /
+ * `super_admin` role) and returns a single-use Supabase magic link that
+ * logs that account into the dashboard. The link is short-lived and
+ * must be opened immediately. Returns 409 when no linked Supabase admin
+ * account can be resolved — the caller should then load the
+ * dashboard's normal email/password login.
+ * @summary Mint a one-time auto-login link for the box dashboard
+ */
+export const createAdminDashLink = async ( options?: RequestInit): Promise<AdminDashLinkResult> => {
+
+  return customFetch<AdminDashLinkResult>(getCreateAdminDashLinkUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateAdminDashLinkMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,void, TContext> => {
+
+const mutationKey = ['createAdminDashLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminDashLink>>, void> = () => {
+
+
+          return  createAdminDashLink(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminDashLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminDashLink>>>
+
+    export type CreateAdminDashLinkMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Mint a one-time auto-login link for the box dashboard
+ */
+export const useCreateAdminDashLink = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminDashLink>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateAdminDashLinkMutationOptions(options));
     }
 

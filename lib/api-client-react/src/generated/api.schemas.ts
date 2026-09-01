@@ -251,6 +251,14 @@ export interface AckContractAcceptancesResult {
   acknowledged: number;
 }
 
+export interface AdminDashLinkResult {
+  /**
+     * Single-use Supabase magic link. Open it in a WebView
+     * immediately; it expires quickly and is consumed on first use.
+     */
+  url: string;
+}
+
 export type ListBookingsParams = {
 userId: string;
 };

@@ -62,8 +62,12 @@ overrides:
   # One React across the whole workspace. wodplace (Expo SDK 54) needs 19.1.0,
   # and a second copy (box-admin/super-admin pinned ^19.2) makes Metro bundle
   # React twice -> "Cannot read property 'useState' of null" in Expo Go.
+  # The @types must be pinned to match, or shadcn components in box-admin /
+  # mockup-sandbox fail to typecheck on a split React.Ref type identity.
   react: 19.1.0
   react-dom: 19.1.0
+  '@types/react': ~19.1.10
+  '@types/react-dom': ~19.1.7
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'

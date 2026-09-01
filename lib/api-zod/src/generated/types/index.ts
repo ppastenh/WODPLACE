@@ -8,6 +8,7 @@
 
 export * from './acceptContractsRequest';
 export * from './ackContractAcceptancesResult';
+export * from './adminDashLinkResult';
 export * from './adminPinSession';
 export * from './adminPinSetupRequest';
 export * from './adminPinStatusRequest';
