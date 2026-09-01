@@ -43,6 +43,7 @@ minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
   - '@replit/*'
+  - '@lovable.dev/*'
   - stripe-replit-sync
 
 onlyBuiltDependencies:
