@@ -59,6 +59,11 @@ onlyBuiltDependencies:
 # installs on Windows/macOS. @expo/ngrok-bin is still pruned — it's large and
 # only Replit's dev tunnel uses it.
 overrides:
+  # One React across the whole workspace. wodplace (Expo SDK 54) needs 19.1.0,
+  # and a second copy (box-admin/super-admin pinned ^19.2) makes Metro bundle
+  # React twice -> "Cannot read property 'useState' of null" in Expo Go.
+  react: 19.1.0
+  react-dom: 19.1.0
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
