@@ -22,6 +22,18 @@ import { resolveDashboardUrl } from '@/lib/dashboardUrl';
  * The reduced native tools that used to live here (box name, contract
  * acceptances, moderation reports) moved to `/more`.
  */
+
+/** Strip query/hash so we never print the one-time token / access_token. */
+function safeUrl(raw: string | undefined | null): string {
+  if (!raw) return `<${raw === '' ? 'empty' : String(raw)}>`;
+  try {
+    const u = new URL(raw);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return `<unparseable: ${raw.slice(0, 40)}>`;
+  }
+}
+
 export default function AdminDashboardScreen() {
   const colors = useColors();
   const [token, setToken] = useState<string | null>(null);
@@ -47,8 +59,33 @@ export default function AdminDashboardScreen() {
     startedRef.current = true;
     dashLink
       .mutateAsync()
-      .then((res) => setUri(res.url))
-      .catch(() => setUri(`${dashboardOrigin}/`));
+      .then((res) => {
+        let redirectTo: string | null = null;
+        try {
+          redirectTo = new URL(res.url).searchParams.get('redirect_to');
+        } catch {
+          // ignore
+        }
+        console.log(
+          '[dash-webview] got dash-link →',
+          safeUrl(res.url),
+          '| redirect_to param =',
+          redirectTo ?? '<none>',
+        );
+        setUri(res.url);
+      })
+      .catch((err) => {
+        // Falling back to the plain dashboard URL means the admin will see
+        // box-admin's normal email/password login instead of landing in
+        // directly. Log why so this is diagnosable from Metro/Expo logs
+        // instead of silently guessing next time it happens.
+        console.warn(
+          '[dash-webview] dash-link failed, falling back to manual login:',
+          err?.status ?? '?',
+          err?.data ?? err?.message ?? err,
+        );
+        setUri(`${dashboardOrigin}/`);
+      });
   }, [token, dashboardOrigin, dashLink]);
 
   if (!token) return null;
@@ -95,6 +132,39 @@ export default function AdminDashboardScreen() {
           sharedCookiesEnabled
           domStorageEnabled
           originWhitelist={['*']}
+          // --- Diagnostics: trace every URL the WebView touches. ---
+          onShouldStartLoadWithRequest={(req) => {
+            console.log('[dash-webview] start load →', safeUrl(req.url));
+            return true;
+          }}
+          onLoadStart={(e) =>
+            console.log('[dash-webview] loadStart →', safeUrl(e.nativeEvent.url))
+          }
+          onNavigationStateChange={(nav) =>
+            console.log(
+              '[dash-webview] nav →',
+              safeUrl(nav.url),
+              '| loading:',
+              nav.loading,
+            )
+          }
+          onLoadEnd={(e) =>
+            console.log('[dash-webview] loadEnd →', safeUrl(e.nativeEvent.url))
+          }
+          onError={(e) =>
+            console.warn('[dash-webview] ERROR', {
+              url: safeUrl(e.nativeEvent.url),
+              code: e.nativeEvent.code,
+              domain: (e.nativeEvent as any).domain,
+              description: e.nativeEvent.description,
+            })
+          }
+          onHttpError={(e) =>
+            console.warn('[dash-webview] HTTP ERROR', {
+              url: safeUrl(e.nativeEvent.url),
+              status: e.nativeEvent.statusCode,
+            })
+          }
         />
       )}
     </View>

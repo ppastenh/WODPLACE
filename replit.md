@@ -16,10 +16,21 @@ _Replace the heading above with the project's name, and this line with one sente
   app's admin WebView falls back to box-admin's normal login.
 - Env (wodplace): `EXPO_PUBLIC_API_URL` (api-server origin), `EXPO_PUBLIC_DASHBOARD_URL`
   (box-admin origin shown in the admin WebView).
-- **Supabase dashboard config** for the auto-login link: Authentication → URL
-  Configuration → Redirect URLs must allow the exact dashboard origin(s)
-  (e.g. `http://192.168.1.87:5002/**` for LAN dev). Keep the magic-link / OTP
-  expiry short.
+- **Supabase Auth config for the dashboard auto-login link** (Authentication →
+  URL Configuration):
+  - **Local dev:** set **Site URL** to the box-admin LAN origin
+    (`http://192.168.1.87:5002` today — match `DASHBOARD_URL` /
+    `EXPO_PUBLIC_DASHBOARD_URL`). GoTrue does **not** reliably honor
+    `uri_allow_list` / Redirect URLs for a raw `http://<LAN-IP>:port`
+    (confirmed via the Management API — the entry was present and still
+    ignored), but it always accepts a `redirect_to` whose host:port matches
+    the Site URL. Without this the magic link's `redirect_to` gets rewritten
+    to the default Site URL (`http://localhost:3000`) and the WebView shows
+    `NSURLErrorDomain -1004`.
+  - **Production:** once box-admin is on a real HTTPS domain, set Site URL
+    back to that app's own URL and add the dashboard origin to Redirect URLs
+    (real domains + HTTPS match `uri_allow_list` fine).
+  - Keep the magic-link / OTP expiry short.
 
 ## Stack
 

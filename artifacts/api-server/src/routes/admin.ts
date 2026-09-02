@@ -429,49 +429,54 @@ router.post(
 
 /**
  * Resolves the Supabase Auth email to auto-login into the box dashboard for
- * the PIN identity `pinUserId` (a `wodplace_users.id`, i.e. the app's local
- * mock id — NOT an `auth.users.id`).
+ * the PIN identity `pinUserId` (a `wodplace_users.id` — the app's local mock
+ * id, NOT an `auth.users.id`).
  *
- * Primary: the box's `owner_user_id` (a real `auth.users.id`, set by
- * super-admin-hub when a box is approved) -> its `profiles.email`.
- * Fallback: match `wodplace_users.email` against a `profiles` row that also
- * carries a `box_admin` / `super_admin` role. Ambiguous or missing -> null,
- * and the caller falls back to the dashboard's normal email/password login.
+ * A PIN identity is a non-UUID mock id, so it can't be matched against
+ * `boxes.owner_user_id` (a real `auth.users.id` — that comparison actually
+ * errors once the column is `uuid`). The only bridge is the shared email:
+ * match `wodplace_users.email` against a `profiles` row that also carries a
+ * `box_admin` / `super_admin` role. Exactly one distinct account -> use it;
+ * ambiguous or missing -> null, and the caller falls back to the dashboard's
+ * normal email/password login.
  */
 async function resolveDashLoginEmail(
   pinUserId: string,
+  log: Request["log"],
 ): Promise<string | null> {
-  let boxId: string;
-  try {
-    boxId = await resolveBoxId(pinUserId);
-  } catch {
-    return null;
-  }
-
-  const owner = await db.execute<{ email: string | null }>(sql`
-    SELECT p.email
-    FROM boxes b
-    JOIN profiles p ON p.id = b.owner_user_id
-    WHERE b.id = ${boxId}
-    LIMIT 1
-  `);
-  if (owner.rows[0]?.email) return owner.rows[0].email;
-
   const [appUser] = await db
     .select({ email: wodplaceUsersTable.email })
     .from(wodplaceUsersTable)
     .where(eq(wodplaceUsersTable.id, pinUserId));
-  if (!appUser?.email) return null;
+  if (!appUser?.email) {
+    log.warn(
+      { pinUserId },
+      "[dash-link] no wodplace_users row/email for this PIN identity",
+    );
+    return null;
+  }
 
   const matches = await db.execute<{ email: string }>(sql`
     SELECT DISTINCT p.email
     FROM profiles p
     JOIN user_roles ur ON ur.user_id = p.id
     WHERE lower(p.email) = lower(${appUser.email})
+      AND p.email IS NOT NULL
       AND ur.role IN ('box_admin', 'super_admin')
     LIMIT 2
   `);
-  return matches.rows.length === 1 ? matches.rows[0].email : null;
+  if (matches.rows.length !== 1) {
+    log.warn(
+      { pinUserId, email: appUser.email, matchCount: matches.rows.length },
+      "[dash-link] wodplace_users email did not resolve to exactly one box_admin/super_admin profile",
+    );
+    return null;
+  }
+  log.info(
+    { pinUserId, via: "wodplace_users-email-match" },
+    "[dash-link] resolved dashboard login email via email match",
+  );
+  return matches.rows[0].email;
 }
 
 /**
@@ -494,31 +499,56 @@ router.post(
         return;
       }
 
-      const email = await resolveDashLoginEmail(pinUserId);
+      const email = await resolveDashLoginEmail(pinUserId, req.log);
       if (!email) {
+        req.log.warn(
+          { pinUserId },
+          "[dash-link] 409: no linked dashboard account, app will fall back to manual login",
+        );
         res
           .status(409)
           .json({ error: "No linked dashboard account for this identity" });
         return;
       }
 
+      const redirectTo = `${getDashboardUrl()}/`;
       const { data, error } = await getSupabaseAdmin().auth.admin.generateLink({
         type: "magiclink",
         email,
-        options: { redirectTo: `${getDashboardUrl()}/` },
+        options: { redirectTo },
       });
 
       const url = data?.properties?.action_link;
       if (error || !url) {
         req.log.error(
-          { err: error },
-          "Supabase generateLink failed for dash auto-login",
+          { err: error, redirectTo },
+          "[dash-link] 502: Supabase generateLink failed for dash auto-login",
         );
         res.status(502).json({ error: "Could not create dashboard link" });
         return;
       }
 
-      // NB: never log `url` — it is a one-time credential.
+      // Diagnostics: log the link's shape (origin + path + the redirect_to it
+      // actually carries) WITHOUT the one-time token in the query string.
+      let linkShape = "<unparseable>";
+      try {
+        const u = new URL(url);
+        linkShape = `${u.origin}${u.pathname} redirect_to=${u.searchParams.get("redirect_to")}`;
+      } catch {
+        /* keep placeholder */
+      }
+      req.log.info(
+        {
+          pinUserId,
+          requestedRedirectTo: redirectTo,
+          linkShape,
+          propertyKeys: data?.properties
+            ? Object.keys(data.properties)
+            : null,
+        },
+        "[dash-link] 200: magic link minted for dash auto-login",
+      );
+      // NB: never log the full `url` — it is a one-time credential.
       res.json(CreateAdminDashLinkResponse.parse({ url }));
     } catch (error) {
       req.log.error({ err: error }, "Error creating admin dashboard link");
