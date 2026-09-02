@@ -96,7 +96,7 @@ export default function BarLoaderScreen() {
   if (settings.isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <RmHeader title="Carga de barra" />
+        <RmHeader title="Carga de barra" onBack={() => router.replace('/home')} />
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       </View>
     );
@@ -106,6 +106,7 @@ export default function BarLoaderScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <RmHeader
         title="Carga de barra"
+        onBack={() => router.replace('/home')}
         right={
           <Pressable onPress={() => router.push('/rm/estimated-max' as never)} hitSlop={10}>
             <Feather name="trending-up" size={20} color={colors.primary} />

@@ -47,7 +47,7 @@ export default function RmSettingsScreen() {
   if (settings.isLoading || !settings.data) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <RmHeader title="Ajustes" />
+        <RmHeader title="Ajustes" onBack={() => router.replace('/home')} />
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       </View>
     );
@@ -57,7 +57,7 @@ export default function RmSettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <RmHeader title="Ajustes" />
+      <RmHeader title="Ajustes" onBack={() => router.replace('/home')} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Unidad preferida</Text>
         <View style={[styles.toggle, { borderColor: colors.border }]}>

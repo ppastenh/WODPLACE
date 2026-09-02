@@ -61,7 +61,7 @@ export default function RmHistoryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <RmHeader title="Mis RM" />
+      <RmHeader title="Mis RM" onBack={() => router.replace('/home')} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.ctaRow}>
           <Pressable
