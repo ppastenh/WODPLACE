@@ -1,113 +1,147 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Line, Rect } from 'react-native-svg';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import { useDarkColors } from '@/hooks/useDarkColors';
 import type { LoadedPlate } from '@/lib/rm/barLoad';
+import { plateFill, plateStroke, plateTextColor } from '@/lib/rm/plateColors';
 import { trimNum } from '@/lib/rm/units';
 
 type Props = {
   /** One side, heaviest first (bar-side to collar). */
   perSide: LoadedPlate[];
+  /** Tap a plate to remove it (manual mode). */
+  onRemove?: (unit: LoadedPlate['unit'], weight: number) => void;
 };
 
-/** Draws the bar with the plates stacked on both sides (mirrored). */
-export function BarLoadDiagram({ perSide }: Props) {
+const H = 150;
+const PLATE_W = 26;
+const GAP = 3;
+const SLEEVE_W = 22;
+const MIN_PLATE_H = 46;
+
+/** Bar with the plates stacked on both sides (mirrored), colour-coded. */
+export function BarLoadDiagram({ perSide, onRemove }: Props) {
   const colors = useDarkColors();
   const [w, setW] = React.useState(0);
-  const H = 130;
   const mid = H / 2;
-  const sleeveH = 12;
-  const plateGap = 3;
 
-  // Plate visual height scales with kg (clamped).
   const maxKg = Math.max(1, ...perSide.map((p) => p.kg));
-  const plateH = (kg: number) => 34 + (kg / maxKg) * 70;
-  const plateW = 13;
+  const plateH = (kg: number) => MIN_PLATE_H + (kg / maxKg) * (H - MIN_PLATE_H - 24);
 
-  const stackW = perSide.length * (plateW + plateGap);
-  const barCenterW = Math.max(40, w - 2 * stackW - 2 * 26);
-  const collarX = (w - barCenterW) / 2 - 8;
+  const stackW = perSide.length * (PLATE_W + GAP);
+  // centre gap for the bare shaft
+  const centerGap = Math.max(46, w - 2 * (stackW + SLEEVE_W + 14));
+  const collarX = (w - centerGap) / 2;
 
   return (
     <View onLayout={(e) => setW(e.nativeEvent.layout.width)}>
       {w > 0 ? (
         <Svg width={w} height={H}>
-          {/* bar shaft */}
+          {/* shaft */}
           <Rect
-            x={collarX - stackW - 20}
+            x={12}
             y={mid - 3}
-            width={w - 2 * (collarX - stackW - 20)}
+            width={w - 24}
             height={6}
-            rx={2}
+            rx={3}
             fill={colors.mutedForeground}
           />
           {/* sleeves */}
-          <Rect x={collarX - stackW - 20} y={mid - sleeveH / 2} width={20} height={sleeveH} fill={colors.inactive} />
-          <Rect
-            x={w - (collarX - stackW - 20) - 20}
-            y={mid - sleeveH / 2}
-            width={20}
-            height={sleeveH}
-            fill={colors.inactive}
-          />
+          <Rect x={collarX - stackW - SLEEVE_W} y={mid - 7} width={SLEEVE_W} height={14} rx={2} fill={colors.inactive} />
+          <Rect x={w - collarX + stackW} y={mid - 7} width={SLEEVE_W} height={14} rx={2} fill={colors.inactive} />
+          {/* collars */}
+          <Rect x={collarX - 6} y={mid - 9} width={6} height={18} rx={1} fill={colors.mutedForeground} />
+          <Rect x={w - collarX} y={mid - 9} width={6} height={18} rx={1} fill={colors.mutedForeground} />
 
-          {/* left + right plate stacks (mirrored) */}
           {perSide.map((p, i) => {
             const h = plateH(p.kg);
-            const xLeft = collarX - (i + 1) * (plateW + plateGap);
-            const xRight = w - collarX + i * (plateW + plateGap);
+            const fill = plateFill(p.unit, p.weight);
+            const stroke = plateStroke(p.unit, p.weight);
+            const txt = plateTextColor(p.unit, p.weight);
+            const xLeft = collarX - (i + 1) * (PLATE_W + GAP) + GAP / 2;
+            const xRight = w - collarX + i * (PLATE_W + GAP) + GAP / 2;
+            const cyNum = mid - 4;
+            const cyUnit = mid + 9;
             return (
               <React.Fragment key={i}>
-                <Rect x={xLeft} y={mid - h / 2} width={plateW} height={h} rx={2} fill={colors.primary} />
-                <Rect x={xRight} y={mid - h / 2} width={plateW} height={h} rx={2} fill={colors.primary} />
+                {[xLeft, xRight].map((x, side) => (
+                  <React.Fragment key={side}>
+                    <Rect
+                      x={x}
+                      y={mid - h / 2}
+                      width={PLATE_W}
+                      height={h}
+                      rx={3}
+                      fill={fill}
+                      stroke={stroke}
+                      strokeWidth={1}
+                    />
+                    <SvgText
+                      x={x + PLATE_W / 2}
+                      y={cyNum}
+                      fontSize={11}
+                      fontWeight="bold"
+                      fill={txt}
+                      textAnchor="middle"
+                    >
+                      {trimNum(p.weight, 2)}
+                    </SvgText>
+                    <SvgText
+                      x={x + PLATE_W / 2}
+                      y={cyUnit}
+                      fontSize={7}
+                      fill={txt}
+                      textAnchor="middle"
+                    >
+                      {p.unit}
+                    </SvgText>
+                  </React.Fragment>
+                ))}
               </React.Fragment>
             );
           })}
-          {/* centre reference line */}
-          <Line x1={w / 2} y1={8} x2={w / 2} y2={H - 8} stroke={colors.border} strokeWidth={1} strokeDasharray="3 4" />
         </Svg>
       ) : null}
 
-      {/* legend: per-side plate list */}
-      <View style={styles.legend}>
-        {perSide.length === 0 ? (
-          <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_400Regular', fontSize: 12 }}>
-            Solo la barra.
-          </Text>
-        ) : (
-          perSide.map((p, i) => (
-            <View key={i} style={[styles.chip, { borderColor: colors.border }]}>
-              <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-              <Text style={[styles.chipText, { color: colors.foreground }]}>
+      {/* tap-to-remove row (manual mode) */}
+      {onRemove && perSide.length > 0 ? (
+        <View style={styles.removeRow}>
+          {perSide.map((p, i) => (
+            <Pressable
+              key={i}
+              onPress={() => onRemove(p.unit, p.weight)}
+              style={[styles.removeChip, { borderColor: colors.border }]}
+            >
+              <View style={[styles.dot, { backgroundColor: plateFill(p.unit, p.weight) }]} />
+              <Text style={[styles.removeText, { color: colors.foreground }]}>
                 {trimNum(p.weight, 2)} {p.unit}
               </Text>
-            </View>
-          ))
-        )}
-        <Text style={[styles.perSide, { color: colors.mutedForeground }]}>× cada lado</Text>
-      </View>
+              <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>✕</Text>
+            </Pressable>
+          ))}
+          <Text style={[styles.perSide, { color: colors.mutedForeground }]}>× cada lado · tocá para quitar</Text>
+        </View>
+      ) : perSide.length === 0 ? (
+        <Text style={[styles.perSide, { color: colors.mutedForeground, marginTop: 8 }]}>
+          Barra vacía.
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  legend: {
+  removeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 12 },
+  removeChip: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 6,
-    marginTop: 10,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  chipText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  perSide: { fontSize: 11, fontFamily: 'Inter_400Regular', marginLeft: 2 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  removeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  perSide: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });

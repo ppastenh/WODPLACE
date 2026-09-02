@@ -392,15 +392,6 @@ export const TrainingSettingsPreferredUnit = {
   lb: 'lb',
 } as const;
 
-export type TrainingSettingsSex = typeof TrainingSettingsSex[keyof typeof TrainingSettingsSex] | null;
-
-
-export const TrainingSettingsSex = {
-  f: 'f',
-  m: 'm',
-  x: 'x',
-} as const;
-
 export type TrainingSettingsBarUnit = typeof TrainingSettingsBarUnit[keyof typeof TrainingSettingsBarUnit];
 
 
@@ -412,7 +403,6 @@ export const TrainingSettingsBarUnit = {
 export interface TrainingSettings {
   userId: string;
   preferredUnit: TrainingSettingsPreferredUnit;
-  sex?: TrainingSettingsSex;
   barWeight: number;
   barUnit: TrainingSettingsBarUnit;
   plates: PlateSpec[];
@@ -426,15 +416,6 @@ export const UpsertTrainingSettingsRequestPreferredUnit = {
   lb: 'lb',
 } as const;
 
-export type UpsertTrainingSettingsRequestSex = typeof UpsertTrainingSettingsRequestSex[keyof typeof UpsertTrainingSettingsRequestSex] | null;
-
-
-export const UpsertTrainingSettingsRequestSex = {
-  f: 'f',
-  m: 'm',
-  x: 'x',
-} as const;
-
 export type UpsertTrainingSettingsRequestBarUnit = typeof UpsertTrainingSettingsRequestBarUnit[keyof typeof UpsertTrainingSettingsRequestBarUnit];
 
 
@@ -446,7 +427,6 @@ export const UpsertTrainingSettingsRequestBarUnit = {
 export interface UpsertTrainingSettingsRequest {
   userId: string;
   preferredUnit: UpsertTrainingSettingsRequestPreferredUnit;
-  sex?: UpsertTrainingSettingsRequestSex;
   barWeight: number;
   barUnit: UpsertTrainingSettingsRequestBarUnit;
   plates: PlateSpec[];

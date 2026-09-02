@@ -1459,7 +1459,6 @@ components:
       properties:
         userId: { type: string }
         preferredUnit: { type: string, enum: [kg, lb] }
-        sex: { type: string, enum: [f, m, x], nullable: true }
         barWeight: { type: number }
         barUnit: { type: string, enum: [kg, lb] }
         plates:
@@ -1472,7 +1471,6 @@ components:
       properties:
         userId: { type: string }
         preferredUnit: { type: string, enum: [kg, lb] }
-        sex: { type: string, enum: [f, m, x], nullable: true }
         barWeight: { type: number }
         barUnit: { type: string, enum: [kg, lb] }
         plates:

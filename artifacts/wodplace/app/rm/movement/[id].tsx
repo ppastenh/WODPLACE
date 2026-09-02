@@ -121,7 +121,9 @@ export default function MovementDetailScreen() {
         right={
           <Pressable
             onPress={() =>
-              router.push(`/rm/record?movementId=${movementId}&movementName=${encodeURIComponent(liftName)}`)
+              router.push(
+                `/rm/record?movementId=${movementId}&movementName=${encodeURIComponent(liftName)}` as never,
+              )
             }
             hitSlop={10}
           >
@@ -137,7 +139,7 @@ export default function MovementDetailScreen() {
           </Text>
           <Pressable
             onPress={() =>
-              router.push(`/rm/tools/bar-loader?prefillKg=${bestKg.toFixed(2)}`)
+              router.push(`/rm?prefillKg=${bestKg.toFixed(2)}` as never)
             }
             style={styles.barLink}
           >

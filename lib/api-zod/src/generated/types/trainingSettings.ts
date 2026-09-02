@@ -8,12 +8,10 @@
 import type { PlateSpec } from './plateSpec';
 import type { TrainingSettingsBarUnit } from './trainingSettingsBarUnit';
 import type { TrainingSettingsPreferredUnit } from './trainingSettingsPreferredUnit';
-import type { TrainingSettingsSex } from './trainingSettingsSex';
 
 export interface TrainingSettings {
   userId: string;
   preferredUnit: TrainingSettingsPreferredUnit;
-  sex?: TrainingSettingsSex;
   barWeight: number;
   barUnit: TrainingSettingsBarUnit;
   plates: PlateSpec[];

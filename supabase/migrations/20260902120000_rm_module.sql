@@ -111,10 +111,25 @@ create table if not exists public.training_settings (
     {"unit":"kg","weight":10,"pairs":2},
     {"unit":"kg","weight":5,"pairs":2},
     {"unit":"kg","weight":2.5,"pairs":2},
-    {"unit":"kg","weight":1.25,"pairs":2},
+    {"unit":"kg","weight":1,"pairs":2},
     {"unit":"kg","weight":0.5,"pairs":2}
   ]'::jsonb,
   updated_at      timestamptz not null default now()
 );
+
+-- Idempotent: if the table already existed (migration re-run after the first
+-- apply), make sure the default plate set matches the current catalog
+-- (fractional 0.5..2.5, no 1.25). Existing rows keep their configured set;
+-- users pick "Volver al set por defecto" in the app to adopt this.
+alter table public.training_settings alter column plates set default '[
+  {"unit":"kg","weight":25,"pairs":4},
+  {"unit":"kg","weight":20,"pairs":4},
+  {"unit":"kg","weight":15,"pairs":2},
+  {"unit":"kg","weight":10,"pairs":2},
+  {"unit":"kg","weight":5,"pairs":2},
+  {"unit":"kg","weight":2.5,"pairs":2},
+  {"unit":"kg","weight":1,"pairs":2},
+  {"unit":"kg","weight":0.5,"pairs":2}
+]'::jsonb;
 
 commit;

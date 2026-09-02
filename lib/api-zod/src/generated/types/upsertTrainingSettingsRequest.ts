@@ -8,12 +8,10 @@
 import type { PlateSpec } from './plateSpec';
 import type { UpsertTrainingSettingsRequestBarUnit } from './upsertTrainingSettingsRequestBarUnit';
 import type { UpsertTrainingSettingsRequestPreferredUnit } from './upsertTrainingSettingsRequestPreferredUnit';
-import type { UpsertTrainingSettingsRequestSex } from './upsertTrainingSettingsRequestSex';
 
 export interface UpsertTrainingSettingsRequest {
   userId: string;
   preferredUnit: UpsertTrainingSettingsRequestPreferredUnit;
-  sex?: UpsertTrainingSettingsRequestSex;
   barWeight: number;
   barUnit: UpsertTrainingSettingsRequestBarUnit;
   plates: PlateSpec[];

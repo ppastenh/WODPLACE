@@ -64,7 +64,8 @@ function MemberDetail() {
 
   const prs = useQuery({
     queryKey: ["member-prs", boxId, id],
-    queryFn: async () => (await supabase.from("prs").select("*").eq("box_id", boxId).eq("user_id", id).order("achieved_at", { ascending: false })).data ?? [],
+    // prs is per-person now (no box_id) — a member's records are theirs across boxes.
+    queryFn: async () => (await supabase.from("prs").select("*").eq("user_id", id).order("achieved_at", { ascending: false })).data ?? [],
   });
 
   const toggle = useMutation({

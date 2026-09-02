@@ -34,7 +34,6 @@ export default function RmSettingsScreen() {
         data: {
           userId,
           preferredUnit: cur.preferredUnit,
-          sex: cur.sex ?? null,
           barWeight: cur.barWeight,
           barUnit: cur.barUnit,
           plates: cur.plates,
@@ -80,7 +79,10 @@ export default function RmSettingsScreen() {
           ))}
         </View>
 
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>Barra por defecto</Text>
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>Mi barra</Text>
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          La que usás siempre. La calculadora arranca con ésta seleccionada.
+        </Text>
         <View style={styles.pillRow}>
           {[20, 15].map((kg) => (
             <Pressable
@@ -112,32 +114,8 @@ export default function RmSettingsScreen() {
           ))}
         </View>
 
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>Sexo</Text>
-        <View style={styles.pillRow}>
-          {(
-            [
-              { v: 'f', label: 'Femenino' },
-              { v: 'm', label: 'Masculino' },
-              { v: 'x', label: 'Otro / prefiero no decir' },
-            ] as const
-          ).map((o) => (
-            <Pressable
-              key={o.v}
-              onPress={() => save({ sex: o.v })}
-              style={[
-                styles.pill,
-                { backgroundColor: s.sex === o.v ? colors.primary : colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.pillText, { color: s.sex === o.v ? colors.primaryForeground : colors.foreground }]}>
-                {o.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
         <Pressable
-          onPress={() => router.push('/rm/settings/plates')}
+          onPress={() => router.push('/rm/settings/plates' as never)}
           style={[styles.link, { backgroundColor: colors.card }]}
         >
           <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
@@ -166,6 +144,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 8,
   },
+  hint: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
   toggle: {
     flexDirection: 'row',
     borderWidth: StyleSheet.hairlineWidth,

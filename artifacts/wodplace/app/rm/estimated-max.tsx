@@ -80,7 +80,7 @@ export default function EstimatedMaxScreen() {
 
             <Pressable
               onPress={() =>
-                router.push(`/rm/record?prefillWeight=${trimNum(oneRm, 1)}`)
+                router.push(`/rm/record?prefillWeight=${trimNum(oneRm, 1)}` as never)
               }
               style={[styles.useBtn, { borderColor: colors.border }]}
             >
