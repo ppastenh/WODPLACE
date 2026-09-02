@@ -249,7 +249,7 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ver progreso y PRs"
-            onPress={() => router.push('/progress')}
+            onPress={() => router.push('/rm')}
             style={({ pressed }) => [
               styles.prCard,
               { backgroundColor: colors.successBackground },

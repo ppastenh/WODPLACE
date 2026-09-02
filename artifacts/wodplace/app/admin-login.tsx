@@ -14,7 +14,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { PinField } from '@/components/PinField';
 import { useAuth } from '@/context/AuthContext';
-import { useColors } from '@/hooks/useColors';
+import { useDarkColors } from '@/hooks/useDarkColors';
 import { setAdminToken } from '@/lib/adminSession';
 
 type Mode = 'loading' | 'error' | 'setup' | 'verify' | 'locked' | 'password';
@@ -35,7 +35,7 @@ function formatRemaining(ms: number): string {
  * short-lived session token and continues to /admin-dashboard.
  */
 export default function AdminLoginScreen() {
-  const colors = useColors();
+  const colors = useDarkColors();
   const { user, verifyPassword } = useAuth();
 
   const [mode, setMode] = useState<Mode>('loading');

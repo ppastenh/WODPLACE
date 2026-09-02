@@ -259,6 +259,199 @@ export interface AdminDashLinkResult {
   url: string;
 }
 
+export interface RmOkResult {
+  ok: boolean;
+}
+
+export interface Movement {
+  id: string;
+  name: string;
+  category?: string | null;
+  isDefault: boolean;
+  createdBy?: string | null;
+}
+
+export interface CreateMovementRequest {
+  userId: string;
+  name: string;
+  category?: string | null;
+}
+
+export type PrUnit = typeof PrUnit[keyof typeof PrUnit];
+
+
+export const PrUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface Pr {
+  id: string;
+  userId: string;
+  movementId: string;
+  liftName: string;
+  weight: number;
+  unit: PrUnit;
+  weightKg: number;
+  /** ISO date (YYYY-MM-DD) */
+  achievedAt: string;
+  note?: string | null;
+}
+
+export type CreatePrRequestUnit = typeof CreatePrRequestUnit[keyof typeof CreatePrRequestUnit];
+
+
+export const CreatePrRequestUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface CreatePrRequest {
+  id: string;
+  userId: string;
+  movementId: string;
+  weight: number;
+  unit: CreatePrRequestUnit;
+  achievedAt?: string | null;
+  note?: string | null;
+}
+
+export type UpdatePrRequestUnit = typeof UpdatePrRequestUnit[keyof typeof UpdatePrRequestUnit] | null;
+
+
+export const UpdatePrRequestUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface UpdatePrRequest {
+  userId: string;
+  weight?: number | null;
+  unit?: UpdatePrRequestUnit;
+  achievedAt?: string | null;
+  note?: string | null;
+}
+
+export type PrGoalTargetUnit = typeof PrGoalTargetUnit[keyof typeof PrGoalTargetUnit];
+
+
+export const PrGoalTargetUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface PrGoal {
+  id: string;
+  userId: string;
+  movementId: string;
+  targetWeight: number;
+  targetUnit: PrGoalTargetUnit;
+  targetWeightKg: number;
+  achievedAt?: string | null;
+  /** Best weightKg for this movement, or null if no records */
+  currentBestKg?: number | null;
+  /** targetWeightKg - currentBestKg, floored at 0; null if no records */
+  remainingKg?: number | null;
+}
+
+export type UpsertPrGoalRequestTargetUnit = typeof UpsertPrGoalRequestTargetUnit[keyof typeof UpsertPrGoalRequestTargetUnit];
+
+
+export const UpsertPrGoalRequestTargetUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface UpsertPrGoalRequest {
+  id: string;
+  userId: string;
+  movementId: string;
+  targetWeight: number;
+  targetUnit: UpsertPrGoalRequestTargetUnit;
+}
+
+export type PlateSpecUnit = typeof PlateSpecUnit[keyof typeof PlateSpecUnit];
+
+
+export const PlateSpecUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface PlateSpec {
+  unit: PlateSpecUnit;
+  weight: number;
+  pairs: number;
+}
+
+export type TrainingSettingsPreferredUnit = typeof TrainingSettingsPreferredUnit[keyof typeof TrainingSettingsPreferredUnit];
+
+
+export const TrainingSettingsPreferredUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export type TrainingSettingsSex = typeof TrainingSettingsSex[keyof typeof TrainingSettingsSex] | null;
+
+
+export const TrainingSettingsSex = {
+  f: 'f',
+  m: 'm',
+  x: 'x',
+} as const;
+
+export type TrainingSettingsBarUnit = typeof TrainingSettingsBarUnit[keyof typeof TrainingSettingsBarUnit];
+
+
+export const TrainingSettingsBarUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface TrainingSettings {
+  userId: string;
+  preferredUnit: TrainingSettingsPreferredUnit;
+  sex?: TrainingSettingsSex;
+  barWeight: number;
+  barUnit: TrainingSettingsBarUnit;
+  plates: PlateSpec[];
+}
+
+export type UpsertTrainingSettingsRequestPreferredUnit = typeof UpsertTrainingSettingsRequestPreferredUnit[keyof typeof UpsertTrainingSettingsRequestPreferredUnit];
+
+
+export const UpsertTrainingSettingsRequestPreferredUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export type UpsertTrainingSettingsRequestSex = typeof UpsertTrainingSettingsRequestSex[keyof typeof UpsertTrainingSettingsRequestSex] | null;
+
+
+export const UpsertTrainingSettingsRequestSex = {
+  f: 'f',
+  m: 'm',
+  x: 'x',
+} as const;
+
+export type UpsertTrainingSettingsRequestBarUnit = typeof UpsertTrainingSettingsRequestBarUnit[keyof typeof UpsertTrainingSettingsRequestBarUnit];
+
+
+export const UpsertTrainingSettingsRequestBarUnit = {
+  kg: 'kg',
+  lb: 'lb',
+} as const;
+
+export interface UpsertTrainingSettingsRequest {
+  userId: string;
+  preferredUnit: UpsertTrainingSettingsRequestPreferredUnit;
+  sex?: UpsertTrainingSettingsRequestSex;
+  barWeight: number;
+  barUnit: UpsertTrainingSettingsRequestBarUnit;
+  plates: PlateSpec[];
+}
+
 export type ListBookingsParams = {
 userId: string;
 };
@@ -272,6 +465,23 @@ userId?: string;
 };
 
 export type GetContractAcceptanceParams = {
+userId: string;
+};
+
+export type ListMovementsParams = {
+userId: string;
+};
+
+export type ListPrsParams = {
+userId: string;
+movementId?: string;
+};
+
+export type ListPrGoalsParams = {
+userId: string;
+};
+
+export type GetTrainingSettingsParams = {
 userId: string;
 };
 

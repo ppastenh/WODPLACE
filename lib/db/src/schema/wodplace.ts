@@ -1,5 +1,11 @@
+import { sql } from "drizzle-orm";
 import {
+  boolean,
+  date,
+  index,
   integer,
+  jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -258,3 +264,132 @@ export const adminPinsTable = pgTable("admin_pins", {
     .defaultNow(),
 });
 export type AdminPinRow = typeof adminPinsTable.$inferSelect;
+
+// ── RM / 1RM module ─────────────────────────────────────────────────────────
+
+// Movement catalog. Seeded rows have `createdBy = null` + `isDefault = true`;
+// a user's custom movements carry their id. Visible to a user when
+// `createdBy IS NULL OR createdBy = :userId`.
+export const movementsTable = pgTable(
+  "movements",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    category: text("category"), // 'squat_dl' | 'press' | 'olympic' | null
+    isDefault: boolean("is_default").notNull().default(false),
+    createdBy: text("created_by").references(() => wodplaceUsersTable.id, {
+      onDelete: "cascade",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("movements_scope_name_idx").on(
+      sql`coalesce(${table.createdBy}, '')`,
+      sql`lower(${table.name})`,
+    ),
+  ],
+);
+export type MovementRow = typeof movementsTable.$inferSelect;
+
+// One personal record entry. `weight`/`unit` are the source of truth as
+// entered; `weightKg` is a stored generated column used for every comparison,
+// chart and percentage. `liftName` is a stable label snapshot so history keeps
+// its label even if the movement is renamed. `movementId` is RESTRICT — a
+// custom movement with records can't be deleted until its records are.
+export const prsTable = pgTable(
+  "prs",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    movementId: text("movement_id")
+      .notNull()
+      .references(() => movementsTable.id, { onDelete: "restrict" }),
+    liftName: text("lift_name").notNull(),
+    weight: numeric("weight").notNull(),
+    unit: text("unit").notNull(), // 'kg' | 'lb'
+    weightKg: numeric("weight_kg").generatedAlwaysAs(
+      sql`round((case when unit = 'lb' then weight * 0.45359237 else weight end)::numeric, 3)`,
+    ),
+    achievedAt: date("achieved_at").notNull().default(sql`current_date`),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("prs_user_movement_date_idx").on(
+      table.userId,
+      table.movementId,
+      table.achievedAt.desc(),
+    ),
+  ],
+);
+export type PrRow = typeof prsTable.$inferSelect;
+
+// One active goal per (user, movement). `achievedAt` is set the day the best
+// record reaches the target.
+export const prGoalsTable = pgTable(
+  "pr_goals",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    movementId: text("movement_id")
+      .notNull()
+      .references(() => movementsTable.id, { onDelete: "cascade" }),
+    targetWeight: numeric("target_weight").notNull(),
+    targetUnit: text("target_unit").notNull(), // 'kg' | 'lb'
+    targetWeightKg: numeric("target_weight_kg").generatedAlwaysAs(
+      sql`round((case when target_unit = 'lb' then target_weight * 0.45359237 else target_weight end)::numeric, 3)`,
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    achievedAt: date("achieved_at"),
+  },
+  (table) => [
+    uniqueIndex("pr_goals_user_movement_idx").on(
+      table.userId,
+      table.movementId,
+    ),
+  ],
+);
+export type PrGoalRow = typeof prGoalsTable.$inferSelect;
+
+export type PlateSpec = { unit: "kg" | "lb"; weight: number; pairs: number };
+
+// Per-user training settings: the bar-loader config plus the module-wide
+// preferred unit. `plates` is the configurable disc inventory.
+export const trainingSettingsTable = pgTable("training_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+  preferredUnit: text("preferred_unit").notNull().default("kg"), // 'kg' | 'lb'
+  sex: text("sex"), // 'f' | 'm' | 'x' | null
+  barWeight: numeric("bar_weight").notNull().default("20"),
+  barUnit: text("bar_unit").notNull().default("kg"), // 'kg' | 'lb'
+  plates: jsonb("plates")
+    .$type<PlateSpec[]>()
+    .notNull()
+    .default(
+      sql`'[
+        {"unit":"kg","weight":25,"pairs":4},
+        {"unit":"kg","weight":20,"pairs":4},
+        {"unit":"kg","weight":15,"pairs":2},
+        {"unit":"kg","weight":10,"pairs":2},
+        {"unit":"kg","weight":5,"pairs":2},
+        {"unit":"kg","weight":2.5,"pairs":2},
+        {"unit":"kg","weight":1.25,"pairs":2},
+        {"unit":"kg","weight":0.5,"pairs":2}
+      ]'::jsonb`,
+    ),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type TrainingSettingsRow = typeof trainingSettingsTable.$inferSelect;

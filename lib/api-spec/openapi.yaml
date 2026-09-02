@@ -24,6 +24,8 @@ tags:
     description: In-app notifications for mobile users.
   - name: Admin
     description: Hidden admin operations for managing contract documents.
+  - name: RM
+    description: Personal lift records (1RM), custom movements, goals, and training settings.
 paths:
   /healthz:
     get:
@@ -741,6 +743,223 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /movements:
+    get:
+      tags: [RM]
+      operationId: listMovements
+      summary: List movements visible to a user (seeded defaults + their custom)
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Movements.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Movement" } }
+        "400":
+          description: Missing user id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    post:
+      tags: [RM]
+      operationId: createMovement
+      summary: Add a custom movement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMovementRequest" }
+      responses:
+        "200":
+          description: The created (or already-existing) movement.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Movement" }
+        "400":
+          description: Missing or invalid fields.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /prs:
+    get:
+      tags: [RM]
+      operationId: listPrs
+      summary: List a user's records, optionally for one movement (newest first)
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+        - { name: movementId, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: Records.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Pr" } }
+        "400":
+          description: Missing user id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    post:
+      tags: [RM]
+      operationId: createPr
+      summary: Save a record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePrRequest" }
+      responses:
+        "200":
+          description: The saved record.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pr" }
+        "400":
+          description: Missing or invalid fields.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /prs/{id}:
+    patch:
+      tags: [RM]
+      operationId: updatePr
+      summary: Edit a record
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdatePrRequest" }
+      responses:
+        "200":
+          description: The updated record.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pr" }
+        "400":
+          description: Missing or invalid fields.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    delete:
+      tags: [RM]
+      operationId: deletePr
+      summary: Delete a record
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RmOkResult" }
+        "400":
+          description: Missing fields.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /pr-goals:
+    get:
+      tags: [RM]
+      operationId: listPrGoals
+      summary: List a user's goals with progress against the current best
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Goals.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PrGoal" } }
+        "400":
+          description: Missing user id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    put:
+      tags: [RM]
+      operationId: upsertPrGoal
+      summary: Set (or replace) the goal for a movement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpsertPrGoalRequest" }
+      responses:
+        "200":
+          description: The stored goal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrGoal" }
+        "400":
+          description: Missing or invalid fields.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /pr-goals/{id}:
+    delete:
+      tags: [RM]
+      operationId: deletePrGoal
+      summary: Remove a goal by its id
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RmOkResult" }
+        "400":
+          description: Missing fields.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
+  /training-settings:
+    get:
+      tags: [RM]
+      operationId: getTrainingSettings
+      summary: Get a user's training settings (creates defaults on first read)
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrainingSettings" }
+        "400":
+          description: Missing user id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    put:
+      tags: [RM]
+      operationId: upsertTrainingSettings
+      summary: Replace a user's training settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpsertTrainingSettingsRequest" }
+      responses:
+        "200":
+          description: The stored settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TrainingSettings" }
+        "400":
+          description: Missing or invalid fields.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+
 components:
   schemas:
     HealthStatus:
@@ -1141,3 +1360,121 @@ components:
           description: |
             Single-use Supabase magic link. Open it in a WebView
             immediately; it expires quickly and is consumed on first use.
+
+    RmOkResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+
+    Movement:
+      type: object
+      required: [id, name, isDefault]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        category: { type: string, nullable: true }
+        isDefault: { type: boolean }
+        createdBy: { type: string, nullable: true }
+
+    CreateMovementRequest:
+      type: object
+      required: [userId, name]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        category: { type: string, nullable: true }
+
+    Pr:
+      type: object
+      required: [id, userId, movementId, liftName, weight, unit, weightKg, achievedAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        movementId: { type: string }
+        liftName: { type: string }
+        weight: { type: number }
+        unit: { type: string, enum: [kg, lb] }
+        weightKg: { type: number }
+        achievedAt: { type: string, description: "ISO date (YYYY-MM-DD)" }
+        note: { type: string, nullable: true }
+
+    CreatePrRequest:
+      type: object
+      required: [id, userId, movementId, weight, unit]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        movementId: { type: string }
+        weight: { type: number }
+        unit: { type: string, enum: [kg, lb] }
+        achievedAt: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+
+    UpdatePrRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: string }
+        weight: { type: number, nullable: true }
+        unit: { type: string, enum: [kg, lb], nullable: true }
+        achievedAt: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+
+    PrGoal:
+      type: object
+      required: [id, userId, movementId, targetWeight, targetUnit, targetWeightKg]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        movementId: { type: string }
+        targetWeight: { type: number }
+        targetUnit: { type: string, enum: [kg, lb] }
+        targetWeightKg: { type: number }
+        achievedAt: { type: string, nullable: true }
+        currentBestKg: { type: number, nullable: true, description: "Best weightKg for this movement, or null if no records" }
+        remainingKg: { type: number, nullable: true, description: "targetWeightKg - currentBestKg, floored at 0; null if no records" }
+
+    UpsertPrGoalRequest:
+      type: object
+      required: [id, userId, movementId, targetWeight, targetUnit]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        movementId: { type: string }
+        targetWeight: { type: number }
+        targetUnit: { type: string, enum: [kg, lb] }
+
+    PlateSpec:
+      type: object
+      required: [unit, weight, pairs]
+      properties:
+        unit: { type: string, enum: [kg, lb] }
+        weight: { type: number }
+        pairs: { type: integer }
+
+    TrainingSettings:
+      type: object
+      required: [userId, preferredUnit, barWeight, barUnit, plates]
+      properties:
+        userId: { type: string }
+        preferredUnit: { type: string, enum: [kg, lb] }
+        sex: { type: string, enum: [f, m, x], nullable: true }
+        barWeight: { type: number }
+        barUnit: { type: string, enum: [kg, lb] }
+        plates:
+          type: array
+          items: { $ref: "#/components/schemas/PlateSpec" }
+
+    UpsertTrainingSettingsRequest:
+      type: object
+      required: [userId, preferredUnit, barWeight, barUnit, plates]
+      properties:
+        userId: { type: string }
+        preferredUnit: { type: string, enum: [kg, lb] }
+        sex: { type: string, enum: [f, m, x], nullable: true }
+        barWeight: { type: number }
+        barUnit: { type: string, enum: [kg, lb] }
+        plates:
+          type: array
+          items: { $ref: "#/components/schemas/PlateSpec" }

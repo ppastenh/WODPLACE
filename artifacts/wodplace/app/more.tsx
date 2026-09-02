@@ -11,7 +11,7 @@ import {
 import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
-import { useColors } from '@/hooks/useColors';
+import { useDarkColors } from '@/hooks/useDarkColors';
 import { getAdminToken } from '@/lib/adminSession';
 
 /**
@@ -36,7 +36,7 @@ function formatAcceptedAt(iso: string): string {
 }
 
 export default function MoreScreen() {
-  const colors = useColors();
+  const colors = useDarkColors();
   const [token, setToken] = useState<string | null>(null);
   const [boxNameDraft, setBoxNameDraft] = useState('');
   const [boxNameEditing, setBoxNameEditing] = useState(false);
@@ -106,7 +106,7 @@ export default function MoreScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onBack={() => router.replace('/profile')} />
+      <AppHeader onBack={() => router.replace('/profile')} dark />
       <KeyboardAwareScrollViewCompat contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.title, { color: colors.foreground }]}>Más</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>

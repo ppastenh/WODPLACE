@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 
-type NavRoute = '/home' | '/community' | '/calendar' | '/progress' | '/profile';
+type NavRoute = '/home' | '/community' | '/calendar' | '/rm' | '/profile';
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 type NavIcon = FeatherIconName | 'dumbbell';
 
@@ -19,11 +19,15 @@ const NAV_ITEMS: Array<{
   { key: 'home', label: 'Home', route: '/home', icon: 'home' },
   { key: 'community', label: 'Comunidad', route: '/community', icon: 'users' },
   { key: 'schedule', label: 'Agendar', route: '/calendar', icon: 'calendar' },
-  { key: 'progress', label: 'Progreso', route: '/progress', icon: 'dumbbell' },
+  { key: 'progress', label: 'Progreso', route: '/rm', icon: 'dumbbell' },
   { key: 'profile', label: 'Perfil', route: '/profile', icon: 'user' },
 ];
 
-export const BOTTOM_NAV_ROUTES = NAV_ITEMS.map((item) => item.route) as NavRoute[];
+// `/rm` is its own nested navigator with a dedicated bottom nav, so the
+// app-wide shell is hidden while inside it — keep it out of this list.
+export const BOTTOM_NAV_ROUTES = NAV_ITEMS.filter(
+  (item) => item.route !== '/rm',
+).map((item) => item.route) as NavRoute[];
 
 export function isBottomNavRoute(pathname: string): pathname is NavRoute {
   const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;

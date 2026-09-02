@@ -498,3 +498,234 @@ export const CreateAdminDashLinkResponse = zod.object({
 })
 
 
+/**
+ * @summary List movements visible to a user (seeded defaults + their custom)
+ */
+export const ListMovementsQueryParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const ListMovementsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string().nullish(),
+  "isDefault": zod.boolean(),
+  "createdBy": zod.string().nullish()
+})
+export const ListMovementsResponse = zod.array(ListMovementsResponseItem)
+
+
+/**
+ * @summary Add a custom movement
+ */
+export const CreateMovementBody = zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "category": zod.string().nullish()
+})
+
+export const CreateMovementResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string().nullish(),
+  "isDefault": zod.boolean(),
+  "createdBy": zod.string().nullish()
+})
+
+
+/**
+ * @summary List a user's records, optionally for one movement (newest first)
+ */
+export const ListPrsQueryParams = zod.object({
+  "userId": zod.coerce.string(),
+  "movementId": zod.coerce.string().optional()
+})
+
+export const ListPrsResponseItem = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "movementId": zod.string(),
+  "liftName": zod.string(),
+  "weight": zod.number(),
+  "unit": zod.enum(['kg', 'lb']),
+  "weightKg": zod.number(),
+  "achievedAt": zod.string().describe('ISO date (YYYY-MM-DD)'),
+  "note": zod.string().nullish()
+})
+export const ListPrsResponse = zod.array(ListPrsResponseItem)
+
+
+/**
+ * @summary Save a record
+ */
+export const CreatePrBody = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "movementId": zod.string(),
+  "weight": zod.number(),
+  "unit": zod.enum(['kg', 'lb']),
+  "achievedAt": zod.string().nullish(),
+  "note": zod.string().nullish()
+})
+
+export const CreatePrResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "movementId": zod.string(),
+  "liftName": zod.string(),
+  "weight": zod.number(),
+  "unit": zod.enum(['kg', 'lb']),
+  "weightKg": zod.number(),
+  "achievedAt": zod.string().describe('ISO date (YYYY-MM-DD)'),
+  "note": zod.string().nullish()
+})
+
+
+/**
+ * @summary Edit a record
+ */
+export const UpdatePrParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdatePrBody = zod.object({
+  "userId": zod.string(),
+  "weight": zod.number().nullish(),
+  "unit": zod.enum(['kg', 'lb']).nullish(),
+  "achievedAt": zod.string().nullish(),
+  "note": zod.string().nullish()
+})
+
+export const UpdatePrResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "movementId": zod.string(),
+  "liftName": zod.string(),
+  "weight": zod.number(),
+  "unit": zod.enum(['kg', 'lb']),
+  "weightKg": zod.number(),
+  "achievedAt": zod.string().describe('ISO date (YYYY-MM-DD)'),
+  "note": zod.string().nullish()
+})
+
+
+/**
+ * @summary Delete a record
+ */
+export const DeletePrParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeletePrResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary List a user's goals with progress against the current best
+ */
+export const ListPrGoalsQueryParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const ListPrGoalsResponseItem = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "movementId": zod.string(),
+  "targetWeight": zod.number(),
+  "targetUnit": zod.enum(['kg', 'lb']),
+  "targetWeightKg": zod.number(),
+  "achievedAt": zod.string().nullish(),
+  "currentBestKg": zod.number().nullish().describe('Best weightKg for this movement, or null if no records'),
+  "remainingKg": zod.number().nullish().describe('targetWeightKg - currentBestKg, floored at 0; null if no records')
+})
+export const ListPrGoalsResponse = zod.array(ListPrGoalsResponseItem)
+
+
+/**
+ * @summary Set (or replace) the goal for a movement
+ */
+export const UpsertPrGoalBody = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "movementId": zod.string(),
+  "targetWeight": zod.number(),
+  "targetUnit": zod.enum(['kg', 'lb'])
+})
+
+export const UpsertPrGoalResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "movementId": zod.string(),
+  "targetWeight": zod.number(),
+  "targetUnit": zod.enum(['kg', 'lb']),
+  "targetWeightKg": zod.number(),
+  "achievedAt": zod.string().nullish(),
+  "currentBestKg": zod.number().nullish().describe('Best weightKg for this movement, or null if no records'),
+  "remainingKg": zod.number().nullish().describe('targetWeightKg - currentBestKg, floored at 0; null if no records')
+})
+
+
+/**
+ * @summary Remove a goal by its id
+ */
+export const DeletePrGoalParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeletePrGoalResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Get a user's training settings (creates defaults on first read)
+ */
+export const GetTrainingSettingsQueryParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const GetTrainingSettingsResponse = zod.object({
+  "userId": zod.string(),
+  "preferredUnit": zod.enum(['kg', 'lb']),
+  "sex": zod.enum(['f', 'm', 'x']).nullish(),
+  "barWeight": zod.number(),
+  "barUnit": zod.enum(['kg', 'lb']),
+  "plates": zod.array(zod.object({
+  "unit": zod.enum(['kg', 'lb']),
+  "weight": zod.number(),
+  "pairs": zod.number()
+}))
+})
+
+
+/**
+ * @summary Replace a user's training settings
+ */
+export const UpsertTrainingSettingsBody = zod.object({
+  "userId": zod.string(),
+  "preferredUnit": zod.enum(['kg', 'lb']),
+  "sex": zod.enum(['f', 'm', 'x']).nullish(),
+  "barWeight": zod.number(),
+  "barUnit": zod.enum(['kg', 'lb']),
+  "plates": zod.array(zod.object({
+  "unit": zod.enum(['kg', 'lb']),
+  "weight": zod.number(),
+  "pairs": zod.number()
+}))
+})
+
+export const UpsertTrainingSettingsResponse = zod.object({
+  "userId": zod.string(),
+  "preferredUnit": zod.enum(['kg', 'lb']),
+  "sex": zod.enum(['f', 'm', 'x']).nullish(),
+  "barWeight": zod.number(),
+  "barUnit": zod.enum(['kg', 'lb']),
+  "plates": zod.array(zod.object({
+  "unit": zod.enum(['kg', 'lb']),
+  "weight": zod.number(),
+  "pairs": zod.number()
+}))
+})
+
+

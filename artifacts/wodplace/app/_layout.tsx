@@ -45,7 +45,7 @@ function RootLayoutNav() {
         <Stack.Screen name="profile" />
         <Stack.Screen name="community" />
         <Stack.Screen name="calendar" />
-        <Stack.Screen name="progress" />
+        <Stack.Screen name="rm" />
         <Stack.Screen name="personal-data" />
         <Stack.Screen name="box-detail" />
         <Stack.Screen name="notifications" />
