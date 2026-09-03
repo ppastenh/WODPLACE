@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg from 'react-native-svg';
 import { useDarkColors } from '@/hooks/useDarkColors';
 import {
   availablePairs,
@@ -8,8 +9,9 @@ import {
   type LoadedPlate,
   type PlateSpec,
 } from '@/lib/rm/barLoad';
-import { plateFill, plateStroke, plateTextColor } from '@/lib/rm/plateColors';
+import { plateClass, plateFill, plateStroke, plateTextColor } from '@/lib/rm/plateColors';
 import { trimNum, type Unit } from '@/lib/rm/units';
+import { PlateShape } from './PlateShape';
 
 type Props = {
   plates: PlateSpec[];
@@ -26,6 +28,10 @@ const GROUPS: Array<{
   { key: 'kg', tab: 'Kilos', match: (p) => p.unit === 'kg' && p.weight >= 5 },
   { key: 'frac', tab: 'Fraccionados', match: (p) => p.unit === 'kg' && p.weight < 5 },
 ];
+
+const BIG_D = 54;
+const FRAC_D = 40;
+const PAD = 9;
 
 export function PlatePalette({ plates, perSide, onAdd }: Props) {
   const colors = useDarkColors();
@@ -80,26 +86,33 @@ export function PlatePalette({ plates, perSide, onAdd }: Props) {
           const key = plateKey(p.unit, p.weight);
           const free = (avail.get(key) ?? 0) - (used.get(key) ?? 0);
           const disabled = free <= 0;
+          const frac = plateClass(p.unit, p.weight) === 'frac';
+          const d = frac ? FRAC_D : BIG_D;
+          const box = d + PAD;
           return (
             <Pressable
               key={key}
               onPress={() => onAdd(p.unit, p.weight)}
               disabled={disabled}
               style={({ pressed }) => [
-                styles.plate,
-                {
-                  backgroundColor: plateFill(p.unit, p.weight),
-                  borderColor: plateStroke(p.unit, p.weight),
-                  opacity: disabled ? 0.28 : pressed ? 0.8 : 1,
-                },
+                { width: box, height: box, opacity: disabled ? 0.28 : pressed ? 0.82 : 1 },
               ]}
             >
-              <Text style={[styles.plateNum, { color: plateTextColor(p.unit, p.weight) }]}>
-                {trimNum(p.weight, 2)}
-              </Text>
-              <Text style={[styles.plateUnit, { color: plateTextColor(p.unit, p.weight) }]}>
-                {p.unit}
-              </Text>
+              <Svg width={box} height={box}>
+                <PlateShape
+                  uid={`pal-${key}`}
+                  variant="disc"
+                  cx={box / 2}
+                  cy={box / 2 - 1}
+                  d={d}
+                  fill={plateFill(p.unit, p.weight)}
+                  stroke={plateStroke(p.unit, p.weight)}
+                  textColor={plateTextColor(p.unit, p.weight)}
+                  label={trimNum(p.weight, 2)}
+                  unit={p.unit}
+                  small={frac}
+                />
+              </Svg>
             </Pressable>
           );
         })}
@@ -118,16 +131,6 @@ const styles = StyleSheet.create({
   },
   tab: { paddingHorizontal: 16, paddingVertical: 9 },
   tabText: { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  plate: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plateNum: { fontSize: 15, fontFamily: 'Inter_700Bold', lineHeight: 17 },
-  plateUnit: { fontSize: 9, fontFamily: 'Inter_500Medium' },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' },
   emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19 },
 });

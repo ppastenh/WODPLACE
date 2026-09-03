@@ -63,3 +63,25 @@ export function plateStroke(unit: Unit, weight: number): string {
 export function plateTextColor(unit: Unit, weight: number): string {
   return DARK_TEXT_ON.includes(colorNameFor(unit, weight)) ? DARK_TEXT : LIGHT_TEXT;
 }
+
+/** 'big'  = kg standard (>= 5) + every lb plate — all drawn the same size.
+ *  'frac' = technical kg plates (< 5) — drawn smaller, like real life. */
+export type PlateClass = 'big' | 'frac';
+
+export function plateClass(unit: Unit, weight: number): PlateClass {
+  return unit === 'kg' && weight < 5 ? 'frac' : 'big';
+}
+
+/** Lighten (amt > 0) or darken (amt < 0) a #rrggbb hex, amt in -1..1. */
+export function shade(hex: string, amt: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const t = amt < 0 ? 0 : 255;
+  const p = Math.abs(amt);
+  const ch = (c: number) => Math.round((t - c) * p) + c;
+  const r = ch((n >> 16) & 0xff);
+  const g = ch((n >> 8) & 0xff);
+  const b = ch(n & 0xff);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
