@@ -56,18 +56,26 @@ export default function BarLoaderScreen() {
     }
   }, [settings.data, prefillKg]);
 
-  // "Peso total" always means bar + plates. The countBar switch only changes
-  // what the DISPLAYED total shows (with or without the bar) — it must not
-  // touch the plate calc.
+  // What "Peso total" means depends on the countBar switch:
+  //   ON  -> the number includes the bar   (perSideTarget = (n - bar) / 2)
+  //   OFF -> the number is plates only      (perSideTarget = n / 2)
+  // computeBarLoad takes the full bar+plates target and subtracts the bar
+  // itself, so for OFF we hand it n + bar.
   const compute = (n: number): BarLoadResult =>
-    computeBarLoad(toKg(n, unit), 'kg', barKg, 'kg', plates);
+    computeBarLoad(
+      countBar ? toKg(n, unit) : toKg(n, unit) + barKg,
+      'kg',
+      barKg,
+      'kg',
+      plates,
+    );
 
   React.useEffect(() => {
     if (mode !== 'auto') return;
     const n = Number(target.replace(',', '.'));
     setPerSide(!Number.isFinite(n) || n <= 0 ? [] : compute(n).perSide);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, target, unit, barKg, settings.data]);
+  }, [mode, target, unit, barKg, countBar, settings.data]);
 
   // If the bar is emptied plate-by-plate in manual mode, drop the stale
   // "Peso total" the user had typed.
@@ -246,9 +254,16 @@ export default function BarLoaderScreen() {
             accessibilityRole="switch"
             accessibilityState={{ checked: countBar }}
           >
-            <Text style={[styles.switchLabel, { color: colors.foreground }]}>
-              Contar la barra en el total
-            </Text>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={[styles.switchLabel, { color: colors.foreground }]}>
+                Contar la barra en el total
+              </Text>
+              <Text style={[styles.switchSub, { color: colors.mutedForeground }]}>
+                {countBar
+                  ? 'El peso que escribís incluye la barra'
+                  : 'El peso que escribís son solo los discos'}
+              </Text>
+            </View>
             <View
               style={[
                 styles.track,
@@ -362,6 +377,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   switchLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  switchSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
   track: {
     width: 44,
     height: 26,
