@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCreatePr, useGetTrainingSettings } from '@workspace/api-client-react';
 import { RmHeader } from '@/components/rm/RmHeader';
 import { BarLoadDiagram } from '@/components/rm/BarLoadDiagram';
+import { PercentDropdown } from '@/components/rm/PercentDropdown';
 import { PlatePalette } from '@/components/rm/PlatePalette';
 import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
@@ -48,6 +49,7 @@ export default function BarLoaderScreen() {
   const [barKg, setBarKg] = React.useState(20);
   const [countBar, setCountBar] = React.useState(true);
   const [target, setTarget] = React.useState('');
+  const [pct, setPct] = React.useState(100);
   const [mode, setMode] = React.useState<'auto' | 'manual'>('manual');
   const [perSide, setPerSide] = React.useState<LoadedPlate[]>([]);
   const seeded = React.useRef(false);
@@ -73,10 +75,12 @@ export default function BarLoaderScreen() {
   // "Peso total" is ALWAYS the plates weight (both sides), never the bar.
   // perSideTarget = typed / 2, regardless of the countBar switch — that
   // switch only changes the big total number shown at the end.
+  // The % dropdown scales the typed number before solving (e.g. 80 @ 50%
+  // -> solve for 40); the field itself keeps showing what you typed.
   // computeBarLoad subtracts the bar internally, so we hand it typed + bar.
   const compute = (n: number): BarLoadResult =>
     computeBarLoad(
-      toKg(n, unit) + barKg,
+      toKg(n * (pct / 100), unit) + barKg,
       'kg',
       barKg,
       'kg',
@@ -89,7 +93,7 @@ export default function BarLoaderScreen() {
     const n = Number(target.replace(',', '.'));
     setPerSide(!Number.isFinite(n) || n <= 0 ? [] : compute(n).perSide);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, target, unit, barKg, settings.data]);
+  }, [mode, target, pct, unit, barKg, settings.data]);
 
   // If the bar is emptied plate-by-plate in manual mode, drop the stale
   // "Peso total" the user had typed.
@@ -249,7 +253,15 @@ export default function BarLoaderScreen() {
 
         {/* Barra visual */}
         <View style={[styles.barCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Tu carga actual</Text>
+          <View style={styles.cardHead}>
+            <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Tu carga actual</Text>
+            <PercentDropdown value={pct} onChange={setPct} />
+          </View>
+          {pct !== 100 && mode === 'auto' && targetNum > 0 ? (
+            <Text style={[styles.pctHint, { color: colors.primary }]}>
+              Calculado al {pct}% · {fmtUnit(toKg(targetNum * (pct / 100), unit))}
+            </Text>
+          ) : null}
           <BarLoadDiagram
             perSide={perSide}
             barLabel={`${trimNum(barKg, 2)} kg`}
@@ -422,12 +434,14 @@ const styles = StyleSheet.create({
   toggleBtn: { paddingHorizontal: 16, paddingVertical: 12 },
   toggleText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   barCard: { borderRadius: 16, padding: 12, marginTop: 6, gap: 7 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardLabel: {
     fontSize: 10,
     fontFamily: 'Inter_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  pctHint: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: -2 },
   totalBlock: { alignItems: 'center' },
   total: { fontSize: 28, fontFamily: 'Anton_400Regular' },
   totalSub: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: -2 },
