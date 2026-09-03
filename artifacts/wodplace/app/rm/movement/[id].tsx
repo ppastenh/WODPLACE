@@ -139,7 +139,9 @@ export default function MovementDetailScreen() {
           </Text>
           <Pressable
             onPress={() =>
-              router.push(`/rm?prefillKg=${bestKg.toFixed(2)}` as never)
+              router.push(
+                `/rm?prefillKg=${bestKg.toFixed(2)}&mvId=${movementId}&mvName=${encodeURIComponent(liftName)}` as never,
+              )
             }
             style={styles.barLink}
           >

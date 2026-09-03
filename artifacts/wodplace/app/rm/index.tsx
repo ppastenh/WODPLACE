@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useGetTrainingSettings } from '@workspace/api-client-react';
+import { useCreatePr, useGetTrainingSettings } from '@workspace/api-client-react';
 import { RmHeader } from '@/components/rm/RmHeader';
 import { BarLoadDiagram } from '@/components/rm/BarLoadDiagram';
 import { PlatePalette } from '@/components/rm/PlatePalette';
@@ -26,13 +27,22 @@ import {
 } from '@/lib/rm/barLoad';
 import { fromKg, toKg, trimNum, type Unit } from '@/lib/rm/units';
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const newPrId = () =>
+  `pr_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
 export default function BarLoaderScreen() {
   const colors = useDarkColors();
   const { user } = useAuth();
   const userId = user?.id ?? '';
-  const { prefillKg } = useLocalSearchParams<{ prefillKg?: string }>();
+  const { prefillKg, mvId, mvName } = useLocalSearchParams<{
+    prefillKg?: string;
+    mvId?: string;
+    mvName?: string;
+  }>();
 
   const settings = useGetTrainingSettings({ userId }, { query: { enabled: !!userId } as never });
+  const create = useCreatePr();
 
   const [unit, setUnit] = React.useState<Unit>('kg');
   const [barKg, setBarKg] = React.useState(20);
@@ -101,6 +111,43 @@ export default function BarLoaderScreen() {
     unit === 'lb'
       ? `${trimNum(totalKg, 2)} kg`
       : `${trimNum(fromKg(totalKg, 'lb'), 1)} lb`;
+
+  // "Guardar" always records the real loaded weight with the bar included,
+  // in the unit being worked in — independent of the "Contar la barra"
+  // toggle, which only changes how the typed target is read.
+  const saveKg = barKg + discsKg;
+  const saveWeight = Number(fromKg(saveKg, unit).toFixed(2));
+  const canSave = perSide.length > 0 && !create.isPending;
+
+  const onSave = () => {
+    if (perSide.length === 0) return;
+    if (mvId && mvName) {
+      create.mutate(
+        {
+          data: {
+            id: newPrId(),
+            userId,
+            movementId: String(mvId),
+            weight: saveWeight,
+            unit,
+            achievedAt: todayIso(),
+            note: null,
+          },
+        },
+        {
+          onSuccess: () =>
+            Alert.alert('Guardado', `${saveWeight} ${unit} en ${mvName}.`, [
+              { text: 'OK', onPress: () => router.back() },
+            ]),
+          onError: () => Alert.alert('Error', 'No se pudo guardar el RM.'),
+        },
+      );
+    } else {
+      router.push(
+        `/rm/record?prefillWeight=${saveWeight}&prefillUnit=${unit}` as never,
+      );
+    }
+  };
 
   const onType = (t: string) => {
     setMode('auto');
@@ -291,6 +338,30 @@ export default function BarLoaderScreen() {
           ) : null}
         </View>
 
+        {/* Guardar como RM */}
+        <Pressable
+          onPress={onSave}
+          disabled={!canSave}
+          style={({ pressed }) => [
+            styles.save,
+            { backgroundColor: colors.primary, opacity: canSave ? (pressed ? 0.85 : 1) : 0.4 },
+          ]}
+        >
+          <Feather name="bookmark" size={16} color={colors.primaryForeground} />
+          <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
+            {create.isPending
+              ? 'Guardando…'
+              : mvId && mvName
+                ? `Guardar en ${mvName}`
+                : 'Guardar como RM'}
+          </Text>
+        </Pressable>
+        <Text style={[styles.saveHint, { color: colors.mutedForeground }]}>
+          {perSide.length === 0
+            ? 'Cargá discos en la barra para guardar el peso.'
+            : `Se guarda el peso total con la barra: ${trimNum(saveWeight, 1)} ${unit}`}
+        </Text>
+
         {/* Paleta manual */}
         <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 8 }]}>
           Agregar discos a mano
@@ -389,4 +460,20 @@ const styles = StyleSheet.create({
   thumb: { width: 20, height: 20, borderRadius: 10 },
   clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center' },
   clear: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  save: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 16,
+    paddingVertical: 15,
+    marginTop: 12,
+  },
+  saveText: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  saveHint: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    marginTop: 6,
+  },
 });

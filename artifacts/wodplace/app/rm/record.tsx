@@ -28,6 +28,7 @@ export default function RecordRmScreen() {
     movementId?: string;
     movementName?: string;
     prefillWeight?: string;
+    prefillUnit?: string;
   }>();
 
   const [movement, setMovement] = React.useState<Movement | null>(
@@ -42,7 +43,9 @@ export default function RecordRmScreen() {
       : null,
   );
   const [weight, setWeight] = React.useState(params.prefillWeight ?? '');
-  const [unit, setUnit] = React.useState<Unit>('kg');
+  const [unit, setUnit] = React.useState<Unit>(
+    params.prefillUnit === 'lb' ? 'lb' : 'kg',
+  );
   const [date, setDate] = React.useState(todayIso());
   const [note, setNote] = React.useState('');
 
