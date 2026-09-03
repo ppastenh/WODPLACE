@@ -118,7 +118,7 @@ export function PlateShape(props: PlateShapeProps) {
       {/* top sheen */}
       <Circle cx={cx - r * 0.22} cy={cy - r * 0.28} r={r * 0.4} fill="#FFFFFF" opacity={0.12} />
 
-      {/* weight — mirrored on both sides of the hub (single, lower, on frac) */}
+      {/* weight — at the sides, mirrored (single, lower, on frac) */}
       {small ? (
         <SvgText
           x={cx}
@@ -134,8 +134,8 @@ export function PlateShape(props: PlateShapeProps) {
         [-1, 1].map((s) => (
           <SvgText
             key={s}
-            x={cx + s * r * 0.52}
-            y={cy + r * 0.12}
+            x={cx + s * r * 0.54}
+            y={cy + r * 0.06}
             fontSize={12}
             fontWeight="bold"
             fill={textColor}
@@ -146,11 +146,11 @@ export function PlateShape(props: PlateShapeProps) {
         ))
       )}
 
-      {/* brand — big discs only, centred in the lower half */}
+      {/* brand — big discs only, a touch below centre */}
       {!small ? (
         <SvgText
           x={cx}
-          y={cy + r * 0.5}
+          y={cy + r * 0.44}
           fontSize={Math.max(5, r * 0.17)}
           fontWeight="bold"
           fill={textColor}
