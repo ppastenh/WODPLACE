@@ -105,7 +105,7 @@ export function computeBarLoad(
       loadedKg: barKg,
       remainderKg: targetKg - barKg,
       exact: false,
-      error: 'El objetivo es menor que el peso de la barra.',
+      error: 'El peso total es menor que la barra.',
     };
   }
 

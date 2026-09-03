@@ -18,9 +18,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
 import {
   addPlate,
-  barTotalKg,
   computeBarLoad,
   removePlate,
+  type BarLoadResult,
   type LoadedPlate,
   type PlateSpec,
 } from '@/lib/rm/barLoad';
@@ -36,6 +36,7 @@ export default function BarLoaderScreen() {
 
   const [unit, setUnit] = React.useState<Unit>('kg');
   const [barKg, setBarKg] = React.useState(20);
+  const [countBar, setCountBar] = React.useState(true);
   const [target, setTarget] = React.useState('');
   const [mode, setMode] = React.useState<'auto' | 'manual'>('manual');
   const [perSide, setPerSide] = React.useState<LoadedPlate[]>([]);
@@ -43,7 +44,6 @@ export default function BarLoaderScreen() {
 
   const plates: PlateSpec[] = (settings.data?.plates ?? []) as PlateSpec[];
 
-  // Seed bar + unit from settings, and a prefilled target, once.
   React.useEffect(() => {
     if (!settings.data || seeded.current) return;
     seeded.current = true;
@@ -56,24 +56,34 @@ export default function BarLoaderScreen() {
     }
   }, [settings.data, prefillKg]);
 
-  // Auto mode: recompute whenever the inputs change.
+  // The kg total the bar should end up at, given the "count the bar" toggle.
+  const targetTotalKg = (n: number) => (countBar ? toKg(n, unit) : toKg(n, unit) + barKg);
+
+  const compute = (n: number): BarLoadResult =>
+    computeBarLoad(targetTotalKg(n), 'kg', barKg, 'kg', plates);
+
   React.useEffect(() => {
     if (mode !== 'auto') return;
-    const t = Number(target.replace(',', '.'));
-    if (!Number.isFinite(t) || t <= 0) {
-      setPerSide([]);
-      return;
-    }
-    setPerSide(computeBarLoad(t, unit, barKg, 'kg', plates).perSide);
+    const n = Number(target.replace(',', '.'));
+    setPerSide(!Number.isFinite(n) || n <= 0 ? [] : compute(n).perSide);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, target, unit, barKg, settings.data]);
+  }, [mode, target, unit, barKg, countBar, settings.data]);
 
+  const targetNum = Number(target.replace(',', '.'));
   const autoResult =
-    mode === 'auto' && Number(target.replace(',', '.')) > 0
-      ? computeBarLoad(Number(target.replace(',', '.')), unit, barKg, 'kg', plates)
-      : null;
+    mode === 'auto' && targetNum > 0 ? compute(targetNum) : null;
 
-  const totalKg = barTotalKg(perSide, barKg);
+  const sideKg = perSide.reduce((acc, p) => acc + p.kg, 0);
+  const discsKg = 2 * sideKg;
+  const totalKg = (countBar ? barKg : 0) + discsKg;
+  const totalPrimary =
+    unit === 'lb'
+      ? `${trimNum(fromKg(totalKg, 'lb'), 1)} lb`
+      : `${trimNum(totalKg, 2)} kg`;
+  const totalSecondary =
+    unit === 'lb'
+      ? `${trimNum(totalKg, 2)} kg`
+      : `${trimNum(fromKg(totalKg, 'lb'), 1)} lb`;
 
   const onType = (t: string) => {
     setMode('auto');
@@ -118,40 +128,35 @@ export default function BarLoaderScreen() {
         <View style={styles.inline}>
           <Text style={[styles.label, { color: colors.mutedForeground }]}>Barra</Text>
           <View style={styles.pillRow}>
-            {[20, 15].map((kg) => (
-              <Pressable
-                key={kg}
-                onPress={() => setBarKg(kg)}
-                style={[
-                  styles.pill,
-                  {
-                    backgroundColor: Math.abs(barKg - kg) < 0.1 ? colors.primary : colors.card,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Text
+            {[20, 15].map((kg) => {
+              const on = Math.abs(barKg - kg) < 0.1;
+              return (
+                <Pressable
+                  key={kg}
+                  onPress={() => setBarKg(kg)}
                   style={[
-                    styles.pillText,
-                    { color: Math.abs(barKg - kg) < 0.1 ? colors.primaryForeground : colors.foreground },
+                    styles.pill,
+                    { backgroundColor: on ? colors.primary : colors.card, borderColor: colors.border },
                   ]}
                 >
-                  {kg} kg
-                </Text>
-              </Pressable>
-            ))}
+                  <Text style={[styles.pillText, { color: on ? colors.primaryForeground : colors.foreground }]}>
+                    {kg} kg
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
-        {/* Peso objetivo (modo automático) */}
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>Peso objetivo</Text>
+        {/* Peso total */}
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>Peso total</Text>
         <View style={styles.targetRow}>
           <TextInput
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
             value={target}
             onChangeText={onType}
             keyboardType="decimal-pad"
-            placeholder="Escribí un peso…"
+            placeholder="Ej: 100"
             placeholderTextColor={colors.mutedForeground}
           />
           <View style={[styles.toggle, { borderColor: colors.border }]}>
@@ -164,9 +169,7 @@ export default function BarLoaderScreen() {
                 }}
                 style={[styles.toggleBtn, { backgroundColor: unit === u ? colors.primary : 'transparent' }]}
               >
-                <Text
-                  style={[styles.toggleText, { color: unit === u ? colors.primaryForeground : colors.mutedForeground }]}
-                >
+                <Text style={[styles.toggleText, { color: unit === u ? colors.primaryForeground : colors.mutedForeground }]}>
                   {u}
                 </Text>
               </Pressable>
@@ -176,38 +179,92 @@ export default function BarLoaderScreen() {
 
         {/* Barra visual */}
         <View style={[styles.barCard, { backgroundColor: colors.card }]}>
-          <BarLoadDiagram perSide={perSide} onRemove={onRemove} />
-          <View style={styles.summaryRow}>
-            <Text style={[styles.total, { color: colors.foreground }]}>
-              {trimNum(totalKg, 2)} kg
-              {unit === 'lb' ? `  ·  ${trimNum(fromKg(totalKg, 'lb'), 1)} lb` : ''}
-            </Text>
-            {perSide.length > 0 ? (
-              <Pressable onPress={clearBar} hitSlop={8}>
-                <Text style={[styles.clear, { color: colors.mutedForeground }]}>Vaciar</Text>
-              </Pressable>
-            ) : null}
+          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Tu carga actual</Text>
+          <BarLoadDiagram
+            perSide={perSide}
+            barLabel={`${trimNum(barKg, 2)} kg`}
+            onRemove={onRemove}
+          />
+
+          {/* total */}
+          <View style={styles.totalBlock}>
+            <Text style={[styles.total, { color: colors.foreground }]}>{totalPrimary}</Text>
+            <Text style={[styles.totalSub, { color: colors.mutedForeground }]}>{totalSecondary}</Text>
           </View>
-          {autoResult && !autoResult.error ? (
+
+          {/* status */}
+          {autoResult?.error ? (
+            <Text style={[styles.status, { color: colors.destructive }]}>{autoResult.error}</Text>
+          ) : autoResult ? (
             <Text
               style={[
-                styles.autoMsg,
+                styles.status,
                 { color: autoResult.exact ? colors.primary : colors.mutedForeground },
               ]}
             >
               {autoResult.exact
-                ? 'Exacto para el objetivo'
+                ? 'Exacto para el peso pedido'
                 : autoResult.remainderKg > 0
                   ? `Lo más cercano: faltan ${trimNum(autoResult.remainderKg, 2)} kg`
                   : `Lo más cercano: te pasás ${trimNum(-autoResult.remainderKg, 2)} kg`}
             </Text>
-          ) : autoResult?.error ? (
-            <Text style={[styles.autoMsg, { color: colors.destructive }]}>{autoResult.error}</Text>
+          ) : perSide.length === 0 ? (
+            <View style={[styles.emptyBadge, { backgroundColor: colors.secondary }]}>
+              <View style={[styles.emptyDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.emptyBadgeText, { color: colors.mutedForeground }]}>Barra vacía</Text>
+            </View>
           ) : (
-            <Text style={[styles.autoMsg, { color: colors.mutedForeground }]}>
-              {perSide.length > 0 ? 'Armada a mano' : 'Escribí un objetivo o tocá discos abajo'}
-            </Text>
+            <Text style={[styles.status, { color: colors.mutedForeground }]}>Armada a mano</Text>
           )}
+
+          {/* breakdown */}
+          <View style={styles.breakdown}>
+            {[
+              { k: 'Cada lado', v: `${trimNum(sideKg, 2)} kg` },
+              { k: 'Discos', v: `${trimNum(discsKg, 2)} kg` },
+              { k: 'Barra', v: countBar ? `${trimNum(barKg, 2)} kg` : 'no cuenta' },
+            ].map((b) => (
+              <View key={b.k} style={[styles.bBox, { borderColor: colors.border }]}>
+                <Text style={[styles.bLabel, { color: colors.mutedForeground }]}>{b.k}</Text>
+                <Text style={[styles.bValue, { color: colors.foreground }]}>{b.v}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* count-the-bar toggle */}
+          <Pressable
+            onPress={() => setCountBar((v) => !v)}
+            style={styles.switchRow}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: countBar }}
+          >
+            <Text style={[styles.switchLabel, { color: colors.foreground }]}>
+              Contar la barra en el total
+            </Text>
+            <View
+              style={[
+                styles.track,
+                { backgroundColor: countBar ? colors.primary : colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.thumb,
+                  {
+                    backgroundColor: countBar ? colors.primaryForeground : colors.mutedForeground,
+                    alignSelf: countBar ? 'flex-end' : 'flex-start',
+                  },
+                ]}
+              />
+            </View>
+          </Pressable>
+
+          {perSide.length > 0 ? (
+            <Pressable onPress={clearBar} style={styles.clearBtn} hitSlop={6}>
+              <Feather name="rotate-ccw" size={13} color={colors.mutedForeground} />
+              <Text style={[styles.clear, { color: colors.mutedForeground }]}>Vaciar barra</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* Paleta manual */}
@@ -257,14 +314,54 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { paddingHorizontal: 16, paddingVertical: 12 },
   toggleText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  barCard: { borderRadius: 18, padding: 16, marginTop: 6 },
-  summaryRow: {
+  barCard: { borderRadius: 18, padding: 16, marginTop: 6, gap: 12 },
+  cardLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  totalBlock: { alignItems: 'center', gap: 2 },
+  total: { fontSize: 30, fontFamily: 'Anton_400Regular' },
+  totalSub: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  status: { fontSize: 12, fontFamily: 'Inter_500Medium', textAlign: 'center' },
+  emptyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'center',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  emptyDot: { width: 6, height: 6, borderRadius: 3 },
+  emptyBadgeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  breakdown: { flexDirection: 'row', gap: 8 },
+  bBox: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 2,
+  },
+  bLabel: { fontSize: 10, fontFamily: 'Inter_500Medium', textTransform: 'uppercase', letterSpacing: 0.3 },
+  bValue: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 10,
   },
-  total: { fontSize: 20, fontFamily: 'Anton_400Regular' },
+  switchLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  track: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  thumb: { width: 20, height: 20, borderRadius: 10 },
+  clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center' },
   clear: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  autoMsg: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: 4 },
 });

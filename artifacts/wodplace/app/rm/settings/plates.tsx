@@ -28,6 +28,7 @@ export const DEFAULT_PLATES: PlateSpec[] = [
   { unit: 'kg', weight: 10, pairs: 2 },
   { unit: 'kg', weight: 5, pairs: 2 },
   { unit: 'kg', weight: 2.5, pairs: 2 },
+  { unit: 'kg', weight: 1.25, pairs: 2 },
   { unit: 'kg', weight: 1, pairs: 2 },
   { unit: 'kg', weight: 0.5, pairs: 2 },
 ];
@@ -43,7 +44,7 @@ const GROUPS: Array<{ label: string; items: Array<Omit<PlateSpec, 'pairs'>> }> =
   },
   {
     label: 'Fraccionados / técnicos (kg)',
-    items: [2.5, 2, 1.5, 1, 0.5].map((weight) => ({ unit: 'kg', weight })),
+    items: [2.5, 2, 1.5, 1.25, 1, 0.5].map((weight) => ({ unit: 'kg', weight })),
   },
 ];
 

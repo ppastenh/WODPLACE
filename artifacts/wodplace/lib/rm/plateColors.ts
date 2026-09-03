@@ -8,6 +8,7 @@ export const PLATE_COLORS = {
   yellow: '#D9A63C',
   blue: '#3E7CB1',
   red: '#CF4034',
+  purple: '#8E6FD4',
 } as const;
 
 type ColorName = keyof typeof PLATE_COLORS;
@@ -29,6 +30,7 @@ const LB_MAP: Record<number, ColorName> = {
 const KG_FRACTIONAL_MAP: Record<number, ColorName> = {
   0.5: 'white',
   1: 'green',
+  1.25: 'purple',
   1.5: 'yellow',
   2: 'blue',
   2.5: 'red',
