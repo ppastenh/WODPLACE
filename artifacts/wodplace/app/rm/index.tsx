@@ -68,6 +68,7 @@ export default function BarLoaderScreen() {
       barKg,
       'kg',
       plates,
+      unit, // prefer plates in the unit being worked in
     );
 
   React.useEffect(() => {

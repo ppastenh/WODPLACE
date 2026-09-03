@@ -73,19 +73,82 @@ export type BarLoadResult = {
   error?: string;
 };
 
-const EPS = 0.01;
-const SMALL_KG = 5 + EPS; // plates at or below this feed the exact-match search
-const MAX_SMALL_SLOTS = 16; // brute-force cap (2^16)
+const EPS = 0.01; // bar-vs-target sanity check
+const EXACT_KG = 0.02; // |remainder| under this on the *total* counts as exact
+const PURE_UNIT_TOL_KG = 0.25; // keep a single-unit combo unless mixing beats it by more than this
+const MAX_NODES = 500_000; // DFS safety ceiling
 
-/** Expand plate specs into individual per-side slots (one per available pair). */
-function slots(plates: PlateSpec[]): LoadedPlate[] {
-  const out: LoadedPlate[] = [];
-  for (const p of plates) {
-    if (p.weight <= 0 || p.pairs <= 0) continue;
-    const kg = toKg(p.weight, p.unit);
-    for (let i = 0; i < p.pairs; i++) out.push({ unit: p.unit, weight: p.weight, kg });
+type PlateType = { unit: Unit; weight: number; kg: number; pairs: number };
+
+function buildTypes(plates: PlateSpec[]): PlateType[] {
+  return plates
+    .filter((p) => p.weight > 0 && p.pairs > 0)
+    .map((p) => ({ unit: p.unit, weight: p.weight, kg: toKg(p.weight, p.unit), pairs: p.pairs }))
+    .sort((a, b) => b.kg - a.kg);
+}
+
+/**
+ * Best per-side plate multiset for `target` kg. Bounded DFS over plate *types*
+ * with per-type counts (no arbitrary big/small split, so e.g. two 10 lb plates
+ * are considered as a pair even though each is under 5 kg). Chooses by:
+ *   1. smallest |sum - target|
+ *   2. fewest plates
+ *   3. chunkier load (more of the heavier types)
+ */
+function search(
+  types: PlateType[],
+  target: number,
+): { plates: LoadedPlate[]; sum: number; err: number } {
+  const t = Math.max(0, target);
+  const n = types.length;
+
+  const suffixMax = new Float64Array(n + 1);
+  for (let i = n - 1; i >= 0; i--) {
+    suffixMax[i] = suffixMax[i + 1] + types[i].kg * types[i].pairs;
   }
-  return out.sort((a, b) => b.kg - a.kg);
+
+  const counts = new Int32Array(n);
+  let best = { counts: counts.slice(), sum: 0, err: t, num: 0 };
+  let nodes = 0;
+
+  const isBetter = (sum: number, err: number, num: number): boolean => {
+    if (err < best.err - 1e-9) return true;
+    if (err > best.err + 1e-9) return false;
+    if (num !== best.num) return num < best.num;
+    for (let i = 0; i < n; i++) {
+      if (counts[i] !== best.counts[i]) return counts[i] > best.counts[i];
+    }
+    return false;
+  };
+
+  const dfs = (i: number, sum: number, num: number): void => {
+    if (++nodes > MAX_NODES) return;
+    const err = Math.abs(sum - t);
+    if (isBetter(sum, err, num)) {
+      best = { counts: counts.slice(), sum, err, num };
+    }
+    if (err <= 1e-9 || i >= n) return;
+    if (sum + suffixMax[i] < t - best.err - 1e-9) return; // can't get close enough
+    if (sum - t > best.err + 1e-9) return; // already overshot, only grows
+
+    const kg = types[i].kg;
+    const cap = Math.min(types[i].pairs, Math.floor((t - sum) / kg) + 1);
+    for (let c = Math.max(0, cap); c >= 0; c--) {
+      counts[i] = c;
+      dfs(i + 1, sum + c * kg, num + c);
+    }
+    counts[i] = 0;
+  };
+
+  dfs(0, 0, 0);
+
+  const plates: LoadedPlate[] = [];
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < best.counts[i]; k++) {
+      plates.push({ unit: types[i].unit, weight: types[i].weight, kg: types[i].kg });
+    }
+  }
+  return { plates, sum: best.sum, err: best.err };
 }
 
 export function computeBarLoad(
@@ -94,6 +157,8 @@ export function computeBarLoad(
   barWeight: number,
   barUnit: Unit,
   plates: PlateSpec[],
+  /** When set, prefer a combo built only from plates of this unit. */
+  preferUnit?: Unit,
 ): BarLoadResult {
   const targetKg = toKg(targetTotal, targetUnit);
   const barKg = toKg(barWeight, barUnit);
@@ -109,48 +174,23 @@ export function computeBarLoad(
     };
   }
 
-  const perSideTarget = (targetKg - barKg) / 2;
-  const all = slots(plates);
-  const big = all.filter((s) => s.kg > SMALL_KG);
-  const small = all.filter((s) => s.kg <= SMALL_KG);
+  const perSideTarget = Math.max(0, (targetKg - barKg) / 2);
+  const types = buildTypes(plates);
 
-  // Greedy on the big plates.
-  const chosenBig: LoadedPlate[] = [];
-  let bigSum = 0;
-  for (const s of big) {
-    if (bigSum + s.kg <= perSideTarget + EPS) {
-      chosenBig.push(s);
-      bigSum += s.kg;
-    }
-  }
+  let chosen = search(types, perSideTarget);
 
-  // Brute-force the small plates for the combo closest to what's left.
-  const remaining = perSideTarget - bigSum;
-  const pool = small.slice(0, MAX_SMALL_SLOTS);
-  let bestSubset: LoadedPlate[] = [];
-  let bestDiff = Math.abs(remaining); // taking none
-  for (let mask = 1; mask < 1 << pool.length; mask++) {
-    let sum = 0;
-    const pick: LoadedPlate[] = [];
-    for (let i = 0; i < pool.length; i++) {
-      if (mask & (1 << i)) {
-        sum += pool[i].kg;
-        pick.push(pool[i]);
+  if (preferUnit) {
+    const pureTypes = types.filter((tp) => tp.unit === preferUnit);
+    if (pureTypes.length) {
+      const pure = search(pureTypes, perSideTarget);
+      if (pure.err <= EXACT_KG || pure.err <= chosen.err + PURE_UNIT_TOL_KG) {
+        chosen = pure;
       }
     }
-    const diff = Math.abs(remaining - sum);
-    if (
-      diff < bestDiff - 1e-9 ||
-      (Math.abs(diff - bestDiff) < 1e-9 && pick.length < bestSubset.length)
-    ) {
-      bestDiff = diff;
-      bestSubset = pick;
-    }
   }
 
-  const perSide = [...chosenBig, ...bestSubset].sort((a, b) => b.kg - a.kg);
-  const sideSum = perSide.reduce((acc, p) => acc + p.kg, 0);
-  const loadedKg = barKg + 2 * sideSum;
+  const perSide = chosen.plates.slice().sort((a, b) => b.kg - a.kg);
+  const loadedKg = barKg + 2 * chosen.sum;
   const remainderKg = targetKg - loadedKg;
 
   return {
@@ -158,6 +198,6 @@ export function computeBarLoad(
     perSide,
     loadedKg,
     remainderKg,
-    exact: Math.abs(remainderKg) < EPS,
+    exact: Math.abs(remainderKg) < EXACT_KG,
   };
 }
