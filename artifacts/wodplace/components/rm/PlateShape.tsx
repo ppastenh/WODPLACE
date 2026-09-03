@@ -4,10 +4,12 @@ import {
   Defs,
   G,
   LinearGradient,
+  Path,
   RadialGradient,
   Rect,
   Stop,
   Text as SvgText,
+  TextPath,
 } from 'react-native-svg';
 import { shade } from '@/lib/rm/plateColors';
 import type { Unit } from '@/lib/rm/units';
@@ -92,6 +94,14 @@ export function PlateShape(props: PlateShapeProps) {
 
   const { d } = props;
   const r = d / 2;
+  const arc = `${uid}-arc`;
+  const ar = r * 0.78;
+  const a1 = Math.PI * 1.25;
+  const a2 = Math.PI * 1.75;
+  const arcPath =
+    `M ${cx + ar * Math.cos(a1)} ${cy + ar * Math.sin(a1)} ` +
+    `A ${ar} ${ar} 0 0 1 ${cx + ar * Math.cos(a2)} ${cy + ar * Math.sin(a2)}`;
+  const hole = r * 0.16;
   return (
     <G>
       <Defs>
@@ -105,6 +115,7 @@ export function PlateShape(props: PlateShapeProps) {
           <Stop offset="0.6" stopColor={fill} />
           <Stop offset="1" stopColor={shade(fill, -0.22)} />
         </RadialGradient>
+        <Path id={arc} d={arcPath} />
       </Defs>
 
       {/* drop shadow */}
@@ -112,38 +123,52 @@ export function PlateShape(props: PlateShapeProps) {
       {/* rim */}
       <Circle cx={cx} cy={cy} r={r} fill={`url(#${body})`} stroke={stroke} strokeWidth={1} />
       {/* face */}
-      <Circle cx={cx} cy={cy} r={r * 0.72} fill={`url(#${face})`} />
-      <Circle cx={cx} cy={cy} r={r * 0.72} fill="none" stroke="#000000" strokeOpacity={0.18} strokeWidth={1} />
-      {/* bolt dots */}
-      {[0, 60, 120, 180, 240, 300].map((deg) => {
-        const rad = (deg * Math.PI) / 180;
-        return (
-          <Circle
-            key={deg}
-            cx={cx + Math.cos(rad) * r * 0.5}
-            cy={cy + Math.sin(rad) * r * 0.5}
-            r={r * 0.055}
-            fill="#000000"
-            opacity={0.22}
-          />
-        );
-      })}
+      <Circle cx={cx} cy={cy} r={r * 0.82} fill={`url(#${face})`} />
+      <Circle cx={cx} cy={cy} r={r * 0.82} fill="none" stroke="#000000" strokeOpacity={0.18} strokeWidth={1} />
       {/* top sheen */}
       <Circle cx={cx - r * 0.22} cy={cy - r * 0.28} r={r * 0.4} fill="#FFFFFF" opacity={0.12} />
 
+      {/* brand */}
+      {!small ? (
+        <SvgText
+          fill={textColor}
+          fillOpacity={0.72}
+          fontSize={Math.max(4.5, r * 0.2)}
+          fontWeight="bold"
+          textAnchor="middle"
+        >
+          <TextPath href={`#${arc}`} startOffset="50%">
+            WODPLACE
+          </TextPath>
+        </SvgText>
+      ) : null}
+
+      {/* weight */}
       <SvgText
         x={cx}
-        y={cy - (small ? 0 : 1)}
-        fontSize={small ? 12 : 15}
+        y={cy + r * (small ? 0.36 : 0.42)}
+        fontSize={small ? 11 : 13}
         fontWeight="bold"
         fill={textColor}
         textAnchor="middle"
       >
         {label}
       </SvgText>
-      <SvgText x={cx} y={cy + (small ? 10 : 12)} fontSize={small ? 7 : 8} fill={textColor} textAnchor="middle">
+      <SvgText
+        x={cx}
+        y={cy + r * (small ? 0.68 : 0.72)}
+        fontSize={small ? 6 : 7}
+        fill={textColor}
+        fillOpacity={0.8}
+        textAnchor="middle"
+      >
         {unit}
       </SvgText>
+
+      {/* centre hole */}
+      <Circle cx={cx} cy={cy} r={hole} fill="#0B0C0E" />
+      <Circle cx={cx} cy={cy} r={hole} fill="none" stroke="#000000" strokeOpacity={0.6} strokeWidth={1} />
+      <Circle cx={cx} cy={cy - hole * 0.28} r={hole * 0.82} fill="none" stroke="#FFFFFF" strokeOpacity={0.12} strokeWidth={0.8} />
     </G>
   );
 }
