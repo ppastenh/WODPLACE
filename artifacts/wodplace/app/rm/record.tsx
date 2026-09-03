@@ -10,7 +10,13 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCreatePr, type Movement } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  getListMovementsQueryKey,
+  useCreateMovement,
+  useCreatePr,
+  type Movement,
+} from '@workspace/api-client-react';
 import { RmHeader } from '@/components/rm/RmHeader';
 import { MovementSheet } from '@/components/rm/MovementSheet';
 import { PercentSlider } from '@/components/rm/PercentSlider';
@@ -57,8 +63,29 @@ export default function RecordRmScreen() {
   const [date, setDate] = React.useState(todayIso());
   const [note, setNote] = React.useState('');
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [addingMv, setAddingMv] = React.useState(false);
+  const [mvName, setMvName] = React.useState('');
 
   const create = useCreatePr();
+  const createMovement = useCreateMovement();
+  const qc = useQueryClient();
+
+  const submitNewMovement = () => {
+    const n = mvName.trim();
+    if (!n || createMovement.isPending) return;
+    createMovement.mutate(
+      { data: { userId, name: n } },
+      {
+        onSuccess: (created) => {
+          setMovement(created);
+          setAddingMv(false);
+          setMvName('');
+          qc.invalidateQueries({ queryKey: getListMovementsQueryKey({ userId }) });
+        },
+        onError: () => Alert.alert('Error', 'No se pudo crear el movimiento.'),
+      },
+    );
+  };
 
   const lifted = Number(weight.replace(',', '.'));
   const liftedValid = Number.isFinite(lifted) && lifted > 0;
@@ -127,6 +154,56 @@ export default function RecordRmScreen() {
           </Text>
           <Feather name={movement ? 'chevron-down' : 'arrow-right'} size={18} color={colors.mutedForeground} />
         </Pressable>
+
+        {addingMv ? (
+          <View style={styles.addRow}>
+            <TextInput
+              style={[
+                styles.addInput,
+                { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
+              ]}
+              value={mvName}
+              onChangeText={setMvName}
+              placeholder="Nombre del movimiento"
+              placeholderTextColor={colors.mutedForeground}
+              autoFocus
+              maxLength={40}
+              onSubmitEditing={submitNewMovement}
+            />
+            <Pressable
+              onPress={submitNewMovement}
+              disabled={!mvName.trim() || createMovement.isPending}
+              style={({ pressed }) => [
+                styles.addBtn,
+                { backgroundColor: colors.primary },
+                (pressed || !mvName.trim()) && { opacity: 0.7 },
+              ]}
+            >
+              <Text style={[styles.addBtnText, { color: colors.primaryForeground }]}>
+                {createMovement.isPending ? '…' : 'Agregar'}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setAddingMv(false);
+                setMvName('');
+              }}
+              hitSlop={10}
+            >
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setAddingMv(true)}
+            style={({ pressed }) => [styles.addLink, pressed && { opacity: 0.6 }]}
+          >
+            <Feather name="plus" size={15} color={colors.primary} />
+            <Text style={[styles.addLinkText, { color: colors.primary }]}>
+              Agregar movimiento propio
+            </Text>
+          </Pressable>
+        )}
 
         {/* Peso del RM */}
         <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 18 }]}>Peso del RM</Text>
@@ -287,6 +364,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   selectText: { flex: 1, fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  addInput: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+  },
+  addBtn: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  addBtnText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  addLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  addLinkText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   input: {
     flex: 1,

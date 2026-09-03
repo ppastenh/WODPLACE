@@ -14,7 +14,6 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  useCreateMovement,
   useListMovements,
   useListPrs,
   type Movement,
@@ -47,18 +46,11 @@ export function MovementSheet({ visible, userId, selectedId, onSelect, onClose }
 
   const list = useListMovements({ userId }, { query: { enabled: !!userId && visible } as never });
   const prs = useListPrs({ userId }, { query: { enabled: !!userId && visible } as never });
-  const createMutation = useCreateMovement();
 
   const [query, setQuery] = React.useState('');
-  const [adding, setAdding] = React.useState(false);
-  const [name, setName] = React.useState('');
 
   React.useEffect(() => {
-    if (!visible) {
-      setQuery('');
-      setAdding(false);
-      setName('');
-    }
+    if (!visible) setQuery('');
   }, [visible]);
 
   const movements = list.data ?? [];
@@ -99,20 +91,6 @@ export function MovementSheet({ visible, userId, selectedId, onSelect, onClose }
   const pick = (m: Movement) => {
     onSelect(m);
     onClose();
-  };
-
-  const submitNew = () => {
-    const trimmed = name.trim();
-    if (!trimmed || createMutation.isPending) return;
-    createMutation.mutate(
-      { data: { userId, name: trimmed } },
-      {
-        onSuccess: (created) => {
-          list.refetch();
-          pick(created);
-        },
-      },
-    );
   };
 
   return (
@@ -234,54 +212,6 @@ export function MovementSheet({ visible, userId, selectedId, onSelect, onClose }
               </Text>
             ) : null}
 
-            {adding ? (
-              <View style={styles.addRow}>
-                <TextInput
-                  style={[
-                    styles.addInput,
-                    { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
-                  ]}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Nombre del movimiento"
-                  placeholderTextColor={colors.mutedForeground}
-                  autoFocus
-                  maxLength={40}
-                  onSubmitEditing={submitNew}
-                />
-                <Pressable
-                  onPress={submitNew}
-                  disabled={!name.trim() || createMutation.isPending}
-                  style={({ pressed }) => [
-                    styles.addBtn,
-                    { backgroundColor: colors.primary },
-                    (pressed || !name.trim()) && { opacity: 0.7 },
-                  ]}
-                >
-                  <Text style={[styles.addBtnText, { color: colors.primaryForeground }]}>
-                    {createMutation.isPending ? '…' : 'Agregar'}
-                  </Text>
-                </Pressable>
-                <Pressable onPress={() => setAdding(false)} hitSlop={10}>
-                  <Feather name="x" size={18} color={colors.mutedForeground} />
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setAdding(true)}
-                style={({ pressed }) => [
-                  styles.addLink,
-                  { borderColor: colors.border },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Feather name="plus" size={16} color={colors.primary} />
-                <Text style={[styles.addLinkText, { color: colors.primary }]}>
-                  Agregar movimiento propio
-                </Text>
-              </Pressable>
-            )}
-
             <View style={{ height: 12 }} />
           </ScrollView>
         )}
@@ -354,29 +284,4 @@ const styles = StyleSheet.create({
   },
   rowText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   empty: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', marginVertical: 20 },
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  addInput: {
-    flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  addBtn: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
-  addBtnText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  addLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  addLinkText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 });
