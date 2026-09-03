@@ -22,11 +22,11 @@ type Props = {
   onRemove?: (unit: Unit, weight: number) => void;
 };
 
-const H = 156;
-const PLATE_W = 26;
+const H = 126;
+const PLATE_W = 24;
 const GAP = 3;
-const SLEEVE_W = 24;
-const MIN_PLATE_H = 48;
+const SLEEVE_W = 22;
+const MIN_PLATE_H = 40;
 
 /** Barbell with the plates stacked on both sides (mirrored), colour-coded,
  *  with a light 3D treatment (metallic shaft, plate shine + shadow). */

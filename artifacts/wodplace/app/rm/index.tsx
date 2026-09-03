@@ -56,18 +56,24 @@ export default function BarLoaderScreen() {
     }
   }, [settings.data, prefillKg]);
 
-  // The kg total the bar should end up at, given the "count the bar" toggle.
-  const targetTotalKg = (n: number) => (countBar ? toKg(n, unit) : toKg(n, unit) + barKg);
-
+  // "Peso total" always means bar + plates. The countBar switch only changes
+  // what the DISPLAYED total shows (with or without the bar) — it must not
+  // touch the plate calc.
   const compute = (n: number): BarLoadResult =>
-    computeBarLoad(targetTotalKg(n), 'kg', barKg, 'kg', plates);
+    computeBarLoad(toKg(n, unit), 'kg', barKg, 'kg', plates);
 
   React.useEffect(() => {
     if (mode !== 'auto') return;
     const n = Number(target.replace(',', '.'));
     setPerSide(!Number.isFinite(n) || n <= 0 ? [] : compute(n).perSide);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, target, unit, barKg, countBar, settings.data]);
+  }, [mode, target, unit, barKg, settings.data]);
+
+  // If the bar is emptied plate-by-plate in manual mode, drop the stale
+  // "Peso total" the user had typed.
+  React.useEffect(() => {
+    if (mode === 'manual' && perSide.length === 0 && target) setTarget('');
+  }, [mode, perSide.length, target]);
 
   const targetNum = Number(target.replace(',', '.'));
   const autoResult =
@@ -76,6 +82,8 @@ export default function BarLoaderScreen() {
   const sideKg = perSide.reduce((acc, p) => acc + p.kg, 0);
   const discsKg = 2 * sideKg;
   const totalKg = (countBar ? barKg : 0) + discsKg;
+  const fmtUnit = (kg: number) =>
+    unit === 'lb' ? `${trimNum(fromKg(kg, 'lb'), 1)} lb` : `${trimNum(kg, 2)} kg`;
   const totalPrimary =
     unit === 'lb'
       ? `${trimNum(fromKg(totalKg, 'lb'), 1)} lb`
@@ -220,8 +228,8 @@ export default function BarLoaderScreen() {
           {/* breakdown */}
           <View style={styles.breakdown}>
             {[
-              { k: 'Cada lado', v: `${trimNum(sideKg, 2)} kg` },
-              { k: 'Discos', v: `${trimNum(discsKg, 2)} kg` },
+              { k: 'Cada lado', v: fmtUnit(sideKg) },
+              { k: 'Discos', v: fmtUnit(discsKg) },
               { k: 'Barra', v: countBar ? `${trimNum(barKg, 2)} kg` : 'no cuenta' },
             ].map((b) => (
               <View key={b.k} style={[styles.bBox, { borderColor: colors.border }]}>
@@ -314,16 +322,16 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { paddingHorizontal: 16, paddingVertical: 12 },
   toggleText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  barCard: { borderRadius: 18, padding: 16, marginTop: 6, gap: 12 },
+  barCard: { borderRadius: 16, padding: 12, marginTop: 6, gap: 7 },
   cardLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'Inter_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  totalBlock: { alignItems: 'center', gap: 2 },
-  total: { fontSize: 30, fontFamily: 'Anton_400Regular' },
-  totalSub: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  totalBlock: { alignItems: 'center' },
+  total: { fontSize: 28, fontFamily: 'Anton_400Regular' },
+  totalSub: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: -2 },
   status: { fontSize: 12, fontFamily: 'Inter_500Medium', textAlign: 'center' },
   emptyBadge: {
     flexDirection: 'row',
@@ -331,20 +339,20 @@ const styles = StyleSheet.create({
     gap: 6,
     alignSelf: 'center',
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 4,
   },
   emptyDot: { width: 6, height: 6, borderRadius: 3 },
   emptyBadgeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  breakdown: { flexDirection: 'row', gap: 8 },
+  breakdown: { flexDirection: 'row', gap: 6 },
   bBox: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
     alignItems: 'center',
-    gap: 2,
+    gap: 1,
   },
   bLabel: { fontSize: 10, fontFamily: 'Inter_500Medium', textTransform: 'uppercase', letterSpacing: 0.3 },
   bValue: { fontSize: 14, fontFamily: 'Inter_700Bold' },
