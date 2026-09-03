@@ -1396,6 +1396,10 @@ components:
         weight: { type: number }
         unit: { type: string, enum: [kg, lb] }
         weightKg: { type: number }
+        percentage:
+          type: number
+          nullable: true
+          description: "Self-reported % of true 1RM the lift was at (30–110). Null = legacy record, treat as 100."
         achievedAt: { type: string, description: "ISO date (YYYY-MM-DD)" }
         note: { type: string, nullable: true }
 
@@ -1408,6 +1412,7 @@ components:
         movementId: { type: string }
         weight: { type: number }
         unit: { type: string, enum: [kg, lb] }
+        percentage: { type: number, nullable: true }
         achievedAt: { type: string, nullable: true }
         note: { type: string, nullable: true }
 
@@ -1418,6 +1423,7 @@ components:
         userId: { type: string }
         weight: { type: number, nullable: true }
         unit: { type: string, enum: [kg, lb], nullable: true }
+        percentage: { type: number, nullable: true }
         achievedAt: { type: string, nullable: true }
         note: { type: string, nullable: true }
 

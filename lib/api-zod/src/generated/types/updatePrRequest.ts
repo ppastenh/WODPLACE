@@ -11,6 +11,7 @@ export interface UpdatePrRequest {
   userId: string;
   weight?: number | null;
   unit?: UpdatePrRequestUnit;
+  percentage?: number | null;
   achievedAt?: string | null;
   note?: string | null;
 }

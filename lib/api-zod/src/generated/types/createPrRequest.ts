@@ -13,6 +13,7 @@ export interface CreatePrRequest {
   movementId: string;
   weight: number;
   unit: CreatePrRequestUnit;
+  percentage?: number | null;
   achievedAt?: string | null;
   note?: string | null;
 }

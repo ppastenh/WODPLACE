@@ -8,15 +8,22 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCreatePr, type Movement } from '@workspace/api-client-react';
 import { RmHeader } from '@/components/rm/RmHeader';
-import { MovementPicker } from '@/components/rm/MovementPicker';
+import { MovementSheet } from '@/components/rm/MovementSheet';
+import { PercentSlider } from '@/components/rm/PercentSlider';
 import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
-import type { Unit } from '@/lib/rm/units';
+import { trimNum, type Unit } from '@/lib/rm/units';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
+const shiftIso = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
 const newId = () =>
   `pr_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
@@ -46,18 +53,28 @@ export default function RecordRmScreen() {
   const [unit, setUnit] = React.useState<Unit>(
     params.prefillUnit === 'lb' ? 'lb' : 'kg',
   );
+  const [pct, setPct] = React.useState(100);
   const [date, setDate] = React.useState(todayIso());
   const [note, setNote] = React.useState('');
+  const [sheetOpen, setSheetOpen] = React.useState(false);
 
   const create = useCreatePr();
 
+  const lifted = Number(weight.replace(',', '.'));
+  const liftedValid = Number.isFinite(lifted) && lifted > 0;
+  // Project the full 1RM from the lift + how close to max it felt.
+  const projected = liftedValid ? (lifted * 100) / pct : 0;
+  const over = pct > 100;
+
+  const dateRel =
+    date === todayIso() ? 'hoy' : date === shiftIso(-1) ? 'ayer' : null;
+
   const save = () => {
-    const w = Number(weight.replace(',', '.'));
     if (!movement) {
       Alert.alert('Falta el movimiento', 'Elegí un movimiento.');
       return;
     }
-    if (!Number.isFinite(w) || w <= 0) {
+    if (!liftedValid) {
       Alert.alert('Peso inválido', 'Ingresá un peso mayor que cero.');
       return;
     }
@@ -71,8 +88,9 @@ export default function RecordRmScreen() {
           id: newId(),
           userId,
           movementId: movement.id,
-          weight: w,
+          weight: Math.round(projected * 100) / 100,
           unit,
+          percentage: pct,
           achievedAt: date,
           note: note.trim() || null,
         },
@@ -88,14 +106,34 @@ export default function RecordRmScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <RmHeader title="Registrar RM" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Movimiento */}
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Movimiento</Text>
-        <MovementPicker userId={userId} selectedId={movement?.id ?? null} onSelect={setMovement} />
+        <Pressable
+          onPress={() => setSheetOpen(true)}
+          style={({ pressed }) => [
+            styles.selectRow,
+            { borderColor: colors.border, backgroundColor: colors.card },
+            pressed && { opacity: 0.8 },
+          ]}
+        >
+          <Text
+            style={[
+              styles.selectText,
+              { color: movement ? colors.foreground : colors.mutedForeground },
+            ]}
+            numberOfLines={1}
+          >
+            {movement?.name ?? 'Seleccionar movimiento'}
+          </Text>
+          <Feather name={movement ? 'chevron-down' : 'arrow-right'} size={18} color={colors.mutedForeground} />
+        </Pressable>
 
-        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 8 }]}>Peso</Text>
-        <View style={styles.weightRow}>
+        {/* Peso del RM */}
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 18 }]}>Peso del RM</Text>
+        <View style={styles.row}>
           <TextInput
             style={[
-              styles.weightInput,
+              styles.input,
               { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
             ]}
             value={weight}
@@ -127,11 +165,50 @@ export default function RecordRmScreen() {
           </View>
         </View>
 
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>Fecha</Text>
-        <View style={styles.weightRow}>
+        {/* % del RM realizado */}
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 22 }]}>
+          % del RM realizado
+        </Text>
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          Qué tan cerca de tu máximo real sentiste el levantamiento.
+        </Text>
+        <View style={{ marginTop: 8 }}>
+          <PercentSlider value={pct} onChange={setPct} />
+        </View>
+
+        <View style={[styles.calc, { borderColor: colors.border }]}>
+          <View style={styles.calcRow}>
+            <Text style={[styles.calcKey, { color: colors.mutedForeground }]}>Peso levantado</Text>
+            <Text style={[styles.calcVal, { color: colors.foreground }]}>
+              {liftedValid ? `${trimNum(lifted, 2)} ${unit}` : '—'}
+            </Text>
+          </View>
+          <View style={styles.calcRow}>
+            <Text style={[styles.calcKey, { color: colors.mutedForeground }]}>
+              Equivale a {pct}% de tu RM
+            </Text>
+            <Text style={[styles.calcBig, { color: over ? colors.primary : colors.foreground }]}>
+              {liftedValid ? `${trimNum(projected, 1)} ${unit}` : '—'}
+            </Text>
+          </View>
+          {over && liftedValid ? (
+            <Text style={[styles.overNote, { color: colors.primary }]}>
+              Levantaste por encima de tu RM registrado.
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Fecha */}
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>Fecha</Text>
+          {dateRel ? (
+            <Text style={[styles.labelRel, { color: colors.mutedForeground }]}>· {dateRel}</Text>
+          ) : null}
+        </View>
+        <View style={styles.row}>
           <TextInput
             style={[
-              styles.weightInput,
+              styles.input,
               { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
             ]}
             value={date}
@@ -148,7 +225,10 @@ export default function RecordRmScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>Nota (opcional)</Text>
+        {/* Nota */}
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 18 }]}>
+          Nota (opcional)
+        </Text>
         <TextInput
           style={[
             styles.noteInput,
@@ -168,7 +248,7 @@ export default function RecordRmScreen() {
           style={({ pressed }) => [
             styles.save,
             { backgroundColor: colors.primary },
-            pressed && { opacity: 0.85 },
+            (pressed || create.isPending) && { opacity: 0.85 },
           ]}
         >
           <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
@@ -176,16 +256,39 @@ export default function RecordRmScreen() {
           </Text>
         </Pressable>
       </ScrollView>
+
+      <MovementSheet
+        visible={sheetOpen}
+        userId={userId}
+        selectedId={movement?.id ?? null}
+        onSelect={setMovement}
+        onClose={() => setSheetOpen(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 20, paddingBottom: 48, gap: 10 },
+  content: { padding: 20, paddingBottom: 48 },
   label: { fontSize: 12, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
-  weightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  weightInput: {
+  labelRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 18 },
+  labelRel: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  hint: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4 },
+  selectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 48,
+    marginTop: 8,
+  },
+  selectText: { flex: 1, fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  input: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 12,
@@ -202,6 +305,17 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { paddingHorizontal: 16, paddingVertical: 12 },
   toggleText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  calc: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 18,
+    paddingTop: 14,
+    gap: 10,
+  },
+  calcRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  calcKey: { fontSize: 13, fontFamily: 'Inter_500Medium', flexShrink: 1 },
+  calcVal: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  calcBig: { fontSize: 22, fontFamily: 'Anton_400Regular' },
+  overNote: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   todayBtn: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 12,
@@ -217,12 +331,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     minHeight: 76,
     textAlignVertical: 'top',
+    marginTop: 8,
   },
   save: {
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 24,
   },
   saveText: { fontSize: 15, fontFamily: 'Inter_700Bold' },
 });

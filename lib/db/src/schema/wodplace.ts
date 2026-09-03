@@ -314,6 +314,10 @@ export const prsTable = pgTable(
     weightKg: numeric("weight_kg").generatedAlwaysAs(
       sql`round((case when unit = 'lb' then weight * 0.45359237 else weight end)::numeric, 3)`,
     ),
+    // Self-reported % of true 1RM the lift was performed at (30–110, step 5).
+    // `weight` above already stores the projected 100% value; this keeps the
+    // real effort as context. Null for records created before the field.
+    percentage: numeric("percentage"),
     achievedAt: date("achieved_at").notNull().default(sql`current_date`),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true })

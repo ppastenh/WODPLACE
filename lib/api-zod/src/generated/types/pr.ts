@@ -15,6 +15,8 @@ export interface Pr {
   weight: number;
   unit: PrUnit;
   weightKg: number;
+  /** Self-reported % of true 1RM the lift was at (30–110). Null = legacy record, treat as 100. */
+  percentage?: number | null;
   /** ISO date (YYYY-MM-DD) */
   achievedAt: string;
   note?: string | null;

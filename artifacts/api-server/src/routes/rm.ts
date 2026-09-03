@@ -47,6 +47,7 @@ function serializePr(row: typeof prsTable.$inferSelect) {
     weight: num(row.weight),
     unit: row.unit,
     weightKg: num(row.weightKg),
+    percentage: row.percentage == null ? null : num(row.percentage),
     achievedAt: row.achievedAt,
     note: row.notes,
   };
@@ -199,6 +200,10 @@ router.post("/prs", async (req: Request, res: Response) => {
         liftName: movement.name,
         weight: String(weight),
         unit,
+        percentage:
+          parsed.data.percentage == null
+            ? null
+            : String(parsed.data.percentage),
         ...(parsed.data.achievedAt
           ? { achievedAt: parsed.data.achievedAt }
           : {}),
@@ -223,6 +228,9 @@ router.patch("/prs/:id", async (req: Request, res: Response) => {
     const set: Partial<typeof prsTable.$inferInsert> = {};
     if (body.data.weight != null) set.weight = String(body.data.weight);
     if (body.data.unit != null) set.unit = body.data.unit;
+    if (body.data.percentage !== undefined)
+      set.percentage =
+        body.data.percentage == null ? null : String(body.data.percentage);
     if (body.data.achievedAt != null) set.achievedAt = body.data.achievedAt;
     if (body.data.note !== undefined) set.notes = body.data.note ?? null;
 

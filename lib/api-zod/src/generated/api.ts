@@ -549,6 +549,7 @@ export const ListPrsResponseItem = zod.object({
   "weight": zod.number(),
   "unit": zod.enum(['kg', 'lb']),
   "weightKg": zod.number(),
+  "percentage": zod.number().nullish().describe('Self-reported % of true 1RM the lift was at (30–110). Null = legacy record, treat as 100.'),
   "achievedAt": zod.string().describe('ISO date (YYYY-MM-DD)'),
   "note": zod.string().nullish()
 })
@@ -564,6 +565,7 @@ export const CreatePrBody = zod.object({
   "movementId": zod.string(),
   "weight": zod.number(),
   "unit": zod.enum(['kg', 'lb']),
+  "percentage": zod.number().nullish(),
   "achievedAt": zod.string().nullish(),
   "note": zod.string().nullish()
 })
@@ -576,6 +578,7 @@ export const CreatePrResponse = zod.object({
   "weight": zod.number(),
   "unit": zod.enum(['kg', 'lb']),
   "weightKg": zod.number(),
+  "percentage": zod.number().nullish().describe('Self-reported % of true 1RM the lift was at (30–110). Null = legacy record, treat as 100.'),
   "achievedAt": zod.string().describe('ISO date (YYYY-MM-DD)'),
   "note": zod.string().nullish()
 })
@@ -592,6 +595,7 @@ export const UpdatePrBody = zod.object({
   "userId": zod.string(),
   "weight": zod.number().nullish(),
   "unit": zod.enum(['kg', 'lb']).nullish(),
+  "percentage": zod.number().nullish(),
   "achievedAt": zod.string().nullish(),
   "note": zod.string().nullish()
 })
@@ -604,6 +608,7 @@ export const UpdatePrResponse = zod.object({
   "weight": zod.number(),
   "unit": zod.enum(['kg', 'lb']),
   "weightKg": zod.number(),
+  "percentage": zod.number().nullish().describe('Self-reported % of true 1RM the lift was at (30–110). Null = legacy record, treat as 100.'),
   "achievedAt": zod.string().describe('ISO date (YYYY-MM-DD)'),
   "note": zod.string().nullish()
 })
