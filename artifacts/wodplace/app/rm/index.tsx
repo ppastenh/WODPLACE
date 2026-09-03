@@ -59,21 +59,24 @@ export default function BarLoaderScreen() {
     seeded.current = true;
     const u = (settings.data.preferredUnit ?? 'kg') as Unit;
     setUnit(u);
-    setBarKg(toKg(settings.data.barWeight, settings.data.barUnit as Unit));
+    const bkg = toKg(settings.data.barWeight, settings.data.barUnit as Unit);
+    setBarKg(bkg);
     if (prefillKg) {
-      setTarget(trimNum(fromKg(Number(prefillKg), u), 1));
+      // prefillKg is a real lift (bar + plates); "Peso total" is plates-only,
+      // so strip the bar before seeding the field.
+      const platesKg = Math.max(0, Number(prefillKg) - bkg);
+      setTarget(trimNum(fromKg(platesKg, u), 1));
       setMode('auto');
     }
   }, [settings.data, prefillKg]);
 
-  // What "Peso total" means depends on the countBar switch:
-  //   ON  -> the number includes the bar   (perSideTarget = (n - bar) / 2)
-  //   OFF -> the number is plates only      (perSideTarget = n / 2)
-  // computeBarLoad takes the full bar+plates target and subtracts the bar
-  // itself, so for OFF we hand it n + bar.
+  // "Peso total" is ALWAYS the plates weight (both sides), never the bar.
+  // perSideTarget = typed / 2, regardless of the countBar switch — that
+  // switch only changes the big total number shown at the end.
+  // computeBarLoad subtracts the bar internally, so we hand it typed + bar.
   const compute = (n: number): BarLoadResult =>
     computeBarLoad(
-      countBar ? toKg(n, unit) : toKg(n, unit) + barKg,
+      toKg(n, unit) + barKg,
       'kg',
       barKg,
       'kg',
@@ -86,7 +89,7 @@ export default function BarLoaderScreen() {
     const n = Number(target.replace(',', '.'));
     setPerSide(!Number.isFinite(n) || n <= 0 ? [] : compute(n).perSide);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, target, unit, barKg, countBar, settings.data]);
+  }, [mode, target, unit, barKg, settings.data]);
 
   // If the bar is emptied plate-by-plate in manual mode, drop the stale
   // "Peso total" the user had typed.
@@ -214,6 +217,9 @@ export default function BarLoaderScreen() {
 
         {/* Peso total */}
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Peso total</Text>
+        <Text style={[styles.sublabel, { color: colors.mutedForeground }]}>
+          Peso de los discos, sumando los dos lados
+        </Text>
         <View style={styles.targetRow}>
           <TextInput
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
@@ -286,7 +292,7 @@ export default function BarLoaderScreen() {
             {[
               { k: 'Cada lado', v: fmtUnit(sideKg) },
               { k: 'Discos', v: fmtUnit(discsKg) },
-              { k: 'Barra', v: countBar ? `${trimNum(barKg, 2)} kg` : 'no cuenta' },
+              { k: 'Barra', v: countBar ? `${trimNum(barKg, 2)} kg` : 'no sumada' },
             ].map((b) => (
               <View key={b.k} style={[styles.bBox, { borderColor: colors.border }]}>
                 <Text style={[styles.bLabel, { color: colors.mutedForeground }]}>{b.k}</Text>
@@ -304,12 +310,12 @@ export default function BarLoaderScreen() {
           >
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={[styles.switchLabel, { color: colors.foreground }]}>
-                Contar la barra en el total
+                Sumar el peso de la barra al total mostrado
               </Text>
               <Text style={[styles.switchSub, { color: colors.mutedForeground }]}>
                 {countBar
-                  ? 'El peso que escribís incluye la barra'
-                  : 'El peso que escribís son solo los discos'}
+                  ? `El total incluye la barra (+${trimNum(barKg, 2)} kg)`
+                  : 'El total muestra solo el peso de los discos'}
               </Text>
             </View>
             <View
@@ -382,6 +388,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 6,
+  },
+  sublabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    marginTop: -2,
+    marginBottom: 2,
   },
   pillRow: { flexDirection: 'row', gap: 8 },
   pill: {
