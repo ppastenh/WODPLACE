@@ -4,12 +4,10 @@ import {
   Defs,
   G,
   LinearGradient,
-  Path,
   RadialGradient,
   Rect,
   Stop,
   Text as SvgText,
-  TextPath,
 } from 'react-native-svg';
 import { shade } from '@/lib/rm/plateColors';
 import type { Unit } from '@/lib/rm/units';
@@ -94,13 +92,6 @@ export function PlateShape(props: PlateShapeProps) {
 
   const { d } = props;
   const r = d / 2;
-  const arc = `${uid}-arc`;
-  const ar = r * 0.78;
-  const a1 = Math.PI * 1.25;
-  const a2 = Math.PI * 1.75;
-  const arcPath =
-    `M ${cx + ar * Math.cos(a1)} ${cy + ar * Math.sin(a1)} ` +
-    `A ${ar} ${ar} 0 0 1 ${cx + ar * Math.cos(a2)} ${cy + ar * Math.sin(a2)}`;
   const hole = r * 0.16;
   return (
     <G>
@@ -115,7 +106,6 @@ export function PlateShape(props: PlateShapeProps) {
           <Stop offset="0.6" stopColor={fill} />
           <Stop offset="1" stopColor={shade(fill, -0.22)} />
         </RadialGradient>
-        <Path id={arc} d={arcPath} />
       </Defs>
 
       {/* drop shadow */}
@@ -128,42 +118,48 @@ export function PlateShape(props: PlateShapeProps) {
       {/* top sheen */}
       <Circle cx={cx - r * 0.22} cy={cy - r * 0.28} r={r * 0.4} fill="#FFFFFF" opacity={0.12} />
 
-      {/* brand */}
-      {!small ? (
+      {/* weight — mirrored on both sides of the hub (single, lower, on frac) */}
+      {small ? (
         <SvgText
-          fill={textColor}
-          fillOpacity={0.72}
-          fontSize={Math.max(4.5, r * 0.2)}
+          x={cx}
+          y={cy + r * 0.4}
+          fontSize={8}
           fontWeight="bold"
+          fill={textColor}
           textAnchor="middle"
         >
-          <TextPath href={`#${arc}`} startOffset="50%">
-            WODPLACE
-          </TextPath>
+          {label}
+        </SvgText>
+      ) : (
+        [-1, 1].map((s) => (
+          <SvgText
+            key={s}
+            x={cx + s * r * 0.52}
+            y={cy + r * 0.12}
+            fontSize={12}
+            fontWeight="bold"
+            fill={textColor}
+            textAnchor="middle"
+          >
+            {label}
+          </SvgText>
+        ))
+      )}
+
+      {/* brand — big discs only, centred in the lower half */}
+      {!small ? (
+        <SvgText
+          x={cx}
+          y={cy + r * 0.5}
+          fontSize={Math.max(5, r * 0.17)}
+          fontWeight="bold"
+          fill={textColor}
+          fillOpacity={0.7}
+          textAnchor="middle"
+        >
+          WODPLACE
         </SvgText>
       ) : null}
-
-      {/* weight */}
-      <SvgText
-        x={cx}
-        y={cy + r * (small ? 0.36 : 0.42)}
-        fontSize={small ? 11 : 13}
-        fontWeight="bold"
-        fill={textColor}
-        textAnchor="middle"
-      >
-        {label}
-      </SvgText>
-      <SvgText
-        x={cx}
-        y={cy + r * (small ? 0.68 : 0.72)}
-        fontSize={small ? 6 : 7}
-        fill={textColor}
-        fillOpacity={0.8}
-        textAnchor="middle"
-      >
-        {unit}
-      </SvgText>
 
       {/* centre hole */}
       <Circle cx={cx} cy={cy} r={hole} fill="#0B0C0E" />
