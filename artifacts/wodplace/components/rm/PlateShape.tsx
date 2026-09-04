@@ -4,10 +4,12 @@ import {
   Defs,
   G,
   LinearGradient,
+  Path,
   RadialGradient,
   Rect,
   Stop,
   Text as SvgText,
+  TextPath,
 } from 'react-native-svg';
 import { shade } from '@/lib/rm/plateColors';
 import type { Unit } from '@/lib/rm/units';
@@ -92,7 +94,25 @@ export function PlateShape(props: PlateShapeProps) {
 
   const { d } = props;
   const r = d / 2;
+  const hub = `${uid}-hub`;
+  const arcId = `${uid}-arc`;
+
+  // Everything below is a ratio of r, so fractional discs (smaller d) get
+  // the identical treatment scaled proportionally — no separate layout.
+  const hubR = r * 0.34;
   const hole = r * 0.16;
+  const arcR = r * 0.68;
+  const numFontSize = Math.max(8, Math.min(14, r * 0.46));
+  const tight = r < 24; // condense the wordmark on the smaller (frac) discs
+  const brandFontSize = Math.max(4, r * 0.2);
+
+  // Text-on-path arc hugging the bottom rim, rising toward the sides.
+  const a1 = Math.PI * 0.75; // 135° — lower-left
+  const a2 = Math.PI * 0.25; // 45°  — lower-right
+  const arcPath =
+    `M ${cx + arcR * Math.cos(a1)} ${cy + arcR * Math.sin(a1)} ` +
+    `A ${arcR} ${arcR} 0 0 0 ${cx + arcR * Math.cos(a2)} ${cy + arcR * Math.sin(a2)}`;
+
   return (
     <G>
       <Defs>
@@ -106,6 +126,14 @@ export function PlateShape(props: PlateShapeProps) {
           <Stop offset="0.6" stopColor={fill} />
           <Stop offset="1" stopColor={shade(fill, -0.22)} />
         </RadialGradient>
+        {/* metallic insert around the hole — silver, not the plate colour */}
+        <LinearGradient id={hub} x1="0.15" y1="0" x2="0.85" y2="1">
+          <Stop offset="0" stopColor="#F3F4F6" />
+          <Stop offset="0.42" stopColor="#C7C9CF" />
+          <Stop offset="0.58" stopColor="#9A9CA3" />
+          <Stop offset="1" stopColor="#5A5C63" />
+        </LinearGradient>
+        <Path id={arcId} d={arcPath} />
       </Defs>
 
       {/* drop shadow */}
@@ -118,53 +146,49 @@ export function PlateShape(props: PlateShapeProps) {
       {/* top sheen */}
       <Circle cx={cx - r * 0.22} cy={cy - r * 0.28} r={r * 0.4} fill="#FFFFFF" opacity={0.12} />
 
-      {/* weight — at the sides, mirrored (single, lower, on frac) */}
-      {small ? (
-        <SvgText
-          x={cx}
-          y={cy + r * 0.4}
-          fontSize={8}
-          fontWeight="bold"
-          fill={textColor}
-          textAnchor="middle"
-        >
-          {label}
-        </SvgText>
-      ) : (
-        [-1, 1].map((s) => (
-          <SvgText
-            key={s}
-            x={cx + s * r * 0.54}
-            y={cy + r * 0.06}
-            fontSize={12}
-            fontWeight="bold"
-            fill={textColor}
-            textAnchor="middle"
-          >
-            {label}
-          </SvgText>
-        ))
-      )}
-
-      {/* brand — big discs only, a touch below centre */}
-      {!small ? (
-        <SvgText
-          x={cx}
-          y={cy + r * 0.44}
-          fontSize={Math.max(5, r * 0.17)}
-          fontWeight="bold"
-          fill={textColor}
-          fillOpacity={0.7}
-          textAnchor="middle"
-        >
-          WODPLACE
-        </SvgText>
-      ) : null}
-
-      {/* centre hole */}
+      {/* metallic hub insert */}
+      <Circle cx={cx} cy={cy} r={hubR} fill={`url(#${hub})`} stroke="#000000" strokeOpacity={0.28} strokeWidth={1} />
+      <Circle
+        cx={cx - hubR * 0.15}
+        cy={cy - hubR * 0.25}
+        r={hubR * 0.5}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeOpacity={0.4}
+        strokeWidth={0.8}
+      />
+      {/* bore hole */}
       <Circle cx={cx} cy={cy} r={hole} fill="#0B0C0E" />
       <Circle cx={cx} cy={cy} r={hole} fill="none" stroke="#000000" strokeOpacity={0.6} strokeWidth={1} />
-      <Circle cx={cx} cy={cy - hole * 0.28} r={hole * 0.82} fill="none" stroke="#FFFFFF" strokeOpacity={0.12} strokeWidth={0.8} />
+      <Circle cx={cx} cy={cy - hole * 0.28} r={hole * 0.82} fill="none" stroke="#FFFFFF" strokeOpacity={0.15} strokeWidth={0.8} />
+
+      {/* weight — above centre */}
+      <SvgText
+        x={cx}
+        y={cy - r * 0.4}
+        fontSize={numFontSize}
+        fontWeight="bold"
+        fill={textColor}
+        textAnchor="middle"
+      >
+        {label}
+      </SvgText>
+
+      {/* brand — below centre, curved along the bottom rim */}
+      <SvgText
+        fill="#FFFFFF"
+        fontWeight="bold"
+        fontSize={brandFontSize}
+        letterSpacing={tight ? -0.6 : -0.2}
+        stroke="#000000"
+        strokeOpacity={0.22}
+        strokeWidth={0.5}
+        textAnchor="middle"
+      >
+        <TextPath href={`#${arcId}`} startOffset="50%">
+          WODPLACE
+        </TextPath>
+      </SvgText>
     </G>
   );
 }
