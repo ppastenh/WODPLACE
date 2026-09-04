@@ -222,8 +222,8 @@ export function MovementSheet({ visible, userId, selectedId, onSelect, onClose }
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(8,9,11,0.6)' },
-  kav: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(8,9,11,0.6)' },
+  kav: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end' },
   sheet: {
     maxHeight: '85%',
     borderTopLeftRadius: 22,

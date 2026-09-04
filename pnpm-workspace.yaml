@@ -30,8 +30,8 @@ catalog:
   drizzle-orm: ^0.45.2
   framer-motion: ^12.23.24
   lucide-react: ^0.545.0
-  react: 19.1.0
-  react-dom: 19.1.0
+  react: 19.2.3
+  react-dom: 19.2.3
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: 4.23.0
@@ -59,15 +59,15 @@ onlyBuiltDependencies:
 # installs on Windows/macOS. @expo/ngrok-bin is still pruned — it's large and
 # only Replit's dev tunnel uses it.
 overrides:
-  # One React across the whole workspace. wodplace (Expo SDK 54) needs 19.1.0,
-  # and a second copy (box-admin/super-admin pinned ^19.2) makes Metro bundle
+  # One React across the whole workspace. wodplace (Expo SDK 57) and
+  # box-admin/super-admin all want 19.2.x; a second copy makes Metro bundle
   # React twice -> "Cannot read property 'useState' of null" in Expo Go.
   # The @types must be pinned to match, or shadcn components in box-admin /
   # mockup-sandbox fail to typecheck on a split React.Ref type identity.
-  react: 19.1.0
-  react-dom: 19.1.0
-  '@types/react': ~19.1.10
-  '@types/react-dom': ~19.1.7
+  react: 19.2.3
+  react-dom: 19.2.3
+  '@types/react': ~19.2.0
+  '@types/react-dom': ~19.2.0
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'

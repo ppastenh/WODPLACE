@@ -174,7 +174,7 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
-  loadingOverlay: { ...StyleSheet.absoluteFillObject },
+  loadingOverlay: { ...StyleSheet.absoluteFill },
   msg: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   msgSub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
 });

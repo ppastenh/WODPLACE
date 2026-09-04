@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   chipText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(8,9,11,0.35)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(8,9,11,0.35)' },
   menu: {
     position: 'absolute',
     minWidth: 128,

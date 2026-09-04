@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   hiddenInput: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0,
   },
 });

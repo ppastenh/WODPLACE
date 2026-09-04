@@ -7,12 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "wodplace",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#111319"
-    },
     "ios": {
       "supportsTablet": false
     },
@@ -25,6 +19,14 @@
         "expo-router",
         {
           "origin": "https://replit.com/"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#111319"
         }
       ],
       "expo-font",
