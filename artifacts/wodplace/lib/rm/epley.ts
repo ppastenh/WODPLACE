@@ -5,6 +5,7 @@
 export function estimate1RM(weight: number, reps: number): number {
   if (!Number.isFinite(weight) || weight <= 0) return 0;
   const r = Math.max(1, Math.round(reps));
+  if (r <= 1) return weight;
   return weight * (1 + r / 30);
 }
 

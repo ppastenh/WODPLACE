@@ -75,13 +75,6 @@ export default function RmHistoryScreen() {
             <Feather name="plus" size={18} color={colors.primaryForeground} />
             <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>Registrar RM</Text>
           </Pressable>
-          <Pressable
-            onPress={() => router.push('/rm/estimated-max' as never)}
-            style={[styles.secondary, { borderColor: colors.border }]}
-          >
-            <Feather name="trending-up" size={16} color={colors.primary} />
-            <Text style={[styles.secondaryText, { color: colors.primary }]}>Máx. estimado</Text>
-          </Pressable>
         </View>
 
         {loading ? (
@@ -154,15 +147,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   ctaText: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  secondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-  },
-  secondaryText: { fontSize: 12, fontFamily: 'Inter_700Bold' },
   empty: {
     alignItems: 'center',
     gap: 10,

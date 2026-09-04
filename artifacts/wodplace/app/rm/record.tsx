@@ -22,6 +22,7 @@ import { MovementSheet } from '@/components/rm/MovementSheet';
 import { PercentSlider } from '@/components/rm/PercentSlider';
 import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
+import { estimate1RM } from '@/lib/rm/epley';
 import { trimNum, type Unit } from '@/lib/rm/units';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -60,6 +61,8 @@ export default function RecordRmScreen() {
     params.prefillUnit === 'lb' ? 'lb' : 'kg',
   );
   const [pct, setPct] = React.useState(100);
+  const [effortMode, setEffortMode] = React.useState<'pct' | 'reps'>('pct');
+  const [reps, setReps] = React.useState(1);
   const [date, setDate] = React.useState(todayIso());
   const [note, setNote] = React.useState('');
   const [sheetOpen, setSheetOpen] = React.useState(false);
@@ -89,9 +92,21 @@ export default function RecordRmScreen() {
 
   const lifted = Number(weight.replace(',', '.'));
   const liftedValid = Number.isFinite(lifted) && lifted > 0;
-  // Project the full 1RM from the lift + how close to max it felt.
-  const projected = liftedValid ? (lifted * 100) / pct : 0;
-  const over = pct > 100;
+  // Two ways to reach the same number — the projected full 1RM that gets
+  // saved as the record's weight.
+  const projected = !liftedValid
+    ? 0
+    : effortMode === 'reps'
+      ? estimate1RM(lifted, reps)
+      : (lifted * 100) / pct;
+  // A comparable "% of 1RM" stored on every record, whatever the input mode.
+  const savedPct =
+    effortMode === 'pct'
+      ? pct
+      : liftedValid && projected > 0
+        ? Math.max(30, Math.min(110, Math.round((lifted / projected) * 100)))
+        : 100;
+  const over = effortMode === 'pct' && pct > 100;
 
   const dateRel =
     date === todayIso() ? 'hoy' : date === shiftIso(-1) ? 'ayer' : null;
@@ -117,7 +132,7 @@ export default function RecordRmScreen() {
           movementId: movement.id,
           weight: Math.round(projected * 100) / 100,
           unit,
-          percentage: pct,
+          percentage: savedPct,
           achievedAt: date,
           note: note.trim() || null,
         },
@@ -242,16 +257,89 @@ export default function RecordRmScreen() {
           </View>
         </View>
 
-        {/* % del RM realizado */}
-        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 22 }]}>
-          % del RM realizado
-        </Text>
+        {/* Esfuerzo */}
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 22 }]}>Esfuerzo</Text>
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          Qué tan cerca de tu máximo real sentiste el levantamiento.
+          Cómo llegás al 1RM proyectado que se guarda.
         </Text>
-        <View style={{ marginTop: 8 }}>
-          <PercentSlider value={pct} onChange={setPct} />
+
+        <View style={[styles.toggle, styles.effortToggle, { borderColor: colors.border }]}>
+          {(
+            [
+              ['pct', 'Por porcentaje'],
+              ['reps', 'Por repeticiones'],
+            ] as const
+          ).map(([m, lbl]) => {
+            const on = effortMode === m;
+            return (
+              <Pressable
+                key={m}
+                onPress={() => setEffortMode(m)}
+                style={[styles.effortTab, { backgroundColor: on ? colors.primary : 'transparent' }]}
+              >
+                <Text
+                  style={[
+                    styles.toggleText,
+                    { color: on ? colors.primaryForeground : colors.mutedForeground },
+                  ]}
+                >
+                  {lbl}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
+
+        {effortMode === 'pct' ? (
+          <View style={{ marginTop: 12 }}>
+            <PercentSlider value={pct} onChange={setPct} />
+          </View>
+        ) : (
+          <View style={{ marginTop: 12, gap: 8 }}>
+            <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+              Reps hechas con ese peso
+            </Text>
+            <View style={styles.repsRow}>
+              <Pressable
+                onPress={() => setReps((r) => Math.max(1, r - 1))}
+                disabled={reps <= 1}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.bump,
+                  { borderColor: colors.border, opacity: reps <= 1 ? 0.3 : pressed ? 0.6 : 1 },
+                ]}
+              >
+                <Feather name="minus" size={18} color={colors.foreground} />
+              </Pressable>
+              <TextInput
+                style={[
+                  styles.repsInput,
+                  { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
+                ]}
+                value={String(reps)}
+                onChangeText={(t) => {
+                  const n = parseInt(t.replace(/[^0-9]/g, ''), 10);
+                  setReps(Number.isFinite(n) ? Math.max(1, Math.min(30, n)) : 1);
+                }}
+                keyboardType="number-pad"
+                maxLength={2}
+                selectTextOnFocus
+              />
+              <Pressable
+                onPress={() => setReps((r) => Math.min(30, r + 1))}
+                disabled={reps >= 30}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.bump,
+                  { borderColor: colors.border, opacity: reps >= 30 ? 0.3 : pressed ? 0.6 : 1 },
+                ]}
+              >
+                <Feather name="plus" size={18} color={colors.foreground} />
+              </Pressable>
+              <Text style={[styles.repsUnit, { color: colors.mutedForeground }]}>reps</Text>
+            </View>
+          </View>
+        )}
 
         <View style={[styles.calc, { borderColor: colors.border }]}>
           <View style={styles.calcRow}>
@@ -261,13 +349,23 @@ export default function RecordRmScreen() {
             </Text>
           </View>
           <View style={styles.calcRow}>
-            <Text style={[styles.calcKey, { color: colors.mutedForeground }]}>
-              Equivale a {pct}% de tu RM
-            </Text>
+            <Text style={[styles.calcKey, { color: colors.mutedForeground }]}>1RM proyectado</Text>
             <Text style={[styles.calcBig, { color: over ? colors.primary : colors.foreground }]}>
               {liftedValid ? `${trimNum(projected, 1)} ${unit}` : '—'}
             </Text>
           </View>
+          {liftedValid ? (
+            <Text
+              style={[
+                styles.calcCaption,
+                { color: over ? colors.primary : colors.mutedForeground },
+              ]}
+            >
+              {effortMode === 'reps'
+                ? `Epley · ${reps} ${reps === 1 ? 'rep' : 'reps'} · ≈ ${savedPct}% del 1RM`
+                : `al ${pct}% de tu RM`}
+            </Text>
+          ) : null}
           {over && liftedValid ? (
             <Text style={[styles.overNote, { color: colors.primary }]}>
               Levantaste por encima de tu RM registrado.
@@ -404,6 +502,27 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { paddingHorizontal: 16, paddingVertical: 12 },
   toggleText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  effortToggle: { marginTop: 12 },
+  effortTab: { flex: 1, paddingVertical: 11, alignItems: 'center' },
+  repsRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bump: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  repsInput: {
+    width: 76,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingVertical: 10,
+    textAlign: 'center',
+    fontSize: 22,
+    fontFamily: 'Anton_400Regular',
+  },
+  repsUnit: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   calc: {
     borderTopWidth: StyleSheet.hairlineWidth,
     marginTop: 18,
@@ -414,6 +533,7 @@ const styles = StyleSheet.create({
   calcKey: { fontSize: 13, fontFamily: 'Inter_500Medium', flexShrink: 1 },
   calcVal: { fontSize: 15, fontFamily: 'Inter_700Bold' },
   calcBig: { fontSize: 22, fontFamily: 'Anton_400Regular' },
+  calcCaption: { fontSize: 12, fontFamily: 'Inter_500Medium' },
   overNote: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   todayBtn: {
     borderWidth: StyleSheet.hairlineWidth,

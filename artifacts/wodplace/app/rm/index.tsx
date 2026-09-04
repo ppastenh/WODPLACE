@@ -185,15 +185,7 @@ export default function BarLoaderScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <RmHeader
-        title="Carga de barra"
-        onBack={() => router.replace('/home')}
-        right={
-          <Pressable onPress={() => router.push('/rm/estimated-max' as never)} hitSlop={10}>
-            <Feather name="trending-up" size={20} color={colors.primary} />
-          </Pressable>
-        }
-      />
+      <RmHeader title="Carga de barra" onBack={() => router.replace('/home')} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Barra */}
         <View style={styles.inline}>
