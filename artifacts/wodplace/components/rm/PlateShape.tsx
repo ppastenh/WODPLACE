@@ -99,16 +99,25 @@ export function PlateShape(props: PlateShapeProps) {
 
   // Everything below is a ratio of r, so fractional discs (smaller d) get
   // the identical treatment scaled proportionally — no separate layout.
+  const ink = '#141414'; // number + wordmark — always dark, not colour-dependent
   const hubR = r * 0.34;
   const hole = r * 0.16;
-  const arcR = r * 0.68;
-  const numFontSize = Math.max(8, Math.min(14, r * 0.46));
-  const tight = r < 24; // condense the wordmark on the smaller (frac) discs
-  const brandFontSize = Math.max(4, r * 0.2);
+  const arcR = r * 0.74;
+  const tight = r < 24; // smaller (frac) discs
 
-  // Text-on-path arc hugging the bottom rim, rising toward the sides.
-  const a1 = Math.PI * 0.75; // 135° — lower-left
-  const a2 = Math.PI * 0.25; // 45°  — lower-right
+  // Longer decimal labels (e.g. "1.25") need a smaller font to stay inside
+  // the face than short ones ("15") at the same disc size.
+  const digits = label.length;
+  const lengthFactor = digits <= 2 ? 1 : digits === 3 ? 0.85 : 0.72;
+  const numFontSize = Math.max(6, Math.min(14, r * 0.46)) * lengthFactor;
+
+  const brandFontSize = Math.max(4, r * 0.19);
+
+  // Text-on-path arc hugging the bottom rim, rising toward the sides. Wide
+  // span + generous radius so "WODPLACE" always has room to clear in full —
+  // react-native-svg's TextPath has no textLength/lengthAdjust to force-fit.
+  const a1 = (155 * Math.PI) / 180; // lower-left
+  const a2 = (25 * Math.PI) / 180; // lower-right
   const arcPath =
     `M ${cx + arcR * Math.cos(a1)} ${cy + arcR * Math.sin(a1)} ` +
     `A ${arcR} ${arcR} 0 0 0 ${cx + arcR * Math.cos(a2)} ${cy + arcR * Math.sin(a2)}`;
@@ -168,7 +177,7 @@ export function PlateShape(props: PlateShapeProps) {
         y={cy - r * 0.4}
         fontSize={numFontSize}
         fontWeight="bold"
-        fill={textColor}
+        fill={ink}
         textAnchor="middle"
       >
         {label}
@@ -176,13 +185,10 @@ export function PlateShape(props: PlateShapeProps) {
 
       {/* brand — below centre, curved along the bottom rim */}
       <SvgText
-        fill="#FFFFFF"
+        fill={ink}
         fontWeight="bold"
         fontSize={brandFontSize}
-        letterSpacing={tight ? -0.6 : -0.2}
-        stroke="#000000"
-        strokeOpacity={0.22}
-        strokeWidth={0.5}
+        letterSpacing={tight ? -0.3 : -0.1}
         textAnchor="middle"
       >
         <TextPath href={`#${arcId}`} startOffset="50%">
