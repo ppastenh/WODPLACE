@@ -9,6 +9,7 @@ import {
 } from "react";
 
 export type BoxOption = { id: string; name: string };
+export type RoleRow = { role: string; box_id: string | null };
 
 type BoxContextValue = {
   /** Currently active box id — every admin query/insert is scoped to this. */
@@ -17,6 +18,12 @@ type BoxContextValue = {
   /** Boxes the signed-in user can act on (all boxes for super_admin). */
   boxes: BoxOption[];
   isSuperAdmin: boolean;
+  /**
+   * True for a real admin (super_admin, or box_admin on the currently active
+   * box) — false for a coach. Coaches get the same box-admin screens, but
+   * some features (the admin notification bell) are admin-only.
+   */
+  isAdmin: boolean;
   setBoxId: (id: string) => void;
 };
 
@@ -34,10 +41,12 @@ function readStored(): string | null {
 export function BoxProvider({
   boxes,
   isSuperAdmin,
+  roles,
   children,
 }: {
   boxes: BoxOption[];
   isSuperAdmin: boolean;
+  roles: RoleRow[];
   children: ReactNode;
 }) {
   const [boxId, setBoxIdState] = useState<string>(() => {
@@ -62,15 +71,19 @@ export function BoxProvider({
     }
   }, []);
 
+  const isAdmin =
+    isSuperAdmin || roles.some((r) => r.role === "box_admin" && r.box_id === boxId);
+
   const value = useMemo<BoxContextValue>(
     () => ({
       boxId,
       boxName: boxes.find((b) => b.id === boxId)?.name ?? "",
       boxes,
       isSuperAdmin,
+      isAdmin,
       setBoxId,
     }),
-    [boxId, boxes, isSuperAdmin, setBoxId],
+    [boxId, boxes, isSuperAdmin, isAdmin, setBoxId],
   );
 
   return <BoxContext.Provider value={value}>{children}</BoxContext.Provider>;
