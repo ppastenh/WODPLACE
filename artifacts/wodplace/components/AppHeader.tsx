@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import darkColors from '@/constants/darkColors';
 import { useColors } from '@/hooks/useColors';
 import { useNotifications } from '@/context/NotificationsContext';
 
@@ -21,9 +22,11 @@ export function AppHeader({ onBack, onMenu, menuOpen, dark, showBell }: AppHeade
   const { unreadCount } = useNotifications();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
-  const iconColor = dark ? colors.authText : colors.foreground;
-  const bg = dark ? colors.authBackground : colors.background;
-  const borderColor = dark ? colors.authBorder : colors.border;
+  // `dark` renders the same fixed dark palette as the RM module and the
+  // admin dashboard, not the (slightly different) auth/splash dark tokens.
+  const iconColor = dark ? darkColors.foreground : colors.foreground;
+  const bg = dark ? darkColors.background : colors.background;
+  const borderColor = dark ? darkColors.border : colors.border;
 
   return (
     <View
