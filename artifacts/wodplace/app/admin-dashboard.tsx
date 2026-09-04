@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useCreateAdminDashLink } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
-import { useColors } from '@/hooks/useColors';
+import { useDarkColors } from '@/hooks/useDarkColors';
 import { getAdminToken } from '@/lib/adminSession';
 import { resolveDashboardUrl } from '@/lib/dashboardUrl';
 
@@ -35,7 +35,7 @@ function safeUrl(raw: string | undefined | null): string {
 }
 
 export default function AdminDashboardScreen() {
-  const colors = useColors();
+  const colors = useDarkColors();
   const [token, setToken] = useState<string | null>(null);
   const [uri, setUri] = useState<string | null>(null);
   const startedRef = useRef(false);
@@ -92,7 +92,7 @@ export default function AdminDashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onBack={() => router.replace('/profile')} />
+      <AppHeader onBack={() => router.replace('/profile')} dark />
       {!dashboardOrigin ? (
         <View style={styles.center}>
           <Feather name="alert-triangle" size={28} color={colors.mutedForeground} />

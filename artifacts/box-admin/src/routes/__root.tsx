@@ -54,7 +54,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#0f0f10" },
+      { name: "theme-color", content: "#0E0F11" },
       { title: "Dlovebox — Panel de administración" },
       { name: "description", content: "Panel administrativo para gestión de box de CrossFit: miembros, clases, asistencia, finanzas." },
       { property: "og:title", content: "Dlovebox — Panel de administración" },
