@@ -9,13 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ImagePlus, Megaphone, Send, Trash2, X } from "lucide-react";
-import { AnnouncementImage } from "@/components/admin/NotificationsBell";
 import { useBox } from "@/lib/box-context";
 import { randomKey } from "@/lib/ids";
 import {
   fetchAnnouncements,
   formatDate,
   isExpired,
+  signedImageUrl,
   tryLocalPush,
 } from "@/lib/announcements";
 
@@ -235,4 +235,14 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint: st
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
+}
+
+function AnnouncementImage({ path }: { path: string | null }) {
+  const { data: url } = useQuery({
+    queryKey: ["announcement-image", path],
+    queryFn: () => signedImageUrl(path),
+    enabled: !!path,
+  });
+  if (!url) return null;
+  return <img src={url} alt="Imagen del aviso" loading="lazy" className="w-full rounded-2xl object-cover" />;
 }

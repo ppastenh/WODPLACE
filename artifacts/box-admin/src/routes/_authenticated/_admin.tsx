@@ -6,10 +6,15 @@ import { BoxProvider, type BoxOption } from "@/lib/box-context";
 
 const STAFF_ROLES = new Set(["super_admin", "box_admin", "coach"]);
 
+type RoleRow = { role: string; box_id: string | null };
+
 type AdminContext = {
   isStaff: boolean;
   isSuperAdmin: boolean;
   boxes: BoxOption[];
+  /** Raw role rows — lets downstream code tell a real admin from a coach,
+   *  per the currently active box (BoxProvider derives `isAdmin` from this). */
+  roles: RoleRow[];
 };
 
 async function resolveAdminContext(userId: string): Promise<AdminContext> {
@@ -18,20 +23,20 @@ async function resolveAdminContext(userId: string): Promise<AdminContext> {
     .select("role, box_id")
     .eq("user_id", userId);
 
-  if (error || !roleRows) return { isStaff: false, isSuperAdmin: false, boxes: [] };
+  if (error || !roleRows) return { isStaff: false, isSuperAdmin: false, boxes: [], roles: [] };
 
   const isSuperAdmin = roleRows.some((r) => r.role === "super_admin");
   const isStaff = roleRows.some((r) => STAFF_ROLES.has(r.role));
-  if (!isStaff) return { isStaff: false, isSuperAdmin: false, boxes: [] };
+  if (!isStaff) return { isStaff: false, isSuperAdmin: false, boxes: [], roles: [] };
 
   let query = supabase.from("boxes").select("id, name").order("name");
   if (!isSuperAdmin) {
     const boxIds = [...new Set(roleRows.map((r) => r.box_id).filter((id): id is string => !!id))];
-    if (boxIds.length === 0) return { isStaff: true, isSuperAdmin: false, boxes: [] };
+    if (boxIds.length === 0) return { isStaff: true, isSuperAdmin: false, boxes: [], roles: roleRows };
     query = query.in("id", boxIds);
   }
   const { data: boxes } = await query;
-  return { isStaff: true, isSuperAdmin, boxes: boxes ?? [] };
+  return { isStaff: true, isSuperAdmin, boxes: boxes ?? [], roles: roleRows };
 }
 
 export const Route = createFileRoute("/_authenticated/_admin")({
@@ -45,11 +50,11 @@ export const Route = createFileRoute("/_authenticated/_admin")({
 });
 
 function AdminLayout() {
-  const { isStaff, isSuperAdmin, boxes } = Route.useRouteContext();
+  const { isStaff, isSuperAdmin, boxes, roles } = Route.useRouteContext();
   if (!isStaff) return <NoAccess />;
   if (boxes.length === 0) return <NoBox />;
   return (
-    <BoxProvider boxes={boxes} isSuperAdmin={isSuperAdmin}>
+    <BoxProvider boxes={boxes} isSuperAdmin={isSuperAdmin} roles={roles}>
       <Outlet />
     </BoxProvider>
   );
