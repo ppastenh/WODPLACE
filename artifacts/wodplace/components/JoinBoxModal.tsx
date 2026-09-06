@@ -5,6 +5,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import type { RedeemBoxCodeResult } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { AppButton } from '@/components/AppButton';
+import { formatBoxCodeInput } from '@/lib/boxCodeUtils';
 
 interface JoinBoxModalProps {
   visible: boolean;
@@ -84,12 +85,12 @@ export function JoinBoxModal({ visible, onClose, onRedeem }: JoinBoxModalProps) 
           <View style={[styles.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
             <TextInput
               value={code}
-              onChangeText={(v) => setCode(v.toUpperCase())}
-              placeholder="Ej. 4KJ9P2"
+              onChangeText={(v) => setCode(formatBoxCodeInput(v))}
+              placeholder="Ej. 4KJ9P-XY2"
               placeholderTextColor={colors.mutedForeground}
               autoCapitalize="characters"
               autoCorrect={false}
-              maxLength={12}
+              maxLength={9}
               autoFocus
               editable={!busy}
               onSubmitEditing={submit}

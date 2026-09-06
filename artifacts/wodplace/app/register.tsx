@@ -10,6 +10,7 @@ import { BirthdateModal } from '@/components/BirthdateModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
+import { formatBoxCodeInput } from '@/lib/boxCodeUtils';
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -188,12 +189,12 @@ export default function RegisterScreen() {
 
           <TextInput
             value={boxCode}
-            onChangeText={(v) => setBoxCode(v.toUpperCase())}
+            onChangeText={(v) => setBoxCode(formatBoxCodeInput(v))}
             placeholder="Código del box (opcional)"
             placeholderTextColor={colors.authMuted}
             autoCapitalize="characters"
             autoCorrect={false}
-            maxLength={12}
+            maxLength={9}
             style={[
               styles.input,
               { backgroundColor: colors.authInput, color: colors.authText, borderColor: colors.authBorder },
