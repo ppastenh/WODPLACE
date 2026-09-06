@@ -70,6 +70,12 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
 }
 
+/** Opens the tapped member's public profile — never for box-authored posts
+ *  (those have no userId behind them). */
+function goToMemberProfile(userId: string, name: string) {
+  router.push({ pathname: '/member/[id]', params: { id: userId, name } });
+}
+
 // ─── PostAvatar ───────────────────────────────────────────────────────────────
 
 function PostAvatar({ name, isBox, size = 40 }: { name: string; isBox?: boolean; size?: number }) {
@@ -297,12 +303,18 @@ function CommentsModal({
               onEndReachedThreshold={0.4}
               renderItem={({ item }) => (
                 <View style={[styles.commentRow, { borderBottomColor: colors.navBorder }]}>
-                  <PostAvatar name={item.authorName} size={32} />
-                  <View style={styles.commentBody}>
-                    <Text style={[styles.commentAuthor, { color: colors.foreground }]}>{item.authorName}</Text>
-                    <Text style={[styles.commentText, { color: colors.mutedForeground }]}>{item.body}</Text>
-                    <Text style={[styles.commentTime, { color: colors.navInactive }]}>{relativeTime(item.createdAt)}</Text>
-                  </View>
+                  <Pressable
+                    style={styles.postAuthorTouchable}
+                    disabled={!item.userId}
+                    onPress={() => item.userId && goToMemberProfile(item.userId, item.authorName)}
+                  >
+                    <PostAvatar name={item.authorName} size={32} />
+                    <View style={styles.commentBody}>
+                      <Text style={[styles.commentAuthor, { color: colors.foreground }]}>{item.authorName}</Text>
+                      <Text style={[styles.commentText, { color: colors.mutedForeground }]}>{item.body}</Text>
+                      <Text style={[styles.commentTime, { color: colors.navInactive }]}>{relativeTime(item.createdAt)}</Text>
+                    </View>
+                  </Pressable>
                   {(item.userId === userId || isAdmin) ? (
                     <Pressable onPress={() => handleDeleteComment(item)} hitSlop={8}>
                       <Feather name="trash-2" size={14} color={colors.navInactive} />
@@ -476,24 +488,32 @@ function PostCard({
       ]
     : [{ label: 'Reportar publicación', icon: 'flag', onPress: () => onReport(post.id) }];
 
+  const canOpenProfile = !isBox && !!post.userId;
+
   return (
     <View style={[styles.postCard, { backgroundColor: colors.card, borderColor: colors.navBorder }]}>
       {/* Header */}
       <View style={styles.postHeader}>
-        <PostAvatar name={post.authorName} isBox={isBox} />
-        <View style={styles.postAuthorBlock}>
-          <View style={styles.postAuthorRow}>
-            <Text style={[styles.postAuthor, { color: colors.foreground }]} numberOfLines={1}>
-              {post.authorName}
-            </Text>
-            {isBox && (
-              <View style={[styles.boxTag, { backgroundColor: colors.warningBackground }]}>
-                <Text style={[styles.boxTagText, { color: colors.warning }]}>BOX</Text>
-              </View>
-            )}
+        <Pressable
+          style={styles.postAuthorTouchable}
+          disabled={!canOpenProfile}
+          onPress={() => canOpenProfile && goToMemberProfile(post.userId!, post.authorName)}
+        >
+          <PostAvatar name={post.authorName} isBox={isBox} />
+          <View style={styles.postAuthorBlock}>
+            <View style={styles.postAuthorRow}>
+              <Text style={[styles.postAuthor, { color: colors.foreground }]} numberOfLines={1}>
+                {post.authorName}
+              </Text>
+              {isBox && (
+                <View style={[styles.boxTag, { backgroundColor: colors.warningBackground }]}>
+                  <Text style={[styles.boxTagText, { color: colors.warning }]}>BOX</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.postTime, { color: colors.navInactive }]}>{relativeTime(post.createdAt)}</Text>
           </View>
-          <Text style={[styles.postTime, { color: colors.navInactive }]}>{relativeTime(post.createdAt)}</Text>
-        </View>
+        </Pressable>
         <Pressable
           onPress={() => setMenuVisible(true)}
           hitSlop={10}
@@ -982,6 +1002,7 @@ const styles = StyleSheet.create({
   // Post card
   postCard: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 16 },
   postHeader: { flexDirection: 'row', alignItems: 'center' },
+  postAuthorTouchable: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   postAuthorBlock: { flex: 1, marginLeft: 10 },
   postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   postAuthor: { fontSize: 13, fontFamily: 'Inter_700Bold', flexShrink: 1 },

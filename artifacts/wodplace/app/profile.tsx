@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, usePathname } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system/legacy';
 import { AppHeader } from '@/components/AppHeader';
 import { Avatar } from '@/components/Avatar';
 import { AppButton } from '@/components/AppButton';
@@ -27,7 +30,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { useMyPosts, type SocialPost } from '@workspace/api-client-react';
+import { useMyPosts, uploadAvatarImage, type SocialPost } from '@workspace/api-client-react';
 import { canAccessAdminNavigation } from '@/lib/navigation';
 
 const WIN_WIDTH = Dimensions.get('window').width;
@@ -181,6 +184,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'agendado' | 'posts'>('agendado');
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [postDetailVisible, setPostDetailVisible] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const {
     posts: myPosts,
@@ -208,6 +212,32 @@ export default function ProfileScreen() {
     if (route !== pathname) router.push(route as never);
   };
 
+  const handleAvatarChange = async (localUri: string) => {
+    setAvatarUploading(true);
+    try {
+      const mime = localUri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+      const nativeUploader = Platform.OS !== 'web'
+        ? async (uploadURL: string, fileUri: string, contentType: string) => {
+            const result = await FileSystem.uploadAsync(uploadURL, fileUri, {
+              httpMethod: 'PUT',
+              uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+              headers: { 'Content-Type': contentType },
+            });
+            if (result.status < 200 || result.status >= 300) {
+              throw new Error(`La imagen no se pudo subir (HTTP ${result.status}). Intenta de nuevo.`);
+            }
+          }
+        : undefined;
+      const remoteUrl = await uploadAvatarImage(user.id, localUri, mime, nativeUploader);
+      await updateProfile({ avatarUri: remoteUrl });
+    } catch (err) {
+      console.warn('Avatar upload failed:', err);
+      Alert.alert('Error al subir foto', 'No pudimos actualizar tu foto de perfil. Intenta de nuevo.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const handleLogout = async () => {
     setDrawerVisible(false);
     await logout();
@@ -228,7 +258,14 @@ export default function ProfileScreen() {
       {/* ── Profile top — always rendered, never unmounts ── */}
       <View style={[styles.profileTopSection, { backgroundColor: colors.background }]}>
         <View style={styles.profileRow}>
-          <Avatar uri={user.avatarUri} onChange={(uri) => updateProfile({ avatarUri: uri })} />
+          <View>
+            <Avatar uri={user.avatarUri} onChange={handleAvatarChange} />
+            {avatarUploading && (
+              <View style={styles.avatarUploadingOverlay} pointerEvents="none">
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
               {user.name}
@@ -478,6 +515,17 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 },
+  avatarUploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 44,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   profileInfo: { flex: 1, gap: 6 },
   name: { fontSize: 19, fontFamily: 'Inter_700Bold' },
   phraseRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
