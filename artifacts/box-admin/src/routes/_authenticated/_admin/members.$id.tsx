@@ -30,7 +30,7 @@ type MemberDetailRow = {
   notes: string | null;
   joined_at: string | null;
   next_payment_at: string | null;
-  wodplace_users: { name: string; email: string } | null;
+  wodplace_users: { name: string; email: string; avatar_url: string | null } | null;
   plans: { name: string; price: number | null } | null;
 };
 
@@ -44,7 +44,7 @@ function MemberDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("box_members")
-        .select("user_id, status, phone, photo_url, notes, joined_at, next_payment_at, wodplace_users(name, email), plans(name, price)")
+        .select("user_id, status, phone, photo_url, notes, joined_at, next_payment_at, wodplace_users(name, email, avatar_url), plans(name, price)")
         .eq("box_id", boxId)
         .eq("user_id", id)
         .maybeSingle();
@@ -89,7 +89,7 @@ function MemberDetail() {
   return (
     <AdminShell title="Perfil" showBack>
       <div className="flex flex-col items-center rounded-3xl border bg-card p-5 text-center">
-        <Avatar name={fullName} url={m.photo_url} size={72} />
+        <Avatar name={fullName} url={m.wodplace_users?.avatar_url ?? m.photo_url} size={72} />
         <h1 className="mt-3 text-xl font-black">{fullName}</h1>
         <div className="mt-2"><StatusChip status={m.status} /></div>
         {m.plans?.name && <p className="mt-2 text-xs text-muted-foreground">Plan {m.plans.name}</p>}

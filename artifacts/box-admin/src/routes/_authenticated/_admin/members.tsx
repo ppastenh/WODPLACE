@@ -8,7 +8,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { useState } from "react";
 import {
   Search, Plus, User, Copy, RefreshCw, MessageCircle, Check, X,
-  ChevronDown, UserRound, CalendarDays, MoreVertical, Pencil, CircleCheck,
+  UserRound, CalendarDays, MoreVertical, Pencil, CircleCheck,
   PlayCircle, PauseCircle, AlertCircle, Lock, Clock, KeyRound, Receipt, Trash2,
 } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -55,7 +55,7 @@ type MemberRow_ = {
   next_payment_at: string | null;
   photo_url: string | null;
   phone: string | null;
-  wodplace_users: { name: string; email: string } | null;
+  wodplace_users: { name: string; email: string; avatar_url: string | null } | null;
   plans: { name: string } | null;
 };
 
@@ -66,7 +66,9 @@ function toItem(r: MemberRow_): MemberListItem {
     email: r.wodplace_users?.email ?? null,
     status: r.status,
     next_payment: r.next_payment_at,
-    photo_url: r.photo_url,
+    // The athlete's own uploaded photo is the canonical avatar; box_members'
+    // photo_url is a legacy admin-settable fallback nothing currently writes.
+    photo_url: r.wodplace_users?.avatar_url ?? r.photo_url,
     phone: r.phone,
     plan: r.plans,
   };
@@ -88,7 +90,7 @@ function MembersPage() {
     queryFn: async () => {
       let query = supabase
         .from("box_members")
-        .select("user_id, status, next_payment_at, photo_url, phone, wodplace_users!inner(name, email), plans(name)")
+        .select("user_id, status, next_payment_at, photo_url, phone, wodplace_users!inner(name, email, avatar_url), plans(name)")
         .eq("box_id", boxId)
         .order("name", { referencedTable: "wodplace_users" });
       if (status !== "todos") query = query.eq("status", status);
@@ -159,20 +161,15 @@ export function StatusChip({ status }: { status: string }) {
 }
 
 function MemberRow({ m }: { m: MemberListItem }) {
-  const [expanded, setExpanded] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [book, setBook] = useState(false);
 
-
-  const waHref = m.phone
-    ? `https://wa.me/${m.phone.replace(/\D/g, "")}`
-    : `https://wa.me/`;
-
   return (
-    <div className="rounded-2xl border bg-card">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 p-3 text-left active:scale-[0.99] transition-transform"
+    <div className="flex items-center gap-1 rounded-2xl border bg-card">
+      <Link
+        to="/members/$id"
+        params={{ id: m.id }}
+        className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left active:scale-[0.99] transition-transform"
       >
         <Avatar name={m.full_name} url={m.photo_url} />
         <div className="min-w-0 flex-1">
@@ -182,55 +179,23 @@ function MemberRow({ m }: { m: MemberListItem }) {
             {m.plan?.name && <span className="truncate">· {m.plan.name}</span>}
           </div>
         </div>
-        {!expanded && m.next_payment && (
+        {m.next_payment && (
           <div className="text-right text-[10px] text-muted-foreground">
             <p className="font-semibold text-foreground">{format(new Date(m.next_payment), "dd MMM")}</p>
             <p>próximo pago</p>
           </div>
         )}
-        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </Link>
+      <button
+        onClick={() => setSheet(true)}
+        aria-label="Más acciones"
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground active:bg-secondary"
+      >
+        <MoreVertical className="h-5 w-5" />
       </button>
 
-      {expanded && (
-        <div className="grid grid-cols-4 gap-1 border-t p-2">
-          <Link
-            to="/members/$id"
-            params={{ id: m.id }}
-            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-muted-foreground active:bg-secondary"
-          >
-            <UserRound className="h-5 w-5" />
-            Perfil
-          </Link>
-          <button
-            onClick={() => setBook(true)}
-            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
-          >
-            <CalendarDays className="h-5 w-5" />
-            Reservar
-          </button>
-          <a
-
-            href={waHref}
-            target="_blank"
-            rel="noreferrer"
-            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
-          >
-            <MessageCircle className="h-5 w-5" />
-            Chat
-          </a>
-          <button
-            onClick={() => setSheet(true)}
-            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-muted-foreground active:bg-secondary"
-          >
-            <MoreVertical className="h-5 w-5" />
-            Más
-          </button>
-        </div>
-      )}
-
-      <MemberActionsSheet m={m} open={sheet} onOpenChange={setSheet} />
+      <MemberActionsSheet m={m} open={sheet} onOpenChange={setSheet} onBook={() => { setSheet(false); setBook(true); }} />
       <BookClassSheet memberId={m.id} memberName={m.full_name} open={book} onOpenChange={setBook} />
-
     </div>
   );
 }
@@ -285,13 +250,18 @@ function MemberActionsSheet({
   m,
   open,
   onOpenChange,
+  onBook,
 }: {
   m: MemberListItem;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onBook: () => void;
 }) {
   const qc = useQueryClient();
   const { boxId } = useBox();
+  const waHref = m.phone
+    ? `https://wa.me/${m.phone.replace(/\D/g, "")}`
+    : `https://wa.me/`;
 
   const setStatus = useMutation({
     mutationFn: async (status: MemberStatus) => {
@@ -346,7 +316,16 @@ function MemberActionsSheet({
           <DrawerTitle className="text-base">Más acciones</DrawerTitle>
         </DrawerHeader>
         <div className="overflow-y-auto px-3 pb-8">
-          <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Administración</p>
+          <ActionItem icon={CalendarDays} title="Reservar clase" subtitle="Anotar al miembro en una clase" tone="primary" onClick={onBook} />
+          <ActionItem
+            icon={MessageCircle}
+            title="Chat por WhatsApp"
+            subtitle={m.phone || "Sin teléfono registrado"}
+            tone="primary"
+            onClick={() => window.open(waHref, "_blank", "noreferrer")}
+          />
+
+          <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Administración</p>
           <ActionItem icon={UserRound} title="Ver perfil" subtitle="Información completa del miembro" to="/members/$id" params={{ id: m.id }} />
           <ActionItem icon={Pencil} title="Editar información" subtitle="Datos personales y de contacto" to="/members/$id" params={{ id: m.id }} />
 
