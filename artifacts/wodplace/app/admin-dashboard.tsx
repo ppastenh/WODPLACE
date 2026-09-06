@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useCreateAdminDashLink } from '@workspace/api-client-react';
@@ -23,6 +24,42 @@ import { resolveDashboardUrl } from '@/lib/dashboardUrl';
  * acceptances, moderation reports) moved to `/more`.
  */
 
+/**
+ * Messages box-admin posts up via `window.ReactNativeWebView.postMessage`
+ * (see box-admin's `src/lib/rnBridge.ts` for the contract, kept in sync
+ * with this handler):
+ *   - `copy-to-clipboard` — box-admin can't rely on `navigator.clipboard`
+ *     inside this WebView (WKWebView and Android's embedded WebView don't
+ *     reliably implement it), so it posts the text here and we copy it on
+ *     its behalf using the app's real clipboard access.
+ *   - `admin-alerts-count` — the admin notification bell now lives in this
+ *     screen's native header (see below) instead of box-admin's own header;
+ *     this is how it learns the current count.
+ */
+function createWebViewMessageHandler(onAlertsCount: (count: number) => void) {
+  return (event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data?.type === 'copy-to-clipboard' && typeof data.text === 'string') {
+        Clipboard.setStringAsync(data.text);
+      } else if (data?.type === 'admin-alerts-count' && typeof data.count === 'number') {
+        onAlertsCount(data.count);
+      }
+    } catch {
+      // Not a message we understand — ignore.
+    }
+  };
+}
+
+/**
+ * The reverse direction has no message channel — `injectJavaScript` runs
+ * this script inside the WebView, calling the global box-admin's
+ * `NotificationsBell.tsx` registers to open its drawer. The trailing
+ * `true;` is required by the WebView on iOS.
+ */
+const OPEN_ADMIN_NOTIFICATIONS_SCRIPT =
+  'window.__wodplaceOpenNotifications && window.__wodplaceOpenNotifications(); true;';
+
 /** Strip query/hash so we never print the one-time token / access_token. */
 function safeUrl(raw: string | undefined | null): string {
   if (!raw) return `<${raw === '' ? 'empty' : String(raw)}>`;
@@ -38,8 +75,11 @@ export default function AdminDashboardScreen() {
   const colors = useDarkColors();
   const [token, setToken] = useState<string | null>(null);
   const [uri, setUri] = useState<string | null>(null);
+  const [alertCount, setAlertCount] = useState(0);
   const startedRef = useRef(false);
+  const webViewRef = useRef<WebView>(null);
   const dashboardOrigin = resolveDashboardUrl();
+  const handleWebViewMessage = useRef(createWebViewMessageHandler(setAlertCount)).current;
 
   const dashLink = useCreateAdminDashLink({
     request: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
@@ -92,7 +132,12 @@ export default function AdminDashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader onBack={() => router.replace('/profile')} dark />
+      <AppHeader
+        onBack={() => router.replace('/profile')}
+        dark
+        adminAlertCount={alertCount}
+        onPressAdminAlerts={() => webViewRef.current?.injectJavaScript(OPEN_ADMIN_NOTIFICATIONS_SCRIPT)}
+      />
       {!dashboardOrigin ? (
         <View style={styles.center}>
           <Feather name="alert-triangle" size={28} color={colors.mutedForeground} />
@@ -112,6 +157,7 @@ export default function AdminDashboardScreen() {
         </View>
       ) : (
         <WebView
+          ref={webViewRef}
           source={{ uri }}
           style={{ flex: 1, backgroundColor: colors.background }}
           startInLoadingState
@@ -132,14 +178,18 @@ export default function AdminDashboardScreen() {
           sharedCookiesEnabled
           domStorageEnabled
           originWhitelist={['*']}
+          onMessage={handleWebViewMessage}
           // --- Diagnostics: trace every URL the WebView touches. ---
           onShouldStartLoadWithRequest={(req) => {
             console.log('[dash-webview] start load →', safeUrl(req.url));
             return true;
           }}
-          onLoadStart={(e) =>
-            console.log('[dash-webview] loadStart →', safeUrl(e.nativeEvent.url))
-          }
+          onLoadStart={(e) => {
+            // A fresh navigation means box-admin hasn't posted a count yet
+            // for this page — don't keep showing the previous one's.
+            setAlertCount(0);
+            console.log('[dash-webview] loadStart →', safeUrl(e.nativeEvent.url));
+          }}
           onNavigationStateChange={(nav) =>
             console.log(
               '[dash-webview] nav →',

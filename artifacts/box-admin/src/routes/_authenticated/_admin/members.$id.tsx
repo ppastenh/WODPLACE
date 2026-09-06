@@ -73,7 +73,12 @@ function MemberDetail() {
       const { error } = await supabase.from("box_members").update({ status: newStatus }).eq("box_id", boxId).eq("user_id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Actualizado"); qc.invalidateQueries({ queryKey: ["member", boxId, id] }); qc.invalidateQueries({ queryKey: ["members"] }); },
+    onSuccess: () => {
+      toast.success("Actualizado");
+      qc.invalidateQueries({ queryKey: ["member", boxId, id] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["alert-overdue"] });
+    },
   });
 
   const m = member.data;

@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Bell, Clock, FileCheck, Flag, UserPlus, Users, Wallet } from "lucide-react";
@@ -17,6 +17,7 @@ import {
   fetchUnseenContracts,
   fetchUpcomingRenewals,
   markContractSeen,
+  markMemberSeen,
   rejectRequest,
   reportReasonLabel,
   resolveReport,
@@ -26,6 +27,15 @@ import {
   type UnconfirmedPayment,
   type UnseenContract,
 } from "@/lib/admin-alerts";
+import { isInsideAppWebView, postToNative } from "@/lib/rnBridge";
+
+declare global {
+  interface Window {
+    /** Registered below; the app's native bell calls this via `injectJavaScript`
+     *  to open this drawer instead of showing its own (see admin-dashboard.tsx). */
+    __wodplaceOpenNotifications?: () => void;
+  }
+}
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -60,6 +70,21 @@ export function NotificationsBell() {
   };
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
+  // Inside the app, the count lives in the native header's bell instead of
+  // this one — tell it every time the total changes. No-ops in a browser.
+  useEffect(() => {
+    postToNative({ type: "admin-alerts-count", count: total });
+  }, [total]);
+
+  // The native bell has no direct handle on this component's state, so it
+  // opens the drawer by calling this global (via `injectJavaScript`) instead.
+  useEffect(() => {
+    window.__wodplaceOpenNotifications = () => setOpen(true);
+    return () => {
+      delete window.__wodplaceOpenNotifications;
+    };
+  }, []);
+
   const approve = useMutation({
     mutationFn: (r: PendingRequest) => approveRequest(boxId, r),
     onSuccess: () => {
@@ -79,6 +104,10 @@ export function NotificationsBell() {
     mutationFn: (userId: string) => markContractSeen(userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-contracts"] }),
   });
+  const seeNewMember = useMutation({
+    mutationFn: (userId: string) => markMemberSeen(boxId, userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-new-members"] }),
+  });
 
   // Coaches get the rest of box-admin, but not this — it's for real admins.
   if (!isAdmin) return null;
@@ -86,16 +115,22 @@ export function NotificationsBell() {
 
   return (
     <>
-      <button
-        aria-label="Notificaciones"
-        onClick={() => setOpen(true)}
-        className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground active:opacity-80"
-      >
-        <Bell className="h-5 w-5" />
-        {total > 0 && (
-          <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
-        )}
-      </button>
+      {/* Inside the app the bell lives in the native header instead (see
+       *  admin-dashboard.tsx) — this drawer stays, driven by
+       *  `window.__wodplaceOpenNotifications`, but its own icon+badge would
+       *  just be a duplicate. Browsers (desktop admins) keep it. */}
+      {!isInsideAppWebView() && (
+        <button
+          aria-label="Notificaciones"
+          onClick={() => setOpen(true)}
+          className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground active:opacity-80"
+        >
+          <Bell className="h-5 w-5" />
+          {total > 0 && (
+            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+          )}
+        </button>
+      )}
 
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent className="mx-auto max-w-md">
@@ -151,7 +186,13 @@ export function NotificationsBell() {
 
                 <Section icon={UserPlus} title="Nuevos miembros" count={counts.newMembers}>
                   {newMembers.data?.map((m) => (
-                    <MemberRow key={m.userId} m={m} label="se unió" onClick={close} />
+                    <NewMemberRow
+                      key={m.userId}
+                      m={m}
+                      busy={seeNewMember.isPending}
+                      onSeen={() => seeNewMember.mutate(m.userId)}
+                      onClick={close}
+                    />
                   ))}
                 </Section>
               </>
@@ -259,6 +300,23 @@ function ContractRow({ c, onSeen, busy, onClick }: { c: UnseenContract; onSeen: 
       <Link to="/members/$id" params={{ id: c.userId }} onClick={onClick} className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{c.name}</p>
         <p className="text-[11px] text-muted-foreground">Aceptó el {fmtDate(c.acceptedAt)}</p>
+      </Link>
+      <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full px-3" disabled={busy} onClick={onSeen}>
+        Visto
+      </Button>
+    </div>
+  );
+}
+
+/** Tapping the name navigates to the member's profile; "Visto" is a
+ *  separate, non-navigating action that only marks this one member as
+ *  seen — the two must never trigger each other. */
+function NewMemberRow({ m, onSeen, busy, onClick }: { m: MemberAlert; onSeen: () => void; busy: boolean; onClick: () => void }) {
+  return (
+    <div className="flex items-center gap-2 rounded-2xl border bg-card p-3">
+      <Link to="/members/$id" params={{ id: m.userId }} onClick={onClick} className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{m.name}</p>
+        <p className="text-[11px] text-muted-foreground">se unió {fmtDate(m.date)}</p>
       </Link>
       <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full px-3" disabled={busy} onClick={onSeen}>
         Visto

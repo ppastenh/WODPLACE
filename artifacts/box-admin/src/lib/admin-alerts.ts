@@ -170,6 +170,12 @@ export async function markContractSeen(userId: string) {
 // New rows in box_members, whichever way they were added (invite code or an
 // admin adding them by hand from Miembros) — the table doesn't distinguish
 // the two today.
+//
+// Unlike most other alert categories, tapping a member here is just
+// navigation to their profile, not a "done" action — so this one needs its
+// own per-member "seen" mark, same shape as contract_acceptances'
+// seen_by_owner_at, just on box_members since a "new member" alert item IS
+// a box_members row.
 export async function fetchNewMembers(boxId: string, days = 7): Promise<MemberAlert[]> {
   const since = new Date(Date.now() - days * 864e5).toISOString();
   const { data, error } = await supabase
@@ -177,8 +183,18 @@ export async function fetchNewMembers(boxId: string, days = 7): Promise<MemberAl
     .select("user_id, created_at, wodplace_users!inner(name)")
     .eq("box_id", boxId)
     .gte("created_at", since)
+    .is("new_member_seen_at", null)
     .order("created_at", { ascending: false })
     .limit(20);
   if (error) throw error;
   return (data ?? []).map((r: any) => ({ userId: r.user_id, name: nameOf(r.wodplace_users), date: r.created_at }));
+}
+
+export async function markMemberSeen(boxId: string, userId: string) {
+  const { error } = await supabase
+    .from("box_members")
+    .update({ new_member_seen_at: new Date().toISOString() })
+    .eq("box_id", boxId)
+    .eq("user_id", userId);
+  if (error) throw error;
 }

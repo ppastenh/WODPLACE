@@ -14,9 +14,25 @@ interface AppHeaderProps {
   dark?: boolean;
   /** Show the notification bell on the right with an unread badge. */
   showBell?: boolean;
+  /**
+   * Admin alerts bell (box-admin's own alerts inside the admin WebView —
+   * unrelated to `showBell`/`useNotifications`, which is the member-facing
+   * one). Renders in the same right-side slot when provided; takes priority
+   * over `showBell` if somehow both are passed.
+   */
+  adminAlertCount?: number;
+  onPressAdminAlerts?: () => void;
 }
 
-export function AppHeader({ onBack, onMenu, menuOpen, dark, showBell }: AppHeaderProps) {
+export function AppHeader({
+  onBack,
+  onMenu,
+  menuOpen,
+  dark,
+  showBell,
+  adminAlertCount,
+  onPressAdminAlerts,
+}: AppHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { unreadCount } = useNotifications();
@@ -65,7 +81,20 @@ export function AppHeader({ onBack, onMenu, menuOpen, dark, showBell }: AppHeade
 
       {/* RIGHT: notification bell */}
       <View style={[styles.side, styles.sideEnd]}>
-        {showBell ? (
+        {onPressAdminAlerts ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver notificaciones de administración"
+            onPress={onPressAdminAlerts}
+            hitSlop={12}
+            style={({ pressed }) => [styles.bellButton, pressed && styles.bellPressed]}
+          >
+            <Feather name="bell" size={22} color={iconColor} />
+            {(adminAlertCount ?? 0) > 0 ? (
+              <View style={[styles.bellDot, { backgroundColor: colors.destructive }]} />
+            ) : null}
+          </Pressable>
+        ) : showBell ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ver notificaciones"
