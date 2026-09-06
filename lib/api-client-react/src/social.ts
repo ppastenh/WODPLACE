@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { customFetch, getApiBaseUrl } from "./custom-fetch";
+import { putImageToPresignedUrl, type NativeUploader } from "./imageUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -162,11 +163,23 @@ export function useSocialFeed(userId?: string) {
 
 // ─── My posts ─────────────────────────────────────────────────────────────────
 
-export function useMyPosts(userId: string) {
+/**
+ * Posts authored by `userId`. `viewerId` defaults to `userId` (the original
+ * "my own posts" use case) — pass the actual signed-in user's id when
+ * showing someone else's posts (e.g. the public member profile) so
+ * canEdit/myReaction are computed for the real viewer, not the profile
+ * owner.
+ */
+export function useMyPosts(userId: string, viewerId?: string) {
   return usePaginatedFeed((cursor) => {
-    const p = new URLSearchParams({ userId, limit: "15", ...(cursor ? { cursor } : {}) });
+    const p = new URLSearchParams({
+      userId,
+      viewerId: viewerId ?? userId,
+      limit: "15",
+      ...(cursor ? { cursor } : {}),
+    });
     return `/api/social/posts/mine?${p}`;
-  }, userId);
+  }, `${userId}:${viewerId ?? userId}`);
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
@@ -292,19 +305,7 @@ export function useSocialMutations(userId: string, authorName: string) {
     async (
       localUri: string,
       mimeType = "image/jpeg",
-      /**
-       * Platform-specific uploader for native (iOS/Android).
-       *
-       * On native, React Native's fetch() cannot read local file:// URIs, and
-       * xhr.send({ uri }) only works inside FormData (multipart) — passing a
-       * plain object to xhr.send() serialises to "[object Object]", so GCS
-       * silently stores an empty file while returning HTTP 200.
-       *
-       * The caller must supply a function that performs a reliable binary PUT
-       * (e.g. using expo-file-system/legacy uploadAsync with BINARY_CONTENT).
-       * On web this parameter is ignored; the blob:// URI is handled via XHR.
-       */
-      nativeUploader?: (uploadURL: string, fileUri: string, mimeType: string) => Promise<void>,
+      nativeUploader?: NativeUploader,
       /**
        * Actual file size in bytes, when the caller knows it (e.g. from
        * ImagePicker's `fileSize`). Purely informational — omitted from the
@@ -330,43 +331,7 @@ export function useSocialMutations(userId: string, authorName: string) {
       });
 
       // Step 2: PUT the file bytes to the presigned GCS URL.
-      //
-      // Two very different environments to handle:
-      //
-      // • Web (Expo web / browser): localUri is a blob: URL. We can fetch()
-      //   it to get a Blob and send it via XHR.  Platform is not imported here
-      //   to keep this shared library free of react-native devDependencies;
-      //   instead we use the presence of nativeUploader as the discriminator.
-      //
-      // • Native (iOS/Android): localUri is a file:// URI. React Native's
-      //   fetch() cannot read file:// URIs, and xhr.send({ uri }) only works
-      //   inside FormData — passed directly it serialises to "[object Object]",
-      //   so GCS silently stores an empty file while returning HTTP 200.
-      //   The caller must supply nativeUploader (using expo-file-system/legacy
-      //   uploadAsync with BINARY_CONTENT) to do a reliable binary PUT.
-      if (nativeUploader) {
-        // Native path: caller handles the binary PUT via expo-file-system
-        await nativeUploader(uploadURL, localUri, mimeType);
-      } else {
-        // Web path: localUri is a blob: URL — fetch → Blob → XHR PUT
-        const uploadStatus = await new Promise<number>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open("PUT", uploadURL);
-          xhr.setRequestHeader("Content-Type", mimeType);
-          xhr.onreadystatechange = () => {
-            if (xhr.readyState === 4) resolve(xhr.status);
-          };
-          xhr.onerror = () => reject(new Error("Network error during image upload"));
-          xhr.ontimeout = () => reject(new Error("Image upload timed out"));
-          fetch(localUri)
-            .then((r) => r.blob())
-            .then((blob) => xhr.send(blob))
-            .catch(reject);
-        });
-        if (uploadStatus < 200 || uploadStatus >= 300) {
-          throw new Error(`La imagen no se pudo subir (HTTP ${uploadStatus}). Intenta de nuevo.`);
-        }
-      }
+      await putImageToPresignedUrl(uploadURL, localUri, mimeType, nativeUploader);
 
       const base = getApiBaseUrl();
       return `${base}/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;

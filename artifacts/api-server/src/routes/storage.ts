@@ -77,6 +77,48 @@ router.post(
 );
 
 /**
+ * POST /storage/avatar-uploads/request-url
+ *
+ * Request a presigned URL for a member's own profile photo. Mirrors
+ * /storage/social-uploads/request-url (same object storage, same "no real
+ * auth yet" caveat — the client is trusted to send its own local user id).
+ * Smaller size cap since it's a single square photo, not a feed attachment.
+ */
+const MAX_AVATAR_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+const AvatarUploadRequestBody = z.object({
+  userId: z.string().min(1),
+  size: z.number().nonnegative().max(MAX_AVATAR_IMAGE_BYTES).optional().default(0),
+  contentType: z.string().regex(/^image\//, 'Only image uploads are allowed'),
+});
+
+router.post(
+  '/storage/avatar-uploads/request-url',
+  async (req: Request, res: Response) => {
+    const parsed = AvatarUploadRequestBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Missing or invalid required fields' });
+      return;
+    }
+    try {
+      const { size, contentType } = parsed.data;
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      res.json(
+        SocialUploadResponse.parse({
+          uploadURL,
+          objectPath,
+          metadata: { name: 'avatar.jpg', size, contentType },
+        }),
+      );
+    } catch (error) {
+      req.log.error({ err: error }, 'Error generating avatar upload URL');
+      res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  },
+);
+
+/**
  * POST /storage/uploads/request-url
  *
  * Request a presigned URL for file upload.

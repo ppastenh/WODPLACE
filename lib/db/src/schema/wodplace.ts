@@ -19,6 +19,10 @@ export const wodplaceUsersTable = pgTable("wodplace_users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
+  // Uploaded from the mobile profile screen; null until the athlete picks a
+  // photo. Canonical avatar for the whole app — box-admin's member views
+  // read this too instead of keeping a separate copy.
+  avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -161,11 +161,17 @@ router.get("/social/feed", async (req: Request, res: Response) => {
 router.get("/social/posts/mine", async (req: Request, res: Response) => {
   const parsed = z.object({
     userId: z.string(),
+    // Who is actually looking (for canEdit/myReaction) — defaults to
+    // `userId` for the original "my own posts" screen. The public member
+    // profile in Comunidad passes the real viewer here while `userId`
+    // stays the profile owner, so it doesn't show the viewer able to edit
+    // someone else's posts.
+    viewerId: z.string().optional(),
     cursor: z.string().optional(),
     limit: z.coerce.number().min(1).max(30).default(PAGE),
   }).safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: "userId required" }); return; }
-  const { userId, cursor, limit } = parsed.data;
+  const { userId, viewerId, cursor, limit } = parsed.data;
   try {
     const conditions = [
       isNull(socialPostsTable.deletedAt),
@@ -176,7 +182,7 @@ router.get("/social/posts/mine", async (req: Request, res: Response) => {
       .where(and(...conditions)).orderBy(desc(socialPostsTable.createdAt)).limit(limit + 1);
     const hasMore = rows.length > limit;
     const page = rows.slice(0, limit);
-    const enriched = await enrichPosts(page, userId);
+    const enriched = await enrichPosts(page, viewerId ?? userId);
     const nextCursor = hasMore && page.length > 0 ? page[page.length - 1].createdAt.toISOString() : null;
     res.json({ posts: enriched, nextCursor, hasMore });
   } catch (error) {
