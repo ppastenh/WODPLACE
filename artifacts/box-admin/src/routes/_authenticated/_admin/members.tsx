@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
 import { makeWodplaceUserId } from "@/lib/ids";
+import { copyToClipboard } from "@/lib/clipboard";
 import { useState } from "react";
 import {
   Search, Plus, User, Copy, RefreshCw, MessageCircle, Check, X,
@@ -494,8 +495,9 @@ function BoxInviteCard() {
   const code = data ?? "—";
 
   async function copy() {
-    await navigator.clipboard.writeText(code);
-    toast.success("Código copiado");
+    const ok = await copyToClipboard(code);
+    if (ok) toast.success("Código copiado");
+    else toast.error("No se pudo copiar el código");
   }
 
 
@@ -515,7 +517,7 @@ function BoxInviteCard() {
       </div>
       <button
         onClick={copy}
-        className="mt-3 block w-full text-left font-mono text-3xl font-black tracking-[0.25em] text-primary"
+        className="mt-3 block w-full text-center font-mono text-3xl font-black tracking-[0.25em] text-primary"
       >
         {isLoading ? "…" : code}
       </button>
@@ -587,6 +589,7 @@ function PendingRequests() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["member_requests"] });
       qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["alert-requests"] });
       toast.success("Solicitud aprobada");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
@@ -602,6 +605,7 @@ function PendingRequests() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["member_requests"] });
+      qc.invalidateQueries({ queryKey: ["alert-requests"] });
       toast.success("Solicitud rechazada");
     },
   });

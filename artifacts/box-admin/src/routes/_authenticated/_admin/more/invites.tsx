@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
+import { copyToClipboard } from "@/lib/clipboard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,8 +105,9 @@ function InvitesPage() {
   }
 
   async function copyLink(code: string) {
-    await navigator.clipboard.writeText(buildLink(code));
-    toast.success("Enlace copiado");
+    const ok = await copyToClipboard(buildLink(code));
+    if (ok) toast.success("Enlace copiado");
+    else toast.error("No se pudo copiar el enlace");
   }
 
   return (
