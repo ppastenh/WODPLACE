@@ -50,3 +50,4 @@ Thumbs.db
 
 # Supabase CLI local cache (from `supabase gen types`)
 supabase/.temp/
+.env
