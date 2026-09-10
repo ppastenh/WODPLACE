@@ -35,6 +35,9 @@ import { resolveDashboardUrl } from '@/lib/dashboardUrl';
  *   - `admin-alerts-count` — the admin notification bell now lives in this
  *     screen's native header (see below) instead of box-admin's own header;
  *     this is how it learns the current count.
+ *   - `open-member-profile` — box-admin's "Ver perfil" hands off to this
+ *     screen's own public profile (the same one Comunidad opens) instead of
+ *     showing its own page, since there's a real app to jump to here.
  */
 function createWebViewMessageHandler(onAlertsCount: (count: number) => void) {
   return (event: WebViewMessageEvent) => {
@@ -44,6 +47,11 @@ function createWebViewMessageHandler(onAlertsCount: (count: number) => void) {
         Clipboard.setStringAsync(data.text);
       } else if (data?.type === 'admin-alerts-count' && typeof data.count === 'number') {
         onAlertsCount(data.count);
+      } else if (data?.type === 'open-member-profile' && typeof data.userId === 'string') {
+        router.push({
+          pathname: '/member/[id]',
+          params: { id: data.userId, name: typeof data.name === 'string' ? data.name : undefined },
+        });
       }
     } catch {
       // Not a message we understand — ignore.

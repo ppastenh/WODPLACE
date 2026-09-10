@@ -8,6 +8,9 @@
  * (`app/admin-dashboard.tsx`'s `handleWebViewMessage`):
  *   - `{ type: "copy-to-clipboard", text: string }` — see clipboard.ts.
  *   - `{ type: "admin-alerts-count", count: number }` — see NotificationsBell.tsx.
+ *   - `{ type: "open-member-profile", userId: string, name: string }` — see
+ *     members.tsx's "Ver perfil": inside the app, hand off to the native
+ *     public profile screen instead of box-admin's own page.
  *
  * The native → web direction (opening the notifications drawer from the
  * native bell) has no message channel; the native side calls

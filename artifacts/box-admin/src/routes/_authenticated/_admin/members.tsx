@@ -5,11 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
 import { makeWodplaceUserId } from "@/lib/ids";
 import { copyToClipboard } from "@/lib/clipboard";
+import { isInsideAppWebView, postToNative } from "@/lib/rnBridge";
 import { useState } from "react";
 import {
   Search, Plus, User, Copy, RefreshCw, MessageCircle, Check, X,
-  UserRound, CalendarDays, MoreVertical, Pencil, CircleCheck,
+  UserRound, CalendarDays, MoreVertical, Settings, CircleCheck, Tag,
   PlayCircle, PauseCircle, AlertCircle, Lock, Clock, KeyRound, Receipt, Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { BookClassSheet } from "@/components/admin/BookClassSheet";
@@ -161,42 +163,142 @@ export function StatusChip({ status }: { status: string }) {
 }
 
 function MemberRow({ m }: { m: MemberListItem }) {
+  const [expanded, setExpanded] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [book, setBook] = useState(false);
+  const [selectPlan, setSelectPlan] = useState(false);
+
+  const waHref = m.phone
+    ? `https://wa.me/${m.phone.replace(/\D/g, "")}`
+    : `https://wa.me/`;
 
   return (
-    <div className="flex items-center gap-1 rounded-2xl border bg-card">
-      <Link
-        to="/members/$id"
-        params={{ id: m.id }}
-        className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left active:scale-[0.99] transition-transform"
-      >
-        <Avatar name={m.full_name} url={m.photo_url} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{m.full_name}</p>
-          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <StatusChip status={m.status} />
-            {m.plan?.name && <span className="truncate">· {m.plan.name}</span>}
+    <div className="rounded-2xl border bg-card">
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left active:scale-[0.99] transition-transform"
+        >
+          <Avatar name={m.full_name} url={m.photo_url} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{m.full_name}</p>
+            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+              <StatusChip status={m.status} />
+              {m.plan?.name && <span className="truncate">· {m.plan.name}</span>}
+            </div>
           </div>
-        </div>
-        {m.next_payment && (
-          <div className="text-right text-[10px] text-muted-foreground">
-            <p className="font-semibold text-foreground">{format(new Date(m.next_payment), "dd MMM")}</p>
-            <p>próximo pago</p>
-          </div>
-        )}
-      </Link>
-      <button
-        onClick={() => setSheet(true)}
-        aria-label="Más acciones"
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground active:bg-secondary"
-      >
-        <MoreVertical className="h-5 w-5" />
-      </button>
+          {!expanded && m.next_payment && (
+            <div className="text-right text-[10px] text-muted-foreground">
+              <p className="font-semibold text-foreground">{format(new Date(m.next_payment), "dd MMM")}</p>
+              <p>próximo pago</p>
+            </div>
+          )}
+          <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+        <button
+          onClick={() => setSheet(true)}
+          aria-label="Más acciones"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground active:bg-secondary"
+        >
+          <MoreVertical className="h-5 w-5" />
+        </button>
+      </div>
 
-      <MemberActionsSheet m={m} open={sheet} onOpenChange={setSheet} onBook={() => { setSheet(false); setBook(true); }} />
+      {expanded && (
+        <div className="grid grid-cols-3 gap-1 border-t p-2">
+          <button
+            onClick={() => setBook(true)}
+            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
+          >
+            <CalendarDays className="h-5 w-5" />
+            Reservar
+          </button>
+          <a
+            href={waHref}
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
+          >
+            <MessageCircle className="h-5 w-5" />
+            Chat
+          </a>
+          <button
+            onClick={() => setSelectPlan(true)}
+            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
+          >
+            <Tag className="h-5 w-5" />
+            Plan
+          </button>
+        </div>
+      )}
+
+      <MemberActionsSheet m={m} open={sheet} onOpenChange={setSheet} />
       <BookClassSheet memberId={m.id} memberName={m.full_name} open={book} onOpenChange={setBook} />
+      <SelectPlanSheet m={m} open={selectPlan} onOpenChange={setSelectPlan} />
     </div>
+  );
+}
+
+function SelectPlanSheet({
+  m,
+  open,
+  onOpenChange,
+}: {
+  m: MemberListItem;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const qc = useQueryClient();
+  const { boxId } = useBox();
+
+  const plans = useQuery({
+    queryKey: ["plans", boxId],
+    queryFn: async () =>
+      (await supabase.from("plans").select("id, name, price, duration_days").eq("box_id", boxId).order("name")).data ?? [],
+    enabled: open,
+  });
+
+  const setPlan = useMutation({
+    mutationFn: async (planId: string) => {
+      const { error } = await supabase
+        .from("box_members")
+        .update({ plan_id: planId })
+        .eq("box_id", boxId)
+        .eq("user_id", m.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["members"] });
+      toast.success("Plan actualizado");
+      onOpenChange(false);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
+  });
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[70vh]">
+        <DrawerHeader className="pb-2 text-left">
+          <DrawerTitle className="text-base">Seleccionar plan</DrawerTitle>
+        </DrawerHeader>
+        <div className="space-y-1 overflow-y-auto px-3 pb-8">
+          {plans.data?.length === 0 && (
+            <p className="p-4 text-center text-xs text-muted-foreground">No hay planes creados para este box.</p>
+          )}
+          {plans.data?.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPlan.mutate(p.id)}
+              disabled={setPlan.isPending}
+              className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-3 text-left active:bg-secondary disabled:opacity-50"
+            >
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
+              {m.plan?.name === p.name && <Check className="h-4 w-4 shrink-0 text-primary" />}
+            </button>
+          ))}
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -234,7 +336,7 @@ function ActionItem({
   const cls = "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left active:bg-secondary";
   if (to) {
     return (
-      <Link to={to} params={params} className={cls}>
+      <Link to={to} params={params} className={cls} onClick={onClick}>
         {inner}
       </Link>
     );
@@ -250,18 +352,13 @@ function MemberActionsSheet({
   m,
   open,
   onOpenChange,
-  onBook,
 }: {
   m: MemberListItem;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onBook: () => void;
 }) {
   const qc = useQueryClient();
   const { boxId } = useBox();
-  const waHref = m.phone
-    ? `https://wa.me/${m.phone.replace(/\D/g, "")}`
-    : `https://wa.me/`;
 
   const setStatus = useMutation({
     mutationFn: async (status: MemberStatus) => {
@@ -316,18 +413,33 @@ function MemberActionsSheet({
           <DrawerTitle className="text-base">Más acciones</DrawerTitle>
         </DrawerHeader>
         <div className="overflow-y-auto px-3 pb-8">
-          <ActionItem icon={CalendarDays} title="Reservar clase" subtitle="Anotar al miembro en una clase" tone="primary" onClick={onBook} />
-          <ActionItem
-            icon={MessageCircle}
-            title="Chat por WhatsApp"
-            subtitle={m.phone || "Sin teléfono registrado"}
-            tone="primary"
-            onClick={() => window.open(waHref, "_blank", "noreferrer")}
-          />
-
-          <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Administración</p>
-          <ActionItem icon={UserRound} title="Ver perfil" subtitle="Información completa del miembro" to="/members/$id" params={{ id: m.id }} />
-          <ActionItem icon={Pencil} title="Editar información" subtitle="Datos personales y de contacto" to="/members/$id" params={{ id: m.id }} />
+          <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Administración</p>
+          {isInsideAppWebView() ? (
+            // Inside the app's WebView, hand off to the native public
+            // profile screen (the same one Comunidad already opens) instead
+            // of box-admin's own page — there's a real app to jump to here.
+            <ActionItem
+              icon={UserRound}
+              title="Ver perfil"
+              subtitle="Nombre, PRs y actividad reciente"
+              onClick={() => {
+                postToNative({ type: "open-member-profile", userId: m.id, name: m.full_name });
+                onOpenChange(false);
+              }}
+            />
+          ) : (
+            // Plain browser (desktop admin) — no native app to hand off to,
+            // so box-admin shows its own equivalent page.
+            <ActionItem
+              icon={UserRound}
+              title="Ver perfil"
+              subtitle="Nombre, PRs y actividad reciente"
+              to="/member-profile/$id"
+              params={{ id: m.id }}
+              onClick={() => onOpenChange(false)}
+            />
+          )}
+          <ActionItem icon={Settings} title="Gestionar membresía" subtitle="Estado, plan, pagos y notas" to="/members/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
 
           <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado del miembro</p>
           <ActionItem icon={CircleCheck} title="Activar miembro" subtitle="El miembro podrá acceder normalmente" tone="primary" onClick={() => setStatus.mutate("activo")} />
@@ -342,7 +454,7 @@ function MemberActionsSheet({
 
           <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Cuenta</p>
           <ActionItem icon={KeyRound} title="Restablecer contraseña" subtitle="Enviar nueva contraseña al miembro" onClick={resetPassword} />
-          <ActionItem icon={Receipt} title="Ver pagos y facturas" subtitle="Historial de pagos y facturación" to="/members/$id" params={{ id: m.id }} />
+          <ActionItem icon={Receipt} title="Ver pagos y facturas" subtitle="Historial de pagos y facturación" to="/members/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
           <ActionItem
             icon={Trash2}
             title="Eliminar miembro"
