@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  getContractAcceptance,
   redeemBoxCode as redeemBoxCodeApi,
   syncUser,
   updateProfileFields,
@@ -49,7 +50,17 @@ interface AuthContextValue {
     email: string,
     password: string,
     birthdate: string,
+    phone: string,
   ) => Promise<WodplaceUser>;
+  /**
+   * Re-checks whether the account has an accepted contract on file and
+   * updates `user.status` accordingly ('active' if a contract_acceptances
+   * row exists, 'inactive' otherwise) — the account's "active" state is
+   * derived from that row, not a separately-synced field. Called on boot,
+   * after login, and right after Contratos Activos records an acceptance,
+   * so the badge flips without needing an app restart.
+   */
+  refreshActivationStatus: () => Promise<void>;
   loginWithProvider: (provider: 'google' | 'apple') => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (partial: Partial<WodplaceUser>) => Promise<void>;
@@ -121,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.warn('Failed to sync rank/phrase to backend', err);
             },
           );
+          refreshActivationStatus(restored);
         }
       } finally {
         setIsLoading(false);
@@ -143,6 +155,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } else {
       await AsyncStorage.removeItem(STORAGE_KEY);
+    }
+  };
+
+  const refreshActivationStatus = async (forUser?: WodplaceUser) => {
+    const target = forUser ?? user;
+    if (!target) return;
+    try {
+      const { acceptance } = await getContractAcceptance({ userId: target.id });
+      const nextStatus: AccountStatus = acceptance ? 'active' : 'inactive';
+      if (nextStatus !== target.status) {
+        await persist({
+          ...target,
+          status: nextStatus,
+          // Assigned once, at the moment the account actually activates —
+          // not re-applied on later refreshes (the status-unchanged check
+          // above skips those), so a rank set some other way later isn't
+          // stomped on.
+          ...(nextStatus === 'active' ? { rank: 'Beginner' as AthleteRank } : {}),
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to refresh activation status', err);
     }
   };
 
@@ -174,9 +208,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const { password: _pw, ...profile } = existing;
     await persist(profile);
+    refreshActivationStatus(profile);
   };
 
-  const register = async (name: string, email: string, password: string, birthdate: string) => {
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    birthdate: string,
+    phone: string,
+  ) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     const key = email.trim().toLowerCase();
     const db = await getUsersDb();
@@ -189,10 +230,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: email.trim(),
       avatarUri: null,
       phrase: '',
-      status: 'active',
+      // Inactive until Contratos Activos records an acceptance —
+      // refreshActivationStatus() is what flips this, not registration.
+      status: 'inactive',
       rank: 'Beginner',
       birthdate,
-      phone: null,
+      phone,
     };
     db[key] = { ...profile, password };
     await saveUsersDb(db);
@@ -231,12 +274,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: provider === 'google' ? 'atleta@gmail.com' : 'atleta@icloud.com',
       avatarUri: null,
       phrase: '',
-      status: 'active',
+      status: 'inactive',
       rank: 'Beginner',
       birthdate: null,
       phone: null,
     };
     await persist(next);
+    refreshActivationStatus(next);
   };
 
   const logout = async () => {
@@ -261,6 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginWithProvider,
       logout,
       updateProfile,
+      refreshActivationStatus: () => refreshActivationStatus(),
     }),
     [user, isLoading],
   );

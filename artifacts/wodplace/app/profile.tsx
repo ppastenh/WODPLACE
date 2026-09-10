@@ -159,17 +159,19 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.badgeRow}>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: user.status === 'active' ? colors.success : colors.inactive },
-            ]}
-          >
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>
-              {user.status === 'active' ? 'Cuenta Activa' : 'Cuenta Inactiva'}
-            </Text>
-          </View>
+          {user.status === 'active' ? (
+            <View style={[styles.statusBadge, { backgroundColor: colors.success }]}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Cuenta Activa</Text>
+            </View>
+          ) : (
+            // Soft, not alarming — this isn't an error state, just a nudge
+            // to go finish Contratos Activos.
+            <View style={[styles.statusBadge, { backgroundColor: 'rgba(224, 82, 74, 0.15)' }]}>
+              <View style={[styles.statusDot, { backgroundColor: colors.destructive }]} />
+              <Text style={[styles.statusText, { color: colors.destructive }]}>Cuenta no activa</Text>
+            </View>
+          )}
           <View style={[styles.rankBadge, { backgroundColor: colors.secondary }]}>
             <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>{user.rank}</Text>
           </View>

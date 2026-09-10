@@ -47,7 +47,7 @@ function formatAcceptedAt(iso: string): string {
 
 export default function ActiveContractsScreen() {
   const colors = useColors();
-  const { user } = useAuth();
+  const { user, refreshActivationStatus } = useAuth();
   const userId = user?.id ?? '';
 
   const [emergencyName, setEmergencyName] = useState('');
@@ -57,14 +57,17 @@ export default function ActiveContractsScreen() {
   const [openedSlugs, setOpenedSlugs] = useState<Record<string, boolean>>({});
   const [guardianName, setGuardianName] = useState('');
   const [guardianRelationship, setGuardianRelationship] = useState('');
-  // Members with a saved birthdate under 18 are auto-detected. Members with
-  // no birthdate on file can't be auto-detected, so they can flag it
-  // themselves — the guardian fields then become mandatory either way.
-  const [selfReportedMinor, setSelfReportedMinor] = useState(false);
+  // Explicit, separate consent to process the minor's personal data —
+  // distinct from accepting the box's contract. Only asked when isMinor.
+  const [minorDataConsent, setMinorDataConsent] = useState(false);
 
+  // Minor status is derived *only* from the real birthdate on file — never
+  // a self-declaration. If there's no birthdate yet, acceptance is blocked
+  // (see `missingBirthdate` below) until the athlete adds it in Datos
+  // Personales, where it's a locked field.
   const knownAge = user?.birthdate ? getAge(user.birthdate) : null;
-  const isDetectedMinor = knownAge !== null && knownAge < MINOR_AGE_THRESHOLD;
-  const isMinor = isDetectedMinor || selfReportedMinor;
+  const missingBirthdate = !user?.birthdate;
+  const isMinor = knownAge !== null && knownAge < MINOR_AGE_THRESHOLD;
 
   // Note: the generated UseQueryOptions type requires `queryKey` even for
   // this partial override object, but the hook fills it in internally —
@@ -88,11 +91,12 @@ export default function ActiveContractsScreen() {
   const CL_PHONE_DIGITS = 9;
   const canAccept =
     !acceptance &&
+    !missingBirthdate &&
     allRead &&
     allChecked &&
     emergencyName.trim().length > 0 &&
     emergencyPhone.length === CL_PHONE_DIGITS &&
-    (!isMinor || guardianName.trim().length > 0);
+    (!isMinor || (guardianName.trim().length > 0 && minorDataConsent));
 
   const handlePhoneChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, '').slice(0, CL_PHONE_DIGITS);
@@ -146,6 +150,7 @@ export default function ActiveContractsScreen() {
           ...(isMinor
             ? {
                 guardianName: guardianName.trim(),
+                minorDataConsent,
                 ...(guardianRelationship.trim()
                   ? { guardianRelationship: guardianRelationship.trim() }
                   : {}),
@@ -156,7 +161,8 @@ export default function ActiveContractsScreen() {
       {
         onSuccess: () => {
           acceptanceQuery.refetch();
-          Alert.alert('Contratos aceptados', 'Tu aceptación quedó registrada.');
+          refreshActivationStatus();
+          Alert.alert('Contratos aceptados', 'Tu aceptación quedó registrada. ¡Tu cuenta ya está activa!');
         },
         onError: (err) => {
           const message =
@@ -285,12 +291,21 @@ export default function ActiveContractsScreen() {
                         : ''}
                     </Text>
                   ) : null}
+                  {acceptance.minorDataConsentAt ? (
+                    <Text style={[styles.acceptedSubtitle, { color: colors.secondaryForeground }]}>
+                      Consentimiento de datos del menor: {formatAcceptedAt(acceptance.minorDataConsentAt)}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             ) : (
               <View style={styles.emergencySection}>
                 <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
                   Contacto de emergencia
+                </Text>
+                <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
+                  Para poder avisar a alguien de tu confianza si tenés un accidente durante el
+                  entrenamiento.
                 </Text>
                 <TextInput
                   value={emergencyName}
@@ -320,30 +335,31 @@ export default function ActiveContractsScreen() {
                   />
                 </View>
 
-                {isDetectedMinor ? null : (
-                  <Pressable
-                    onPress={() => setSelfReportedMinor((prev) => !prev)}
-                    style={styles.checkRow}
-                    hitSlop={6}
-                  >
+                {missingBirthdate ? (
+                  <View style={[styles.noticeBox, { backgroundColor: colors.secondary }]}>
+                    <Feather name="calendar" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.warningText, { color: colors.mutedForeground }]}>
+                      Necesitamos tu fecha de nacimiento para continuar. Agregala en Datos
+                      Personales (queda bloqueada al guardar) y volvé a esta pantalla.
+                    </Text>
+                  </View>
+                ) : null}
+
+                {isMinor ? (
+                  <View style={styles.checkRow}>
                     <View
                       style={[
                         styles.checkbox,
-                        {
-                          borderColor: colors.foreground,
-                          backgroundColor: selfReportedMinor ? colors.primary : 'transparent',
-                        },
+                        { borderColor: colors.foreground, backgroundColor: colors.primary },
                       ]}
                     >
-                      {selfReportedMinor ? (
-                        <Feather name="check" size={16} color={colors.primaryForeground} />
-                      ) : null}
+                      <Feather name="check" size={16} color={colors.primaryForeground} />
                     </View>
                     <Text style={[styles.checkLabel, { color: colors.foreground }]}>
-                      Soy menor de 18 años
+                      Menor de 18 años (según tu fecha de nacimiento)
                     </Text>
-                  </Pressable>
-                )}
+                  </View>
+                ) : null}
 
                 {isMinor ? (
                   <View style={styles.guardianSection}>
@@ -352,7 +368,8 @@ export default function ActiveContractsScreen() {
                     </Text>
                     <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
                       Como eres menor de edad, un apoderado debe aceptar estos contratos en tu
-                      nombre.
+                      nombre. Necesitamos identificar a quién te autoriza a entrenar y poder
+                      contactarlo.
                     </Text>
                     <TextInput
                       value={guardianName}
@@ -382,6 +399,30 @@ export default function ActiveContractsScreen() {
                         },
                       ]}
                     />
+
+                    <Pressable
+                      onPress={() => setMinorDataConsent((prev) => !prev)}
+                      style={styles.checkRow}
+                      hitSlop={6}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          {
+                            borderColor: colors.foreground,
+                            backgroundColor: minorDataConsent ? colors.primary : 'transparent',
+                          },
+                        ]}
+                      >
+                        {minorDataConsent ? (
+                          <Feather name="check" size={16} color={colors.primaryForeground} />
+                        ) : null}
+                      </View>
+                      <Text style={[styles.checkLabel, { color: colors.foreground }]}>
+                        Autorizo el tratamiento de los datos personales de mi hijo/a para los
+                        fines de esta aplicación.
+                      </Text>
+                    </Pressable>
                   </View>
                 ) : null}
 
@@ -542,5 +583,20 @@ const styles = StyleSheet.create({
   acceptedSubtitle: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
+  },
+  noticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 4,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    lineHeight: 16,
   },
 });

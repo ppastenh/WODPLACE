@@ -7,10 +7,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { AppButton } from '@/components/AppButton';
 import { BirthdateModal } from '@/components/BirthdateModal';
-import { useAuth } from '@/context/AuthContext';
+import { PhoneModal } from '@/components/PhoneModal';
+import { JoinBoxModal } from '@/components/JoinBoxModal';
+import { useAuth, type WodplaceUser } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
-import { formatBoxCodeInput } from '@/lib/boxCodeUtils';
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -23,9 +24,13 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [birthdate, setBirthdate] = useState<string | null>(null);
   const [birthdateModalVisible, setBirthdateModalVisible] = useState(false);
-  const [boxCode, setBoxCode] = useState('');
+  const [phone, setPhone] = useState<string | null>(null);
+  const [phoneModalVisible, setPhoneModalVisible] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Set right after a successful registration, so the box-code popup below
+  // knows who to redeem for before `user` in context has settled.
+  const [registeredAccount, setRegisteredAccount] = useState<WodplaceUser | null>(null);
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const webBottomInset = Platform.OS === 'web' ? 34 : 0;
 
@@ -48,33 +53,18 @@ export default function RegisterScreen() {
       setError('Ingresa tu fecha de nacimiento');
       return;
     }
+    if (!phone) {
+      setError('Ingresa tu celular');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      const account = await register(name.trim(), email, password, birthdate);
-
-      // Optional box code — never blocks account creation.
-      const trimmedCode = boxCode.trim();
-      if (trimmedCode) {
-        try {
-          const result = await redeemBoxCode(trimmedCode, account);
-          if (result.joined && result.boxName) {
-            Alert.alert('Listo', `Te uniste a ${result.boxName}.`);
-          } else if (!result.joined && !result.alreadyMember) {
-            Alert.alert(
-              'Código del box',
-              'Código inválido. Puedes agregarlo más tarde desde tu perfil.',
-            );
-          }
-        } catch {
-          Alert.alert(
-            'Código del box',
-            'No pudimos validar el código ahora. Puedes agregarlo más tarde desde tu perfil.',
-          );
-        }
-      }
-
-      router.replace('/profile');
+      const account = await register(name.trim(), email, password, birthdate, phone);
+      // The box-code popup (below) takes it from here — it redeems for
+      // `registeredAccount` and navigates to /profile on close either way,
+      // whether the athlete enters a code or skips it.
+      setRegisteredAccount(account);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
     } finally {
@@ -187,22 +177,27 @@ export default function RegisterScreen() {
             ) : null}
           </Pressable>
 
-          <TextInput
-            value={boxCode}
-            onChangeText={(v) => setBoxCode(formatBoxCodeInput(v))}
-            placeholder="Código del box (opcional)"
-            placeholderTextColor={colors.authMuted}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={9}
+          <Pressable
+            onPress={() => setPhoneModalVisible(true)}
             style={[
               styles.input,
-              { backgroundColor: colors.authInput, color: colors.authText, borderColor: colors.authBorder },
+              styles.birthdateRow,
+              { backgroundColor: colors.authInput, borderColor: colors.authBorder },
             ]}
-          />
-          <Text style={[styles.hint, { color: colors.authMuted }]}>
-            Si tu box te dio un código, ingrésalo para unirte. Puedes agregarlo después desde tu perfil.
-          </Text>
+          >
+            <Feather name="smartphone" size={17} color={colors.authMuted} style={styles.calendarIcon} />
+            <Text
+              style={[
+                styles.birthdateText,
+                { color: phone ? colors.authText : colors.authMuted },
+              ]}
+            >
+              {phone ?? 'Celular'}
+            </Text>
+            {phone ? (
+              <Feather name="check-circle" size={17} color={colors.primary} />
+            ) : null}
+          </Pressable>
 
           {error ? (
             <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
@@ -243,6 +238,29 @@ export default function RegisterScreen() {
           setBirthdateModalVisible(false);
           if (error) setError('');
         }}
+      />
+
+      <PhoneModal
+        visible={phoneModalVisible}
+        onClose={() => setPhoneModalVisible(false)}
+        initialValue={phone}
+        onSave={(value) => {
+          setPhone(value);
+          setPhoneModalVisible(false);
+          if (error) setError('');
+        }}
+      />
+
+      {/* Shown right after account creation — dismissible without entering
+       *  a code (tapping outside closes it), same as everywhere else the
+       *  box code is optional. Either way, closing it lands on /profile. */}
+      <JoinBoxModal
+        visible={!!registeredAccount}
+        onClose={() => {
+          setRegisteredAccount(null);
+          router.replace('/profile');
+        }}
+        onRedeem={(code) => redeemBoxCode(code, registeredAccount!)}
       />
     </View>
   );

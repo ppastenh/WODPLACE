@@ -68,6 +68,13 @@ export default function CalendarScreen() {
   };
 
   const handleBook = async (session: ClassSession) => {
+    if (user?.status !== 'active') {
+      Alert.alert(
+        'Cuenta no activa',
+        'Activa tu cuenta completando el registro en Contratos Activos para poder reservar clases. Mientras tanto podés ver el calendario y quién está anotado.',
+      );
+      return;
+    }
     try {
       const status = await book(session);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

@@ -211,6 +211,7 @@ function CommentsModal({
   userId,
   authorName,
   isAdmin,
+  isActive,
   adminCode,
   visible,
   onClose,
@@ -221,6 +222,7 @@ function CommentsModal({
   userId: string;
   authorName: string;
   isAdmin: boolean;
+  isActive: boolean;
   adminCode: string | null;
   visible: boolean;
   onClose: () => void;
@@ -236,6 +238,13 @@ function CommentsModal({
 
   const handleSubmit = async () => {
     if (!draft.trim() || !post) return;
+    if (!isActive) {
+      Alert.alert(
+        'Cuenta no activa',
+        'Activa tu cuenta completando el registro en Contratos Activos para poder comentar.',
+      );
+      return;
+    }
     setSubmitting(true);
     try {
       await addComment(post.id, draft.trim());
@@ -611,6 +620,16 @@ export default function CommunityScreen() {
 
   if (!user) return null;
 
+  // Read-only until the account is active (Contratos Activos) — can browse
+  // the feed, open posts/comments, just can't post/comment/react.
+  const isActive = user.status === 'active';
+  const warnInactive = () => {
+    Alert.alert(
+      'Cuenta no activa',
+      'Activa tu cuenta completando el registro en Contratos Activos para poder publicar, comentar o reaccionar.',
+    );
+  };
+
   const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
@@ -720,6 +739,7 @@ export default function CommunityScreen() {
   };
 
   const handleReact = async (postId: string, emoji: string) => {
+    if (!isActive) { warnInactive(); return; }
     try {
       const result = await toggleReaction(postId, emoji);
       updatePost(postId, { reactions: result.reactions, myReaction: result.myReaction });
@@ -789,7 +809,7 @@ export default function CommunityScreen() {
           </View>
         </View>
         <Pressable
-          onPress={() => setComposerVisible(true)}
+          onPress={() => (isActive ? setComposerVisible(true) : warnInactive())}
           style={({ pressed }) => [styles.addButton, { backgroundColor: colors.navFloating }, pressed && styles.addButtonPressed]}
         >
           <Feather name="plus" size={23} color={colors.navFloatingForeground} />
@@ -950,6 +970,7 @@ export default function CommunityScreen() {
         userId={user.id}
         authorName={user.name}
         isAdmin={isAdmin}
+        isActive={isActive}
         adminCode={adminCode}
         visible={commentsVisible}
         onClose={() => { setCommentsVisible(false); setCommentsPost(null); }}
