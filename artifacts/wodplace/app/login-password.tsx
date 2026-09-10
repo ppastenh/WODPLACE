@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -134,15 +134,15 @@ export default function LoginPasswordScreen() {
           />
 
           <Pressable
-            onPress={() =>
-              Alert.alert('Recuperar contraseña', 'Función próximamente disponible.')
-            }
+            onPress={() => router.push({ pathname: '/recover-account', params: { email } })}
             style={styles.recoverLink}
             hitSlop={8}
           >
             <Text style={[styles.recoverText, { color: colors.authMuted }]}>
-              Recupera tu contraseña{' '}
-              <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Aquí</Text>
+              ¿Olvidaste tu contraseña o cambiaste de teléfono?{' '}
+              <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
+                Recuperá tu cuenta
+              </Text>
             </Text>
           </Pressable>
         </View>

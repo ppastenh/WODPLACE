@@ -5,6 +5,7 @@ import {
   redeemBoxCode as redeemBoxCodeApi,
   syncUser,
   updateProfileFields,
+  verifyAccountRecovery,
   type RedeemBoxCodeResult,
 } from '@workspace/api-client-react';
 
@@ -61,6 +62,12 @@ interface AuthContextValue {
    * so the badge flips without needing an app restart.
    */
   refreshActivationStatus: () => Promise<void>;
+  /**
+   * New device / cleared data recovery: after the emailed 6-digit code is
+   * verified, adopt the existing server account locally (its id, so all
+   * server-side data reconnects) with a fresh local password.
+   */
+  recoverAccount: (email: string, code: string, newPassword: string) => Promise<void>;
   loginWithProvider: (provider: 'google' | 'apple') => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (partial: Partial<WodplaceUser>) => Promise<void>;
@@ -243,6 +250,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile;
   };
 
+  /**
+   * New device / cleared data: adopt the existing server account after the
+   * one-time email code was verified. `rank`/`phrase`/`avatarUri` come from
+   * the server so `persist()`'s sync doesn't overwrite them with defaults;
+   * `birthdate`/`phone` were never synced so they come back empty, and
+   * `status` is recomputed from contract_acceptances.
+   */
+  const recoverAccount = async (
+    email: string,
+    code: string,
+    newPassword: string,
+  ): Promise<void> => {
+    const recovered = await verifyAccountRecovery(email.trim(), code.trim());
+    const key = email.trim().toLowerCase();
+    const profile: WodplaceUser = {
+      id: recovered.userId,
+      name: recovered.name,
+      email: recovered.email,
+      avatarUri: recovered.avatarUrl,
+      phrase: recovered.phrase ?? '',
+      status: 'inactive',
+      rank: (recovered.rank as WodplaceUser['rank']) || 'Beginner',
+      birthdate: null,
+      phone: null,
+    };
+    const db = await getUsersDb();
+    db[key] = { ...profile, password: newPassword };
+    await saveUsersDb(db);
+    await persist(profile);
+    refreshActivationStatus(profile);
+  };
+
   const redeemBoxCode = async (
     code: string,
     account?: Pick<WodplaceUser, 'id' | 'name' | 'email'>,
@@ -306,6 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       updateProfile,
       refreshActivationStatus: () => refreshActivationStatus(),
+      recoverAccount,
     }),
     [user, isLoading],
   );
