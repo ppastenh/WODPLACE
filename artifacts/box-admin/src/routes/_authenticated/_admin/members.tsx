@@ -234,17 +234,27 @@ function MemberRow({ m }: { m: MemberListItem }) {
 
       <MemberActionsSheet m={m} open={sheet} onOpenChange={setSheet} />
       <BookClassSheet memberId={m.id} memberName={m.full_name} open={book} onOpenChange={setBook} />
-      <SelectPlanSheet m={m} open={selectPlan} onOpenChange={setSelectPlan} />
+      <SelectPlanSheet
+        userId={m.id}
+        memberName={m.full_name}
+        currentPlanName={m.plan?.name ?? null}
+        open={selectPlan}
+        onOpenChange={setSelectPlan}
+      />
     </div>
   );
 }
 
-function SelectPlanSheet({
-  m,
+export function SelectPlanSheet({
+  userId,
+  memberName,
+  currentPlanName,
   open,
   onOpenChange,
 }: {
-  m: MemberListItem;
+  userId: string;
+  memberName: string;
+  currentPlanName: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
@@ -264,16 +274,26 @@ function SelectPlanSheet({
         .from("box_members")
         .update({ plan_id: planId })
         .eq("box_id", boxId)
-        .eq("user_id", m.id);
+        .eq("user_id", userId);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["member", boxId, userId] });
       toast.success("Plan actualizado");
       onOpenChange(false);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
   });
+
+  function selectPlan(planName: string, planId: string) {
+    if (planName === currentPlanName) return;
+    const confirmed = confirm(
+      `Vas a cambiar el plan de ${memberName} de "${currentPlanName ?? "sin plan"}" a "${planName}". ¿Confirmás?\n\n` +
+        "Esto no ajusta pagos ya hechos — los pagos se registran aparte, en Finanzas.",
+    );
+    if (confirmed) setPlan.mutate(planId);
+  }
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -288,12 +308,12 @@ function SelectPlanSheet({
           {plans.data?.map((p) => (
             <button
               key={p.id}
-              onClick={() => setPlan.mutate(p.id)}
+              onClick={() => selectPlan(p.name, p.id)}
               disabled={setPlan.isPending}
               className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-3 text-left active:bg-secondary disabled:opacity-50"
             >
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
-              {m.plan?.name === p.name && <Check className="h-4 w-4 shrink-0 text-primary" />}
+              {currentPlanName === p.name && <Check className="h-4 w-4 shrink-0 text-primary" />}
             </button>
           ))}
         </div>

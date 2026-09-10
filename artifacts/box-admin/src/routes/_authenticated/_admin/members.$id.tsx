@@ -3,7 +3,8 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Avatar, StatusChip } from "./members";
+import { Avatar, StatusChip, SelectPlanSheet } from "./members";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, Calendar, Edit2, PauseCircle, RefreshCw } from "lucide-react";
@@ -38,6 +39,7 @@ function MemberDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const { boxId } = useBox();
+  const [selectPlan, setSelectPlan] = useState(false);
 
   const member = useQuery({
     queryKey: ["member", boxId, id],
@@ -92,7 +94,12 @@ function MemberDetail() {
         <Avatar name={fullName} url={m.wodplace_users?.avatar_url ?? m.photo_url} size={72} />
         <h1 className="mt-3 text-xl font-black">{fullName}</h1>
         <div className="mt-2"><StatusChip status={m.status} /></div>
-        {m.plans?.name && <p className="mt-2 text-xs text-muted-foreground">Plan {m.plans.name}</p>}
+        <button
+          onClick={() => setSelectPlan(true)}
+          className="mt-2 rounded-full px-2 py-0.5 text-xs text-muted-foreground underline-offset-2 active:bg-secondary active:underline"
+        >
+          {m.plans?.name ? `Plan ${m.plans.name}` : "Sin plan asignado — toca para elegir"}
+        </button>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2">
@@ -158,6 +165,14 @@ function MemberDetail() {
           ))}
         </TabsContent>
       </Tabs>
+
+      <SelectPlanSheet
+        userId={id}
+        memberName={fullName}
+        currentPlanName={m.plans?.name ?? null}
+        open={selectPlan}
+        onOpenChange={setSelectPlan}
+      />
     </AdminShell>
   );
 }
