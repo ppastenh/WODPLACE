@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   redeemBoxCode as redeemBoxCodeApi,
   syncUser,
+  updateProfileFields,
   type RedeemBoxCodeResult,
 } from '@workspace/api-client-react';
 
@@ -113,6 +114,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.warn('Failed to sync restored user to backend', err);
             },
           );
+          // rank/phrase used to be AsyncStorage-only (no public profile to
+          // show them on); keep the backend copy current too.
+          updateProfileFields(restored.id, { rank: restored.rank, phrase: restored.phrase }).catch(
+            (err) => {
+              console.warn('Failed to sync rank/phrase to backend', err);
+            },
+          );
         }
       } finally {
         setIsLoading(false);
@@ -129,6 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // succeed. Never blocks or crashes the app if the API is unreachable.
       syncUser({ id: next.id, name: next.name, email: next.email }).catch((err) => {
         console.warn('Failed to sync user to backend', err);
+      });
+      updateProfileFields(next.id, { rank: next.rank, phrase: next.phrase }).catch((err) => {
+        console.warn('Failed to sync rank/phrase to backend', err);
       });
     } else {
       await AsyncStorage.removeItem(STORAGE_KEY);

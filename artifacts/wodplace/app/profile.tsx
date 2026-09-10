@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
-  FlatList,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -13,13 +10,13 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router, usePathname } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
 import { AppHeader } from '@/components/AppHeader';
 import { Avatar } from '@/components/Avatar';
 import { AppButton } from '@/components/AppButton';
+import { PostsGrid, PostDetailModal } from '@/components/PostsGrid';
 import { EditPhraseModal } from '@/components/EditPhraseModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { AttendeesModal } from '@/components/AttendeesModal';
@@ -33,11 +30,6 @@ import { useColors } from '@/hooks/useColors';
 import { useMyPosts, uploadAvatarImage, type SocialPost } from '@workspace/api-client-react';
 import { canAccessAdminNavigation } from '@/lib/navigation';
 
-const WIN_WIDTH = Dimensions.get('window').width;
-const GRID_GAP = 2;
-// 3 columns, full width, with gaps between them
-const ITEM_SIZE = Math.floor((WIN_WIDTH - GRID_GAP * 2) / 3);
-
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
@@ -46,126 +38,6 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'admin', label: 'Administrador', icon: 'shield', route: '/admin-login' },
   { key: 'more', label: 'Más', icon: 'grid', route: '/more' },
 ];
-
-// ─── PostThumb ────────────────────────────────────────────────────────────────
-
-function PostThumb({
-  post,
-  onPress,
-  colors,
-}: {
-  post: SocialPost;
-  onPress: () => void;
-  colors: ReturnType<typeof useColors>;
-}) {
-  const hasImage = post.imageUris.length > 0;
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.postThumb,
-        { width: ITEM_SIZE, height: ITEM_SIZE, opacity: pressed ? 0.75 : 1 },
-      ]}
-    >
-      {hasImage ? (
-        <Image
-          source={{ uri: post.imageUris[0] }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          transition={200}
-        />
-      ) : (
-        <View
-          style={[
-            styles.postThumbTextWrap,
-            { backgroundColor: colors.card, borderColor: colors.navBorder },
-          ]}
-        >
-          <Text
-            style={[styles.postThumbBody, { color: colors.mutedForeground }]}
-            numberOfLines={5}
-          >
-            {post.body}
-          </Text>
-        </View>
-      )}
-      {post.imageUris.length > 1 && (
-        <View style={[styles.multiImgBadge, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-          <Feather name="layers" size={10} color="#fff" />
-          <Text style={styles.multiImgText}>{post.imageUris.length}</Text>
-        </View>
-      )}
-    </Pressable>
-  );
-}
-
-// ─── PostDetailModal ──────────────────────────────────────────────────────────
-
-function PostDetailModal({
-  post,
-  visible,
-  onClose,
-  colors,
-}: {
-  post: SocialPost | null;
-  visible: boolean;
-  onClose: () => void;
-  colors: ReturnType<typeof useColors>;
-}) {
-  if (!post) return null;
-  return (
-    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
-      <View style={styles.detailBackdrop}>
-        <View style={[styles.detailSheet, { backgroundColor: colors.background }]}>
-          <Pressable onPress={onClose} style={styles.detailClose} hitSlop={14}>
-            <Feather name="x" size={22} color={colors.foreground} />
-          </Pressable>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 28 }}
-          >
-            <Text style={[styles.detailAuthor, { color: colors.foreground }]}>
-              {post.authorName}
-            </Text>
-            <Text style={[styles.detailTime, { color: colors.navInactive }]}>
-              {new Date(post.createdAt).toLocaleDateString('es-CL', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </Text>
-            {post.body ? (
-              <Text style={[styles.detailBody, { color: colors.foreground }]}>{post.body}</Text>
-            ) : null}
-            {post.imageUris.map((uri: string, i: number) => (
-              <Image
-                key={i}
-                source={{ uri }}
-                style={[styles.detailImage, { marginTop: i === 0 ? 16 : 8 }]}
-                contentFit="contain"
-                transition={200}
-              />
-            ))}
-            <View style={styles.detailMeta}>
-              {post.commentCount > 0 && (
-                <Text style={[styles.detailMetaText, { color: colors.navInactive }]}>
-                  {post.commentCount} comentario{post.commentCount !== 1 ? 's' : ''}
-                </Text>
-              )}
-              {post.reactions
-                .filter((r: { emoji: string; count: number }) => r.count > 0)
-                .map((r: { emoji: string; count: number }) => (
-                  <Text key={r.emoji} style={[styles.detailMetaText, { color: colors.navInactive }]}>
-                    {r.emoji} {r.count}
-                  </Text>
-                ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
 // ─── ProfileScreen ─────────────────────────────────────────────────────────────
 
@@ -404,45 +276,16 @@ export default function ProfileScreen() {
           )}
         </ScrollView>
       ) : (
-        <FlatList
-          data={myPosts}
-          keyExtractor={(p) => p.id}
-          numColumns={3}
-          contentContainerStyle={styles.gridContent}
-          columnWrapperStyle={styles.gridRow}
-          showsVerticalScrollIndicator={false}
-          onEndReached={postsHasMore ? () => fetchMorePosts() : undefined}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={
-            postsLoadingMore ? (
-              <ActivityIndicator color={colors.navActive} style={{ marginVertical: 16 }} />
-            ) : null
-          }
-          ListEmptyComponent={
-            postsLoading ? (
-              <ActivityIndicator color={colors.navActive} style={{ margin: 40 }} />
-            ) : (
-              <View style={styles.emptyState}>
-                <Feather name="image" size={26} color={colors.mutedForeground} />
-                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                  Sin publicaciones aún
-                </Text>
-                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                  Comparte algo en la Comunidad para verlo aquí.
-                </Text>
-              </View>
-            )
-          }
-          renderItem={({ item }) => (
-            <PostThumb
-              post={item}
-              colors={colors}
-              onPress={() => {
-                setSelectedPost(item);
-                setPostDetailVisible(true);
-              }}
-            />
-          )}
+        <PostsGrid
+          posts={myPosts}
+          isLoading={postsLoading}
+          isFetchingNextPage={postsLoadingMore}
+          hasMore={postsHasMore}
+          onFetchNextPage={fetchMorePosts}
+          onSelectPost={(post) => {
+            setSelectedPost(post);
+            setPostDetailVisible(true);
+          }}
         />
       )}
 
@@ -486,7 +329,6 @@ export default function ProfileScreen() {
           setPostDetailVisible(false);
           setSelectedPost(null);
         }}
-        colors={colors}
       />
     </View>
   );
@@ -579,53 +421,4 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
-
-  // Posts grid tab
-  gridContent: { paddingBottom: 110 },
-  // Each row is exactly 3 items with 2 gaps of GRID_GAP between them
-  gridRow: { gap: GRID_GAP },
-  postThumb: {
-    overflow: 'hidden',
-    backgroundColor: '#e0e0e0',
-    marginBottom: GRID_GAP,
-  },
-  postThumbTextWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  postThumbBody: { fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 14 },
-  multiImgBadge: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-  },
-  multiImgText: { fontSize: 10, color: '#fff', fontFamily: 'Inter_700Bold' },
-
-  // Post detail modal
-  detailBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'flex-end',
-  },
-  detailSheet: {
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    padding: 20,
-    maxHeight: '90%',
-  },
-  detailClose: { alignSelf: 'flex-end', marginBottom: 10 },
-  detailAuthor: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-  detailTime: { fontSize: 12, fontFamily: 'Inter_500Medium', marginTop: 2 },
-  detailBody: { fontSize: 14, lineHeight: 21, fontFamily: 'Inter_400Regular', marginTop: 14 },
-  detailImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12 },
-  detailMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14 },
-  detailMetaText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
 });
