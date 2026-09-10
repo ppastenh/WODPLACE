@@ -74,11 +74,53 @@ router.patch("/users/:id/avatar", async (req: Request, res: Response) => {
 });
 
 /**
+ * PATCH /users/:id/profile
+ *
+ * Sets self-expression fields shown on the public profile: rank (a fun
+ * level tag) and phrase (a short bio line). Both optional/independent —
+ * only the ones present in the body are updated. Deliberately excludes
+ * `status` ("Cuenta Activa/Inactiva"): that reads as account standing,
+ * same category as payments/contracts, kept out of the public profile.
+ */
+const UpdateProfileFieldsBody = z
+  .object({
+    rank: z.string().min(1).max(40).optional(),
+    phrase: z.string().max(120).optional(),
+  })
+  .refine((v) => v.rank !== undefined || v.phrase !== undefined, {
+    message: "Nothing to update",
+  });
+
+router.patch("/users/:id/profile", async (req: Request, res: Response) => {
+  const parsed = UpdateProfileFieldsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid fields" });
+    return;
+  }
+  try {
+    const [row] = await db
+      .update(wodplaceUsersTable)
+      .set(parsed.data)
+      .where(eq(wodplaceUsersTable.id, String(req.params.id)))
+      .returning();
+    if (!row) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json({ id: row.id, rank: row.rank, phrase: row.phrase });
+  } catch (error) {
+    req.log.error({ err: error }, "Error updating profile fields");
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+/**
  * GET /users/:id/public-profile
  *
  * The athlete-facing profile shown from Comunidad (tapping another
- * member's name/avatar) — deliberately narrow: identity + join date only,
- * never status/plan/payments/contracts, which stay admin-only in box-admin.
+ * member's name/avatar) and from box-admin's own "Ver perfil" — deliberately
+ * narrow: identity, join date, rank, and phrase. Never status/plan/payments/
+ * contracts, which stay admin-only in box-admin.
  * `memberSince` is the earliest box_members.joined_at across every box this
  * user belongs to (box_members is Supabase-managed, not modelled in
  * @workspace/db — see boxes.ts for the same raw-SQL pattern).
@@ -93,6 +135,8 @@ router.get(
           id: wodplaceUsersTable.id,
           name: wodplaceUsersTable.name,
           avatarUrl: wodplaceUsersTable.avatarUrl,
+          rank: wodplaceUsersTable.rank,
+          phrase: wodplaceUsersTable.phrase,
         })
         .from(wodplaceUsersTable)
         .where(eq(wodplaceUsersTable.id, id));
@@ -109,6 +153,8 @@ router.get(
         id: user.id,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        rank: user.rank,
+        phrase: user.phrase,
         memberSince: memberSince.rows[0]?.min ?? null,
       });
     } catch (error) {

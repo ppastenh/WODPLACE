@@ -23,6 +23,11 @@ export const wodplaceUsersTable = pgTable("wodplace_users", {
   // photo. Canonical avatar for the whole app — box-admin's member views
   // read this too instead of keeping a separate copy.
   avatarUrl: text("avatar_url"),
+  // Self-expression fields shown on the public member profile — a fun
+  // level tag and a short self-written bio line. Neither is validated
+  // against a fixed enum server-side, same as box_members.status.
+  rank: text("rank"),
+  phrase: text("phrase"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

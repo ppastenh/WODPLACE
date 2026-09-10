@@ -10,15 +10,18 @@ export type PublicProfile = {
   id: string;
   name: string;
   avatarUrl: string | null;
+  rank: string | null;
+  phrase: string | null;
   /** ISO timestamp of the earliest box_members.joined_at across every box
    *  this user belongs to, or null if they don't belong to any. */
   memberSince: string | null;
 };
 
 /**
- * The athlete-facing profile shown from Comunidad — deliberately narrow
- * (identity + join date only). Never includes membership status, plan,
- * payments, or contracts; those stay admin-only in box-admin.
+ * The athlete-facing profile shown from Comunidad and from box-admin's own
+ * "Ver perfil" — deliberately narrow (identity, join date, rank, phrase).
+ * Never includes membership status, plan, payments, or contracts; those
+ * stay admin-only in box-admin.
  */
 export function usePublicProfile(userId: string | null) {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -80,4 +83,22 @@ export async function uploadAvatarImage(
   });
 
   return avatarUrl;
+}
+
+/**
+ * Pushes rank and/or phrase to the backend so they show up on the public
+ * profile — both were previously local-only (AsyncStorage). Best-effort,
+ * like syncUser: callers should catch and swallow failures rather than
+ * block on this. Either field may be omitted to leave it unchanged.
+ */
+export async function updateProfileFields(
+  userId: string,
+  fields: { rank?: string; phrase?: string },
+): Promise<void> {
+  if (fields.rank === undefined && fields.phrase === undefined) return;
+  await customFetch(`/api/users/${userId}/profile`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
 }
