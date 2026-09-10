@@ -1,3 +1,6 @@
+-- STATUS: applied — to wiwpaekdykxernegicdv via the Supabase SQL Editor
+-- (2026-09-10). History, do not re-run (statements are idempotent anyway).
+--
 -- Athlete self-expression fields, shown on the public member profile
 -- (Comunidad / box-admin's "Ver perfil") alongside avatar_url: rank is a
 -- fun/social level tag (Beginner..Elite), phrase is a short self-written

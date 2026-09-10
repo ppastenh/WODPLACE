@@ -1,3 +1,6 @@
+-- STATUS: applied — to wiwpaekdykxernegicdv via the Supabase SQL Editor
+-- (2026-09-10). History, do not re-run (statement is idempotent anyway).
+--
 -- Minors: an explicit, separate consent for processing the minor's
 -- personal data for this app's purposes — distinct from accepting the
 -- box's contract itself, and with its own timestamp. Nullable: only set
