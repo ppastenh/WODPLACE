@@ -1193,6 +1193,13 @@ components:
         guardianRelationship:
           type: string
           nullable: true
+        minorDataConsentAt:
+          type: string
+          nullable: true
+          description: |
+            Set only when the member accepted while under 18 — the timestamp
+            of the separate consent to process the minor's personal data,
+            distinct from acceptedAt.
     ContractAcceptanceResponse:
       type: object
       properties:
@@ -1223,6 +1230,13 @@ components:
           type: string
           minLength: 1
           description: Optional, e.g. "Madre", "Padre", "Tutor legal".
+        minorDataConsent:
+          type: boolean
+          description: |
+            Required to be true when the member is under 18: an explicit,
+            separate consent to process the minor's personal data for this
+            app, distinct from accepting the box's contract. The server
+            records its own timestamp (minorDataConsentAt).
 
     AdminPinStatusRequest:
       type: object

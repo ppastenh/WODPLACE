@@ -294,7 +294,8 @@ export const GetContractAcceptanceResponse = zod.object({
   "emergencyContactPhone": zod.string(),
   "acceptedAt": zod.string(),
   "guardianName": zod.string().nullish(),
-  "guardianRelationship": zod.string().nullish()
+  "guardianRelationship": zod.string().nullish(),
+  "minorDataConsentAt": zod.string().nullish().describe('Set only when the member accepted while under 18 — the timestamp\nof the separate consent to process the minor\'s personal data,\ndistinct from acceptedAt.\n')
 }).nullish()
 })
 
@@ -316,7 +317,8 @@ export const AcceptContractsBody = zod.object({
   "emergencyContactName": zod.string().min(1),
   "emergencyContactPhone": zod.string().min(1),
   "guardianName": zod.string().min(1).optional().describe('Required when the member is under 18. The guardian\'s acceptance\nstands in for the minor\'s own signature.\n'),
-  "guardianRelationship": zod.string().min(1).optional().describe('Optional, e.g. \"Madre\", \"Padre\", \"Tutor legal\".')
+  "guardianRelationship": zod.string().min(1).optional().describe('Optional, e.g. \"Madre\", \"Padre\", \"Tutor legal\".'),
+  "minorDataConsent": zod.boolean().optional().describe('Required to be true when the member is under 18: an explicit,\nseparate consent to process the minor\'s personal data for this\napp, distinct from accepting the box\'s contract. The server\nrecords its own timestamp (minorDataConsentAt).\n')
 })
 
 export const AcceptContractsResponse = zod.object({
@@ -325,7 +327,8 @@ export const AcceptContractsResponse = zod.object({
   "emergencyContactPhone": zod.string(),
   "acceptedAt": zod.string(),
   "guardianName": zod.string().nullish(),
-  "guardianRelationship": zod.string().nullish()
+  "guardianRelationship": zod.string().nullish(),
+  "minorDataConsentAt": zod.string().nullish().describe('Set only when the member accepted while under 18 — the timestamp\nof the separate consent to process the minor\'s personal data,\ndistinct from acceptedAt.\n')
 })
 
 

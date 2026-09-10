@@ -97,6 +97,10 @@ export const contractAcceptancesTable = pgTable("contract_acceptances", {
   // Re-set to null whenever a member (re-)accepts, so the owner is notified
   // again — this is the whole notification mechanism, no push/email infra.
   seenByOwnerAt: timestamp("seen_by_owner_at", { withTimezone: true }),
+  // Set only when the member accepted while under 18: an explicit, separate
+  // consent to process the minor's personal data for this app, distinct
+  // from accepting the box's contract. Its own timestamp on purpose.
+  minorDataConsentAt: timestamp("minor_data_consent_at", { withTimezone: true }),
 });
 
 export type ContractAcceptanceRow = typeof contractAcceptancesTable.$inferSelect;

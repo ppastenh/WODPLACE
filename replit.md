@@ -103,6 +103,14 @@ _Populate as you build — explicit user instructions worth remembering across s
   separate design task. Admin-side contract routes already resolve the box
   via `resolveBoxId(adminUserId)` (`lib/boxContext.ts`).
 
+- **Chile Ley 21.719 (data protection) — full effect 1 Dec 2026.** The
+  activation flow (Contratos Activos) covers the box's own contract plus a
+  separate minor-data-processing consent (`contract_acceptances
+  .minor_data_consent_at`). Still to add: (1) the app's own privacy policy —
+  what personal data the app itself collects and why, independent of any
+  single box's contract; (2) ARCO rights self-service — let a member view,
+  correct, or delete their own data from within the app. Not built yet.
+
 _Populate as you build — sharp edges, "always run X before Y" rules._
 
 ## Pointers

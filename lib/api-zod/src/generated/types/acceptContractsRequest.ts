@@ -24,4 +24,11 @@ export interface AcceptContractsRequest {
      * @minLength 1
      */
   guardianRelationship?: string;
+  /**
+     * Required to be true when the member is under 18: an explicit,
+     * separate consent to process the minor's personal data for this
+     * app, distinct from accepting the box's contract. The server
+     * records its own timestamp (minorDataConsentAt).
+     */
+  minorDataConsent?: boolean;
 }

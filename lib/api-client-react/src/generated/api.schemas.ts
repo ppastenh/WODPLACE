@@ -153,6 +153,12 @@ export interface ContractAcceptance {
   acceptedAt: string;
   guardianName?: string | null;
   guardianRelationship?: string | null;
+  /**
+     * Set only when the member accepted while under 18 — the timestamp
+     * of the separate consent to process the minor's personal data,
+     * distinct from acceptedAt.
+     */
+  minorDataConsentAt?: string | null;
 }
 
 export interface ContractAcceptanceResponse {
@@ -177,6 +183,13 @@ export interface AcceptContractsRequest {
      * @minLength 1
      */
   guardianRelationship?: string;
+  /**
+     * Required to be true when the member is under 18: an explicit,
+     * separate consent to process the minor's personal data for this
+     * app, distinct from accepting the box's contract. The server
+     * records its own timestamp (minorDataConsentAt).
+     */
+  minorDataConsent?: boolean;
 }
 
 export interface AdminPinStatusRequest {

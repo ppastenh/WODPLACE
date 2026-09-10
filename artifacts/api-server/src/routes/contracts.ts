@@ -149,6 +149,7 @@ router.get("/contracts/acceptance", async (req: Request, res: Response) => {
               acceptedAt: row.acceptedAt.toISOString(),
               guardianName: row.guardianName,
               guardianRelationship: row.guardianRelationship,
+              minorDataConsentAt: row.minorDataConsentAt?.toISOString() ?? null,
             }
           : null,
       }),
@@ -182,7 +183,19 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
       emergencyContactPhone,
       guardianName,
       guardianRelationship,
+      minorDataConsent,
     } = parsed.data;
+
+    // A guardian name is the signal that this is a minor accepting. For a
+    // minor, the separate data-processing consent is mandatory too.
+    const isMinor = !!guardianName;
+    if (isMinor && minorDataConsent !== true) {
+      res.status(409).json({
+        error:
+          "Falta el consentimiento de tratamiento de los datos personales del menor.",
+      });
+      return;
+    }
 
     const documents = await db
       .select()
@@ -205,6 +218,9 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
     }
 
     const acceptedAt = new Date();
+    // Its own timestamp on purpose — a distinct act from accepting the
+    // contract, even if it happens in the same submission. Null for adults.
+    const minorDataConsentAt = isMinor ? new Date() : null;
     await db
       .insert(contractAcceptancesTable)
       .values({
@@ -214,6 +230,7 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         acceptedAt,
         guardianName: guardianName ?? null,
         guardianRelationship: guardianRelationship ?? null,
+        minorDataConsentAt,
         seenByOwnerAt: null,
       })
       .onConflictDoUpdate({
@@ -225,6 +242,7 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
           acceptedAt,
           guardianName: guardianName ?? null,
           guardianRelationship: guardianRelationship ?? null,
+          minorDataConsentAt,
           seenByOwnerAt: null,
         },
       });
@@ -237,6 +255,7 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         acceptedAt: acceptedAt.toISOString(),
         guardianName: guardianName ?? null,
         guardianRelationship: guardianRelationship ?? null,
+        minorDataConsentAt: minorDataConsentAt?.toISOString() ?? null,
       }),
     );
 

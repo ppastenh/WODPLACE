@@ -13,4 +13,10 @@ export interface ContractAcceptance {
   acceptedAt: string;
   guardianName?: string | null;
   guardianRelationship?: string | null;
+  /**
+     * Set only when the member accepted while under 18 — the timestamp
+     * of the separate consent to process the minor's personal data,
+     * distinct from acceptedAt.
+     */
+  minorDataConsentAt?: string | null;
 }
