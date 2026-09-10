@@ -14,6 +14,11 @@ _Replace the heading above with the project's name, and this line with one sente
   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (service role — server only, never
   ship to a client), `DASHBOARD_URL` (box-admin origin). Without them the mobile
   app's admin WebView falls back to box-admin's normal login.
+- Optional env (api-server): `OWNER_EMAIL` (contract-acceptance notifications),
+  `RECOVERY_EMAIL_FROM` (a verified Resend sender like `WODPLACE
+  <noreply@your-domain.com>` for account-recovery codes). Both go through the
+  Resend connector; when `RECOVERY_EMAIL_FROM` is unset the recovery code is
+  logged instead of emailed so the flow stays testable in dev.
 - Env (wodplace): `EXPO_PUBLIC_API_URL` (api-server origin), `EXPO_PUBLIC_DASHBOARD_URL`
   (box-admin origin shown in the admin WebView).
 - **Supabase Auth config for the dashboard auto-login link** (Authentication →

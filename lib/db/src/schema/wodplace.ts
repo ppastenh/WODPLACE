@@ -278,6 +278,25 @@ export const adminPinsTable = pgTable("admin_pins", {
 });
 export type AdminPinRow = typeof adminPinsTable.$inferSelect;
 
+// One-time email code for wodplace account recovery — the local user id is
+// lost on a new device, so verifying a code emailed to the address on file
+// returns the existing wodplace_users.id to re-adopt. Code stored hashed
+// (scrypt, lib/pinHash), one active row per user, short expiry, locked
+// after repeated failures.
+export const accountRecoveryCodesTable = pgTable("account_recovery_codes", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type AccountRecoveryCodeRow = typeof accountRecoveryCodesTable.$inferSelect;
+
 // ── RM / 1RM module ─────────────────────────────────────────────────────────
 
 // Movement catalog. Seeded rows have `createdBy = null` + `isDefault = true`;
