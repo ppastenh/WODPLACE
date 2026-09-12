@@ -215,6 +215,10 @@ export const socialPostsTable = pgTable("social_posts", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // NOT NULL in the real Supabase table (same schema-drift pattern as
+  // contract_documents.boxId) — resolved server-side via resolveBoxId(),
+  // never supplied by the client.
+  boxId: text("box_id").notNull(),
 });
 export type SocialPostRow = typeof socialPostsTable.$inferSelect;
 
@@ -233,6 +237,7 @@ export const socialCommentsTable = pgTable("social_comments", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  boxId: text("box_id").notNull(),
 });
 export type SocialCommentRow = typeof socialCommentsTable.$inferSelect;
 
@@ -251,6 +256,7 @@ export const socialReactionsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    boxId: text("box_id").notNull(),
   },
   (table) => [
     uniqueIndex("social_reactions_post_user_idx").on(
@@ -276,6 +282,7 @@ export const socialReportsTable = pgTable("social_reports", {
     .notNull()
     .defaultNow(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  boxId: text("box_id").notNull(),
 });
 export type SocialReportRow = typeof socialReportsTable.$inferSelect;
 

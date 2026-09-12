@@ -26,6 +26,7 @@ import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
 import { isAdminRequest, requireAdminSession } from "../lib/adminAuth";
+import { resolveBoxId } from "../lib/boxContext";
 
 const router: IRouter = Router();
 
@@ -217,8 +218,9 @@ router.post("/social/posts", async (req: Request, res: Response) => {
       }
     }
     const id = makeId("post");
+    const boxId = await resolveBoxId();
     await db.insert(socialPostsTable).values({
-      id, userId, authorName,
+      id, userId, authorName, boxId,
       body: body.trim() || "Compartió una foto con la comunidad.",
       imageUris: imageUris.length > 0 ? JSON.stringify(imageUris) : null,
       type,
@@ -309,7 +311,8 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     const id = makeId("comment");
-    await db.insert(socialCommentsTable).values({ id, postId: req.params.id, userId, authorName, body });
+    const boxId = await resolveBoxId();
+    await db.insert(socialCommentsTable).values({ id, postId: req.params.id, userId, authorName, body, boxId });
     if (post.userId && post.userId !== userId) {
       db.insert(wodplaceNotificationsTable).values({
         id: makeId("notif"), userId: post.userId,
@@ -363,7 +366,8 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
         isNew = true;
       }
     } else {
-      await db.insert(socialReactionsTable).values({ id: makeId("reaction"), postId: req.params.id, userId, emoji });
+      const boxId = await resolveBoxId();
+      await db.insert(socialReactionsTable).values({ id: makeId("reaction"), postId: req.params.id, userId, emoji, boxId });
       isNew = true;
       if (post.userId && post.userId !== userId) {
         db.insert(wodplaceNotificationsTable).values({
@@ -396,9 +400,11 @@ router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
   }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Datos inválidos" }); return; }
   try {
+    const boxId = await resolveBoxId();
     await db.insert(socialReportsTable).values({
       id: makeId("report"), postId: req.params.id,
       reporterId: parsed.data.reporterId, reporterName: parsed.data.reporterName, reason: parsed.data.reason,
+      boxId,
     });
     res.status(201).json({ ok: true });
   } catch (error) {
