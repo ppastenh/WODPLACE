@@ -106,7 +106,12 @@ function WheelColumn<T>({ data, selectedIndex, onChangeIndex, renderLabel, width
         scrollEventThrottle={16}
         onScroll={handleScroll}
         onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={handleScrollEnd}
+        // NOT onScrollEndDrag: with snapToInterval, releasing the drag
+        // starts a native settle animation that itself fires
+        // onMomentumScrollEnd once it lands on a snap point. Calling
+        // scrollToOffset from onScrollEndDrag fired that correction
+        // *before* the native settle finished, fighting it — the list
+        // would land mid-animation and need a second scroll to unstick.
         renderItem={({ item, index }) => {
           const isSelected = index === pendingIndex;
           return (

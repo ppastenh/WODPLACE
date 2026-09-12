@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -156,7 +156,10 @@ export default function RegisterScreen() {
           </View>
 
           <Pressable
-            onPress={() => setBirthdateModalVisible(true)}
+            onPress={() => {
+              Keyboard.dismiss();
+              setBirthdateModalVisible(true);
+            }}
             style={[
               styles.input,
               styles.birthdateRow,
@@ -178,7 +181,10 @@ export default function RegisterScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => setPhoneModalVisible(true)}
+            onPress={() => {
+              Keyboard.dismiss();
+              setPhoneModalVisible(true);
+            }}
             style={[
               styles.input,
               styles.birthdateRow,
