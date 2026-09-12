@@ -26,7 +26,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { getAdminToken } from '@/lib/adminSession';
-import { canAccessAdminNavigation } from '@/lib/navigation';
+import { getAdminNavItem } from '@/lib/navigation';
 import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
 import {
   useBoxName,
@@ -583,7 +583,7 @@ function PostCard({
 export default function CommunityScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, adminStatus, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const adminCode = getAdminToken(); // admin session token (PIN flow), passed as Bearer
@@ -634,13 +634,9 @@ export default function CommunityScreen() {
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
-  if (canAccessAdminNavigation(user)) {
-    navItems.push({
-      key: 'admin',
-      label: 'Administrador',
-      icon: 'shield',
-      route: '/admin-login',
-    });
+  const adminNavItem = getAdminNavItem(adminStatus);
+  if (adminNavItem) {
+    navItems.push(adminNavItem);
   }
 
   const handleNavigate = (route: string) => {

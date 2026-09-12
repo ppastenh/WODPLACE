@@ -15,7 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { canAccessAdminNavigation } from '@/lib/navigation';
+import { getAdminNavItem } from '@/lib/navigation';
 import {
   addDays,
   addMonths,
@@ -32,12 +32,11 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
-  { key: 'admin', label: 'Administrador', icon: 'shield', route: '/admin-login' },
 ];
 
 export default function CalendarScreen() {
   const colors = useColors();
-  const { user, logout } = useAuth();
+  const { user, adminStatus, logout } = useAuth();
   const { now, getSessionsForDate, book, cancel, getAttendeeNames } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
@@ -103,7 +102,11 @@ export default function CalendarScreen() {
   const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
-  })).filter((item) => item.key !== 'admin' || canAccessAdminNavigation(user));
+  }));
+  const adminNavItem = getAdminNavItem(adminStatus);
+  if (adminNavItem) {
+    navItems.push(adminNavItem);
+  }
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);

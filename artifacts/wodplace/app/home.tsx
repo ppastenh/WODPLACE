@@ -15,7 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBooking } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { canAccessAdminNavigation } from '@/lib/navigation';
+import { getAdminNavItem } from '@/lib/navigation';
 import {
   addDays,
   daysInMonth,
@@ -96,7 +96,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 
 export default function HomeScreen() {
   const colors = useColors();
-  const { user, logout } = useAuth();
+  const { user, adminStatus, logout } = useAuth();
   const { now, getSessionsForDate, getUpcomingBooked } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
@@ -106,13 +106,9 @@ export default function HomeScreen() {
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
-  if (canAccessAdminNavigation(user)) {
-    navItems.push({
-      key: 'admin',
-      label: 'Administrador',
-      icon: 'shield',
-      route: '/admin-login',
-    });
+  const adminNavItem = getAdminNavItem(adminStatus);
+  if (adminNavItem) {
+    navItems.push(adminNavItem);
   }
 
   const handleNavigate = (route: string) => {

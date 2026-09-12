@@ -2,10 +2,12 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getContractAcceptance,
+  getPlatformAgreementStatus,
   redeemBoxCode as redeemBoxCodeApi,
   syncUser,
   updateProfileFields,
   verifyAccountRecovery,
+  type PlatformAgreementStatus,
   type RedeemBoxCodeResult,
 } from '@workspace/api-client-react';
 
@@ -44,6 +46,15 @@ interface AuthContextValue {
   user: WodplaceUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /**
+   * Real admin roles (box_admin/super_admin, an account can hold both)
+   * resolved server-side via the profiles/user_roles email bridge, plus
+   * whether the platform agreement is satisfied — an empty `roles` array
+   * means "not an admin at all", not "unknown". Drives whether/what
+   * admin-related nav items show (see lib/navigation.ts getAdminNavItem).
+   * Refreshed alongside refreshActivationStatus.
+   */
+  adminStatus: PlatformAgreementStatus | null;
   checkEmailExists: (email: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -54,12 +65,16 @@ interface AuthContextValue {
     phone: string,
   ) => Promise<WodplaceUser>;
   /**
-   * Re-checks whether the account has an accepted contract on file and
-   * updates `user.status` accordingly ('active' if a contract_acceptances
-   * row exists, 'inactive' otherwise) — the account's "active" state is
-   * derived from that row, not a separately-synced field. Called on boot,
-   * after login, and right after Contratos Activos records an acceptance,
-   * so the badge flips without needing an app restart.
+   * Re-checks activation + admin status and updates both `user.status` and
+   * `adminStatus` accordingly:
+   *  - Detected admins (box_admin/super_admin) are always 'active' — the
+   *    athlete membership contract is for people who train at the box, not
+   *    for whoever manages the platform, so it's never checked for them.
+   *  - Everyone else is 'active' iff a contract_acceptances row exists,
+   *    'inactive' otherwise.
+   * Called on boot, after login, right after Contratos Activos records an
+   * acceptance, and after accepting the platform agreement, so both badges
+   * flip without needing an app restart.
    */
   refreshActivationStatus: () => Promise<void>;
   /**
@@ -114,6 +129,7 @@ function nameFromEmail(email: string): string {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<WodplaceUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [adminStatus, setAdminStatus] = useState<PlatformAgreementStatus | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -168,18 +184,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshActivationStatus = async (forUser?: WodplaceUser) => {
     const target = forUser ?? user;
     if (!target) return;
+
+    let platform: PlatformAgreementStatus | null = null;
     try {
-      const { acceptance } = await getContractAcceptance({ userId: target.id });
-      const nextStatus: AccountStatus = acceptance ? 'active' : 'inactive';
+      platform = await getPlatformAgreementStatus(target.id);
+      setAdminStatus(platform);
+    } catch (err) {
+      console.warn('Failed to refresh admin status', err);
+    }
+
+    try {
+      // Detected admins skip the athlete contract check entirely — see the
+      // doc comment on refreshActivationStatus in the context type above.
+      const isAdmin = !!platform?.roles.length;
+      const nextStatus: AccountStatus = isAdmin
+        ? 'active'
+        : (await getContractAcceptance({ userId: target.id })).acceptance
+          ? 'active'
+          : 'inactive';
       if (nextStatus !== target.status) {
         await persist({
           ...target,
           status: nextStatus,
-          // Assigned once, at the moment the account actually activates —
-          // not re-applied on later refreshes (the status-unchanged check
-          // above skips those), so a rank set some other way later isn't
-          // stomped on.
-          ...(nextStatus === 'active' ? { rank: 'Beginner' as AthleteRank } : {}),
+          // Assigned once, at the moment an athlete account actually
+          // activates — not re-applied on later refreshes (the
+          // status-unchanged check above skips those), so a rank set some
+          // other way later isn't stomped on. Skipped for admins: rank is
+          // an athlete-facing concept, irrelevant to their forced-active
+          // status here.
+          ...(nextStatus === 'active' && !isAdmin ? { rank: 'Beginner' as AthleteRank } : {}),
         });
       }
     } catch (err) {
@@ -324,6 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await persist(null);
+    setAdminStatus(null);
   };
 
   const updateProfile = async (partial: Partial<WodplaceUser>) => {
@@ -336,6 +370,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       isAuthenticated: !!user,
+      adminStatus,
       checkEmailExists,
       login,
       register,
@@ -347,7 +382,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshActivationStatus: () => refreshActivationStatus(),
       recoverAccount,
     }),
-    [user, isLoading],
+    [user, isLoading, adminStatus],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

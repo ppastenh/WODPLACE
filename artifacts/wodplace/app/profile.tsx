@@ -28,14 +28,13 @@ import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { useMyPosts, uploadAvatarImage, type SocialPost } from '@workspace/api-client-react';
-import { canAccessAdminNavigation } from '@/lib/navigation';
+import { getAdminNavItem } from '@/lib/navigation';
 
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
-  { key: 'admin', label: 'Administrador', icon: 'shield', route: '/admin-login' },
   { key: 'more', label: 'Más', icon: 'grid', route: '/more' },
 ];
 
@@ -43,7 +42,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 
 export default function ProfileScreen() {
   const colors = useColors();
-  const { user, updateProfile, logout, redeemBoxCode } = useAuth();
+  const { user, adminStatus, updateProfile, logout, redeemBoxCode } = useAuth();
   const { now, getUpcomingBooked, getAttendeeNames, cancel } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
@@ -70,14 +69,16 @@ export default function ProfileScreen() {
 
   const bookedSessions = getUpcomingBooked(10);
 
-  const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
+  const adminNavItem = getAdminNavItem(adminStatus);
+  const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
+    (item) => item.key !== 'more' || adminNavItem?.key === 'admin',
+  ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
-  })).filter(
-    (item) =>
-      (item.key !== 'admin' && item.key !== 'more') ||
-      canAccessAdminNavigation(user),
-  );
+  }));
+  if (adminNavItem) {
+    navItems.push(adminNavItem);
+  }
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);

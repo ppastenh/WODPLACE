@@ -51,6 +51,12 @@ export const contractDocumentsTable = pgTable("contract_documents", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // Who this document is for — 'athlete' (the member-facing contracts shown
+  // in Contratos Activos) or 'platform' (the box-admin/super-admin platform
+  // agreement, gating the "Administrador" nav item instead). CHECK
+  // constraint enforces the two values at the DB level; see
+  // lib/contractDocuments.ts for the seeded rows of each audience.
+  audience: text("audience").notNull().default("athlete"),
 });
 
 export type InsertContractDocument = typeof contractDocumentsTable.$inferInsert;
@@ -112,6 +118,26 @@ export const contractAcceptancesTable = pgTable("contract_acceptances", {
 });
 
 export type ContractAcceptanceRow = typeof contractAcceptancesTable.$inferSelect;
+
+// Acceptance of the platform agreement (box-admin/super-admin <-> WODPLACE
+// itself, about using the software) — separate from contract_acceptances
+// (box <-> athlete, about training there). One row per admin; no per-slug
+// read-progress like athlete docs, since it's a single one-page agreement.
+// super_admin accounts are exempt entirely (see resolveAdminRoleForEmail)
+// and never get a row here.
+export const platformAgreementAcceptancesTable = pgTable(
+  "platform_agreement_acceptances",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    boxId: text("box_id").notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+  },
+);
+
+export type PlatformAgreementAcceptanceRow =
+  typeof platformAgreementAcceptancesTable.$inferSelect;
 
 // Server-side class booking state. The mobile app still generates the
 // deterministic sessionId from the class date/time, while these rows make

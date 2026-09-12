@@ -38,7 +38,12 @@ router.get("/contracts", async (req: Request, res: Response) => {
     const documents = await db
       .select()
       .from(contractDocumentsTable)
-      .where(eq(contractDocumentsTable.boxId, boxId));
+      .where(
+        and(
+          eq(contractDocumentsTable.boxId, boxId),
+          eq(contractDocumentsTable.audience, "athlete"),
+        ),
+      );
 
     const readSlugs = new Map<string, string>();
     if (userId) {
@@ -201,7 +206,12 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
     const documents = await db
       .select()
       .from(contractDocumentsTable)
-      .where(eq(contractDocumentsTable.boxId, boxId));
+      .where(
+        and(
+          eq(contractDocumentsTable.boxId, boxId),
+          eq(contractDocumentsTable.audience, "athlete"),
+        ),
+      );
     const progress = await db
       .select()
       .from(contractReadProgressTable)
