@@ -42,17 +42,6 @@ export interface WodplaceUser {
   phone: string | null;
 }
 
-/**
- * Which surface a super_admin account is currently viewing: 'admin' lands
- * straight in the admin panel flow (skipping the athlete menu screens on
- * login/boot), 'athlete' shows the normal member app. Only meaningful for
- * super_admin — box_admin/athlete accounts always behave as 'athlete'
- * regardless of this value. Not persisted: recomputed to its default
- * ('admin' for super_admin, 'athlete' otherwise) every login/boot, so a
- * manual switch to see the athlete view doesn't stick across app restarts.
- */
-export type AdminViewMode = 'admin' | 'athlete';
-
 interface AuthContextValue {
   user: WodplaceUser | null;
   isLoading: boolean;
@@ -66,16 +55,15 @@ interface AuthContextValue {
    * Refreshed alongside refreshActivationStatus.
    */
   adminStatus: PlatformAgreementStatus | null;
-  /** See AdminViewMode. */
-  adminViewMode: AdminViewMode;
-  setAdminViewMode: (mode: AdminViewMode) => void;
   /**
    * Where to navigate right after auth resolves (boot, login, register,
-   * account recovery): straight into the admin panel for a super_admin
-   * currently in 'admin' view mode, else the caller's normal `fallback`
-   * route. Reads the latest resolved status via a ref, not React state, so
-   * it's correct immediately after `await`ing login()/register()/etc. —
-   * no stale-closure race with the state update.
+   * account recovery): a choice screen ("Entrar como Super Admin" / "Ver
+   * como alumno") for a super_admin — asked fresh every time, never
+   * remembered — else the caller's normal `fallback` route (box_admin and
+   * plain athlete accounts are unaffected). Reads the latest resolved
+   * status via a ref, not React state, so it's correct immediately after
+   * `await`ing login()/register()/etc. — no stale-closure race with the
+   * state update.
    */
   getPostAuthRoute: (fallback: string) => string;
   checkEmailExists: (email: string) => Promise<boolean>;
@@ -153,31 +141,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<WodplaceUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [adminStatus, setAdminStatus] = useState<PlatformAgreementStatus | null>(null);
-  const [adminViewMode, setAdminViewModeState] = useState<AdminViewMode>('athlete');
 
-  // Mirrors of the two pieces above, updated synchronously (state updates
-  // aren't visible until the next render) — getPostAuthRoute reads these
-  // right after an `await`ed login()/register()/etc. resolves, when no
-  // re-render has necessarily happened yet.
+  // Mirror of adminStatus, updated synchronously (state updates aren't
+  // visible until the next render) — getPostAuthRoute reads this right
+  // after an `await`ed login()/register()/etc. resolves, when no re-render
+  // has necessarily happened yet.
   const adminStatusRef = useRef<PlatformAgreementStatus | null>(null);
-  const adminViewModeRef = useRef<AdminViewMode>('athlete');
-  // Only auto-pick the view mode's default once per session (first time
-  // adminStatus resolves after login/boot) — later refreshes (e.g. from
-  // platform-agreement.tsx after accepting) must not stomp on a manual
-  // toggle via setAdminViewMode.
-  const viewModeDecidedRef = useRef(false);
-
-  const setAdminViewMode = (mode: AdminViewMode) => {
-    adminViewModeRef.current = mode;
-    setAdminViewModeState(mode);
-  };
 
   const getPostAuthRoute = (fallback: string): string => {
     const roles = adminStatusRef.current?.roles ?? [];
-    if (roles.includes('super_admin') && adminViewModeRef.current === 'admin') {
-      return '/admin-login';
-    }
-    return fallback;
+    // Asked fresh every time (never remembered) — see choose-view.tsx.
+    // box_admin (without super_admin) is unaffected: straight to fallback,
+    // same as a plain athlete account.
+    return roles.includes('super_admin') ? '/choose-view' : fallback;
   };
 
   useEffect(() => {
@@ -205,9 +181,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
           );
           // Awaited (unlike the two syncs above): the app's very first
-          // navigation decision (see app/index.tsx) depends on this having
-          // resolved — a super_admin landing straight in the admin panel
-          // only works if adminStatus/adminViewMode are settled first.
+          // navigation decision (see app/index.tsx) depends on adminStatus
+          // having resolved first.
           await refreshActivationStatus(restored);
         }
       } finally {
@@ -243,10 +218,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       platform = await getPlatformAgreementStatus(target.id);
       setAdminStatus(platform);
       adminStatusRef.current = platform;
-      if (!viewModeDecidedRef.current) {
-        viewModeDecidedRef.current = true;
-        setAdminViewMode(platform.roles.includes('super_admin') ? 'admin' : 'athlete');
-      }
     } catch (err) {
       console.warn('Failed to refresh admin status', err);
     }
@@ -424,8 +395,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await persist(null);
     setAdminStatus(null);
     adminStatusRef.current = null;
-    viewModeDecidedRef.current = false;
-    setAdminViewMode('athlete');
   };
 
   const updateProfile = async (partial: Partial<WodplaceUser>) => {
@@ -439,8 +408,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isAuthenticated: !!user,
       adminStatus,
-      adminViewMode,
-      setAdminViewMode,
       getPostAuthRoute,
       checkEmailExists,
       login,
@@ -453,7 +420,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshActivationStatus: () => refreshActivationStatus(),
       recoverAccount,
     }),
-    [user, isLoading, adminStatus, adminViewMode],
+    [user, isLoading, adminStatus],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

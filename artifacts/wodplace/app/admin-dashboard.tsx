@@ -82,7 +82,7 @@ function safeUrl(raw: string | undefined | null): string {
 
 export default function AdminDashboardScreen() {
   const colors = useDarkColors();
-  const { adminStatus, setAdminViewMode } = useAuth();
+  const { adminStatus } = useAuth();
   // 'box' (default) preserves every existing box_admin behavior unchanged;
   // 'super' comes from admin-login.tsx's target chooser/auto-pick.
   const { target: targetParam } = useLocalSearchParams<{ target?: string }>();
@@ -147,7 +147,6 @@ export default function AdminDashboardScreen() {
   }, [token, dashboardOrigin, target, dashLink]);
 
   const viewAsAthlete = () => {
-    setAdminViewMode('athlete');
     router.replace('/home');
   };
 
