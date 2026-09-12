@@ -12,15 +12,27 @@ _Replace the heading above with the project's name, and this line with one sente
 - Required env (api-server): `DATABASE_URL` — Postgres connection string
 - Optional env (api-server, admin dashboard auto-login via `POST /admin/dash-link`):
   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (service role — server only, never
-  ship to a client), `DASHBOARD_URL` (box-admin origin). Without them the mobile
-  app's admin WebView falls back to box-admin's normal login.
+  ship to a client), `DASHBOARD_URL` (box-admin origin), `SUPERADMIN_URL`
+  (super-admin-hub origin — only used when the request body's `target` is
+  `"super"`, gated to accounts with the super_admin role). Without the
+  relevant one, the mobile app's admin WebView falls back to that panel's
+  normal login.
 - Optional env (api-server): `OWNER_EMAIL` (contract-acceptance notifications),
   `RECOVERY_EMAIL_FROM` (a verified Resend sender like `WODPLACE
   <noreply@your-domain.com>` for account-recovery codes). Both go through the
   Resend connector; when `RECOVERY_EMAIL_FROM` is unset the recovery code is
   logged instead of emailed so the flow stays testable in dev.
+- Object storage (api-server, avatars + Comunidad images): `SUPABASE_STORAGE_BUCKET`
+  (default `wodplace-uploads`) — a **public** Supabase Storage bucket, reusing
+  `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` above. Create the bucket once in
+  the Supabase dashboard (Storage → New bucket → Public) before testing
+  uploads. Runs fine locally — this replaced Replit Object Storage (a
+  Replit-only sidecar credential exchange that only worked inside a Replit
+  container).
 - Env (wodplace): `EXPO_PUBLIC_API_URL` (api-server origin), `EXPO_PUBLIC_DASHBOARD_URL`
-  (box-admin origin shown in the admin WebView).
+  (box-admin origin shown in the admin WebView), `EXPO_PUBLIC_SUPERADMIN_URL`
+  (super-admin-hub origin, same WebView mechanism — only reachable for
+  accounts with the super_admin role).
 - **Supabase Auth config for the dashboard auto-login link** (Authentication →
   URL Configuration):
   - **Local dev:** set **Site URL** to the box-admin LAN origin
@@ -32,9 +44,15 @@ _Replace the heading above with the project's name, and this line with one sente
     the Site URL. Without this the magic link's `redirect_to` gets rewritten
     to the default Site URL (`http://localhost:3000`) and the WebView shows
     `NSURLErrorDomain -1004`.
-  - **Production:** once box-admin is on a real HTTPS domain, set Site URL
-    back to that app's own URL and add the dashboard origin to Redirect URLs
-    (real domains + HTTPS match `uri_allow_list` fine).
+    - **This means only one of box-admin / super-admin-hub can auto-login
+      locally at a time** — whichever origin is currently the Site URL. To
+      test the super-admin-hub link locally, temporarily point Site URL at
+      `SUPERADMIN_URL` / `EXPO_PUBLIC_SUPERADMIN_URL` instead; the other
+      panel's auto-login will 502 until you switch it back. Not an issue in
+      production (see below).
+  - **Production:** once both panels are on real HTTPS domains, set Site URL
+    to either one and add **both** origins to Redirect URLs (real domains +
+    HTTPS match `uri_allow_list` fine, unlike LAN IPs) — no more switching.
   - Keep the magic-link / OTP expiry short.
 
 ## Stack

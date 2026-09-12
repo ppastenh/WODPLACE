@@ -17,8 +17,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
 import { setAdminToken } from '@/lib/adminSession';
 
-type Mode = 'loading' | 'error' | 'setup' | 'verify' | 'locked' | 'password';
+type Mode = 'loading' | 'choose-target' | 'error' | 'setup' | 'verify' | 'locked' | 'password';
 type PasswordPurpose = 'forgot' | 'unlock';
+type PanelTarget = 'box' | 'super';
 
 function formatRemaining(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -36,9 +37,14 @@ function formatRemaining(ms: number): string {
  */
 export default function AdminLoginScreen() {
   const colors = useDarkColors();
-  const { user, verifyPassword } = useAuth();
+  const { user, adminStatus, verifyPassword } = useAuth();
 
   const [mode, setMode] = useState<Mode>('loading');
+  // Which panel to open — irrelevant to the PIN itself (one PIN per
+  // account, not per panel), just carried through to /admin-dashboard.
+  // Defaults to 'box'; resolved for real once adminStatus.roles is known
+  // (see the effect below) before the PIN flow starts.
+  const [target, setTarget] = useState<PanelTarget>('box');
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
   const [password, setPassword] = useState('');
@@ -76,8 +82,22 @@ export default function AdminLoginScreen() {
       router.replace('/login');
       return;
     }
+    if (!adminStatus) return; // still resolving from AuthContext
+    const roles = adminStatus.roles;
+    if (roles.length > 1) {
+      // Holds both roles (the platform owner in her own box) — ask which
+      // panel before the PIN, rather than guessing.
+      setMode('choose-target');
+      return;
+    }
+    setTarget(roles[0] === 'super_admin' ? 'super' : 'box');
     void loadStatus();
-  }, [user, loadStatus]);
+  }, [user, adminStatus, loadStatus]);
+
+  const chooseTarget = (chosen: PanelTarget) => {
+    setTarget(chosen);
+    void loadStatus();
+  };
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -112,7 +132,7 @@ export default function AdminLoginScreen() {
 
   const goToPanel = (token: string) => {
     setAdminToken(token);
-    router.replace('/admin-dashboard');
+    router.replace({ pathname: '/admin-dashboard', params: { target } });
   };
 
   const submitSetup = async () => {
@@ -257,6 +277,28 @@ export default function AdminLoginScreen() {
 
         {mode === 'loading' ? (
           <Text style={[styles.subtitle, { color: colors.authMuted }]}>Cargando…</Text>
+        ) : null}
+
+        {mode === 'choose-target' ? (
+          <>
+            <Text style={[styles.subtitle, { color: colors.authMuted }]}>
+              Tu cuenta tiene acceso a los dos paneles. ¿Cuál querés abrir?
+            </Text>
+            <AppButton
+              label="Panel de Box"
+              variant="primary"
+              fullWidth
+              onPress={() => chooseTarget('box')}
+              style={styles.button}
+            />
+            <AppButton
+              label="Panel de Super Admin"
+              variant="outlineDark"
+              fullWidth
+              onPress={() => chooseTarget('super')}
+              style={styles.button}
+            />
+          </>
         ) : null}
 
         {mode === 'error' ? (

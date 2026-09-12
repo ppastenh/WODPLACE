@@ -25,6 +25,8 @@ export * from './contractAcceptance';
 export * from './contractAcceptanceNotification';
 export * from './contractAcceptanceResponse';
 export * from './contractDocument';
+export * from './createAdminDashLinkRequest';
+export * from './createAdminDashLinkRequestTarget';
 export * from './createBookingRequest';
 export * from './createMovementRequest';
 export * from './createPrRequest';

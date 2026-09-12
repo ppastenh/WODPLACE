@@ -272,6 +272,30 @@ export interface AdminDashLinkResult {
   url: string;
 }
 
+/**
+ * Which panel to mint the link for. "box" (default, preserves the
+ * existing behavior) redirects into box-admin; "super" redirects
+ * into the super-admin-hub and is rejected with 403 unless the
+ * caller's resolved admin roles include super_admin.
+ */
+export type CreateAdminDashLinkRequestTarget = typeof CreateAdminDashLinkRequestTarget[keyof typeof CreateAdminDashLinkRequestTarget];
+
+
+export const CreateAdminDashLinkRequestTarget = {
+  box: 'box',
+  super: 'super',
+} as const;
+
+export interface CreateAdminDashLinkRequest {
+  /**
+     * Which panel to mint the link for. "box" (default, preserves the
+     * existing behavior) redirects into box-admin; "super" redirects
+     * into the super-admin-hub and is rejected with 403 unless the
+     * caller's resolved admin roles include super_admin.
+     */
+  target?: CreateAdminDashLinkRequestTarget;
+}
+
 export interface RmOkResult {
   ok: boolean;
 }

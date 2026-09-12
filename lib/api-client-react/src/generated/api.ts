@@ -37,6 +37,7 @@ import type {
   ContractAcceptanceNotification,
   ContractAcceptanceResponse,
   ContractDocument,
+  CreateAdminDashLinkRequest,
   CreateBookingRequest,
   CreateMovementRequest,
   CreatePrRequest,
@@ -1867,20 +1868,22 @@ export const getCreateAdminDashLinkUrl = () => {
  * Auth account (via `boxes.owner_user_id`, falling back to an email
  * match against `profiles` that also carries a `box_admin` /
  * `super_admin` role) and returns a single-use Supabase magic link that
- * logs that account into the dashboard. The link is short-lived and
- * must be opened immediately. Returns 409 when no linked Supabase admin
- * account can be resolved — the caller should then load the
- * dashboard's normal email/password login.
- * @summary Mint a one-time auto-login link for the box dashboard
+ * logs that account into the requested panel (`target`, default
+ * "box"). The link is short-lived and must be opened immediately.
+ * Returns 409 when no linked Supabase admin account can be resolved —
+ * the caller should then load that panel's normal email/password
+ * login. Returns 403 when `target: "super"` is requested by an account
+ * without the super_admin role.
+ * @summary Mint a one-time auto-login link for the box or super-admin dashboard
  */
-export const createAdminDashLink = async ( options?: RequestInit): Promise<AdminDashLinkResult> => {
+export const createAdminDashLink = async (createAdminDashLinkRequest?: CreateAdminDashLinkRequest, options?: RequestInit): Promise<AdminDashLinkResult> => {
 
   return customFetch<AdminDashLinkResult>(getCreateAdminDashLinkUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createAdminDashLinkRequest)
   }
 );}
 
@@ -1889,8 +1892,8 @@ export const createAdminDashLink = async ( options?: RequestInit): Promise<Admin
 
 
 export const getCreateAdminDashLinkMutationOptions = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,{data?: BodyType<CreateAdminDashLinkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,{data?: BodyType<CreateAdminDashLinkRequest>}, TContext> => {
 
 const mutationKey = ['createAdminDashLink'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1902,10 +1905,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminDashLink>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminDashLink>>, {data?: BodyType<CreateAdminDashLinkRequest>}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  createAdminDashLink(requestOptions)
+          return  createAdminDashLink(data,requestOptions)
         }
 
 
@@ -1916,18 +1919,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateAdminDashLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminDashLink>>>
-
+    export type CreateAdminDashLinkMutationBody = BodyType<CreateAdminDashLinkRequest> | undefined
     export type CreateAdminDashLinkMutationError = ErrorType<ErrorEnvelope>
 
     /**
- * @summary Mint a one-time auto-login link for the box dashboard
+ * @summary Mint a one-time auto-login link for the box or super-admin dashboard
  */
 export const useCreateAdminDashLink = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminDashLink>>, TError,{data?: BodyType<CreateAdminDashLinkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createAdminDashLink>>,
         TError,
-        void,
+        {data?: BodyType<CreateAdminDashLinkRequest>},
         TContext
       > => {
       return useMutation(getCreateAdminDashLinkMutationOptions(options));

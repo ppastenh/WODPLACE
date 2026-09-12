@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useCreateAdminDashLink } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
+import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
 import { getAdminToken } from '@/lib/adminSession';
-import { resolveDashboardUrl } from '@/lib/dashboardUrl';
+import { resolveDashboardUrl, resolveSuperAdminUrl } from '@/lib/dashboardUrl';
 
 /**
  * Post-PIN admin screen. Shows the full box-admin dashboard inside a WebView.
@@ -81,12 +82,19 @@ function safeUrl(raw: string | undefined | null): string {
 
 export default function AdminDashboardScreen() {
   const colors = useDarkColors();
+  const { adminStatus, setAdminViewMode } = useAuth();
+  // 'box' (default) preserves every existing box_admin behavior unchanged;
+  // 'super' comes from admin-login.tsx's target chooser/auto-pick.
+  const { target: targetParam } = useLocalSearchParams<{ target?: string }>();
+  const target: 'box' | 'super' = targetParam === 'super' ? 'super' : 'box';
+  const isSuperAdmin = !!adminStatus?.roles.includes('super_admin');
+
   const [token, setToken] = useState<string | null>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [alertCount, setAlertCount] = useState(0);
   const startedRef = useRef(false);
   const webViewRef = useRef<WebView>(null);
-  const dashboardOrigin = resolveDashboardUrl();
+  const dashboardOrigin = target === 'super' ? resolveSuperAdminUrl() : resolveDashboardUrl();
   const handleWebViewMessage = useRef(createWebViewMessageHandler(setAlertCount)).current;
 
   const dashLink = useCreateAdminDashLink({
@@ -106,7 +114,7 @@ export default function AdminDashboardScreen() {
     if (!token || !dashboardOrigin || startedRef.current) return;
     startedRef.current = true;
     dashLink
-      .mutateAsync()
+      .mutateAsync({ data: { target } })
       .then((res) => {
         let redirectTo: string | null = null;
         try {
@@ -117,6 +125,8 @@ export default function AdminDashboardScreen() {
         console.log(
           '[dash-webview] got dash-link →',
           safeUrl(res.url),
+          '| target =',
+          target,
           '| redirect_to param =',
           redirectTo ?? '<none>',
         );
@@ -124,7 +134,7 @@ export default function AdminDashboardScreen() {
       })
       .catch((err) => {
         // Falling back to the plain dashboard URL means the admin will see
-        // box-admin's normal email/password login instead of landing in
+        // that panel's normal email/password login instead of landing in
         // directly. Log why so this is diagnosable from Metro/Expo logs
         // instead of silently guessing next time it happens.
         console.warn(
@@ -134,7 +144,12 @@ export default function AdminDashboardScreen() {
         );
         setUri(`${dashboardOrigin}/`);
       });
-  }, [token, dashboardOrigin, dashLink]);
+  }, [token, dashboardOrigin, target, dashLink]);
+
+  const viewAsAthlete = () => {
+    setAdminViewMode('athlete');
+    router.replace('/home');
+  };
 
   if (!token) return null;
 
@@ -145,6 +160,22 @@ export default function AdminDashboardScreen() {
         dark
         adminAlertCount={alertCount}
         onPressAdminAlerts={() => webViewRef.current?.injectJavaScript(OPEN_ADMIN_NOTIFICATIONS_SCRIPT)}
+        rightExtra={
+          // Only super_admin gets a way back to the athlete view — a
+          // box_admin's entry point never changes (see AuthContext's
+          // getPostAuthRoute), so there's nothing to switch back from.
+          isSuperAdmin ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver como alumno"
+              onPress={viewAsAthlete}
+              hitSlop={12}
+              style={({ pressed }) => [styles.viewToggle, pressed && styles.viewTogglePressed]}
+            >
+              <Feather name="user" size={20} color={colors.foreground} />
+            </Pressable>
+          ) : null
+        }
       />
       {!dashboardOrigin ? (
         <View style={styles.center}>
@@ -153,7 +184,8 @@ export default function AdminDashboardScreen() {
             Panel no configurado
           </Text>
           <Text style={[styles.msgSub, { color: colors.mutedForeground }]}>
-            Definí EXPO_PUBLIC_DASHBOARD_URL en el .env.local de la app.
+            Definí {target === 'super' ? 'EXPO_PUBLIC_SUPERADMIN_URL' : 'EXPO_PUBLIC_DASHBOARD_URL'} en
+            el .env.local de la app.
           </Text>
         </View>
       ) : !uri ? (
@@ -235,4 +267,6 @@ const styles = StyleSheet.create({
   loadingOverlay: { ...StyleSheet.absoluteFill },
   msg: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   msgSub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  viewToggle: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  viewTogglePressed: { opacity: 0.6 },
 });

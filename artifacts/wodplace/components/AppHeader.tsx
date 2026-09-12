@@ -22,6 +22,9 @@ interface AppHeaderProps {
    */
   adminAlertCount?: number;
   onPressAdminAlerts?: () => void;
+  /** Extra content rendered in the right slot, before the bell/alerts icon
+   *  (e.g. the admin-dashboard "Ver como alumno" view-switch button). */
+  rightExtra?: React.ReactNode;
 }
 
 export function AppHeader({
@@ -32,6 +35,7 @@ export function AppHeader({
   showBell,
   adminAlertCount,
   onPressAdminAlerts,
+  rightExtra,
 }: AppHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -79,8 +83,9 @@ export function AppHeader({
       {/* CENTER: brand title */}
       <Text style={[styles.title, { color: iconColor }]}>WODPLACE</Text>
 
-      {/* RIGHT: notification bell */}
+      {/* RIGHT: optional extra action + notification bell */}
       <View style={[styles.side, styles.sideEnd]}>
+        {rightExtra}
         {onPressAdminAlerts ? (
           <Pressable
             accessibilityRole="button"
@@ -127,7 +132,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   sideEnd: {
-    alignItems: 'flex-end',
+    width: undefined,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
   },
   title: {
     fontSize: 20,

@@ -1,5 +1,6 @@
 import {
   AckContractAcceptancesResponse,
+  CreateAdminDashLinkBody,
   CreateAdminDashLinkResponse,
   CreateAdminSessionBody,
   CreateAdminSessionResponse,
@@ -23,15 +24,16 @@ import {
   db,
   wodplaceUsersTable,
 } from "@workspace/db";
-import { desc, eq, isNull, sql } from "drizzle-orm";
+import { desc, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
+import { findDistinctAdminEmails, resolveAdminRoles } from "../lib/adminRole";
 import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
 import { signAdminToken } from "../lib/adminToken";
 import { resolveBoxId } from "../lib/boxContext";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { hashPin, verifyPin } from "../lib/pinHash";
-import { getDashboardUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
+import { getDashboardUrl, getSuperAdminUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
 
 const router: IRouter = Router();
 
@@ -456,18 +458,10 @@ async function resolveDashLoginEmail(
     return null;
   }
 
-  const matches = await db.execute<{ email: string }>(sql`
-    SELECT DISTINCT p.email
-    FROM profiles p
-    JOIN user_roles ur ON ur.user_id = p.id
-    WHERE lower(p.email) = lower(${appUser.email})
-      AND p.email IS NOT NULL
-      AND ur.role IN ('box_admin', 'super_admin')
-    LIMIT 2
-  `);
-  if (matches.rows.length !== 1) {
+  const matches = await findDistinctAdminEmails(appUser.email);
+  if (matches.length !== 1) {
     log.warn(
-      { pinUserId, email: appUser.email, matchCount: matches.rows.length },
+      { pinUserId, email: appUser.email, matchCount: matches.length },
       "[dash-link] wodplace_users email did not resolve to exactly one box_admin/super_admin profile",
     );
     return null;
@@ -476,22 +470,31 @@ async function resolveDashLoginEmail(
     { pinUserId, via: "wodplace_users-email-match" },
     "[dash-link] resolved dashboard login email via email match",
   );
-  return matches.rows[0].email;
+  return matches[0];
 }
 
 /**
- * POST /admin/dash-link
+ * POST /admin/dash-link  { target?: 'box' | 'super' }
  *
- * Mints a single-use Supabase magic link that logs the caller's box-admin
- * account straight into the dashboard, so the mobile app's WebView never
+ * Mints a single-use Supabase magic link that logs the caller's admin
+ * account straight into the requested panel (box-admin by default, or the
+ * super-admin-hub when target: "super"), so the mobile app's WebView never
  * shows a second login. Requires a valid admin session token. Returns 409
- * when no linked Supabase admin account can be resolved — the app then loads
- * the dashboard's normal login instead.
+ * when no linked Supabase admin account can be resolved, or 403 when
+ * target: "super" is requested by an account without the super_admin
+ * role — the app then falls back accordingly.
  */
 router.post(
   "/admin/dash-link",
   requireAdminSession,
   async (req: Request, res: Response) => {
+    const parsed = CreateAdminDashLinkBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+    const { target } = parsed.data;
+
     try {
       const pinUserId = getAdminSession(req)?.userId;
       if (!pinUserId) {
@@ -511,7 +514,19 @@ router.post(
         return;
       }
 
-      const redirectTo = `${getDashboardUrl()}/`;
+      if (target === "super") {
+        const roles = await resolveAdminRoles(email);
+        if (!roles.includes("super_admin")) {
+          req.log.warn(
+            { pinUserId, email },
+            "[dash-link] 403: super-admin-hub link requested by a non-super_admin account",
+          );
+          res.status(403).json({ error: "This account does not have the super_admin role" });
+          return;
+        }
+      }
+
+      const redirectTo = `${target === "super" ? getSuperAdminUrl() : getDashboardUrl()}/`;
       const { data, error } = await getSupabaseAdmin().auth.admin.generateLink({
         type: "magiclink",
         email,
@@ -540,6 +555,7 @@ router.post(
       req.log.info(
         {
           pinUserId,
+          target,
           requestedRedirectTo: redirectTo,
           linkShape,
           propertyKeys: data?.properties

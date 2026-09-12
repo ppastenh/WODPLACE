@@ -14,3 +14,10 @@ export function resolveDashboardUrl(): string | null {
   if (!raw) return null;
   return raw.replace(/\/+$/, "");
 }
+
+/** Same idea as resolveDashboardUrl, for the super-admin-hub panel. */
+export function resolveSuperAdminUrl(): string | null {
+  const raw = process.env.EXPO_PUBLIC_SUPERADMIN_URL;
+  if (!raw) return null;
+  return raw.replace(/\/+$/, "");
+}

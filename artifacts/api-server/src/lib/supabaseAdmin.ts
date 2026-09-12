@@ -72,3 +72,14 @@ export function getDashboardUrl(): string {
   }
   return raw.replace(/\/+$/, "");
 }
+
+/** Origin the super-admin-hub is served from — same auto-login mechanism as the box dashboard. */
+export function getSuperAdminUrl(): string {
+  const raw = process.env["SUPERADMIN_URL"];
+  if (!raw) {
+    throw new Error(
+      "Missing SUPERADMIN_URL env var. Set it to the super-admin-hub origin (e.g. http://192.168.1.87:5003).",
+    );
+  }
+  return raw.replace(/\/+$/, "");
+}
