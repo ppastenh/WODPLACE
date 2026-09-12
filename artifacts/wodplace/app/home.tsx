@@ -102,7 +102,12 @@ export default function HomeScreen() {
   const pathname = usePathname();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
-  const navItems: DrawerNavItem[] = NAV_ITEMS.map((item) => ({
+  // Contratos Activos is athlete-only — an admin role has the platform
+  // agreement instead (see getAdminNavItem below), not this document.
+  const isAdmin = !!adminStatus?.roles.length;
+  const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
+    (item) => item.key !== 'contracts' || !isAdmin,
+  ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));

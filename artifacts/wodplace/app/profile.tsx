@@ -70,8 +70,13 @@ export default function ProfileScreen() {
   const bookedSessions = getUpcomingBooked(10);
 
   const adminNavItem = getAdminNavItem(adminStatus);
+  // Contratos Activos is athlete-only — an admin role has the platform
+  // agreement instead (adminNavItem above), not this document.
+  const isAdmin = !!adminStatus?.roles.length;
   const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
-    (item) => item.key !== 'more' || adminNavItem?.key === 'admin',
+    (item) =>
+      (item.key !== 'more' || adminNavItem?.key === 'admin') &&
+      (item.key !== 'contracts' || !isAdmin),
   ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
