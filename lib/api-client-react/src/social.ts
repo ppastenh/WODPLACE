@@ -4,7 +4,7 @@
  * token are applied automatically.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { customFetch, getApiBaseUrl } from "./custom-fetch";
+import { customFetch } from "./custom-fetch";
 import { putImageToPresignedUrl, type NativeUploader } from "./imageUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -313,10 +313,10 @@ export function useSocialMutations(userId: string, authorName: string) {
        */
       fileSize?: number,
     ): Promise<string> => {
-      // Step 1: request a presigned GCS upload URL from our API
-      const { uploadURL, objectPath } = await customFetch<{
+      // Step 1: request a presigned Supabase Storage upload URL from our API
+      const { uploadURL, publicUrl } = await customFetch<{
         uploadURL: string;
-        objectPath: string;
+        publicUrl: string;
         metadata: object;
       }>("/api/storage/social-uploads/request-url", {
         method: "POST",
@@ -330,11 +330,10 @@ export function useSocialMutations(userId: string, authorName: string) {
         }),
       });
 
-      // Step 2: PUT the file bytes to the presigned GCS URL.
+      // Step 2: PUT the file bytes to the presigned upload URL.
       await putImageToPresignedUrl(uploadURL, localUri, mimeType, nativeUploader);
 
-      const base = getApiBaseUrl();
-      return `${base}/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+      return publicUrl;
     },
     [userId],
   );

@@ -1,9 +1,5 @@
-import {
-  ObjectNotFoundError,
-  ObjectStorageService,
-} from './objectStorage';
-
-import type { File } from '@google-cloud/storage';
+import { getPublicUrl, keyFromPublicUrl, ObjectNotFoundError, STORAGE_BUCKET } from './objectStorage';
+import { getSupabaseAdmin } from './supabaseAdmin';
 
 /**
  * Validation of social feed images against the ACTUAL uploaded bytes.
@@ -18,25 +14,12 @@ import type { File } from '@google-cloud/storage';
 export const MAX_SOCIAL_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB
 
 /**
- * Extract the canonical `/objects/<entityId>` path from a social image URI.
- * Accepts full URLs (as produced by the app: `<base>/api/storage/objects/...`)
- * or already-normalized `/objects/...` paths. Returns null when the URI does
- * not point at our own object storage.
+ * Extract the storage key from a social image URI. Accepts the public
+ * Supabase Storage URLs the app is given at upload time; returns null when
+ * the URI doesn't point at our own bucket.
  */
 export function toObjectPath(uri: string): string | null {
-  let path: string;
-  try {
-    path = uri.startsWith('http://') || uri.startsWith('https://')
-      ? new URL(uri).pathname
-      : uri;
-  } catch {
-    return null;
-  }
-  const viaApi = path.match(/\/api\/storage\/objects\/(.+)$/);
-  if (viaApi) return `/objects/${viaApi[1]}`;
-  const direct = path.match(/^\/objects\/(.+)$/);
-  if (direct) return `/objects/${direct[1]}`;
-  return null;
+  return keyFromPublicUrl(uri);
 }
 
 /** Sniff common image formats from the first bytes of the file. */
@@ -60,17 +43,30 @@ function looksLikeImage(buf: Buffer): boolean {
   return false;
 }
 
-function readFirstBytes(file: File, n: number): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    const stream = file.createReadStream({ start: 0, end: n - 1 });
-    stream.on('data', (c: Buffer) => chunks.push(c));
-    stream.on('end', () => resolve(Buffer.concat(chunks)));
-    stream.on('error', reject);
-  });
+/** Real size of the uploaded object, via the bucket listing (not the client-declared size). */
+async function readObjectSize(key: string): Promise<number> {
+  const lastSlash = key.lastIndexOf('/');
+  const dir = lastSlash === -1 ? '' : key.slice(0, lastSlash);
+  const filename = lastSlash === -1 ? key : key.slice(lastSlash + 1);
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(STORAGE_BUCKET)
+    .list(dir, { limit: 1, search: filename });
+  if (error || !data || data.length === 0) {
+    throw new ObjectNotFoundError();
+  }
+  return Number(data[0]?.metadata?.['size'] ?? 0);
 }
 
-const objectStorageService = new ObjectStorageService();
+/** First `n` bytes of the object, fetched via HTTP Range against its public URL. */
+async function readFirstBytes(key: string, n: number): Promise<Buffer> {
+  const response = await fetch(getPublicUrl(key), {
+    headers: { Range: `bytes=0-${n - 1}` },
+  });
+  if (!response.ok && response.status !== 206) {
+    throw new ObjectNotFoundError();
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
 
 /**
  * Validate every image URI of a post-to-be against the stored objects.
@@ -80,28 +76,26 @@ export async function validateSocialImageUris(
   imageUris: string[],
 ): Promise<string | null> {
   for (const uri of imageUris) {
-    const objectPath = toObjectPath(uri);
-    if (!objectPath) {
+    const key = toObjectPath(uri);
+    if (!key) {
       return 'Una de las fotos no es válida.';
     }
-    let file: File;
+    let size: number;
     try {
-      file = await objectStorageService.getObjectEntityFile(objectPath);
+      size = await readObjectSize(key);
     } catch (err) {
       if (err instanceof ObjectNotFoundError) {
         return 'Una de las fotos no se subió correctamente. Intenta de nuevo.';
       }
       throw err;
     }
-    const [metadata] = await file.getMetadata();
-    const size = Number(metadata.size ?? 0);
     if (!Number.isFinite(size) || size <= 0) {
       return 'Una de las fotos quedó vacía. Intenta subirla de nuevo.';
     }
     if (size > MAX_SOCIAL_IMAGE_BYTES) {
       return 'Una de las fotos supera el tamaño máximo de 15 MB.';
     }
-    const head = await readFirstBytes(file, 16);
+    const head = await readFirstBytes(key, 16);
     if (!looksLikeImage(head)) {
       return 'Solo se pueden publicar imágenes.';
     }

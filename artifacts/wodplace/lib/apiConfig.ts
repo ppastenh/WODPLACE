@@ -28,17 +28,12 @@ export function configureApiClient(): void {
 }
 
 /**
- * Builds a fetchable URL for a contract PDF stored via the object storage
- * routes. `objectPath` comes back from the API in the form
- * "/objects/uploads/<uuid>"; the public serving route is mounted at
- * "/storage/objects/*".
+ * Resolves a contract PDF's fetchable URL. `objectPath` comes back from the
+ * API as a full Supabase Storage public URL — already absolute and directly
+ * usable by openBrowserAsync, so this is just a pass-through kept as a named
+ * helper for call sites (and as the one place to touch if that ever
+ * changes again).
  */
 export function getContractFileUrl(objectPath: string): string {
-  const origin = resolveApiOrigin();
-  const base = origin ? `${origin}/api` : '/api';
-  const entityPath = objectPath.replace(/^\/objects\//, '');
-  // This one intentionally keeps the /api prefix: openBrowserAsync needs a
-  // full absolute URL, and this helper builds it directly rather than going
-  // through the generated client's baseUrl-prefixed path helpers.
-  return `${base}/storage/objects/${entityPath}`;
+  return objectPath;
 }

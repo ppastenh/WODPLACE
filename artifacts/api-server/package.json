@@ -12,7 +12,6 @@
     "seed:contracts": "tsx ./scripts/seed-contracts.ts"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.21.0",
     "@replit/connectors-sdk": "^0.4.1",
     "@supabase/supabase-js": "^2.112.4",
     "@workspace/api-zod": "workspace:*",

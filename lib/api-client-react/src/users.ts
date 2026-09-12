@@ -3,7 +3,7 @@
  * infrastructure as social.ts.
  */
 import { useEffect, useState } from "react";
-import { customFetch, getApiBaseUrl } from "./custom-fetch";
+import { customFetch } from "./custom-fetch";
 import { putImageToPresignedUrl, type NativeUploader } from "./imageUpload";
 
 export type PublicProfile = {
@@ -57,9 +57,9 @@ export async function uploadAvatarImage(
   nativeUploader?: NativeUploader,
   fileSize?: number,
 ): Promise<string> {
-  const { uploadURL, objectPath } = await customFetch<{
+  const { uploadURL, publicUrl } = await customFetch<{
     uploadURL: string;
-    objectPath: string;
+    publicUrl: string;
     metadata: object;
   }>("/api/storage/avatar-uploads/request-url", {
     method: "POST",
@@ -73,8 +73,7 @@ export async function uploadAvatarImage(
 
   await putImageToPresignedUrl(uploadURL, localUri, mimeType, nativeUploader);
 
-  const base = getApiBaseUrl();
-  const avatarUrl = `${base}/api/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+  const avatarUrl = publicUrl;
 
   await customFetch(`/api/users/${userId}/avatar`, {
     method: "PATCH",

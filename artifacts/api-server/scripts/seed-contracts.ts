@@ -8,7 +8,7 @@ import path from "path";
 import { contractDocumentsTable, db } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-import { ObjectStorageService } from "../src/lib/objectStorage";
+import { createUploadUrl, getPublicUrl } from "../src/lib/objectStorage";
 import { resolveBoxId } from "../src/lib/boxContext";
 import { DEFAULT_CONTRACT_DOCUMENTS } from "../src/lib/contractDocuments";
 
@@ -21,7 +21,6 @@ const SEED_FILES: Record<string, string> = {
 };
 
 async function main() {
-  const objectStorageService = new ObjectStorageService();
   const boxId = await resolveBoxId();
 
   for (const doc of DEFAULT_CONTRACT_DOCUMENTS) {
@@ -31,8 +30,7 @@ async function main() {
     const filePath = path.join(repoRoot, relativePath);
     const bytes = await readFile(filePath);
 
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    const { uploadURL, key } = await createUploadUrl("contracts", "application/pdf");
 
     const putResponse = await fetch(uploadURL, {
       method: "PUT",
@@ -44,6 +42,8 @@ async function main() {
         `Failed to upload ${doc.slug}: ${putResponse.status} ${putResponse.statusText}`,
       );
     }
+
+    const objectPath = getPublicUrl(key);
 
     await db
       .insert(contractDocumentsTable)
