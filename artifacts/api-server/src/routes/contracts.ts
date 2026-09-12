@@ -82,6 +82,7 @@ router.post("/contracts/:slug/read", async (req: Request, res: Response) => {
   try {
     const slug = String(req.params.slug);
     const { userId } = parsed.data;
+    const boxId = await resolveBoxId();
 
     const [document] = await db
       .select()
@@ -95,7 +96,7 @@ router.post("/contracts/:slug/read", async (req: Request, res: Response) => {
     const readAt = new Date();
     await db
       .insert(contractReadProgressTable)
-      .values({ userId, documentSlug: slug, readAt })
+      .values({ userId, documentSlug: slug, readAt, boxId })
       .onConflictDoUpdate({
         target: [
           contractReadProgressTable.userId,
@@ -232,6 +233,7 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         guardianRelationship: guardianRelationship ?? null,
         minorDataConsentAt,
         seenByOwnerAt: null,
+        boxId,
       })
       .onConflictDoUpdate({
         target: contractAcceptancesTable.userId,

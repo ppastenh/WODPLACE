@@ -67,6 +67,10 @@ export const contractReadProgressTable = pgTable(
       .notNull()
       .references(() => contractDocumentsTable.slug, { onDelete: "cascade" }),
     readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+    // NOT NULL in the real Supabase table (see contract_documents.boxId
+    // above for why) — resolved server-side via resolveBoxId(), never
+    // supplied by the client.
+    boxId: text("box_id").notNull(),
   },
   (table) => [
     uniqueIndex("contract_read_progress_user_doc_idx").on(
@@ -101,6 +105,10 @@ export const contractAcceptancesTable = pgTable("contract_acceptances", {
   // consent to process the minor's personal data for this app, distinct
   // from accepting the box's contract. Its own timestamp on purpose.
   minorDataConsentAt: timestamp("minor_data_consent_at", { withTimezone: true }),
+  // NOT NULL in the real Supabase table (see contract_documents.boxId
+  // above for why) — resolved server-side via resolveBoxId(), never
+  // supplied by the client.
+  boxId: text("box_id").notNull(),
 });
 
 export type ContractAcceptanceRow = typeof contractAcceptancesTable.$inferSelect;
