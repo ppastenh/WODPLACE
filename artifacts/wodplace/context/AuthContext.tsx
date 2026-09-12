@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getContractAcceptance,
@@ -42,6 +42,17 @@ export interface WodplaceUser {
   phone: string | null;
 }
 
+/**
+ * Which surface a super_admin account is currently viewing: 'admin' lands
+ * straight in the admin panel flow (skipping the athlete menu screens on
+ * login/boot), 'athlete' shows the normal member app. Only meaningful for
+ * super_admin — box_admin/athlete accounts always behave as 'athlete'
+ * regardless of this value. Not persisted: recomputed to its default
+ * ('admin' for super_admin, 'athlete' otherwise) every login/boot, so a
+ * manual switch to see the athlete view doesn't stick across app restarts.
+ */
+export type AdminViewMode = 'admin' | 'athlete';
+
 interface AuthContextValue {
   user: WodplaceUser | null;
   isLoading: boolean;
@@ -55,6 +66,18 @@ interface AuthContextValue {
    * Refreshed alongside refreshActivationStatus.
    */
   adminStatus: PlatformAgreementStatus | null;
+  /** See AdminViewMode. */
+  adminViewMode: AdminViewMode;
+  setAdminViewMode: (mode: AdminViewMode) => void;
+  /**
+   * Where to navigate right after auth resolves (boot, login, register,
+   * account recovery): straight into the admin panel for a super_admin
+   * currently in 'admin' view mode, else the caller's normal `fallback`
+   * route. Reads the latest resolved status via a ref, not React state, so
+   * it's correct immediately after `await`ing login()/register()/etc. —
+   * no stale-closure race with the state update.
+   */
+  getPostAuthRoute: (fallback: string) => string;
   checkEmailExists: (email: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -130,6 +153,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<WodplaceUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [adminStatus, setAdminStatus] = useState<PlatformAgreementStatus | null>(null);
+  const [adminViewMode, setAdminViewModeState] = useState<AdminViewMode>('athlete');
+
+  // Mirrors of the two pieces above, updated synchronously (state updates
+  // aren't visible until the next render) — getPostAuthRoute reads these
+  // right after an `await`ed login()/register()/etc. resolves, when no
+  // re-render has necessarily happened yet.
+  const adminStatusRef = useRef<PlatformAgreementStatus | null>(null);
+  const adminViewModeRef = useRef<AdminViewMode>('athlete');
+  // Only auto-pick the view mode's default once per session (first time
+  // adminStatus resolves after login/boot) — later refreshes (e.g. from
+  // platform-agreement.tsx after accepting) must not stomp on a manual
+  // toggle via setAdminViewMode.
+  const viewModeDecidedRef = useRef(false);
+
+  const setAdminViewMode = (mode: AdminViewMode) => {
+    adminViewModeRef.current = mode;
+    setAdminViewModeState(mode);
+  };
+
+  const getPostAuthRoute = (fallback: string): string => {
+    const roles = adminStatusRef.current?.roles ?? [];
+    if (roles.includes('super_admin') && adminViewModeRef.current === 'admin') {
+      return '/admin-login';
+    }
+    return fallback;
+  };
 
   useEffect(() => {
     (async () => {
@@ -155,7 +204,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.warn('Failed to sync rank/phrase to backend', err);
             },
           );
-          refreshActivationStatus(restored);
+          // Awaited (unlike the two syncs above): the app's very first
+          // navigation decision (see app/index.tsx) depends on this having
+          // resolved — a super_admin landing straight in the admin panel
+          // only works if adminStatus/adminViewMode are settled first.
+          await refreshActivationStatus(restored);
         }
       } finally {
         setIsLoading(false);
@@ -189,6 +242,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       platform = await getPlatformAgreementStatus(target.id);
       setAdminStatus(platform);
+      adminStatusRef.current = platform;
+      if (!viewModeDecidedRef.current) {
+        viewModeDecidedRef.current = true;
+        setAdminViewMode(platform.roles.includes('super_admin') ? 'admin' : 'athlete');
+      }
     } catch (err) {
       console.warn('Failed to refresh admin status', err);
     }
@@ -248,7 +306,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const { password: _pw, ...profile } = existing;
     await persist(profile);
-    refreshActivationStatus(profile);
+    // Awaited so getPostAuthRoute() is correct the instant login() resolves
+    // (the caller navigates right after awaiting this).
+    await refreshActivationStatus(profile);
   };
 
   const register = async (
@@ -280,6 +340,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     db[key] = { ...profile, password };
     await saveUsersDb(db);
     await persist(profile);
+    // Was missing — adminStatus stayed at its initial null for a freshly
+    // registered account until the next login/app restart, hiding e.g. an
+    // admin test account's "Acuerdo de Plataforma" item indefinitely even
+    // though the role was resolving correctly server-side all along.
+    await refreshActivationStatus(profile);
     return profile;
   };
 
@@ -312,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     db[key] = { ...profile, password: newPassword };
     await saveUsersDb(db);
     await persist(profile);
-    refreshActivationStatus(profile);
+    await refreshActivationStatus(profile);
   };
 
   const redeemBoxCode = async (
@@ -352,12 +417,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phone: null,
     };
     await persist(next);
-    refreshActivationStatus(next);
+    await refreshActivationStatus(next);
   };
 
   const logout = async () => {
     await persist(null);
     setAdminStatus(null);
+    adminStatusRef.current = null;
+    viewModeDecidedRef.current = false;
+    setAdminViewMode('athlete');
   };
 
   const updateProfile = async (partial: Partial<WodplaceUser>) => {
@@ -371,6 +439,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isAuthenticated: !!user,
       adminStatus,
+      adminViewMode,
+      setAdminViewMode,
+      getPostAuthRoute,
       checkEmailExists,
       login,
       register,
@@ -382,7 +453,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshActivationStatus: () => refreshActivationStatus(),
       recoverAccount,
     }),
-    [user, isLoading, adminStatus],
+    [user, isLoading, adminStatus, adminViewMode],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

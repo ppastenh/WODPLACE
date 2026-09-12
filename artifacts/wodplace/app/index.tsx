@@ -7,7 +7,7 @@ import { useColors } from '@/hooks/useColors';
 
 export default function SplashRoute() {
   const colors = useColors();
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, getPostAuthRoute } = useAuth();
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.85)).current;
   const mountedAt = useRef(Date.now());
@@ -24,10 +24,10 @@ export default function SplashRoute() {
     const elapsed = Date.now() - mountedAt.current;
     const remaining = Math.max(0, 1100 - elapsed);
     const timer = setTimeout(() => {
-      router.replace(isAuthenticated ? '/home' : '/login');
+      router.replace((isAuthenticated ? getPostAuthRoute('/home') : '/login') as never);
     }, remaining);
     return () => clearTimeout(timer);
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading, isAuthenticated, getPostAuthRoute]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.authBackground }]}>

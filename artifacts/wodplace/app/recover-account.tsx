@@ -23,7 +23,7 @@ type Step = 'email' | 'code' | 'password';
 export default function RecoverAccountScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { recoverAccount } = useAuth();
+  const { recoverAccount, getPostAuthRoute } = useAuth();
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
 
   const [step, setStep] = useState<Step>('email');
@@ -71,7 +71,7 @@ export default function RecoverAccountScreen() {
     setLoading(true);
     try {
       await recoverAccount(email.trim(), code, password);
-      router.replace('/profile');
+      router.replace(getPostAuthRoute('/profile') as never);
     } catch (e) {
       // A wrong/expired code / lockout surfaces here (verify runs inside
       // recoverAccount) — show the server's message, not the HTTP prefix.

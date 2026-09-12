@@ -16,7 +16,7 @@ import { formatLongDate } from '@/lib/dateUtils';
 export default function RegisterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { register, redeemBoxCode } = useAuth();
+  const { register, redeemBoxCode, getPostAuthRoute } = useAuth();
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const email = emailParam ?? '';
   const [name, setName] = useState('');
@@ -272,12 +272,14 @@ export default function RegisterScreen() {
 
       {/* Shown right after account creation — dismissible without entering
        *  a code (tapping outside closes it), same as everywhere else the
-       *  box code is optional. Either way, closing it lands on /profile. */}
+       *  box code is optional. Either way, closing it lands on /profile
+       *  (or straight into the admin panel for a super_admin — see
+       *  getPostAuthRoute). */}
       <JoinBoxModal
         visible={!!registeredAccount}
         onClose={() => {
           setRegisteredAccount(null);
-          router.replace('/profile');
+          router.replace(getPostAuthRoute('/profile') as never);
         }}
         onRedeem={(code) => redeemBoxCode(code, registeredAccount!)}
       />

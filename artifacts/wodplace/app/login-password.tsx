@@ -12,7 +12,7 @@ import { useColors } from '@/hooks/useColors';
 export default function LoginPasswordScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, getPostAuthRoute } = useAuth();
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const email = emailParam ?? '';
   const [password, setPassword] = useState('');
@@ -37,7 +37,7 @@ export default function LoginPasswordScreen() {
     setLoading(true);
     try {
       await login(email, password);
-      router.replace('/profile');
+      router.replace(getPostAuthRoute('/profile') as never);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
     } finally {
