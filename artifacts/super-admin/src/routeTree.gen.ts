@@ -12,6 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SuperAdminRouteImport } from './routes/super-admin'
+import { Route as SuperAdminIndexRouteImport } from './routes/super-admin/index'
+import { Route as SuperAdminAdminsRouteImport } from './routes/super-admin/admins'
+import { Route as SuperAdminAgreementsRouteImport } from './routes/super-admin/agreements'
+import { Route as SuperAdminAuditRouteImport } from './routes/super-admin/audit'
+import { Route as SuperAdminBoxesRouteImport } from './routes/super-admin/boxes'
+import { Route as SuperAdminSupportRouteImport } from './routes/super-admin/support'
+import { Route as SuperAdminBoxesBoxIdRouteImport } from './routes/super-admin/boxes.$boxId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +35,120 @@ const SuperAdminRoute = SuperAdminRouteImport.update({
   path: '/super-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperAdminIndexRoute = SuperAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminAdminsRoute = SuperAdminAdminsRouteImport.update({
+  id: '/admins',
+  path: '/admins',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminAgreementsRoute = SuperAdminAgreementsRouteImport.update({
+  id: '/agreements',
+  path: '/agreements',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminAuditRoute = SuperAdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminBoxesRoute = SuperAdminBoxesRouteImport.update({
+  id: '/boxes',
+  path: '/boxes',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminSupportRoute = SuperAdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminBoxesBoxIdRoute = SuperAdminBoxesBoxIdRouteImport.update({
+  id: '/$boxId',
+  path: '/$boxId',
+  getParentRoute: () => SuperAdminBoxesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/super-admin': typeof SuperAdminRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
+  '/super-admin/admins': typeof SuperAdminAdminsRoute
+  '/super-admin/agreements': typeof SuperAdminAgreementsRoute
+  '/super-admin/audit': typeof SuperAdminAuditRoute
+  '/super-admin/boxes': typeof SuperAdminBoxesRouteWithChildren
+  '/super-admin/support': typeof SuperAdminSupportRoute
+  '/super-admin/': typeof SuperAdminIndexRoute
+  '/super-admin/boxes/$boxId': typeof SuperAdminBoxesBoxIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/super-admin': typeof SuperAdminRoute
+  '/super-admin/admins': typeof SuperAdminAdminsRoute
+  '/super-admin/agreements': typeof SuperAdminAgreementsRoute
+  '/super-admin/audit': typeof SuperAdminAuditRoute
+  '/super-admin/boxes': typeof SuperAdminBoxesRouteWithChildren
+  '/super-admin/support': typeof SuperAdminSupportRoute
+  '/super-admin': typeof SuperAdminIndexRoute
+  '/super-admin/boxes/$boxId': typeof SuperAdminBoxesBoxIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/super-admin': typeof SuperAdminRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
+  '/super-admin/admins': typeof SuperAdminAdminsRoute
+  '/super-admin/agreements': typeof SuperAdminAgreementsRoute
+  '/super-admin/audit': typeof SuperAdminAuditRoute
+  '/super-admin/boxes': typeof SuperAdminBoxesRouteWithChildren
+  '/super-admin/support': typeof SuperAdminSupportRoute
+  '/super-admin/': typeof SuperAdminIndexRoute
+  '/super-admin/boxes/$boxId': typeof SuperAdminBoxesBoxIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/super-admin'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/super-admin'
+    | '/super-admin/admins'
+    | '/super-admin/agreements'
+    | '/super-admin/audit'
+    | '/super-admin/boxes'
+    | '/super-admin/support'
+    | '/super-admin/'
+    | '/super-admin/boxes/$boxId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/super-admin'
-  id: '__root__' | '/' | '/auth' | '/super-admin'
+  to:
+    | '/'
+    | '/auth'
+    | '/super-admin/admins'
+    | '/super-admin/agreements'
+    | '/super-admin/audit'
+    | '/super-admin/boxes'
+    | '/super-admin/support'
+    | '/super-admin'
+    | '/super-admin/boxes/$boxId'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/super-admin'
+    | '/super-admin/admins'
+    | '/super-admin/agreements'
+    | '/super-admin/audit'
+    | '/super-admin/boxes'
+    | '/super-admin/support'
+    | '/super-admin/'
+    | '/super-admin/boxes/$boxId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
-  SuperAdminRoute: typeof SuperAdminRoute
+  SuperAdminRoute: typeof SuperAdminRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -82,13 +174,96 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/super-admin/': {
+      id: '/super-admin/'
+      path: '/'
+      fullPath: '/super-admin/'
+      preLoaderRoute: typeof SuperAdminIndexRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/admins': {
+      id: '/super-admin/admins'
+      path: '/admins'
+      fullPath: '/super-admin/admins'
+      preLoaderRoute: typeof SuperAdminAdminsRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/agreements': {
+      id: '/super-admin/agreements'
+      path: '/agreements'
+      fullPath: '/super-admin/agreements'
+      preLoaderRoute: typeof SuperAdminAgreementsRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/audit': {
+      id: '/super-admin/audit'
+      path: '/audit'
+      fullPath: '/super-admin/audit'
+      preLoaderRoute: typeof SuperAdminAuditRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/boxes': {
+      id: '/super-admin/boxes'
+      path: '/boxes'
+      fullPath: '/super-admin/boxes'
+      preLoaderRoute: typeof SuperAdminBoxesRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/support': {
+      id: '/super-admin/support'
+      path: '/support'
+      fullPath: '/super-admin/support'
+      preLoaderRoute: typeof SuperAdminSupportRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/boxes/$boxId': {
+      id: '/super-admin/boxes/$boxId'
+      path: '/$boxId'
+      fullPath: '/super-admin/boxes/$boxId'
+      preLoaderRoute: typeof SuperAdminBoxesBoxIdRouteImport
+      parentRoute: typeof SuperAdminBoxesRoute
+    }
   }
 }
+
+interface SuperAdminBoxesRouteChildren {
+  SuperAdminBoxesBoxIdRoute: typeof SuperAdminBoxesBoxIdRoute
+}
+
+const SuperAdminBoxesRouteChildren: SuperAdminBoxesRouteChildren = {
+  SuperAdminBoxesBoxIdRoute: SuperAdminBoxesBoxIdRoute,
+}
+
+const SuperAdminBoxesRouteWithChildren = SuperAdminBoxesRoute._addFileChildren(
+  SuperAdminBoxesRouteChildren,
+)
+
+interface SuperAdminRouteChildren {
+  SuperAdminAdminsRoute: typeof SuperAdminAdminsRoute
+  SuperAdminAgreementsRoute: typeof SuperAdminAgreementsRoute
+  SuperAdminAuditRoute: typeof SuperAdminAuditRoute
+  SuperAdminBoxesRoute: typeof SuperAdminBoxesRouteWithChildren
+  SuperAdminSupportRoute: typeof SuperAdminSupportRoute
+  SuperAdminIndexRoute: typeof SuperAdminIndexRoute
+}
+
+const SuperAdminRouteChildren: SuperAdminRouteChildren = {
+  SuperAdminAdminsRoute: SuperAdminAdminsRoute,
+  SuperAdminAgreementsRoute: SuperAdminAgreementsRoute,
+  SuperAdminAuditRoute: SuperAdminAuditRoute,
+  SuperAdminBoxesRoute: SuperAdminBoxesRouteWithChildren,
+  SuperAdminSupportRoute: SuperAdminSupportRoute,
+  SuperAdminIndexRoute: SuperAdminIndexRoute,
+}
+
+const SuperAdminRouteWithChildren = SuperAdminRoute._addFileChildren(
+  SuperAdminRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
-  SuperAdminRoute: SuperAdminRoute,
+  SuperAdminRoute: SuperAdminRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

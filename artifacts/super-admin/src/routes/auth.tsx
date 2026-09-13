@@ -58,18 +58,18 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-[oklch(0.97_0.02_80)] px-6 py-10">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-10">
       <div className="mb-8 flex flex-col items-center">
-        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-foreground text-background shadow-lg">
+        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
           <ShieldCheck className="h-8 w-8" />
         </div>
-        <h1 className="mt-4 text-2xl font-black tracking-tight">Super Admin</h1>
+        <h1 className="mt-4 text-2xl font-black tracking-tight text-foreground">Super Admin</h1>
         <p className="text-sm text-muted-foreground">Panel de control global</p>
       </div>
 
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 rounded-3xl border bg-background p-6 shadow-sm"
+        className="w-full max-w-sm space-y-4 rounded-3xl border border-border bg-card p-6 shadow-sm"
       >
         {denied && (
           <p className="rounded-xl bg-destructive/10 px-3 py-2 text-xs text-destructive">

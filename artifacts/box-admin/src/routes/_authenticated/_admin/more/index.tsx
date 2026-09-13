@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
-import { UserCog, Layers, Settings, BarChart3, Bell, FolderOpen, LogOut, ChevronRight, Ticket } from "lucide-react";
+import { UserCog, Layers, Settings, LifeBuoy, Bell, FolderOpen, LogOut, ChevronRight, Ticket } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -21,7 +21,7 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; hint?: string 
   { to: "/more/invites", label: "Invitaciones admin", icon: Ticket },
   { to: "/more/coaches", label: "Coaches", icon: UserCog },
   { to: "/more/plans", label: "Planes", icon: Layers },
-  { to: "/more/reports", label: "Reportes", icon: BarChart3 },
+  { to: "/more/reports", label: "Soporte", icon: LifeBuoy },
   { to: "/more/notifications", label: "Notificaciones", icon: Bell },
   { to: "/more/files", label: "Archivos", icon: FolderOpen },
   { to: "/more/settings", label: "Configuración", icon: Settings },

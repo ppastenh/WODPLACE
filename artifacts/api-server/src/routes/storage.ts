@@ -107,4 +107,45 @@ router.post(
   },
 );
 
+/**
+ * POST /storage/report-uploads/request-url
+ *
+ * Request a presigned URL for an optional screenshot/evidence photo
+ * attached to a Comunidad report. Mirrors the other upload endpoints —
+ * same "no real auth yet" caveat, same bucket, own "reports" prefix so the
+ * evidence stays organized separately from feed/avatar images.
+ */
+const MAX_REPORT_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB — screenshot-sized
+
+const ReportUploadRequestBody = z.object({
+  reporterId: z.string().min(1),
+  size: z.number().nonnegative().max(MAX_REPORT_IMAGE_BYTES).optional().default(0),
+  contentType: z.string().regex(/^image\//, 'Only image uploads are allowed'),
+});
+
+router.post(
+  '/storage/report-uploads/request-url',
+  async (req: Request, res: Response) => {
+    const parsed = ReportUploadRequestBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Missing or invalid required fields' });
+      return;
+    }
+    try {
+      const { size, contentType } = parsed.data;
+      const { uploadURL, key } = await createUploadUrl('reports', contentType);
+      res.json(
+        UploadResponse.parse({
+          uploadURL,
+          publicUrl: getPublicUrl(key),
+          metadata: { name: 'report.jpg', size, contentType },
+        }),
+      );
+    } catch (error) {
+      req.log.error({ err: error }, 'Error generating report upload URL');
+      res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  },
+);
+
 export default router;
