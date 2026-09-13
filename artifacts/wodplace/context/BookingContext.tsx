@@ -1,27 +1,18 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   cancelBooking,
   createBooking,
-  listBookings,
-  type BookingRecord,
+  listClassSessions,
+  type ClassSessionDto,
 } from '@workspace/api-client-react';
-import {
-  ATTENDEE_POOL,
-  ClassType,
-  DAILY_TEMPLATE,
-  getBaseAttendeeCount,
-  getBaseAttendeeNames,
-  getSessionId,
-} from '@/constants/classSchedule';
-import { addDays, formatDuration, formatHM, parseTimeToMinutes, toDateKey } from '@/lib/dateUtils';
+import { addDays, formatDuration, formatHM, toDateKey } from '@/lib/dateUtils';
 
 export interface ClassSession {
   id: string;
   date: Date;
   dateKey: string;
-  type: ClassType;
+  type: string;
   coach: string;
   startMinutes: number;
   endMinutes: number;
@@ -30,17 +21,22 @@ export interface ClassSession {
   durationLabel: string;
   durationMin: number;
   capacity: number;
-  baseAttendees: number;
   isBooked: boolean;
   remaining: number;
   hasStarted: boolean;
   canCancel: boolean;
   isWaitlisted: boolean;
   waitlistPosition: number | null;
+  attendeeNames: string[];
 }
 
-const STORAGE_KEY = 'wodplace_bookings';
 const CANCEL_CUTOFF_MS = 60 * 60 * 1000;
+// How far back/forward real class_sessions are fetched from — a box's real
+// schedule is a small, bounded dataset (unlike the old infinite fake daily
+// template), so one range covers normal calendar browsing without needing
+// per-day requests or a dynamically expanding window.
+const RANGE_BEFORE_DAYS = 30;
+const RANGE_AFTER_DAYS = 60;
 
 interface BookingContextValue {
   isLoading: boolean;
@@ -50,239 +46,122 @@ interface BookingContextValue {
   book: (session: ClassSession) => Promise<'confirmed' | 'waiting'>;
   cancel: (session: ClassSession) => Promise<void>;
   getAttendeeNames: (session: ClassSession, userName: string) => string[];
+  /** Re-fetches the current window — e.g. after focus, in case a coach
+   *  added/changed a class since the last load. */
+  refreshSessions: () => Promise<void>;
 }
 
 const BookingContext = createContext<BookingContextValue | undefined>(undefined);
 
-function buildSession(
-  date: Date,
-  now: Date,
-  bookedIds: Set<string>,
-  bookingRecords: Map<string, BookingRecord>,
-  localWaitlistPositions: Map<string, number>,
-) {
-  const dateKey = toDateKey(date);
-  return DAILY_TEMPLATE.map((template) => {
-    const id = getSessionId(dateKey, template.time);
-    const startMinutes = parseTimeToMinutes(template.time);
-    const endMinutes = startMinutes + template.durationMin;
-    const startDate = new Date(date);
-    startDate.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
-    const baseAttendees = getBaseAttendeeCount(id, template.capacity);
-    const booking = bookingRecords.get(id);
-    const isBooked = booking?.status === 'confirmed' || bookedIds.has(id);
-    const isWaitlisted =
-      booking?.status === 'waiting' || localWaitlistPositions.has(id);
-    const waitlistPosition =
-      booking?.position ?? localWaitlistPositions.get(id) ?? null;
-    const remaining = Math.max(0, template.capacity - baseAttendees - (isBooked ? 1 : 0));
-    const hasStarted = now.getTime() >= startDate.getTime();
-    const canCancel =
-      (isBooked || isWaitlisted) &&
-      startDate.getTime() - now.getTime() > CANCEL_CUTOFF_MS;
+function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
+  const [year, month, day] = dto.date.split('-').map(Number);
+  const [hour, minute] = dto.startTime.split(':').map(Number);
+  const date = new Date(year, month - 1, day);
+  const startMinutes = hour * 60 + minute;
+  const endMinutes = startMinutes + dto.durationMinutes;
+  const startDate = new Date(year, month - 1, day, hour, minute, 0, 0);
+  const isBooked = dto.myStatus === 'confirmed';
+  const isWaitlisted = dto.myStatus === 'waiting';
+  const hasStarted = now.getTime() >= startDate.getTime();
+  const canCancel =
+    (isBooked || isWaitlisted) && startDate.getTime() - now.getTime() > CANCEL_CUTOFF_MS;
 
-    const session: ClassSession = {
-      id,
-      date,
-      dateKey,
-      type: template.type,
-      coach: template.coach,
-      startMinutes,
-      endMinutes,
-      startDate,
-      timeRangeLabel: `${formatHM(startMinutes)} a ${formatHM(endMinutes)}`,
-      durationLabel: formatDuration(template.durationMin),
-      durationMin: template.durationMin,
-      capacity: template.capacity,
-      baseAttendees,
-      isBooked,
-      remaining,
-      hasStarted,
-      canCancel,
-      isWaitlisted,
-      waitlistPosition,
-    };
-    return session;
-  });
+  return {
+    id: dto.id,
+    date,
+    dateKey: dto.date,
+    type: dto.name,
+    coach: dto.coachName ?? 'Sin coach asignado',
+    startMinutes,
+    endMinutes,
+    startDate,
+    timeRangeLabel: `${formatHM(startMinutes)} a ${formatHM(endMinutes)}`,
+    durationLabel: formatDuration(dto.durationMinutes),
+    durationMin: dto.durationMinutes,
+    capacity: dto.capacity,
+    isBooked,
+    remaining: dto.remaining,
+    hasStarted,
+    canCancel,
+    isWaitlisted,
+    waitlistPosition: dto.myWaitlistPosition,
+    attendeeNames: dto.attendeeNames,
+  };
+}
+
+/** True for a 409 from api-server (the waitlist is already at 5) — thrown
+ *  by customFetch as an ApiError, duck-typed here rather than importing
+ *  that class just for this one check. */
+function isWaitlistFullError(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { status?: unknown }).status === 409;
 }
 
 export function BookingProvider({ children }: { children: React.ReactNode }) {
-  const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
-  const [bookingRecords, setBookingRecords] = useState<Map<string, BookingRecord>>(
-    new Map(),
-  );
-  const [localWaitlistPositions, setLocalWaitlistPositions] = useState<Map<string, number>>(
-    new Map(),
-  );
+  const { user, hasBoxMembership } = useAuth();
+  const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [now, setNow] = useState(new Date());
-  const { user } = useAuth();
+
+  const loadSessions = useCallback(async () => {
+    if (!user?.id || !hasBoxMembership) {
+      setSessions([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const reference = new Date();
+      const from = toDateKey(addDays(reference, -RANGE_BEFORE_DAYS));
+      const to = toDateKey(addDays(reference, RANGE_AFTER_DAYS));
+      const dtos = await listClassSessions({ userId: user.id, from, to });
+      setSessions(dtos.map((dto) => toClassSession(dto, reference)));
+    } catch {
+      setSessions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, hasBoxMembership]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const list = JSON.parse(raw) as string[];
-          setBookedIds(new Set(list));
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    let mounted = true;
-    const loadRemoteBookings = async () => {
-      try {
-        const rows = await listBookings({ userId: user.id });
-        if (!mounted) return;
-        const records = new Map(rows.map((row) => [row.sessionId, row]));
-        setBookingRecords(records);
-        setBookedIds(
-          new Set(rows.filter((row) => row.status === 'confirmed').map((row) => row.sessionId)),
-        );
-        setLocalWaitlistPositions(new Map());
-      } catch {
-        // Keep the local fallback so the calendar remains usable if the API
-        // is temporarily unavailable.
-      }
-    };
-
-    void loadRemoteBookings();
-    return () => {
-      mounted = false;
-    };
-  }, [user?.id]);
+    void loadSessions();
+  }, [loadSessions]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const persist = async (next: Set<string>) => {
-    setBookedIds(next);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next)));
+  const getSessionsForDate = (date: Date): ClassSession[] => {
+    const key = toDateKey(date);
+    return sessions.filter((s) => s.dateKey === key);
   };
+
+  const getUpcomingBooked = (limit = 20): ClassSession[] =>
+    sessions
+      .filter((s) => s.isBooked && s.startDate.getTime() >= now.getTime() - CANCEL_CUTOFF_MS)
+      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+      .slice(0, limit);
 
   const book = async (session: ClassSession): Promise<'confirmed' | 'waiting'> => {
     if (!user) return 'confirmed';
-
     try {
-      const result = await createBooking({
-        sessionId: session.id,
-        userId: user.id,
-        capacity: session.capacity,
-        baseAttendees: session.baseAttendees,
-      });
-      const record: BookingRecord = {
-        id: `${session.id}-${user.id}`,
-        sessionId: session.id,
-        userId: user.id,
-        status: result.status === 'waiting' ? 'waiting' : 'confirmed',
-        createdAt: new Date().toISOString(),
-        position: result.position,
-      };
-      const nextRecords = new Map(bookingRecords);
-      nextRecords.set(session.id, record);
-      setBookingRecords(nextRecords);
-      setBookedIds((current) => {
-        const next = new Set(current);
-        if (result.status === 'confirmed') next.add(session.id);
-        return next;
-      });
-      setLocalWaitlistPositions((current) => {
-        const next = new Map(current);
-        next.delete(session.id);
-        return next;
-      });
+      const result = await createBooking({ sessionId: session.id, userId: user.id });
+      await loadSessions();
       return result.status === 'waiting' ? 'waiting' : 'confirmed';
-    } catch {
-      // Local fallback preserves the original offline-first behavior.
-      if (session.remaining <= 0) {
-        const nextPosition = localWaitlistPositions.size + 1;
-        if (nextPosition > 5) throw new Error('WAITLIST_FULL');
-        const nextWaitlist = new Map(localWaitlistPositions);
-        nextWaitlist.set(session.id, nextPosition);
-        setLocalWaitlistPositions(nextWaitlist);
-        return 'waiting';
-      }
-
-      const next = new Set(bookedIds);
-      next.add(session.id);
-      await persist(next);
-      return 'confirmed';
+    } catch (error) {
+      if (isWaitlistFullError(error)) throw new Error('WAITLIST_FULL');
+      throw error;
     }
   };
 
-  const cancel = async (session: ClassSession) => {
-    if (user) {
-      try {
-        await cancelBooking({ sessionId: session.id, userId: user.id });
-        setBookingRecords((current) => {
-          const next = new Map(current);
-          next.delete(session.id);
-          return next;
-        });
-        setBookedIds((current) => {
-          const next = new Set(current);
-          next.delete(session.id);
-          return next;
-        });
-        setLocalWaitlistPositions((current) => {
-          const next = new Map(current);
-          next.delete(session.id);
-          return next;
-        });
-        return;
-      } catch {
-        // Fall back to local state when the API is unreachable.
-      }
-    }
-
-    const next = new Set(bookedIds);
-    next.delete(session.id);
-    await persist(next);
-    setLocalWaitlistPositions((current) => {
-      const next = new Map(current);
-      next.delete(session.id);
-      return next;
-    });
+  const cancel = async (session: ClassSession): Promise<void> => {
+    if (!user) return;
+    await cancelBooking({ sessionId: session.id, userId: user.id });
+    await loadSessions();
   };
 
-  const getSessionsForDate = (date: Date) =>
-    buildSession(date, now, bookedIds, bookingRecords, localWaitlistPositions);
-
-  const getUpcomingBooked = (limit = 20) => {
-    const results: ClassSession[] = [];
-    for (let i = 0; i < 45 && results.length < limit; i++) {
-      const day = addDays(now, i);
-      const sessions = buildSession(
-        day,
-        now,
-        bookedIds,
-        bookingRecords,
-        localWaitlistPositions,
-      ).filter(
-        (s) => s.isBooked && s.startDate.getTime() >= now.getTime() - CANCEL_CUTOFF_MS,
-      );
-      results.push(...sessions);
-    }
-    return results
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
-      .slice(0, limit);
-  };
-
-  const getAttendeeNames = (session: ClassSession, userName: string) => {
-    const names = getBaseAttendeeNames(session.id, session.baseAttendees);
-    if (session.isBooked) {
-      return [...names, `${userName} (tú)`];
-    }
-    return names;
-  };
+  const getAttendeeNames = (session: ClassSession, userName: string): string[] =>
+    session.attendeeNames.map((name) => (name === userName ? `${name} (tú)` : name));
 
   const value = useMemo<BookingContextValue>(
     () => ({
@@ -293,8 +172,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       book,
       cancel,
       getAttendeeNames,
+      refreshSessions: loadSessions,
     }),
-    [isLoading, now, bookedIds, bookingRecords, localWaitlistPositions, user?.id],
+    [isLoading, now, sessions, user?.id, loadSessions],
   );
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;
@@ -305,5 +185,3 @@ export function useBooking(): BookingContextValue {
   if (!ctx) throw new Error('useBooking must be used within BookingProvider');
   return ctx;
 }
-
-export { ATTENDEE_POOL };

@@ -26,7 +26,7 @@ import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
 import { isAdminRequest, requireAdminSession } from "../lib/adminAuth";
-import { resolveBoxId } from "../lib/boxContext";
+import { resolveBoxIdForAthlete } from "../lib/boxContext";
 
 const router: IRouter = Router();
 
@@ -134,9 +134,20 @@ router.get("/social/feed", async (req: Request, res: Response) => {
   const { userId, cursor, limit } = parsed.data;
   const cutoff = new Date(Date.now() - FEED_DAYS * 86_400_000);
   try {
+    // Box-scoped: an athlete only ever sees their own box's Comunidad
+    // content. No userId (shouldn't happen from the app, but defensively
+    // handled) or no box membership -> nothing to show, not the whole
+    // platform's feed.
+    const boxId = userId ? await resolveBoxIdForAthlete(userId) : null;
+    if (!boxId) {
+      res.json({ posts: [], nextCursor: null, hasMore: false });
+      return;
+    }
+
     const blocked = await db.select({ userId: blockedUsersTable.userId }).from(blockedUsersTable);
     const blockedIds = blocked.map((r) => r.userId);
     const conditions = [
+      eq(socialPostsTable.boxId, boxId),
       isNull(socialPostsTable.deletedAt),
       gte(socialPostsTable.createdAt, cutoff),
       ...(cursor ? [lt(socialPostsTable.createdAt, new Date(cursor))] : []),
@@ -207,6 +218,11 @@ router.post("/social/posts", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Se requiere texto o al menos una foto." }); return;
   }
   try {
+    const boxId = await resolveBoxIdForAthlete(userId);
+    if (!boxId) {
+      res.status(403).json({ error: "Necesitás pertenecer a un box para publicar." });
+      return;
+    }
     // Enforce image size/content limits against the ACTUAL uploaded bytes.
     // The presign endpoint can't restrict what the client PUTs to storage,
     // so this is where posts referencing invalid objects get rejected.
@@ -218,7 +234,6 @@ router.post("/social/posts", async (req: Request, res: Response) => {
       }
     }
     const id = makeId("post");
-    const boxId = await resolveBoxId();
     await db.insert(socialPostsTable).values({
       id, userId, authorName, boxId,
       body: body.trim() || "Compartió una foto con la comunidad.",
@@ -310,8 +325,12 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
+    const boxId = await resolveBoxIdForAthlete(userId);
+    if (!boxId) {
+      res.status(403).json({ error: "Necesitás pertenecer a un box para comentar." });
+      return;
+    }
     const id = makeId("comment");
-    const boxId = await resolveBoxId();
     await db.insert(socialCommentsTable).values({ id, postId: req.params.id, userId, authorName, body, boxId });
     if (post.userId && post.userId !== userId) {
       db.insert(wodplaceNotificationsTable).values({
@@ -366,7 +385,11 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
         isNew = true;
       }
     } else {
-      const boxId = await resolveBoxId();
+      const boxId = await resolveBoxIdForAthlete(userId);
+      if (!boxId) {
+        res.status(403).json({ error: "Necesitás pertenecer a un box para reaccionar." });
+        return;
+      }
       await db.insert(socialReactionsTable).values({ id: makeId("reaction"), postId: req.params.id, userId, emoji, boxId });
       isNew = true;
       if (post.userId && post.userId !== userId) {
@@ -397,14 +420,23 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
 router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
   const parsed = z.object({
     reporterId: z.string(), reporterName: z.string(), reason: z.enum(REPORT_REASONS),
+    // Optional screenshot/evidence — the publicUrl from
+    // /storage/report-uploads/request-url, already uploaded by the time
+    // this posts. Same trust level as every other client-declared URL here
+    // (e.g. avatarUrl): not re-validated against storage at submit time.
+    imageUrl: z.string().url().optional(),
   }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Datos inválidos" }); return; }
   try {
-    const boxId = await resolveBoxId();
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
+    if (!post) { res.status(404).json({ error: "No encontrado." }); return; }
+    // The reported content's own box, not the reporter's — this is what
+    // routes the report into the right box's local moderation queue.
     await db.insert(socialReportsTable).values({
       id: makeId("report"), postId: req.params.id,
       reporterId: parsed.data.reporterId, reporterName: parsed.data.reporterName, reason: parsed.data.reason,
-      boxId,
+      imageUrl: parsed.data.imageUrl,
+      boxId: post.boxId,
     });
     res.status(201).json({ ok: true });
   } catch (error) {
@@ -424,6 +456,7 @@ router.get("/admin/social/reports", requireAdminSession, async (req: Request, re
     res.json(reports.map((r) => ({
       id: r.report.id, postId: r.report.postId,
       reporterName: r.report.reporterName, reason: r.report.reason,
+      imageUrl: r.report.imageUrl,
       createdAt: r.report.createdAt.toISOString(),
       post: r.post ? {
         id: r.post.id, authorName: r.post.authorName, body: r.post.body,

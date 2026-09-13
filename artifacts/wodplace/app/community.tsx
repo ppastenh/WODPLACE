@@ -26,10 +26,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { getAdminToken } from '@/lib/adminSession';
-import { getAdminNavItem } from '@/lib/navigation';
-import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
+import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import {
-  useBoxName,
+  getMyBox,
   useSocialFeed,
   useSocialMutations,
   useComments,
@@ -383,16 +382,57 @@ function ReportModal({
   colors: ReturnType<typeof useColors>;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<SelectedImage | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const { reportPost } = useSocialMutations(userId, authorName);
+  const { reportPost, uploadReportImage } = useSocialMutations(userId, authorName);
+
+  const pickEvidence = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permiso necesario', 'Activa el acceso a tus fotos para adjuntar una captura.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      const a = result.assets[0];
+      setEvidence({ uri: a.uri, mimeType: a.mimeType ?? undefined, fileSize: a.fileSize ?? undefined });
+    }
+  };
 
   const handleSubmit = async () => {
     if (!selected || !postId) return;
     setSubmitting(true);
     try {
-      await reportPost(postId, selected);
+      let imageUrl: string | undefined;
+      if (evidence) {
+        try {
+          const mime = evidence.mimeType || (evidence.uri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
+          const nativeUploader = Platform.OS !== 'web'
+            ? async (uploadURL: string, fileUri: string, contentType: string) => {
+                const result = await FileSystem.uploadAsync(uploadURL, fileUri, {
+                  httpMethod: 'PUT',
+                  uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+                  headers: { 'Content-Type': contentType },
+                });
+                if (result.status < 200 || result.status >= 300) {
+                  throw new Error(`La captura no se pudo subir (HTTP ${result.status}).`);
+                }
+              }
+            : undefined;
+          imageUrl = await uploadReportImage(evidence.uri, mime, nativeUploader, evidence.fileSize);
+        } catch (err) {
+          console.warn('Report evidence upload failed:', err);
+          Alert.alert('Error al subir la captura', 'Se enviará el reporte sin la imagen.');
+        }
+      }
+      await reportPost(postId, selected, imageUrl);
       onClose();
       setSelected(null);
+      setEvidence(null);
       Alert.alert('Reportado', 'Tu reporte fue enviado al equipo de moderación. Gracias.');
     } catch {
       Alert.alert('Error', 'No se pudo enviar el reporte.');
@@ -425,6 +465,26 @@ function ReportModal({
               <Text style={[styles.reportLabel, { color: colors.foreground }]}>{r.label}</Text>
             </Pressable>
           ))}
+
+          {evidence ? (
+            <View style={styles.reportEvidenceRow}>
+              <Image source={{ uri: evidence.uri }} style={styles.reportEvidenceThumb} contentFit="cover" />
+              <Pressable onPress={() => setEvidence(null)} hitSlop={8} style={styles.reportEvidenceRemove}>
+                <Feather name="x-circle" size={20} color={colors.navInactive} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={pickEvidence}
+              style={({ pressed }) => [styles.reportAttachBtn, { borderColor: colors.navBorder }, pressed && { opacity: 0.7 }]}
+            >
+              <Feather name="camera" size={15} color={colors.navInactive} />
+              <Text style={[styles.reportAttachText, { color: colors.navInactive }]}>
+                Adjuntar captura (opcional)
+              </Text>
+            </Pressable>
+          )}
+
           <Pressable
             onPress={handleSubmit}
             disabled={!selected || submitting}
@@ -583,14 +643,26 @@ function PostCard({
 export default function CommunityScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, adminStatus, logout } = useAuth();
+  const { user, adminStatus, hasBoxMembership, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const adminCode = getAdminToken(); // admin session token (PIN flow), passed as Bearer
   const isAdmin = !!adminCode;
 
-  const { name: rawBoxName } = useBoxName();
-  const boxName = rawBoxName || SUBSCRIBED_BOX.name;
+  // No box yet -> the generic "WODPLACE SOCIAL" header and no feed content
+  // at all (see Option A of the Comunidad box-scoping change: the backend
+  // now genuinely separates each box's posts/comments/reactions/reports —
+  // there's nothing box-less to show here beyond the header itself).
+  const [myBoxName, setMyBoxName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hasBoxMembership || !user?.id) {
+      setMyBoxName(null);
+      return;
+    }
+    getMyBox(user.id)
+      .then((res) => setMyBoxName(res.box?.name ?? null))
+      .catch(() => setMyBoxName(null));
+  }, [hasBoxMembership, user?.id]);
 
   const {
     posts, isLoading, isFetchingNextPage, hasMore,
@@ -630,11 +702,12 @@ export default function CommunityScreen() {
     );
   };
 
-  // Contratos Activos is athlete-only — an admin role has the platform
-  // agreement instead (see getAdminNavItem below), not this document.
-  const isAdminRole = !!adminStatus?.roles.length;
+  // Contratos Activos and Plan only make sense once the athlete belongs to
+  // a box — an admin role has the platform agreement instead (see
+  // getAdminNavItem below), not either of these.
+  const showContracts = shouldShowContracts(adminStatus, hasBoxMembership);
   const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
-    (item) => item.key !== 'contracts' || !isAdminRole,
+    (item) => (item.key !== 'contracts' && item.key !== 'plan') || showContracts,
   ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
@@ -795,7 +868,12 @@ export default function CommunityScreen() {
     if (post) updatePost(postId, { commentCount: Math.max(0, post.commentCount + delta) });
   }, [posts, updatePost]);
 
-  const titleLine = boxName.length > 16 ? `${boxName}\nSocial` : `${boxName} Social`;
+  const titleLine =
+    hasBoxMembership && myBoxName
+      ? myBoxName.length > 16
+        ? `${myBoxName}\nSocial`
+        : `${myBoxName} Social`
+      : 'WODPLACE SOCIAL';
 
   const ListHeader = (
     <View>
@@ -809,19 +887,23 @@ export default function CommunityScreen() {
             </Text>
           </View>
         </View>
-        <Pressable
-          onPress={() => (isActive ? setComposerVisible(true) : warnInactive())}
-          style={({ pressed }) => [styles.addButton, { backgroundColor: colors.navFloating }, pressed && styles.addButtonPressed]}
-        >
-          <Feather name="plus" size={23} color={colors.navFloatingForeground} />
-        </Pressable>
+        {hasBoxMembership ? (
+          <Pressable
+            onPress={() => (isActive ? setComposerVisible(true) : warnInactive())}
+            style={({ pressed }) => [styles.addButton, { backgroundColor: colors.navFloating }, pressed && styles.addButtonPressed]}
+          >
+            <Feather name="plus" size={23} color={colors.navFloatingForeground} />
+          </Pressable>
+        ) : null}
       </View>
-      <View style={[styles.feedIntro, { borderBottomColor: colors.navBorder }]}>
-        <Text style={[styles.feedIntroTitle, { color: colors.foreground }]}>Lo último del box</Text>
-        <Text style={[styles.feedIntroText, { color: colors.navInactive }]}>
-          Comparte, celebra y acompaña a tu comunidad.
-        </Text>
-      </View>
+      {hasBoxMembership ? (
+        <View style={[styles.feedIntro, { borderBottomColor: colors.navBorder }]}>
+          <Text style={[styles.feedIntroTitle, { color: colors.foreground }]}>Lo último del box</Text>
+          <Text style={[styles.feedIntroText, { color: colors.navInactive }]}>
+            Comparte, celebra y acompaña a tu comunidad.
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -829,7 +911,20 @@ export default function CommunityScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
 
-      {isLoading && posts.length === 0 ? (
+      {!hasBoxMembership ? (
+        <View style={[styles.content, { paddingBottom: 122 + insets.bottom }]}>
+          {ListHeader}
+          <View style={styles.emptyState}>
+            <Feather name="users" size={32} color={colors.navInactive} />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+              Todavía no tenés un box
+            </Text>
+            <Text style={[styles.emptyText, { color: colors.navInactive }]}>
+              Unite a un box desde Inicio para ver y participar en su comunidad.
+            </Text>
+          </View>
+        </View>
+      ) : isLoading && posts.length === 0 ? (
         <ActivityIndicator style={{ flex: 1 }} color={colors.navActive} />
       ) : (
         <FlatList
@@ -1098,6 +1193,14 @@ const styles = StyleSheet.create({
   reportLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
   reportSubmit: { height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   reportSubmitText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  reportAttachBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 9,
+  },
+  reportAttachText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  reportEvidenceRow: { marginBottom: 9 },
+  reportEvidenceThumb: { width: '100%', height: 140, borderRadius: 12 },
+  reportEvidenceRemove: { position: 'absolute', top: 6, right: 6 },
   // Composer
   composerBackdrop: { flex: 1, justifyContent: 'flex-end' },
   composerSheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, paddingBottom: 30, minHeight: 420 },

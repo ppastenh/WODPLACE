@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { router, usePathname } from 'expo-router';
+import { router, usePathname, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { AppHeader } from '@/components/AppHeader';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -15,7 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { getAdminNavItem } from '@/lib/navigation';
+import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import {
   addDays,
   addMonths,
@@ -36,8 +36,8 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 
 export default function CalendarScreen() {
   const colors = useColors();
-  const { user, adminStatus, logout } = useAuth();
-  const { now, getSessionsForDate, book, cancel, getAttendeeNames } = useBooking();
+  const { user, adminStatus, hasBoxMembership, logout } = useAuth();
+  const { now, getSessionsForDate, book, cancel, getAttendeeNames, refreshSessions } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const today = startOfDay(now);
@@ -49,6 +49,14 @@ export default function CalendarScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
   const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
+
+  // Picks up a class a coach just added/changed in box-admin, or a booking
+  // made from another device, without needing an app restart.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshSessions();
+    }, [refreshSessions]),
+  );
 
   const sessions = getSessionsForDate(selectedDate);
 
@@ -99,11 +107,12 @@ export default function CalendarScreen() {
     setCancelSession(null);
   };
 
-  // Contratos Activos is athlete-only — an admin role has the platform
-  // agreement instead (see getAdminNavItem below), not this document.
-  const isAdmin = !!adminStatus?.roles.length;
+  // Contratos Activos and Plan only make sense once the athlete belongs to
+  // a box — an admin role has the platform agreement instead (see
+  // getAdminNavItem below), not either of these.
+  const showContracts = shouldShowContracts(adminStatus, hasBoxMembership);
   const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
-    (item) => item.key !== 'contracts' || !isAdmin,
+    (item) => (item.key !== 'contracts' && item.key !== 'plan') || showContracts,
   ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
@@ -189,24 +198,40 @@ export default function CalendarScreen() {
               }`}
         </Text>
 
-        <View style={styles.list}>
-          {sessions.map((session) => (
-            <ClassCard
-              key={session.id}
-              session={session}
-              now={now}
-              onPressAttendees={() => setAttendeesSession(session)}
-              actionSlot={
-                <ClassActionButton
-                  session={session}
-                  onBook={() => handleBook(session)}
-                  onRequestCancel={() => setCancelSession(session)}
-                  cancelPending={cancelSession?.id === session.id}
-                />
-              }
-            />
-          ))}
-        </View>
+        {!hasBoxMembership ? (
+          <View style={styles.emptyState}>
+            <Feather name="calendar" size={26} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              Todavía no tenés un box. Unite desde Inicio para ver sus clases disponibles.
+            </Text>
+          </View>
+        ) : sessions.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Feather name="calendar" size={26} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              No hay clases programadas para este día.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {sessions.map((session) => (
+              <ClassCard
+                key={session.id}
+                session={session}
+                now={now}
+                onPressAttendees={() => setAttendeesSession(session)}
+                actionSlot={
+                  <ClassActionButton
+                    session={session}
+                    onBook={() => handleBook(session)}
+                    onRequestCancel={() => setCancelSession(session)}
+                    cancelPending={cancelSession?.id === session.id}
+                  />
+                }
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <SideDrawer
@@ -268,5 +293,16 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 32,
+  },
+  emptyText: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
