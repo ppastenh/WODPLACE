@@ -30,7 +30,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { findDistinctAdminEmails, resolveAdminRoles } from "../lib/adminRole";
 import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
 import { signAdminToken } from "../lib/adminToken";
-import { resolveBoxId } from "../lib/boxContext";
+import { resolveBoxIdForWodplaceUserId } from "../lib/boxContext";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { hashPin, verifyPin } from "../lib/pinHash";
 import { getDashboardUrl, getSuperAdminUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
@@ -254,7 +254,8 @@ router.get(
   requireAdminSession,
   async (req: Request, res: Response) => {
     try {
-      const boxId = await resolveBoxId(getAdminSession(req)?.userId);
+      // Non-null: this route sits behind requireAdminSession.
+      const boxId = await resolveBoxIdForWodplaceUserId(getAdminSession(req)!.userId);
       await ensureDefaultDocuments(boxId);
       const documents = await db
         .select()
@@ -297,7 +298,8 @@ router.put(
     try {
       const slug = String(req.params.slug);
       const { objectPath, title } = parsed.data;
-      const boxId = await resolveBoxId(getAdminSession(req)?.userId);
+      // Non-null: this route sits behind requireAdminSession.
+      const boxId = await resolveBoxIdForWodplaceUserId(getAdminSession(req)!.userId);
 
       const [existing] = await db
         .select()

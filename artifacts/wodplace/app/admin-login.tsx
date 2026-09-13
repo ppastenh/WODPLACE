@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Feather } from '@expo/vector-icons';
 import {
@@ -38,6 +38,12 @@ function formatRemaining(ms: number): string {
 export default function AdminLoginScreen() {
   const colors = useDarkColors();
   const { user, adminStatus, verifyPassword } = useAuth();
+  // Set only when choose-view.tsx already made the choice (super_admin
+  // picking "Entrar como Super Admin") — in that case there's nothing left
+  // to ask here. Absent when reached from the drawer's "Administrador" item
+  // instead (e.g. a dual-role account currently in athlete view), where the
+  // chooser below is still the only place that decision gets made.
+  const { target: incomingTarget } = useLocalSearchParams<{ target?: string }>();
 
   const [mode, setMode] = useState<Mode>('loading');
   // Which panel to open — irrelevant to the PIN itself (one PIN per
@@ -83,16 +89,25 @@ export default function AdminLoginScreen() {
       return;
     }
     if (!adminStatus) return; // still resolving from AuthContext
+
+    if (incomingTarget === 'super' || incomingTarget === 'box') {
+      // Already decided (choose-view.tsx) — nothing to ask.
+      setTarget(incomingTarget);
+      void loadStatus();
+      return;
+    }
+
     const roles = adminStatus.roles;
     if (roles.length > 1) {
-      // Holds both roles (the platform owner in her own box) — ask which
-      // panel before the PIN, rather than guessing.
+      // Holds both roles (the platform owner in her own box) and arrived
+      // without a pre-made choice (e.g. the drawer's "Administrador" item
+      // while in athlete view) — ask which panel before the PIN.
       setMode('choose-target');
       return;
     }
     setTarget(roles[0] === 'super_admin' ? 'super' : 'box');
     void loadStatus();
-  }, [user, adminStatus, loadStatus]);
+  }, [user, adminStatus, incomingTarget, loadStatus]);
 
   const chooseTarget = (chosen: PanelTarget) => {
     setTarget(chosen);
@@ -132,7 +147,24 @@ export default function AdminLoginScreen() {
 
   const goToPanel = (token: string) => {
     setAdminToken(token);
-    router.replace({ pathname: '/admin-dashboard', params: { target } });
+    if (target === 'box' && adminStatus?.box) {
+      // Name is set at "Crear mi Box" time, but encargado/ubicación/contacto
+      // aren't — that form comes first, before we even know if it's worth
+      // waiting on approval.
+      if (!adminStatus.box.detailsComplete) {
+        router.replace('/box-details' as never);
+        return;
+      }
+      // Details are in, but a super_admin hasn't approved (or rejected /
+      // suspended) it yet — no access to the panel until then.
+      if (adminStatus.box.status !== 'activo') {
+        router.replace('/box-waiting' as never);
+        return;
+      }
+    }
+    // Query string, not the object `params` form — see admin-dashboard.tsx's
+    // reasoning for why this is the more robust way to pass it here.
+    router.replace(`/admin-dashboard?target=${target}` as never);
   };
 
   const submitSetup = async () => {
@@ -270,7 +302,14 @@ export default function AdminLoginScreen() {
     <View style={[styles.container, { backgroundColor: colors.authBackground }]}>
       <AppHeader dark onBack={() => router.back()} />
       <KeyboardAwareScrollViewCompat
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          // Centering fights the keyboard-avoiding scroll on the modes with
+          // text inputs — the confirm-PIN field and the save button could
+          // end up hidden behind the keyboard. Top-aligned instead for
+          // those; the short, input-less modes keep the centered look.
+          (mode === 'setup' || mode === 'verify' || mode === 'password') && styles.scrollContentTop,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.title, { color: colors.authText }]}>Panel de administración</Text>
@@ -420,6 +459,7 @@ export default function AdminLoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 12 },
+  scrollContentTop: { justifyContent: 'flex-start', paddingTop: 48, paddingBottom: 48 },
   title: { fontSize: 22, fontFamily: 'Anton_400Regular', textAlign: 'center' },
   subtitle: {
     fontSize: 13,

@@ -30,7 +30,10 @@ export default function ChooseViewScreen() {
           label="Entrar como Super Admin"
           variant="primary"
           fullWidth
-          onPress={() => router.replace('/admin-login')}
+          // Query string, not the object `params` form — admin-login.tsx
+          // reads this to skip its own box/super chooser, since the choice
+          // was already made right here.
+          onPress={() => router.replace('/admin-login?target=super' as never)}
           style={styles.button}
         />
         <AppButton

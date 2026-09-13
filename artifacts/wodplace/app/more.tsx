@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
@@ -114,6 +115,23 @@ export default function MoreScreen() {
           completo.
         </Text>
 
+        {/* ── Acuerdo de Plataforma ── */}
+        <Pressable
+          onPress={() => router.push('/platform-agreement')}
+          style={({ pressed }) => [
+            styles.notifSection,
+            styles.agreementRow,
+            { backgroundColor: colors.card },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Feather name="file-text" size={16} color={colors.foreground} />
+          <Text style={[styles.notifTitle, { color: colors.foreground, flex: 1 }]}>
+            Ver Acuerdo de Plataforma
+          </Text>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        </Pressable>
+
         {/* ── Nombre del Box ── */}
         <View style={[styles.notifSection, { marginBottom: 12 }]}>
           <View style={styles.notifHeaderRow}>
@@ -191,10 +209,13 @@ export default function MoreScreen() {
                       Reportado por: {report.reporterName ?? 'usuario'}
                     </Text>
                   </View>
-                  {report.postBody ? (
+                  {report.post?.body ? (
                     <Text style={[styles.reportPostBody, { color: colors.mutedForeground, borderLeftColor: colors.navBorder }]} numberOfLines={3}>
-                      {report.postBody}
+                      {report.post.body}
                     </Text>
+                  ) : null}
+                  {report.imageUrl ? (
+                    <Image source={{ uri: report.imageUrl }} style={styles.reportEvidence} contentFit="cover" />
                   ) : null}
                   <View style={styles.reportActions}>
                     <Pressable
@@ -296,6 +317,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontFamily: 'Anton_400Regular', marginTop: 8 },
   subtitle: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 8, marginBottom: 18 },
   notifSection: { marginBottom: 24, gap: 10 },
+  agreementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+  },
   notifHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -337,6 +366,7 @@ const styles = StyleSheet.create({
   reportCard: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 10 },
   reportCardHeader: { gap: 2 },
   reportPostBody: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18, borderLeftWidth: 3, paddingLeft: 10, fontStyle: 'italic' },
+  reportEvidence: { width: '100%', height: 160, borderRadius: 12 },
   reportActions: { flexDirection: 'row', gap: 8 },
   reportBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 10, paddingVertical: 10 },
   reportBtnText: { fontSize: 12, fontFamily: 'Inter_700Bold', color: '#fff' },

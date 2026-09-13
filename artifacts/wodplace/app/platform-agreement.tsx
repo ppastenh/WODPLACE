@@ -12,6 +12,24 @@ import { useColors } from '@/hooks/useColors';
 import { getContractFileUrl } from '@/lib/apiConfig';
 
 /**
+ * Same format used in active-contracts.tsx for a ContractAcceptance
+ * timestamp, e.g. "13 de julio de 2026, 09:41".
+ */
+function formatAcceptedAt(iso: string): string {
+  const date = new Date(iso);
+  const datePart = date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+  const timePart = date.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${datePart}, ${timePart}`;
+}
+
+/**
  * Acceptance screen for the platform agreement — between WODPLACE
  * (super_admin) and this box's box_admin, about using the software to run
  * it. Simpler than Contratos Activos: one document, no per-paragraph read
@@ -106,20 +124,30 @@ export default function PlatformAgreementScreen() {
           />
         </View>
 
-        <AppButton
-          label="Acepto"
-          variant={opened ? 'primary' : 'mutedDisabled'}
-          disabled={!opened}
-          loading={accepting}
-          fullWidth
-          onPress={handleAccept}
-          style={styles.acceptButton}
-        />
-        {!opened ? (
-          <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            Abrí el documento para poder aceptarlo.
-          </Text>
-        ) : null}
+        {adminStatus?.accepted ? (
+          adminStatus.acceptedAt ? (
+            <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+              Aceptado el {formatAcceptedAt(adminStatus.acceptedAt)}.
+            </Text>
+          ) : null
+        ) : (
+          <>
+            <AppButton
+              label="Acepto"
+              variant={opened ? 'primary' : 'mutedDisabled'}
+              disabled={!opened}
+              loading={accepting}
+              fullWidth
+              onPress={handleAccept}
+              style={styles.acceptButton}
+            />
+            {!opened ? (
+              <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+                Abrí el documento para poder aceptarlo.
+              </Text>
+            ) : null}
+          </>
+        )}
       </KeyboardAwareScrollViewCompat>
     </View>
   );

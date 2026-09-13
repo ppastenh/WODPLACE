@@ -33,6 +33,7 @@ type Props = {
 export function MobileHeader({ title, showBack, right }: Props) {
   const canBack = useRouterState({ select: (s) => s.location.pathname !== "/dashboard" });
   const backVisible = showBack && canBack;
+  const { boxName } = useBox();
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-md items-center gap-3 px-4 pb-3 pt-[max(env(safe-area-inset-top),12px)]">
@@ -52,7 +53,9 @@ export function MobileHeader({ title, showBack, right }: Props) {
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Dumbbell className="h-4 w-4" />
             </div>
-            <span className="text-base font-black tracking-tight">Dlovebox</span>
+            <span className="max-w-[45vw] truncate text-base font-black tracking-tight">
+              {boxName || "WODPLACE"}
+            </span>
           </Link>
         ) : null}
         {title && <h1 className="min-w-0 flex-1 truncate text-base font-semibold">{title}</h1>}

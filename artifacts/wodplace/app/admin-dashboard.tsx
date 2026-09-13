@@ -92,7 +92,11 @@ export default function AdminDashboardScreen() {
   const [token, setToken] = useState<string | null>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [alertCount, setAlertCount] = useState(0);
-  const startedRef = useRef(false);
+  // Tracks which target the current `uri` was fetched for (not just
+  // whether *a* fetch happened) — if this screen instance ever gets reused
+  // for a different target instead of a fresh mount, a stale link for the
+  // wrong panel must not stick around unrefreshed.
+  const startedForRef = useRef<'box' | 'super' | null>(null);
   const webViewRef = useRef<WebView>(null);
   const dashboardOrigin = target === 'super' ? resolveSuperAdminUrl() : resolveDashboardUrl();
   const handleWebViewMessage = useRef(createWebViewMessageHandler(setAlertCount)).current;
@@ -111,8 +115,9 @@ export default function AdminDashboardScreen() {
   }, []);
 
   useEffect(() => {
-    if (!token || !dashboardOrigin || startedRef.current) return;
-    startedRef.current = true;
+    if (!token || !dashboardOrigin || startedForRef.current === target) return;
+    startedForRef.current = target;
+    setUri(null); // clear any link fetched for a previous target first
     dashLink
       .mutateAsync({ data: { target } })
       .then((res) => {
