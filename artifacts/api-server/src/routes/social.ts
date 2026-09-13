@@ -30,6 +30,19 @@ import { resolveBoxIdForAthlete } from "../lib/boxContext";
 
 const router: IRouter = Router();
 
+/**
+ * Express types every route param as `string | string[]` (a route CAN
+ * capture repeated segments), even though every `:id`/`:commentId`/
+ * `:userId` in this file is a plain single segment that only ever produces
+ * a string at runtime. Normalizes defensively — takes the first segment if
+ * an array somehow shows up — rather than an `as string` cast, so this
+ * still degrades sanely instead of silently mismatching a query if a route
+ * here ever changes shape.
+ */
+function paramString(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const ALLOWED_EMOJIS = ["💪", "🔥", "👏", "❤️", "🎉"] as const;
 const REPORT_REASONS = ["spam", "inappropriate", "other"] as const;
@@ -254,14 +267,14 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
   if (!parsed.success) { res.status(400).json({ error: "Body required" }); return; }
   const { userId, body } = parsed.data;
   try {
-    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     if (post.userId !== userId) { res.status(403).json({ error: "No puedes editar esta publicación." }); return; }
     if (Date.now() - new Date(post.createdAt).getTime() > EDIT_WINDOW_MS) {
       res.status(403).json({ error: "El tiempo de edición (15 min) ha expirado." }); return;
     }
-    await db.update(socialPostsTable).set({ body: body.trim() }).where(eq(socialPostsTable.id, req.params.id));
-    const [updated] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
+    await db.update(socialPostsTable).set({ body: body.trim() }).where(eq(socialPostsTable.id, paramString(req.params.id)));
+    const [updated] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     const [enriched] = await enrichPosts([updated], userId);
     res.json(enriched);
   } catch (error) {
@@ -274,10 +287,10 @@ router.delete("/social/posts/:id", async (req: Request, res: Response) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
   const isAdmin = isAdminRequest(req);
   try {
-    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     if (!isAdmin && post.userId !== userId) { res.status(403).json({ error: "No puedes eliminar esta publicación." }); return; }
-    await db.update(socialPostsTable).set({ deletedAt: new Date() }).where(eq(socialPostsTable.id, req.params.id));
+    await db.update(socialPostsTable).set({ deletedAt: new Date() }).where(eq(socialPostsTable.id, paramString(req.params.id)));
     res.status(204).end();
   } catch (error) {
     req.log.error({ err: error }, "Error deleting post");
@@ -296,7 +309,7 @@ router.get("/social/posts/:id/comments", async (req: Request, res: Response) => 
   const { cursor, limit } = parsed.data;
   try {
     const conditions = [
-      eq(socialCommentsTable.postId, req.params.id),
+      eq(socialCommentsTable.postId, paramString(req.params.id)),
       isNull(socialCommentsTable.deletedAt),
       ...(cursor ? [gt(socialCommentsTable.createdAt, new Date(cursor))] : []),
     ];
@@ -323,7 +336,7 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
   if (!parsed.success) { res.status(400).json({ error: "Missing fields" }); return; }
   const { userId, authorName, body } = parsed.data;
   try {
-    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     const boxId = await resolveBoxIdForAthlete(userId);
     if (!boxId) {
@@ -331,7 +344,7 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
       return;
     }
     const id = makeId("comment");
-    await db.insert(socialCommentsTable).values({ id, postId: req.params.id, userId, authorName, body, boxId });
+    await db.insert(socialCommentsTable).values({ id, postId: paramString(req.params.id), userId, authorName, body, boxId });
     if (post.userId && post.userId !== userId) {
       db.insert(wodplaceNotificationsTable).values({
         id: makeId("notif"), userId: post.userId,
@@ -353,10 +366,10 @@ router.delete("/social/posts/:id/comments/:commentId", async (req: Request, res:
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
   const isAdmin = isAdminRequest(req);
   try {
-    const [comment] = await db.select().from(socialCommentsTable).where(eq(socialCommentsTable.id, req.params.commentId));
+    const [comment] = await db.select().from(socialCommentsTable).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
     if (!comment || comment.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     if (!isAdmin && comment.userId !== userId) { res.status(403).json({ error: "No puedes eliminar este comentario." }); return; }
-    await db.update(socialCommentsTable).set({ deletedAt: new Date() }).where(eq(socialCommentsTable.id, req.params.commentId));
+    await db.update(socialCommentsTable).set({ deletedAt: new Date() }).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
     res.status(204).end();
   } catch (error) {
     req.log.error({ err: error }, "Error deleting comment");
@@ -371,10 +384,10 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
   if (!parsed.success) { res.status(400).json({ error: "emoji inválido" }); return; }
   const { userId, emoji } = parsed.data;
   try {
-    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     const [existing] = await db.select().from(socialReactionsTable)
-      .where(and(eq(socialReactionsTable.postId, req.params.id), eq(socialReactionsTable.userId, userId)));
+      .where(and(eq(socialReactionsTable.postId, paramString(req.params.id)), eq(socialReactionsTable.userId, userId)));
 
     let isNew = false;
     if (existing) {
@@ -390,7 +403,7 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
         res.status(403).json({ error: "Necesitás pertenecer a un box para reaccionar." });
         return;
       }
-      await db.insert(socialReactionsTable).values({ id: makeId("reaction"), postId: req.params.id, userId, emoji, boxId });
+      await db.insert(socialReactionsTable).values({ id: makeId("reaction"), postId: paramString(req.params.id), userId, emoji, boxId });
       isNew = true;
       if (post.userId && post.userId !== userId) {
         db.insert(wodplaceNotificationsTable).values({
@@ -400,7 +413,7 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
       }
     }
 
-    const allReactions = await db.select().from(socialReactionsTable).where(eq(socialReactionsTable.postId, req.params.id));
+    const allReactions = await db.select().from(socialReactionsTable).where(eq(socialReactionsTable.postId, paramString(req.params.id)));
     const emojiCounts: Record<string, number> = {};
     let myReaction: string | null = null;
     for (const r of allReactions) {
@@ -428,12 +441,12 @@ router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
   }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Datos inválidos" }); return; }
   try {
-    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, req.params.id));
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post) { res.status(404).json({ error: "No encontrado." }); return; }
     // The reported content's own box, not the reporter's — this is what
     // routes the report into the right box's local moderation queue.
     await db.insert(socialReportsTable).values({
-      id: makeId("report"), postId: req.params.id,
+      id: makeId("report"), postId: paramString(req.params.id),
       reporterId: parsed.data.reporterId, reporterName: parsed.data.reporterName, reason: parsed.data.reason,
       imageUrl: parsed.data.imageUrl,
       boxId: post.boxId,
@@ -471,7 +484,7 @@ router.get("/admin/social/reports", requireAdminSession, async (req: Request, re
 
 router.patch("/admin/social/reports/:id/resolve", requireAdminSession, async (req: Request, res: Response) => {
   try {
-    await db.update(socialReportsTable).set({ resolvedAt: new Date() }).where(eq(socialReportsTable.id, req.params.id));
+    await db.update(socialReportsTable).set({ resolvedAt: new Date() }).where(eq(socialReportsTable.id, paramString(req.params.id)));
     res.json({ ok: true });
   } catch (error) {
     req.log.error({ err: error }, "Error resolving report");
@@ -483,7 +496,7 @@ router.patch("/admin/social/reports/:id/resolve", requireAdminSession, async (re
 
 router.post("/admin/users/:userId/block", requireAdminSession, async (req: Request, res: Response) => {
   try {
-    await db.insert(blockedUsersTable).values({ userId: req.params.userId }).onConflictDoNothing();
+    await db.insert(blockedUsersTable).values({ userId: paramString(req.params.userId) }).onConflictDoNothing();
     res.status(201).json({ ok: true });
   } catch (error) {
     req.log.error({ err: error }, "Error blocking user");
@@ -493,7 +506,7 @@ router.post("/admin/users/:userId/block", requireAdminSession, async (req: Reque
 
 router.delete("/admin/users/:userId/block", requireAdminSession, async (req: Request, res: Response) => {
   try {
-    await db.delete(blockedUsersTable).where(eq(blockedUsersTable.userId, req.params.userId));
+    await db.delete(blockedUsersTable).where(eq(blockedUsersTable.userId, paramString(req.params.userId)));
     res.status(204).end();
   } catch (error) {
     req.log.error({ err: error }, "Error unblocking user");
