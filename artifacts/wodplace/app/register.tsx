@@ -8,15 +8,14 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 import { AppButton } from '@/components/AppButton';
 import { BirthdateModal } from '@/components/BirthdateModal';
 import { PhoneModal } from '@/components/PhoneModal';
-import { JoinBoxModal } from '@/components/JoinBoxModal';
-import { useAuth, type WodplaceUser } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
 
 export default function RegisterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { register, redeemBoxCode, getPostAuthRoute } = useAuth();
+  const { register, getPostAuthRoute } = useAuth();
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const email = emailParam ?? '';
   const [name, setName] = useState('');
@@ -28,9 +27,6 @@ export default function RegisterScreen() {
   const [phoneModalVisible, setPhoneModalVisible] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  // Set right after a successful registration, so the box-code popup below
-  // knows who to redeem for before `user` in context has settled.
-  const [registeredAccount, setRegisteredAccount] = useState<WodplaceUser | null>(null);
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const webBottomInset = Platform.OS === 'web' ? 34 : 0;
 
@@ -60,11 +56,11 @@ export default function RegisterScreen() {
     setError('');
     setLoading(true);
     try {
-      const account = await register(name.trim(), email, password, birthdate, phone);
-      // The box-code popup (below) takes it from here — it redeems for
-      // `registeredAccount` and navigates to /profile on close either way,
-      // whether the athlete enters a code or skips it.
-      setRegisteredAccount(account);
+      await register(name.trim(), email, password, birthdate, phone);
+      // No box yet -> Home shows the persistent JoinBoxCard on its own
+      // (driven by hasBoxMembership), so there's nothing special to pass
+      // through here anymore.
+      router.replace(getPostAuthRoute('/home') as never);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
     } finally {
@@ -270,19 +266,6 @@ export default function RegisterScreen() {
         }}
       />
 
-      {/* Shown right after account creation — dismissible without entering
-       *  a code (tapping outside closes it), same as everywhere else the
-       *  box code is optional. Either way, closing it lands on /profile
-       *  (or straight into the admin panel for a super_admin — see
-       *  getPostAuthRoute). */}
-      <JoinBoxModal
-        visible={!!registeredAccount}
-        onClose={() => {
-          setRegisteredAccount(null);
-          router.replace(getPostAuthRoute('/profile') as never);
-        }}
-        onRedeem={(code) => redeemBoxCode(code, registeredAccount!)}
-      />
     </View>
   );
 }

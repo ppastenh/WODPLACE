@@ -11,11 +11,16 @@ interface JoinBoxModalProps {
   visible: boolean;
   onClose: () => void;
   onRedeem: (code: string) => Promise<RedeemBoxCodeResult>;
+  /** Default true (tapping "+ agregar código" clearly means "I want to type
+   *  now"). Pass false when the modal opens on its own — e.g. right after
+   *  registering — so the keyboard doesn't pop up unless the person actually
+   *  taps the field. */
+  autoFocusInput?: boolean;
 }
 
 type Feedback = { tone: 'ok' | 'error'; text: string };
 
-export function JoinBoxModal({ visible, onClose, onRedeem }: JoinBoxModalProps) {
+export function JoinBoxModal({ visible, onClose, onRedeem, autoFocusInput = true }: JoinBoxModalProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [code, setCode] = useState('');
@@ -91,7 +96,7 @@ export function JoinBoxModal({ visible, onClose, onRedeem }: JoinBoxModalProps) 
               autoCapitalize="characters"
               autoCorrect={false}
               maxLength={9}
-              autoFocus
+              autoFocus={autoFocusInput}
               editable={!busy}
               onSubmitEditing={submit}
               style={[styles.input, { color: colors.foreground }]}

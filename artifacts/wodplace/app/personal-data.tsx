@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { getMyBox } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
 import { BirthdateModal } from '@/components/BirthdateModal';
 import { PhoneModal } from '@/components/PhoneModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
-import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
 
 const RANK_LABELS: Record<string, string> = {
   Beginner: 'Beginner',
@@ -24,6 +24,14 @@ export default function PersonalDataScreen() {
   const { user, updateProfile } = useAuth();
   const [birthdateVisible, setBirthdateVisible] = useState(false);
   const [phoneVisible, setPhoneVisible] = useState(false);
+  const [boxName, setBoxName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getMyBox(user.id)
+      .then((res) => setBoxName(res.box?.name ?? null))
+      .catch(() => setBoxName(null));
+  }, [user?.id]);
 
   if (!user) return null;
 
@@ -80,12 +88,14 @@ export default function PersonalDataScreen() {
         >
           <View style={[styles.boxLogo, { backgroundColor: colors.primary }]}>
             <Text style={[styles.boxLogoText, { color: colors.primaryForeground }]}>
-              {SUBSCRIBED_BOX.name.charAt(0)}
+              {boxName ? boxName.charAt(0) : '?'}
             </Text>
           </View>
           <View style={styles.rowText}>
             <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Box suscrito</Text>
-            <Text style={[styles.boxName, { color: colors.foreground }]}>{SUBSCRIBED_BOX.name}</Text>
+            <Text style={[styles.boxName, { color: colors.foreground }]}>
+              {boxName ?? 'Sin box asignado'}
+            </Text>
           </View>
           <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
         </Pressable>

@@ -123,4 +123,64 @@ router.post(
   },
 );
 
+/**
+ * GET /box-memberships/my-box?userId=...
+ *
+ * The box info shown in wodplace's "Datos Personales" screen (box-detail.tsx)
+ * for an already-enrolled athlete — replaces the old hardcoded
+ * constants/boxInfo.ts mock with the real data an admin fills in via
+ * "Datos del Box" (POST /platform-agreement/box-details). If the athlete
+ * belongs to more than one box, the most recently joined one wins — same
+ * "one subscribed box" assumption the mock made.
+ */
+router.get("/box-memberships/my-box", async (req: Request, res: Response) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  if (!userId) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+
+  try {
+    const rows = await db.execute<{
+      name: string;
+      owner_name: string | null;
+      location: string | null;
+      contact_phone: string | null;
+      whatsapp: string | null;
+      instagram_url: string | null;
+      facebook_url: string | null;
+      tiktok_url: string | null;
+    }>(sql`
+      SELECT b.name, b.owner_name, b.location, b.contact_phone, b.whatsapp,
+             b.instagram_url, b.facebook_url, b.tiktok_url
+      FROM box_members bm
+      JOIN boxes b ON b.id = bm.box_id
+      WHERE bm.user_id = ${userId}
+      ORDER BY bm.created_at DESC
+      LIMIT 1
+    `);
+    const row = rows.rows[0];
+    if (!row) {
+      res.json({ box: null });
+      return;
+    }
+
+    res.json({
+      box: {
+        name: row.name,
+        ownerName: row.owner_name,
+        location: row.location,
+        contactPhone: row.contact_phone,
+        whatsapp: row.whatsapp,
+        instagramUrl: row.instagram_url,
+        facebookUrl: row.facebook_url,
+        tiktokUrl: row.tiktok_url,
+      },
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error loading my-box info");
+    res.status(500).json({ error: "Failed to load box info" });
+  }
+});
+
 export default router;

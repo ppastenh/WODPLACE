@@ -1,26 +1,36 @@
-import React from 'react';
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { getMyBox, type MyBox } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
 import { AppButton } from '@/components/AppButton';
+import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
-import { SUBSCRIBED_BOX } from '@/constants/boxInfo';
 
-const MAP_SIZE = { width: 600, height: 300 };
-
-function staticMapUrl(lat: number, lng: number): string {
-  return `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=${MAP_SIZE.width}x${MAP_SIZE.height}&markers=${lat},${lng},red-pushpin`;
+/** wa.me only accepts digits — strip everything else. */
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, '');
 }
 
 export default function BoxDetailScreen() {
   const colors = useColors();
-  const box = SUBSCRIBED_BOX;
+  const { user } = useAuth();
+  const [box, setBox] = useState<MyBox | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const socialLinks: { key: string; icon: string; url?: string; label: string }[] = [
-    { key: 'instagram', icon: 'instagram', url: box.instagramUrl, label: 'Instagram' },
-    { key: 'facebook', icon: 'facebook', url: box.facebookUrl, label: 'Facebook' },
-    { key: 'tiktok', icon: 'tiktok', url: box.tiktokUrl, label: 'TikTok' },
+  useEffect(() => {
+    if (!user?.id) return;
+    getMyBox(user.id)
+      .then((res) => setBox(res.box))
+      .catch(() => setBox(null))
+      .finally(() => setLoading(false));
+  }, [user?.id]);
+
+  const socialLinks: { key: string; icon: string; url: string; label: string }[] = [
+    { key: 'instagram', icon: 'instagram', url: box?.instagramUrl ?? '', label: 'Instagram' },
+    { key: 'facebook', icon: 'facebook', url: box?.facebookUrl ?? '', label: 'Facebook' },
+    { key: 'tiktok', icon: 'tiktok', url: box?.tiktokUrl ?? '', label: 'TikTok' },
   ].filter((s) => !!s.url);
 
   const openUrl = (url: string) => {
@@ -28,12 +38,39 @@ export default function BoxDetailScreen() {
   };
 
   const openDirections = () => {
-    openUrl(`https://www.google.com/maps/search/?api=1&query=${box.latitude},${box.longitude}`);
+    if (!box?.location) return;
+    openUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(box.location)}`);
   };
 
   const openWhatsApp = () => {
-    openUrl(`https://wa.me/${box.whatsapp}`);
+    if (!box?.whatsapp) return;
+    openUrl(`https://wa.me/${digitsOnly(box.whatsapp)}`);
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <AppHeader onBack={() => router.back()} />
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!box) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <AppHeader onBack={() => router.back()} />
+        <View style={styles.center}>
+          <Feather name="alert-circle" size={26} color={colors.mutedForeground} />
+          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+            Todavía no estás suscrito a ningún box.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -48,76 +85,81 @@ export default function BoxDetailScreen() {
           <Text style={[styles.heroName, { color: colors.foreground }]}>{box.name}</Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <View style={styles.row}>
-            <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
-              <Feather name="user" size={16} color={colors.secondaryForeground} />
-            </View>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>
-                Encargado del box
-              </Text>
-              <Text style={[styles.rowValue, { color: colors.foreground }]}>{box.owner}</Text>
-            </View>
-          </View>
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Ubicación</Text>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <View style={styles.row}>
-            <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
-              <Feather name="map-pin" size={16} color={colors.secondaryForeground} />
-            </View>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Dirección</Text>
-              <Text style={[styles.rowValue, { color: colors.foreground }]}>{box.address}</Text>
+        {box.ownerName ? (
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={styles.row}>
+              <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
+                <Feather name="user" size={16} color={colors.secondaryForeground} />
+              </View>
+              <View style={styles.rowText}>
+                <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>
+                  Encargado del box
+                </Text>
+                <Text style={[styles.rowValue, { color: colors.foreground }]}>{box.ownerName}</Text>
+              </View>
             </View>
           </View>
+        ) : null}
 
-          <Image
-            source={{ uri: staticMapUrl(box.latitude, box.longitude) }}
-            style={[styles.mapImage, { backgroundColor: colors.muted }]}
-            resizeMode="cover"
-          />
+        {box.location ? (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Ubicación</Text>
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
+              <View style={styles.row}>
+                <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
+                  <Feather name="map-pin" size={16} color={colors.secondaryForeground} />
+                </View>
+                <View style={styles.rowText}>
+                  <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Dirección</Text>
+                  <Text style={[styles.rowValue, { color: colors.foreground }]}>{box.location}</Text>
+                </View>
+              </View>
 
-          <AppButton
-            label="Cómo llegar"
-            variant="dark"
-            fullWidth
-            onPress={openDirections}
-            icon={<Feather name="navigation" size={16} color={colors.authText} />}
-            style={styles.actionButton}
-            testID="box-directions"
-          />
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Contacto</Text>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <View style={styles.row}>
-            <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
-              <Feather name="smartphone" size={16} color={colors.secondaryForeground} />
+              <AppButton
+                label="Cómo llegar"
+                variant="dark"
+                fullWidth
+                onPress={openDirections}
+                icon={<Feather name="navigation" size={16} color={colors.authText} />}
+                style={styles.actionButton}
+                testID="box-directions"
+              />
             </View>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>
-                Celular / WhatsApp
-              </Text>
-              <Text style={[styles.rowValue, { color: colors.foreground }]}>
-                +{box.whatsapp.slice(0, 2)} {box.whatsapp.slice(2, 3)} {box.whatsapp.slice(3, 7)}{' '}
-                {box.whatsapp.slice(7)}
-              </Text>
-            </View>
-          </View>
+          </>
+        ) : null}
 
-          <AppButton
-            label="Abrir WhatsApp"
-            variant="primary"
-            fullWidth
-            onPress={openWhatsApp}
-            icon={<FontAwesome5 name="whatsapp" size={16} color={colors.primaryForeground} />}
-            style={styles.actionButton}
-            testID="box-whatsapp"
-          />
-        </View>
+        {box.contactPhone || box.whatsapp ? (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Contacto</Text>
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
+              {box.contactPhone ? (
+                <View style={styles.row}>
+                  <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
+                    <Feather name="smartphone" size={16} color={colors.secondaryForeground} />
+                  </View>
+                  <View style={styles.rowText}>
+                    <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>
+                      Contacto celular
+                    </Text>
+                    <Text style={[styles.rowValue, { color: colors.foreground }]}>{box.contactPhone}</Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {box.whatsapp ? (
+                <AppButton
+                  label="Abrir WhatsApp"
+                  variant="primary"
+                  fullWidth
+                  onPress={openWhatsApp}
+                  icon={<FontAwesome5 name="whatsapp" size={16} color={colors.primaryForeground} />}
+                  style={styles.actionButton}
+                  testID="box-whatsapp"
+                />
+              ) : null}
+            </View>
+          </>
+        ) : null}
 
         {socialLinks.length > 0 ? (
           <>
@@ -126,7 +168,7 @@ export default function BoxDetailScreen() {
               {socialLinks.map((social) => (
                 <Pressable
                   key={social.key}
-                  onPress={() => social.url && openUrl(social.url)}
+                  onPress={() => openUrl(social.url)}
                   hitSlop={4}
                   style={({ pressed }) => [
                     styles.socialButton,
@@ -151,6 +193,8 @@ export default function BoxDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
+  emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   scrollContent: { padding: 20, paddingBottom: 48, gap: 4 },
   hero: {
     alignItems: 'center',
@@ -208,11 +252,6 @@ const styles = StyleSheet.create({
   rowValue: {
     fontSize: 15,
     fontFamily: 'Inter_600SemiBold',
-  },
-  mapImage: {
-    width: '100%',
-    height: 160,
-    borderRadius: 14,
   },
   actionButton: {
     marginTop: 2,

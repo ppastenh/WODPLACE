@@ -21,14 +21,13 @@ import { EditPhraseModal } from '@/components/EditPhraseModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { AttendeesModal } from '@/components/AttendeesModal';
 import { CancelConfirmModal } from '@/components/CancelConfirmModal';
-import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { ClassCard, AgendadoBadge } from '@/components/ClassCard';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { useMyPosts, uploadAvatarImage, type SocialPost } from '@workspace/api-client-react';
-import { getAdminNavItem } from '@/lib/navigation';
+import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
@@ -42,7 +41,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 
 export default function ProfileScreen() {
   const colors = useColors();
-  const { user, adminStatus, updateProfile, logout, redeemBoxCode } = useAuth();
+  const { user, adminStatus, hasBoxMembership, updateProfile, logout } = useAuth();
   const { now, getUpcomingBooked, getAttendeeNames, cancel } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
@@ -51,7 +50,6 @@ export default function ProfileScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
   const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
-  const [joinBoxVisible, setJoinBoxVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'agendado' | 'posts'>('agendado');
   const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
   const [postDetailVisible, setPostDetailVisible] = useState(false);
@@ -70,13 +68,14 @@ export default function ProfileScreen() {
   const bookedSessions = getUpcomingBooked(10);
 
   const adminNavItem = getAdminNavItem(adminStatus);
-  // Contratos Activos is athlete-only — an admin role has the platform
-  // agreement instead (adminNavItem above), not this document.
-  const isAdmin = !!adminStatus?.roles.length;
+  // Contratos Activos and Plan only make sense once the athlete belongs to
+  // a box — an admin role has the platform agreement instead (adminNavItem
+  // above), not either of these.
+  const showContracts = shouldShowContracts(adminStatus, hasBoxMembership);
   const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
     (item) =>
       (item.key !== 'more' || adminNavItem?.key === 'admin') &&
-      (item.key !== 'contracts' || !isAdmin),
+      ((item.key !== 'contracts' && item.key !== 'plan') || showContracts),
   ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
@@ -192,17 +191,6 @@ export default function ProfileScreen() {
           icon={<Feather name="calendar" size={18} color={colors.authText} />}
         />
 
-        <Pressable
-          onPress={() => setJoinBoxVisible(true)}
-          style={styles.joinBoxRow}
-          hitSlop={6}
-        >
-          <Feather name="plus-circle" size={15} color={colors.mutedForeground} />
-          <Text style={[styles.joinBoxText, { color: colors.mutedForeground }]}>
-            Agregar código de box
-          </Text>
-        </Pressable>
-
         {/* Tab bar */}
         <View style={[styles.tabBar, { borderBottomColor: colors.navBorder }]}>
           <Pressable
@@ -302,11 +290,6 @@ export default function ProfileScreen() {
         onClose={() => setCancelSession(null)}
         onConfirm={handleConfirmCancel}
       />
-      <JoinBoxModal
-        visible={joinBoxVisible}
-        onClose={() => setJoinBoxVisible(false)}
-        onRedeem={(code) => redeemBoxCode(code)}
-      />
       <EditPhraseModal
         visible={phraseVisible}
         onClose={() => setPhraseVisible(false)}
@@ -344,19 +327,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
-  joinBoxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    marginTop: 12,
-    paddingVertical: 8,
-  },
-  joinBoxText: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-  },
 
   // Profile top — fixed, outside scroll containers
   profileTopSection: {

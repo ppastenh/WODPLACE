@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   Share,
@@ -8,14 +9,17 @@ import {
   View,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router, usePathname } from 'expo-router';
+import { router, usePathname, useFocusEffect } from 'expo-router';
+import { markBoxWelcomeShown } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
+import { JoinBoxCard } from '@/components/JoinBoxCard';
+import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
 import { useBooking } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { getAdminNavItem } from '@/lib/navigation';
+import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import {
   addDays,
   daysInMonth,
@@ -96,17 +100,49 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 
 export default function HomeScreen() {
   const colors = useColors();
-  const { user, adminStatus, logout } = useAuth();
+  const { user, adminStatus, hasBoxMembership, logout, redeemBoxCode, refreshActivationStatus } = useAuth();
   const { now, getSessionsForDate, getUpcomingBooked } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const [drawerVisible, setDrawerVisible] = useState(false);
+  // Opened only by tapping the JoinBoxCard button below — no more auto-shown
+  // popup (that one-time approach was replaced by the persistent card, which
+  // stays on screen for as long as hasBoxMembership is false instead of
+  // showing once and disappearing).
+  const [joinBoxVisible, setJoinBoxVisible] = useState(false);
 
-  // Contratos Activos is athlete-only — an admin role has the platform
-  // agreement instead (see getAdminNavItem below), not this document.
-  const isAdmin = !!adminStatus?.roles.length;
+  // Defensive re-sync every time Home gains focus — e.g. right after "Crear
+  // mi Box" grants the box_admin role server-side, so the drawer's admin
+  // items (and the Contratos Activos filter below) never stay stuck showing
+  // a stale pre-role state.
+  useFocusEffect(
+    useCallback(() => {
+      refreshActivationStatus();
+    }, [refreshActivationStatus]),
+  );
+
+  // One-time "your box is approved" popup — see boxes.welcome_shown_at.
+  // Marked shown immediately (not on the alert's dismiss) so it can't
+  // reappear on a later open even if the alert gets dismissed some other
+  // way (e.g. the Android back button); the ref just guards against firing
+  // twice in the same mount before that server round-trip finishes.
+  const welcomeShownRef = useRef(false);
+  useEffect(() => {
+    if (!user?.id || !adminStatus?.box?.showWelcome || welcomeShownRef.current) return;
+    welcomeShownRef.current = true;
+    markBoxWelcomeShown(user.id).catch(() => {});
+    Alert.alert(
+      '¡Tu box ya está aprobado!',
+      'Ya podés administrarlo y empezar a invitar alumnos.',
+    );
+  }, [user?.id, adminStatus?.box?.showWelcome]);
+
+  // Contratos Activos and Plan only make sense once the athlete belongs to
+  // a box — an admin role has the platform agreement instead (see
+  // getAdminNavItem below), not either of these.
+  const showContracts = shouldShowContracts(adminStatus, hasBoxMembership);
   const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
-    (item) => item.key !== 'contracts' || !isAdmin,
+    (item) => (item.key !== 'contracts' && item.key !== 'plan') || showContracts,
   ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
@@ -166,29 +202,35 @@ export default function HomeScreen() {
           Hola, {getFirstName(user.name)}
         </Text>
 
-        <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
-          <View style={styles.cardHeadingRow}>
-            <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>
-              Progreso mensual
-            </Text>
-            <Text style={[styles.progressCount, { color: colors.foreground }]}>
-              {monthlyBooked} de {MONTHLY_GOAL} clases
-            </Text>
-          </View>
-          <Text style={[styles.monthLabel, { color: colors.foreground }]}>
-            {MONTH_NAMES[now.getMonth()]}
-          </Text>
-          <View style={[styles.progressTrack, { backgroundColor: colors.input }]}>
-            <View
-              style={[
-                styles.progressFill,
-                { backgroundColor: colors.navActive, width: `${monthlyProgress * 100}%` },
-              ]}
-            />
-          </View>
-        </View>
+        {hasBoxMembership === false ? (
+          <JoinBoxCard onPress={() => setJoinBoxVisible(true)} />
+        ) : null}
 
-        {COACH_NOTICE.active ? (
+        {hasBoxMembership ? (
+          <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
+            <View style={styles.cardHeadingRow}>
+              <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>
+                Progreso mensual
+              </Text>
+              <Text style={[styles.progressCount, { color: colors.foreground }]}>
+                {monthlyBooked} de {MONTHLY_GOAL} clases
+              </Text>
+            </View>
+            <Text style={[styles.monthLabel, { color: colors.foreground }]}>
+              {MONTH_NAMES[now.getMonth()]}
+            </Text>
+            <View style={[styles.progressTrack, { backgroundColor: colors.input }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { backgroundColor: colors.navActive, width: `${monthlyProgress * 100}%` },
+                ]}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {hasBoxMembership && COACH_NOTICE.active ? (
           <View style={[styles.noticeCard, { backgroundColor: colors.warningBackground }]}>
             <View style={[styles.noticeIcon, { backgroundColor: colors.warning }]}>
               <Feather name="alert-triangle" size={16} color={colors.foreground} />
@@ -199,33 +241,35 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Ver próxima clase"
-          onPress={() => router.push('/calendar')}
-          style={({ pressed }) => [
-            styles.nextClassCard,
-            { backgroundColor: colors.navFloating },
-            pressed && styles.pressedCard,
-          ]}
-        >
-          <View style={styles.nextClassTop}>
-            <View style={[styles.timeChip, { backgroundColor: colors.navActive }]}>
-              <Feather name="clock" size={13} color={colors.card} />
-              <Text style={[styles.timeChipText, { color: colors.card }]}>{nextClassLabel}</Text>
+        {hasBoxMembership ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver próxima clase"
+            onPress={() => router.push('/calendar')}
+            style={({ pressed }) => [
+              styles.nextClassCard,
+              { backgroundColor: colors.navFloating },
+              pressed && styles.pressedCard,
+            ]}
+          >
+            <View style={styles.nextClassTop}>
+              <View style={[styles.timeChip, { backgroundColor: colors.navActive }]}>
+                <Feather name="clock" size={13} color={colors.card} />
+                <Text style={[styles.timeChipText, { color: colors.card }]}>{nextClassLabel}</Text>
+              </View>
+              <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
             </View>
-            <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
-          </View>
-          <Text style={[styles.nextClassLabel, { color: colors.navFloatingForeground }]}>
-            {isNextSessionBooked ? 'Tu próxima clase' : 'Reserva tu próxima clase'}
-          </Text>
-          <Text style={[styles.nextClassName, { color: colors.navFloatingForeground }]}>
-            {nextSession?.type ?? 'Revisa el calendario'}
-          </Text>
-          <Text style={[styles.nextClassCoach, { color: colors.navInactive }]}>
-            {nextSession ? `Coach ${nextSession.coach}` : 'Encuentra un horario para tu próximo WOD'}
-          </Text>
-        </Pressable>
+            <Text style={[styles.nextClassLabel, { color: colors.navFloatingForeground }]}>
+              {isNextSessionBooked ? 'Tu próxima clase' : 'Reserva tu próxima clase'}
+            </Text>
+            <Text style={[styles.nextClassName, { color: colors.navFloatingForeground }]}>
+              {nextSession?.type ?? 'Revisa el calendario'}
+            </Text>
+            <Text style={[styles.nextClassCoach, { color: colors.navInactive }]}>
+              {nextSession ? `Coach ${nextSession.coach}` : 'Encuentra un horario para tu próximo WOD'}
+            </Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.twoColumnRow}>
           <View style={[styles.quoteCard, { backgroundColor: colors.card }]}>
@@ -271,31 +315,33 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.birthdaySection}>
-          <View style={styles.sectionHeadingRow}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Próximos cumpleaños
-            </Text>
-            <Feather name="gift" size={19} color={colors.navActive} />
-          </View>
-          <View style={styles.birthdayList}>
-            {UPCOMING_BIRTHDAYS.map((birthday) => (
-              <View key={birthday.name} style={styles.birthdayRow}>
-                <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
-                  <Text style={[styles.avatarText, { color: colors.navActive }]}>
-                    {birthday.initials}
+        {hasBoxMembership ? (
+          <View style={styles.birthdaySection}>
+            <View style={styles.sectionHeadingRow}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                Próximos cumpleaños
+              </Text>
+              <Feather name="gift" size={19} color={colors.navActive} />
+            </View>
+            <View style={styles.birthdayList}>
+              {UPCOMING_BIRTHDAYS.map((birthday) => (
+                <View key={birthday.name} style={styles.birthdayRow}>
+                  <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.avatarText, { color: colors.navActive }]}>
+                      {birthday.initials}
+                    </Text>
+                  </View>
+                  <Text style={[styles.birthdayName, { color: colors.foreground }]}>
+                    {birthday.name}
+                  </Text>
+                  <Text style={[styles.birthdayDay, { color: colors.navInactive }]}>
+                    {birthday.day}
                   </Text>
                 </View>
-                <Text style={[styles.birthdayName, { color: colors.foreground }]}>
-                  {birthday.name}
-                </Text>
-                <Text style={[styles.birthdayDay, { color: colors.navInactive }]}>
-                  {birthday.day}
-                </Text>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
       </ScrollView>
       <SideDrawer
         visible={drawerVisible}
@@ -307,6 +353,17 @@ export default function HomeScreen() {
         avatarUri={user.avatarUri}
         navItems={navItems}
         onLogout={handleLogout}
+      />
+      <JoinBoxModal
+        visible={joinBoxVisible}
+        onClose={() => setJoinBoxVisible(false)}
+        onRedeem={async (code) => {
+          const result = await redeemBoxCode(code);
+          // So Contratos Activos can show up right away instead of only
+          // after the next focus/refresh — see shouldShowContracts.
+          if (result.joined || result.alreadyMember) void refreshActivationStatus();
+          return result;
+        }}
       />
     </View>
   );
