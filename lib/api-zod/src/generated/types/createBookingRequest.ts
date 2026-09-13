@@ -11,8 +11,4 @@ export interface CreateBookingRequest {
   sessionId: string;
   /** @minLength 1 */
   userId: string;
-  /** @minimum 1 */
-  capacity: number;
-  /** @minimum 0 */
-  baseAttendees: number;
 }

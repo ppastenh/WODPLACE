@@ -70,10 +70,6 @@ export interface CreateBookingRequest {
   sessionId: string;
   /** @minLength 1 */
   userId: string;
-  /** @minimum 1 */
-  capacity: number;
-  /** @minimum 0 */
-  baseAttendees: number;
 }
 
 export interface CancelBookingRequest {
@@ -115,6 +111,39 @@ export interface BookingActionResponse {
   status: BookingActionResponseStatus;
   position: number | null;
   promotedUserId: string | null;
+}
+
+export type ClassSessionDtoMyStatus = typeof ClassSessionDtoMyStatus[keyof typeof ClassSessionDtoMyStatus];
+
+
+export const ClassSessionDtoMyStatus = {
+  none: 'none',
+  confirmed: 'confirmed',
+  waiting: 'waiting',
+} as const;
+
+/**
+ * A real class_sessions row (the same table box-admin's class-scheduling
+ * UI reads/writes), enriched with this specific viewer's booking status
+ * for it and the confirmed roster's names.
+ */
+export interface ClassSessionDto {
+  id: string;
+  boxId: string;
+  name: string;
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  /** HH:MM, 24h. */
+  startTime: string;
+  durationMinutes: number;
+  capacity: number;
+  level: string;
+  coachName: string | null;
+  confirmedCount: number;
+  remaining: number;
+  myStatus: ClassSessionDtoMyStatus;
+  myWaitlistPosition: number | null;
+  attendeeNames: string[];
 }
 
 export interface Notification {
@@ -472,6 +501,18 @@ export interface UpsertTrainingSettingsRequest {
   barUnit: UpsertTrainingSettingsRequestBarUnit;
   plates: PlateSpec[];
 }
+
+export type ListClassSessionsParams = {
+userId: string;
+/**
+ * ISO date (YYYY-MM-DD), inclusive.
+ */
+from: string;
+/**
+ * ISO date (YYYY-MM-DD), inclusive.
+ */
+to: string;
+};
 
 export type ListBookingsParams = {
 userId: string;

@@ -148,6 +148,51 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /class-sessions:
+    get:
+      tags: [Bookings]
+      operationId: listClassSessions
+      summary: List real, per-box class sessions in a date range for Agendar
+      description: |
+        Replaces the mobile app's old fixed mock schedule — sessions come
+        from the SAME class_sessions/class_bookings tables box-admin's own
+        class-scheduling UI manages. Resolves `userId`'s box via
+        box_members; an athlete with no box gets an empty list, never
+        another box's (or nobody's) schedule.
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ISO date (YYYY-MM-DD), inclusive.
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ISO date (YYYY-MM-DD), inclusive.
+      responses:
+        "200":
+          description: Sessions in range for this athlete's box (empty if they have none).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClassSessionDto"
+        "400":
+          description: Missing or invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /bookings:
     get:
       tags: [Bookings]
@@ -180,9 +225,11 @@ paths:
       operationId: createBooking
       summary: Book a class or join its FIFO waitlist
       description: |
-        A class uses its deterministic capacity and base attendee count from
-        the mobile schedule. If no seat remains, the user is added to a
-        maximum-five-person FIFO waitlist.
+        `sessionId` must be a real class_sessions.id belonging to the
+        caller's own box (see GET /class-sessions) — capacity and the
+        confirmed count are read from the database, never trusted from the
+        client. If no seat remains, the user is added to a maximum-five-
+        person FIFO waitlist.
       requestBody:
         required: true
         content:
@@ -1071,7 +1118,7 @@ components:
 
     CreateBookingRequest:
       type: object
-      required: [sessionId, userId, capacity, baseAttendees]
+      required: [sessionId, userId]
       properties:
         sessionId:
           type: string
@@ -1079,12 +1126,6 @@ components:
         userId:
           type: string
           minLength: 1
-        capacity:
-          type: integer
-          minimum: 1
-        baseAttendees:
-          type: integer
-          minimum: 0
 
     CancelBookingRequest:
       type: object
@@ -1133,6 +1174,66 @@ components:
         promotedUserId:
           type: string
           nullable: true
+
+    ClassSessionDto:
+      type: object
+      description: |
+        A real class_sessions row (the same table box-admin's class-scheduling
+        UI reads/writes), enriched with this specific viewer's booking status
+        for it and the confirmed roster's names.
+      required:
+        [
+          id,
+          boxId,
+          name,
+          date,
+          startTime,
+          durationMinutes,
+          capacity,
+          level,
+          coachName,
+          confirmedCount,
+          remaining,
+          myStatus,
+          myWaitlistPosition,
+          attendeeNames,
+        ]
+      properties:
+        id:
+          type: string
+        boxId:
+          type: string
+        name:
+          type: string
+        date:
+          type: string
+          description: ISO date (YYYY-MM-DD).
+        startTime:
+          type: string
+          description: "HH:MM, 24h."
+        durationMinutes:
+          type: integer
+        capacity:
+          type: integer
+        level:
+          type: string
+        coachName:
+          type: string
+          nullable: true
+        confirmedCount:
+          type: integer
+        remaining:
+          type: integer
+        myStatus:
+          type: string
+          enum: [none, confirmed, waiting]
+        myWaitlistPosition:
+          type: integer
+          nullable: true
+        attendeeNames:
+          type: array
+          items:
+            type: string
 
     Notification:
       type: object

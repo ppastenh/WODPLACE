@@ -87,6 +87,39 @@ export const SyncUserResponse = zod.object({
 
 
 /**
+ * Replaces the mobile app's old fixed mock schedule — sessions come
+ * from the SAME class_sessions/class_bookings tables box-admin's own
+ * class-scheduling UI manages. Resolves `userId`'s box via
+ * box_members; an athlete with no box gets an empty list, never
+ * another box's (or nobody's) schedule.
+ * @summary List real, per-box class sessions in a date range for Agendar
+ */
+export const ListClassSessionsQueryParams = zod.object({
+  "userId": zod.coerce.string(),
+  "from": zod.coerce.string().describe('ISO date (YYYY-MM-DD), inclusive.'),
+  "to": zod.coerce.string().describe('ISO date (YYYY-MM-DD), inclusive.')
+})
+
+export const ListClassSessionsResponseItem = zod.object({
+  "id": zod.string(),
+  "boxId": zod.string(),
+  "name": zod.string(),
+  "date": zod.string().describe('ISO date (YYYY-MM-DD).'),
+  "startTime": zod.string().describe('HH:MM, 24h.'),
+  "durationMinutes": zod.number(),
+  "capacity": zod.number(),
+  "level": zod.string(),
+  "coachName": zod.string().nullable(),
+  "confirmedCount": zod.number(),
+  "remaining": zod.number(),
+  "myStatus": zod.enum(['none', 'confirmed', 'waiting']),
+  "myWaitlistPosition": zod.number().nullable(),
+  "attendeeNames": zod.array(zod.string())
+}).describe('A real class_sessions row (the same table box-admin\'s class-scheduling\nUI reads\/writes), enriched with this specific viewer\'s booking status\nfor it and the confirmed roster\'s names.\n')
+export const ListClassSessionsResponse = zod.array(ListClassSessionsResponseItem)
+
+
+/**
  * @summary List a user's active class bookings and waitlist entries
  */
 export const ListBookingsQueryParams = zod.object({
@@ -105,23 +138,20 @@ export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
 
 
 /**
- * A class uses its deterministic capacity and base attendee count from
- * the mobile schedule. If no seat remains, the user is added to a
- * maximum-five-person FIFO waitlist.
+ * `sessionId` must be a real class_sessions.id belonging to the
+ * caller's own box (see GET /class-sessions) — capacity and the
+ * confirmed count are read from the database, never trusted from the
+ * client. If no seat remains, the user is added to a maximum-five-
+ * person FIFO waitlist.
  * @summary Book a class or join its FIFO waitlist
  */
 
 
 
-export const createBookingBodyBaseAttendeesMin = 0;
-
-
 
 export const CreateBookingBody = zod.object({
   "sessionId": zod.string().min(1),
-  "userId": zod.string().min(1),
-  "capacity": zod.number().min(1),
-  "baseAttendees": zod.number().min(createBookingBodyBaseAttendeesMin)
+  "userId": zod.string().min(1)
 })
 
 export const CreateBookingResponse = zod.object({

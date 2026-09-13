@@ -1,3 +1,8 @@
+-- STATUS: applied (2026-09-12, retroactively — this file existed but was
+-- never actually run; found because artifacts/box-admin/src/lib/admin-alerts.ts
+-- already referenced this column and the checked-in supabase-types snapshot
+-- was stale enough to hide the mismatch from tsc).
+--
 -- Admin notification bell, "Nuevos miembros": tracks which members were
 -- individually marked as seen, per member — not a single all-or-nothing
 -- cursor. Same shape as contract_acceptances.seen_by_owner_at, just here

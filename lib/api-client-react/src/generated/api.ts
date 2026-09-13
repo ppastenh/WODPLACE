@@ -33,6 +33,7 @@ import type {
   BookingActionResponse,
   BookingRecord,
   CancelBookingRequest,
+  ClassSessionDto,
   ContractAcceptance,
   ContractAcceptanceNotification,
   ContractAcceptanceResponse,
@@ -46,6 +47,7 @@ import type {
   GetTrainingSettingsParams,
   HealthStatus,
   ListBookingsParams,
+  ListClassSessionsParams,
   ListContractsParams,
   ListMovementsParams,
   ListNotificationsParams,
@@ -404,6 +406,95 @@ export const useSyncUser = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getSyncUserMutationOptions(options));
     }
 
+export const getListClassSessionsUrl = (params: ListClassSessionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/class-sessions?${stringifiedParams}` : `/api/class-sessions`
+}
+
+/**
+ * Replaces the mobile app's old fixed mock schedule — sessions come
+ * from the SAME class_sessions/class_bookings tables box-admin's own
+ * class-scheduling UI manages. Resolves `userId`'s box via
+ * box_members; an athlete with no box gets an empty list, never
+ * another box's (or nobody's) schedule.
+ * @summary List real, per-box class sessions in a date range for Agendar
+ */
+export const listClassSessions = async (params: ListClassSessionsParams, options?: RequestInit): Promise<ClassSessionDto[]> => {
+
+  return customFetch<ClassSessionDto[]>(getListClassSessionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListClassSessionsQueryKey = (params?: ListClassSessionsParams,) => {
+    return [
+    `/api/class-sessions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListClassSessionsQueryOptions = <TData = Awaited<ReturnType<typeof listClassSessions>>, TError = ErrorType<ErrorEnvelope>>(params: ListClassSessionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClassSessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListClassSessionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listClassSessions>>> = ({ signal }) => listClassSessions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listClassSessions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListClassSessionsQueryResult = NonNullable<Awaited<ReturnType<typeof listClassSessions>>>
+export type ListClassSessionsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary List real, per-box class sessions in a date range for Agendar
+ */
+
+export function useListClassSessions<TData = Awaited<ReturnType<typeof listClassSessions>>, TError = ErrorType<ErrorEnvelope>>(
+ params: ListClassSessionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClassSessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListClassSessionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListBookingsUrl = (params: ListBookingsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -497,9 +588,11 @@ export const getCreateBookingUrl = () => {
 }
 
 /**
- * A class uses its deterministic capacity and base attendee count from
- * the mobile schedule. If no seat remains, the user is added to a
- * maximum-five-person FIFO waitlist.
+ * `sessionId` must be a real class_sessions.id belonging to the
+ * caller's own box (see GET /class-sessions) — capacity and the
+ * confirmed count are read from the database, never trusted from the
+ * client. If no seat remains, the user is added to a maximum-five-
+ * person FIFO waitlist.
  * @summary Book a class or join its FIFO waitlist
  */
 export const createBooking = async (createBookingRequest: CreateBookingRequest, options?: RequestInit): Promise<BookingActionResponse> => {

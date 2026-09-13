@@ -15,7 +15,35 @@ export type PlatformAgreementStatus = {
    *  her own box's box_admin). */
   roles: AdminRole[];
   accepted: boolean;
+  /** When this box_admin accepted it (ISO string), or null if not yet
+   *  accepted / not applicable (e.g. super_admin, exempt outright). */
+  acceptedAt: string | null;
   document: { slug: string; title: string; objectPath: string | null } | null;
+  /** null for a super_admin-only account. Otherwise this box_admin's box —
+   *  `detailsComplete` gates whether "Datos del Box" still needs filling in
+   *  before the admin panel opens (see create-box.tsx / box-details.tsx).
+   *  The rest are current values, for that screen to prefill from. */
+  box: {
+    id: string;
+    name: string;
+    status: string;
+    detailsComplete: boolean;
+    /** true once, right when status flips to 'activo' and the one-time
+     *  welcome popup hasn't been shown yet — see markBoxWelcomeShown. */
+    showWelcome: boolean;
+    ownerName: string | null;
+    location: string | null;
+    contactPhone: string | null;
+    whatsapp: string | null;
+    instagramUrl: string | null;
+    facebookUrl: string | null;
+    tiktokUrl: string | null;
+  } | null;
+  /** Only meaningful when `roles` is empty — whether this email is
+   *  pre-authorized to use "Crear mi Box" (see lib/navigation.ts's
+   *  getAdminNavItem). Always false once an account already has any admin
+   *  role. */
+  boxCreationAuthorized: boolean;
 };
 
 export async function getPlatformAgreementStatus(
@@ -30,6 +58,69 @@ export async function acceptPlatformAgreement(
   userId: string,
 ): Promise<PlatformAgreementStatus> {
   return customFetch<PlatformAgreementStatus>("/api/platform-agreement/accept", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+}
+
+/**
+ * Whether this account's email has been pre-authorized by a super_admin to
+ * use "Crear mi Box" — checked before showing the form (see create-box.tsx),
+ * not just relied on as a 403 after the fact.
+ */
+export async function getBoxAuthorizationStatus(userId: string): Promise<{ authorized: boolean }> {
+  return customFetch<{ authorized: boolean }>(
+    `/api/platform-agreement/box-authorization-status?userId=${encodeURIComponent(userId)}`,
+  );
+}
+
+/**
+ * "Crear mi Box" — self-service bootstrap for a brand-new box_admin. Creates
+ * a pending `boxes` row (status='pendiente'), provisions the real Supabase
+ * Auth account behind it if needed, and grants this account the box_admin
+ * role for it. From here on the normal flow takes over: "Administrador" ->
+ * "Acuerdo de Plataforma" -> PIN setup, same as any other box_admin.
+ */
+export async function createBox(userId: string, boxName: string): Promise<{ boxId: string }> {
+  return customFetch<{ boxId: string }>("/api/platform-agreement/create-box", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, boxName }),
+  });
+}
+
+export type BoxDetailsInput = {
+  userId: string;
+  name: string;
+  ownerName: string;
+  location: string;
+  contactPhone: string;
+  whatsapp?: string;
+  instagramUrl?: string;
+  facebookUrl?: string;
+  tiktokUrl?: string;
+};
+
+/**
+ * "Datos del Box" — filled in right after PIN setup. Name/Encargado/
+ * Ubicación/Contacto are required (this is what flips `box.detailsComplete`
+ * to true); social links are optional and can be added later.
+ */
+export async function submitBoxDetails(input: BoxDetailsInput): Promise<PlatformAgreementStatus> {
+  return customFetch<PlatformAgreementStatus>("/api/platform-agreement/box-details", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Marks the one-time "your box is approved" welcome popup as shown for
+ * good (see home.tsx) — flips `box.showWelcome` to false server-side.
+ */
+export async function markBoxWelcomeShown(userId: string): Promise<PlatformAgreementStatus> {
+  return customFetch<PlatformAgreementStatus>("/api/platform-agreement/box-welcome-shown", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId }),

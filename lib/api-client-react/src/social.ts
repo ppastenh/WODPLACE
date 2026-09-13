@@ -37,6 +37,8 @@ export type SocialReport = {
   postId: string;
   reporterName: string;
   reason: string;
+  /** Optional screenshot/evidence the reporter attached, or null. */
+  imageUrl: string | null;
   createdAt: string;
   post: {
     id: string;
@@ -291,14 +293,46 @@ export function useSocialMutations(userId: string, authorName: string) {
   );
 
   const reportPost = useCallback(
-    async (postId: string, reason: string): Promise<void> => {
+    async (postId: string, reason: string, imageUrl?: string): Promise<void> => {
       await customFetch(`/api/social/posts/${postId}/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reporterId: userId, reporterName: authorName, reason }),
+        body: JSON.stringify({ reporterId: userId, reporterName: authorName, reason, imageUrl }),
       });
     },
     [userId, authorName],
+  );
+
+  /**
+   * Optional screenshot/evidence attached to a report — same presign +
+   * upload mechanism as uploadSocialImage, own "reports" prefix. Returns
+   * the public URL to pass into reportPost.
+   */
+  const uploadReportImage = useCallback(
+    async (
+      localUri: string,
+      mimeType = "image/jpeg",
+      nativeUploader?: NativeUploader,
+      fileSize?: number,
+    ): Promise<string> => {
+      const { uploadURL, publicUrl } = await customFetch<{
+        uploadURL: string;
+        publicUrl: string;
+        metadata: object;
+      }>("/api/storage/report-uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reporterId: userId,
+          size: fileSize && fileSize > 0 ? fileSize : undefined,
+          contentType: mimeType,
+        }),
+      });
+
+      await putImageToPresignedUrl(uploadURL, localUri, mimeType, nativeUploader);
+      return publicUrl;
+    },
+    [userId],
   );
 
   const uploadSocialImage = useCallback(
@@ -349,7 +383,7 @@ export function useSocialMutations(userId: string, authorName: string) {
     [],
   );
 
-  return { createPost, editPost, deletePost, toggleReaction, addComment, deleteComment, reportPost, uploadSocialImage, blockUser };
+  return { createPost, editPost, deletePost, toggleReaction, addComment, deleteComment, reportPost, uploadReportImage, uploadSocialImage, blockUser };
 }
 
 // ─── Admin: reports queue ─────────────────────────────────────────────────────

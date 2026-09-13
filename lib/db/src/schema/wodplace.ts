@@ -139,18 +139,101 @@ export const platformAgreementAcceptancesTable = pgTable(
 export type PlatformAgreementAcceptanceRow =
   typeof platformAgreementAcceptancesTable.$inferSelect;
 
-// Server-side class booking state. The mobile app still generates the
-// deterministic sessionId from the class date/time, while these rows make
-// bookings and waitlist order visible to every device.
+// Append-only trail of sensitive actions taken from the super-admin panel
+// (approve/reject a box, grant/revoke a role, resolve a report, ...).
+// Written directly by the super-admin web app via the Supabase client (same
+// style as the rest of that app) — `actorEmail` rather than a user id
+// because the actor is a Supabase Auth account, a different identity space
+// than wodplace_users. RLS (see supabase/migrations) only grants INSERT, no
+// UPDATE/DELETE — not even a super_admin can rewrite history through
+// PostgREST, though this is still a client-attested log, not
+// server-enforced: someone with a super_admin session could still bypass
+// the app and skip logging an action outright.
+export const superAdminAuditLogTable = pgTable("super_admin_audit_log", {
+  id: text("id").primaryKey(),
+  actorEmail: text("actor_email").notNull(),
+  action: text("action").notNull(), // e.g. "box.approve", "role.grant_super_admin"
+  targetType: text("target_type").notNull(), // "box" | "user_role" | "report"
+  targetId: text("target_id").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type SuperAdminAuditLogRow = typeof superAdminAuditLogTable.$inferSelect;
+
+// Bug/problem reports a box_admin files for the platform owner (super_admin)
+// to follow up on — NOT athlete-facing Comunidad moderation (that stays
+// entirely inside box-admin, see social_reports above). Written and read
+// directly via the Supabase client from both box-admin (insert own + read
+// own) and super-admin (read/resolve all) — same style as
+// super_admin_audit_log, RLS in supabase/migrations.
+export const supportReportsTable = pgTable("support_reports", {
+  id: text("id").primaryKey(),
+  reporterUserId: text("reporter_user_id").notNull(), // auth.users id (box_admin)
+  reporterEmail: text("reporter_email").notNull(),
+  boxId: text("box_id").notNull(),
+  description: text("description").notNull(),
+  // Optional screenshot — same public "wodplace-uploads" Storage bucket as
+  // everything else (lib/objectStorage.ts), new "support/" prefix, uploaded
+  // directly from box-admin's own authenticated Supabase client (unlike
+  // wodplace's report screenshots, box-admin has real auth already so it
+  // doesn't need api-server to mint a presigned URL).
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedBy: text("resolved_by"), // super_admin's email
+});
+export type SupportReportRow = typeof supportReportsTable.$inferSelect;
+
+// Pre-authorization gate for "Crear mi Box" (see routes/platformAgreement.ts's
+// /create-box) — a super_admin adds an email here BEFORE that person can use
+// the self-service box-creation flow at all; api-server checks this table on
+// every /create-box call. Written/read directly via the Supabase client from
+// super-admin's own panel (RLS in supabase/migrations restricts it to
+// is_super_admin()). `email` is the PK and is always stored lowercased —
+// every lookup still wraps both sides in lower() defensively (see
+// resolveAdminRoles-style email bridges elsewhere in this codebase).
+export const boxCreationAuthorizationsTable = pgTable("box_creation_authorizations", {
+  email: text("email").primaryKey(),
+  authorizedBy: text("authorized_by").notNull(), // super_admin's email
+  authorizedAt: timestamp("authorized_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  // Set once by api-server when this email successfully creates its box —
+  // blocks reuse. Independent of revokedAt: a super_admin can revoke access
+  // that was never used, or leave a used one as historical record.
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
+export type BoxCreationAuthorizationRow =
+  typeof boxCreationAuthorizationsTable.$inferSelect;
+
+// Server-side class booking state, against REAL class_sessions rows (the
+// same table box-admin's own class-scheduling UI reads/writes directly via
+// Supabase — see supabase/migrations/20260830190000_wodplace_admin_panel_port.sql).
+// `sessionId` is a real class_sessions.id (a uuid string), not a
+// client-fabricated "date_time" string like it used to be before Agendar
+// was wired to real per-box schedules. `boxId` is required by the live
+// table (NOT NULL, no default) — resolved server-side via
+// resolveBoxIdForAthlete, never trusted from the client. `status` uses the
+// SAME vocabulary box-admin already writes ("inscrito" / "lista_espera"),
+// not this table's old wodplace-only "confirmed"/"waiting" strings, so both
+// apps interpret the same rows consistently — the wire contract the mobile
+// app itself sees (BookingRecord.status) still says "confirmed"/"waiting";
+// the translation happens only in api-server's routes/bookings.ts.
 export const classBookingsTable = pgTable(
   "class_bookings",
   {
     id: text("id").primaryKey(),
+    boxId: text("box_id").notNull(),
     sessionId: text("session_id").notNull(),
     userId: text("user_id")
       .notNull()
       .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
-    status: text("status").notNull(), // "confirmed" | "waiting"
+    status: text("status").notNull(), // "inscrito" | "lista_espera"
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -283,6 +366,11 @@ export const socialReportsTable = pgTable("social_reports", {
     .defaultNow(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   boxId: text("box_id").notNull(),
+  // Optional screenshot/evidence the reporter attaches — same Supabase
+  // Storage bucket as everything else (see lib/objectStorage.ts), prefix
+  // "reports". Shown both in box-level moderation (wodplace's "Más" screen)
+  // and in super-admin's Moderación Global, since both read this same row.
+  imageUrl: text("image_url"),
 });
 export type SocialReportRow = typeof socialReportsTable.$inferSelect;
 
