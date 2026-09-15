@@ -1,13 +1,29 @@
-import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { getMyPlans, type MyPlan } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
-import { AppButton } from '@/components/AppButton';
+import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+
+function formatPrice(price: number): string {
+  return `$${Math.round(price).toLocaleString('es-CL')}`;
+}
 
 export default function PlanScreen() {
   const colors = useColors();
+  const { user } = useAuth();
+  const [plans, setPlans] = useState<MyPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    getMyPlans(user.id)
+      .then((res) => setPlans(res.plans))
+      .catch(() => setPlans([]))
+      .finally(() => setLoading(false));
+  }, [user?.id]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -15,54 +31,86 @@ export default function PlanScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>Plan</Text>
 
-        <View style={[styles.planCard, { backgroundColor: colors.foreground }]}>
-          <View style={styles.planHeaderRow}>
-            <Text style={[styles.planName, { color: colors.background }]}>Plan Ilimitado</Text>
-            <View style={[styles.activeTag, { backgroundColor: colors.success }]}>
-              <Text style={styles.activeTagText}>Activo</Text>
-            </View>
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.primary} />
           </View>
-          <Text style={[styles.planPrice, { color: colors.background }]}>
-            $45.000 <Text style={styles.planPriceUnit}>/ mes</Text>
-          </Text>
-          <View style={[styles.planDivider, { backgroundColor: 'rgba(255,255,255,0.15)' }]} />
-          <View style={styles.planRow}>
-            <Feather name="refresh-cw" size={15} color={colors.background} />
-            <Text style={[styles.planRowText, { color: colors.background }]}>
-              Se renueva el 15 de agosto de 2026
+        ) : plans.length === 0 ? (
+          <View style={styles.center}>
+            <Feather name="award" size={26} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              Tu box todavía no cargó planes de membresía.
             </Text>
           </View>
-          <View style={styles.planRow}>
-            <Feather name="check-circle" size={15} color={colors.background} />
-            <Text style={[styles.planRowText, { color: colors.background }]}>
-              Clases ilimitadas, todas las disciplinas
-            </Text>
-          </View>
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Beneficios incluidos</Text>
-        <View style={[styles.benefitsCard, { backgroundColor: colors.card }]}>
-          {[
-            'Acceso a todas las clases del box',
-            'Reserva anticipada de hasta 7 días',
-            'Invita a 1 amigo al mes',
-          ].map((benefit) => (
-            <View key={benefit} style={styles.benefitRow}>
-              <Feather name="check" size={15} color={colors.primary} />
-              <Text style={[styles.benefitText, { color: colors.foreground }]}>{benefit}</Text>
+        ) : (
+          plans.map((plan) => (
+            <View
+              key={plan.id}
+              style={[
+                styles.planCard,
+                plan.isSubscribed
+                  ? { backgroundColor: colors.foreground }
+                  : { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.planHeaderRow}>
+                <Text
+                  style={[
+                    styles.planName,
+                    { color: plan.isSubscribed ? colors.background : colors.foreground },
+                  ]}
+                >
+                  {plan.name}
+                </Text>
+                {plan.isSubscribed ? (
+                  <View style={[styles.activeTag, { backgroundColor: colors.success }]}>
+                    <Text style={styles.activeTagText}>Suscrito</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text
+                style={[
+                  styles.planPrice,
+                  { color: plan.isSubscribed ? colors.background : colors.foreground },
+                ]}
+              >
+                {formatPrice(plan.price)}{' '}
+                <Text style={styles.planPriceUnit}>/ {plan.durationDays} días</Text>
+              </Text>
+              {plan.benefits.length > 0 ? (
+                <>
+                  <View
+                    style={[
+                      styles.planDivider,
+                      {
+                        backgroundColor: plan.isSubscribed
+                          ? 'rgba(255,255,255,0.15)'
+                          : colors.border,
+                      },
+                    ]}
+                  />
+                  {plan.benefits.map((benefit) => (
+                    <View key={benefit} style={styles.planRow}>
+                      <Feather
+                        name="check-circle"
+                        size={15}
+                        color={plan.isSubscribed ? colors.background : colors.primary}
+                      />
+                      <Text
+                        style={[
+                          styles.planRowText,
+                          { color: plan.isSubscribed ? colors.background : colors.foreground },
+                        ]}
+                      >
+                        {benefit}
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              ) : null}
             </View>
-          ))}
-        </View>
-
-        <AppButton
-          label="Cambiar plan"
-          variant="dark"
-          fullWidth
-          style={styles.changeButton}
-          onPress={() =>
-            Alert.alert('Cambiar plan', 'Muy pronto podrás cambiar tu plan desde la app.')
-          }
-        />
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -70,13 +118,15 @@ export default function PlanScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 48, gap: 4 },
+  scrollContent: { padding: 20, paddingBottom: 48, gap: 14 },
   title: {
     fontSize: 22,
     fontFamily: 'Anton_400Regular',
     marginTop: 8,
-    marginBottom: 18,
+    marginBottom: 4,
   },
+  center: { alignItems: 'center', gap: 10, paddingVertical: 40 },
+  emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   planCard: {
     borderRadius: 24,
     padding: 20,
@@ -90,6 +140,7 @@ const styles = StyleSheet.create({
   planName: {
     fontSize: 18,
     fontFamily: 'Anton_400Regular',
+    flex: 1,
   },
   activeTag: {
     borderRadius: 999,
@@ -122,29 +173,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
     flex: 1,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Anton_400Regular',
-    marginTop: 26,
-    marginBottom: 12,
-  },
-  benefitsCard: {
-    borderRadius: 20,
-    padding: 18,
-    gap: 14,
-  },
-  benefitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  benefitText: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    flex: 1,
-  },
-  changeButton: {
-    marginTop: 26,
   },
 });

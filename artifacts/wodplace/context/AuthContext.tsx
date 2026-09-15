@@ -65,6 +65,13 @@ interface AuthContextValue {
    */
   hasBoxMembership: boolean | null;
   /**
+   * Whether the box_admin has assigned this athlete a real plan (box_members
+   * .plan_id) — distinct from hasBoxMembership: joining a box via a code
+   * doesn't assign one automatically. "Progreso Mensual" on Home depends on
+   * this, not just box membership. Refreshed alongside refreshActivationStatus.
+   */
+  hasActivePlan: boolean | null;
+  /**
    * Where to navigate right after auth resolves (boot, login, register,
    * account recovery): a choice screen ("Entrar como Super Admin" / "Ver
    * como alumno") for a super_admin — asked fresh every time, never
@@ -151,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [adminStatus, setAdminStatus] = useState<PlatformAgreementStatus | null>(null);
   const [hasBoxMembership, setHasBoxMembership] = useState<boolean | null>(null);
+  const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null);
 
   // Mirror of adminStatus, updated synchronously (state updates aren't
   // visible until the next render) — getPostAuthRoute reads this right
@@ -178,11 +186,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // boot path used to skip it — only login/register/updateProfile
           // called persist(). Re-sync on every app open (idempotent upsert)
           // so contract read/acceptance calls (FK on userId) don't 400.
-          syncUser({ id: restored.id, name: restored.name, email: restored.email }).catch(
-            (err) => {
-              console.warn('Failed to sync restored user to backend', err);
-            },
-          );
+          syncUser({
+            id: restored.id,
+            name: restored.name,
+            email: restored.email,
+            birthdate: restored.birthdate,
+          }).catch((err) => {
+            console.warn('Failed to sync restored user to backend', err);
+          });
           // rank/phrase used to be AsyncStorage-only (no public profile to
           // show them on); keep the backend copy current too.
           updateProfileFields(restored.id, { rank: restored.rank, phrase: restored.phrase }).catch(
@@ -208,9 +219,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Best-effort: make sure the backend has a row for this user so
       // contract read-progress/acceptance calls (which have a FK on userId)
       // succeed. Never blocks or crashes the app if the API is unreachable.
-      syncUser({ id: next.id, name: next.name, email: next.email }).catch((err) => {
-        console.warn('Failed to sync user to backend', err);
-      });
+      syncUser({ id: next.id, name: next.name, email: next.email, birthdate: next.birthdate }).catch(
+        (err) => {
+          console.warn('Failed to sync user to backend', err);
+        },
+      );
       updateProfileFields(next.id, { rank: next.rank, phrase: next.phrase }).catch((err) => {
         console.warn('Failed to sync rank/phrase to backend', err);
       });
@@ -235,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const myBox = await getMyBox(target.id);
       setHasBoxMembership(!!myBox.box);
+      setHasActivePlan(!!myBox.box?.planId);
     } catch (err) {
       console.warn('Failed to refresh box membership status', err);
     }
@@ -413,6 +427,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAdminStatus(null);
     adminStatusRef.current = null;
     setHasBoxMembership(null);
+    setHasActivePlan(null);
   };
 
   const updateProfile = async (partial: Partial<WodplaceUser>) => {
@@ -427,6 +442,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: !!user,
       adminStatus,
       hasBoxMembership,
+      hasActivePlan,
       getPostAuthRoute,
       checkEmailExists,
       login,
@@ -439,7 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshActivationStatus: () => refreshActivationStatus(),
       recoverAccount,
     }),
-    [user, isLoading, adminStatus, hasBoxMembership],
+    [user, isLoading, adminStatus, hasBoxMembership, hasActivePlan],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

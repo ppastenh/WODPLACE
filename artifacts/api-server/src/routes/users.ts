@@ -22,14 +22,19 @@ router.post("/users", async (req: Request, res: Response) => {
   }
 
   try {
-    const { id, name, email } = parsed.data;
+    const { id, name, email, birthdate } = parsed.data;
 
     const [row] = await db
       .insert(wodplaceUsersTable)
-      .values({ id, name, email })
+      .values({ id, name, email, birthdate })
       .onConflictDoUpdate({
         target: wodplaceUsersTable.id,
-        set: { name, email },
+        // Never overwrite an existing birthdate with null — a sync call
+        // that doesn't carry it (e.g. an older cached client) shouldn't
+        // erase one already on file.
+        set: birthdate
+          ? { name, email, birthdate }
+          : { name, email },
       })
       .returning();
 

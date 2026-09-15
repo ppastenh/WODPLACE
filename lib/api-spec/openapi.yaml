@@ -128,6 +128,9 @@ paths:
         WODPLACE has no real auth system — the mobile app generates a local
         user id in AsyncStorage. This endpoint mirrors that user server-side
         so contract progress/acceptance can be tied to a stable id.
+        `birthdate`, when present, backs the per-box "upcoming birthdays"
+        list (see GET /box-memberships/upcoming-birthdays) — never sent back
+        to any client beyond month/day.
       requestBody:
         required: true
         content:
@@ -1075,6 +1078,10 @@ components:
         email:
           type: string
           minLength: 1
+        birthdate:
+          type: string
+          description: ISO date (YYYY-MM-DD). Only ever read back as month/day, never the year.
+          nullable: true
     UserRecord:
       type: object
       required: [id, name, email]

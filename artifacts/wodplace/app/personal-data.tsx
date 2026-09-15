@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { getMyBox } from '@workspace/api-client-react';
+import { getMyBox, type MyBox } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
 import { BirthdateModal } from '@/components/BirthdateModal';
 import { PhoneModal } from '@/components/PhoneModal';
@@ -24,13 +25,13 @@ export default function PersonalDataScreen() {
   const { user, updateProfile } = useAuth();
   const [birthdateVisible, setBirthdateVisible] = useState(false);
   const [phoneVisible, setPhoneVisible] = useState(false);
-  const [boxName, setBoxName] = useState<string | null>(null);
+  const [myBox, setMyBox] = useState<MyBox | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
     getMyBox(user.id)
-      .then((res) => setBoxName(res.box?.name ?? null))
-      .catch(() => setBoxName(null));
+      .then((res) => setMyBox(res.box))
+      .catch(() => setMyBox(null));
   }, [user?.id]);
 
   if (!user) return null;
@@ -86,15 +87,19 @@ export default function PersonalDataScreen() {
             pressed && { opacity: 0.8 },
           ]}
         >
-          <View style={[styles.boxLogo, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.boxLogoText, { color: colors.primaryForeground }]}>
-              {boxName ? boxName.charAt(0) : '?'}
-            </Text>
-          </View>
+          {myBox?.photoUrl ? (
+            <Image source={{ uri: myBox.photoUrl }} style={styles.boxLogo} contentFit="cover" />
+          ) : (
+            <View style={[styles.boxLogo, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.boxLogoText, { color: colors.primaryForeground }]}>
+                {myBox?.name ? myBox.name.charAt(0) : '?'}
+              </Text>
+            </View>
+          )}
           <View style={styles.rowText}>
             <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Box suscrito</Text>
             <Text style={[styles.boxName, { color: colors.foreground }]}>
-              {boxName ?? 'Sin box asignado'}
+              {myBox?.name ?? 'Sin box asignado'}
             </Text>
           </View>
           <Feather name="chevron-right" size={20} color={colors.mutedForeground} />

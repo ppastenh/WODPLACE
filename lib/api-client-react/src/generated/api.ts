@@ -344,6 +344,9 @@ export const getSyncUserUrl = () => {
  * WODPLACE has no real auth system — the mobile app generates a local
  * user id in AsyncStorage. This endpoint mirrors that user server-side
  * so contract progress/acceptance can be tied to a stable id.
+ * `birthdate`, when present, backs the per-box "upcoming birthdays"
+ * list (see GET /box-memberships/upcoming-birthdays) — never sent back
+ * to any client beyond month/day.
  * @summary Upsert the mobile app's local user into the backend
  */
 export const syncUser = async (syncUserRequest: SyncUserRequest, options?: RequestInit): Promise<UserRecord> => {

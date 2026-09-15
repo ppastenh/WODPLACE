@@ -36,6 +36,7 @@ type Plan = {
   name: string;
   price: number;
   duration_days: number;
+  classes_per_period: number | null;
   benefits: string[] | null;
   is_active: boolean;
   is_featured: boolean;
@@ -45,6 +46,8 @@ const empty = {
   name: "",
   price: "",
   duration_days: "30",
+  classes_per_period: "",
+  unlimited: true,
   benefits: [] as string[],
   is_active: true,
 };
@@ -83,6 +86,7 @@ function PlansPage() {
         name: `${p.name} (copia)`,
         price: p.price,
         duration_days: p.duration_days,
+        classes_per_period: p.classes_per_period,
         benefits: p.benefits ?? [],
         is_active: p.is_active,
       });
@@ -134,7 +138,10 @@ function PlansPage() {
                     <p className="truncate text-base font-bold">{p.name}</p>
                     {p.is_featured && <Star className="h-3.5 w-3.5 shrink-0 fill-primary text-primary" />}
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{p.duration_days} días</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {p.duration_days} días ·{" "}
+                    {p.classes_per_period != null ? `${p.classes_per_period} clases` : "Ilimitado"}
+                  </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-lg font-black text-primary">
@@ -273,6 +280,9 @@ function PlanDialog({
             name: plan.name,
             price: String(plan.price),
             duration_days: String(plan.duration_days),
+            classes_per_period:
+              plan.classes_per_period != null ? String(plan.classes_per_period) : "",
+            unlimited: plan.classes_per_period == null,
             benefits: plan.benefits ?? [],
             is_active: plan.is_active,
           }
@@ -287,6 +297,7 @@ function PlanDialog({
         name: f.name,
         price: Number(f.price),
         duration_days: Number(f.duration_days),
+        classes_per_period: f.unlimited ? null : Number(f.classes_per_period),
         benefits: f.benefits,
         is_active: f.is_active,
       };
@@ -334,6 +345,33 @@ function PlanDialog({
             <Label>Nombre</Label>
             <Input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
           </div>
+
+          <div>
+            <Label>Cantidad de clases (opcional)</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Ej: 12"
+                required={!f.unlimited}
+                disabled={f.unlimited}
+                value={f.classes_per_period}
+                onChange={(e) => setF({ ...f, classes_per_period: e.target.value })}
+                className="flex-1"
+              />
+              <label className="flex shrink-0 items-center gap-2 rounded-xl bg-secondary px-3 py-2.5 text-xs font-semibold text-muted-foreground">
+                <Switch
+                  checked={f.unlimited}
+                  onCheckedChange={(v) =>
+                    setF((s) => ({ ...s, unlimited: v, classes_per_period: v ? "" : s.classes_per_period }))
+                  }
+                />
+                Ilimitado
+              </label>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Precio</Label>

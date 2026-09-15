@@ -36,6 +36,8 @@ export interface SyncUserRequest {
   name: string;
   /** @minLength 1 */
   email: string;
+  /** ISO date (YYYY-MM-DD). Only ever read back as month/day, never the year. */
+  birthdate?: string | null;
 }
 
 export interface UserRecord {

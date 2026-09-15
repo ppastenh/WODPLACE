@@ -430,6 +430,7 @@ export type Database = {
           name: string
           owner_name: string | null
           owner_user_id: string | null
+          photo_url: string | null
           status: string
           tiktok_url: string | null
           updated_at: string
@@ -446,6 +447,7 @@ export type Database = {
           name: string
           owner_name?: string | null
           owner_user_id?: string | null
+          photo_url?: string | null
           status?: string
           tiktok_url?: string | null
           updated_at?: string
@@ -462,6 +464,7 @@ export type Database = {
           name?: string
           owner_name?: string | null
           owner_user_id?: string | null
+          photo_url?: string | null
           status?: string
           tiktok_url?: string | null
           updated_at?: string
@@ -970,6 +973,7 @@ export type Database = {
           benefits: string[]
           billing_period: string | null
           box_id: string
+          classes_per_period: number | null
           created_at: string
           description: string | null
           duration_days: number
@@ -984,6 +988,7 @@ export type Database = {
           benefits?: string[]
           billing_period?: string | null
           box_id: string
+          classes_per_period?: number | null
           created_at?: string
           description?: string | null
           duration_days?: number
@@ -998,6 +1003,7 @@ export type Database = {
           benefits?: string[]
           billing_period?: string | null
           box_id?: string
+          classes_per_period?: number | null
           created_at?: string
           description?: string | null
           duration_days?: number
@@ -1564,6 +1570,7 @@ export type Database = {
       wodplace_users: {
         Row: {
           avatar_url: string | null
+          birthdate: string | null
           created_at: string
           email: string
           id: string
@@ -1573,6 +1580,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          birthdate?: string | null
           created_at?: string
           email: string
           id: string
@@ -1582,6 +1590,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          birthdate?: string | null
           created_at?: string
           email?: string
           id?: string

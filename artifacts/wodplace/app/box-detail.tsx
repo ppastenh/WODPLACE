@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { getMyBox, type MyBox } from '@workspace/api-client-react';
@@ -77,11 +78,15 @@ export default function BoxDetailScreen() {
       <AppHeader onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <View style={[styles.heroLogo, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.heroLogoText, { color: colors.primaryForeground }]}>
-              {box.name.charAt(0)}
-            </Text>
-          </View>
+          {box.photoUrl ? (
+            <Image source={{ uri: box.photoUrl }} style={styles.heroLogo} contentFit="cover" />
+          ) : (
+            <View style={[styles.heroLogo, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.heroLogoText, { color: colors.primaryForeground }]}>
+                {box.name.charAt(0)}
+              </Text>
+            </View>
+          )}
           <Text style={[styles.heroName, { color: colors.foreground }]}>{box.name}</Text>
         </View>
 

@@ -28,6 +28,11 @@ export const wodplaceUsersTable = pgTable("wodplace_users", {
   // against a fixed enum server-side, same as box_members.status.
   rank: text("rank"),
   phrase: text("phrase"),
+  // Synced from the mobile profile (previously AsyncStorage-only) so
+  // per-box "upcoming birthdays" (see routes/boxes.ts) can be real instead
+  // of a hardcoded mock list. Only ever read back as month/day — never the
+  // full date/year — when showing another member's birthday.
+  birthdate: date("birthdate"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

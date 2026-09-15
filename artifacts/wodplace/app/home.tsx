@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Dimensions,
   Pressable,
   ScrollView,
   Share,
@@ -9,8 +10,40 @@ import {
   View,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { AutoFitImage } from '@/components/AutoFitImage';
+
+/** The box logo in Home's header — height-fixed, width follows the image's
+ *  real aspect ratio (measured on load), never cropped or circle-masked
+ *  (unlike the small round badge used elsewhere in the app). */
+function BoxLogoImage({ uri, height = 48 }: { uri: string; height?: number }) {
+  const [ratio, setRatio] = useState<number | null>(null);
+  const width = ratio ? height * ratio : height;
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width, height, borderRadius: 8 }}
+      contentFit="contain"
+      transition={300}
+      onLoad={(event) => {
+        const { width: w, height: h } = event.source;
+        if (w > 0 && h > 0) setRatio(w / h);
+      }}
+    />
+  );
+}
 import { router, usePathname, useFocusEffect } from 'expo-router';
-import { markBoxWelcomeShown } from '@workspace/api-client-react';
+import {
+  getBoxAnnouncements,
+  getMyBox,
+  getUpcomingBirthdays,
+  markAnnouncementRead,
+  markBoxWelcomeShown,
+  type BoxAnnouncement,
+  type MyBox,
+  type UpcomingBirthday,
+} from '@workspace/api-client-react';
+import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { AppHeader } from '@/components/AppHeader';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
@@ -31,6 +64,9 @@ import {
 import { hashString } from '@/constants/classSchedule';
 
 const MONTHLY_GOAL = 12;
+// scrollContent has 20px horizontal padding each side; the pinned aviso
+// card itself has 16px padding each side (see pinnedAvisoCard).
+const PINNED_AVISO_IMAGE_WIDTH = Dimensions.get('window').width - 40 - 32;
 
 const DAILY_QUOTES = [
   'La constancia de hoy construye la fuerza de mañana.',
@@ -40,11 +76,17 @@ const DAILY_QUOTES = [
   'Tu progreso se mide en disciplina, no en comparación.',
 ];
 
-const UPCOMING_BIRTHDAYS = [
-  { initials: 'PP', name: 'Pía Pastén', day: '18 AGO' },
-  { initials: 'TH', name: 'Tomás Herrera', day: '22 AGO' },
-  { initials: 'AS', name: 'Antonia Sepúlveda', day: '26 AGO' },
-];
+function birthdayInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? '';
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
+  return (first + last).toUpperCase() || '?';
+}
+
+function birthdayDayLabel(month: number, day: number): string {
+  const abbrev = (MONTH_NAMES[month - 1] ?? '').slice(0, 3).toUpperCase();
+  return `${day} ${abbrev}`;
+}
 
 type CoachNotice = {
   text: string;
@@ -100,11 +142,29 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 
 export default function HomeScreen() {
   const colors = useColors();
-  const { user, adminStatus, hasBoxMembership, logout, redeemBoxCode, refreshActivationStatus } = useAuth();
+  const {
+    user,
+    adminStatus,
+    hasBoxMembership,
+    hasActivePlan,
+    logout,
+    redeemBoxCode,
+    refreshActivationStatus,
+  } = useAuth();
   const { now, getSessionsForDate, getUpcomingBooked } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [birthdays, setBirthdays] = useState<UpcomingBirthday[]>([]);
+  const [myBox, setMyBox] = useState<MyBox | null>(null);
+  // Push avisos queue — one at a time, most recent first (see
+  // GET /box-memberships/announcements). Each one requires the athlete to
+  // confirm they've read it before it's removed from the queue.
+  const [pushQueue, setPushQueue] = useState<BoxAnnouncement[]>([]);
+  // The most recent push aviso regardless of read state — stays visible as
+  // a fixed card even after the popup above has been confirmed, so the
+  // athlete can still find it without digging through Comunidad.
+  const [pinnedPush, setPinnedPush] = useState<BoxAnnouncement | null>(null);
   // Opened only by tapping the JoinBoxCard button below — no more auto-shown
   // popup (that one-time approach was replaced by the persistent card, which
   // stays on screen for as long as hasBoxMembership is false instead of
@@ -119,6 +179,57 @@ export default function HomeScreen() {
     useCallback(() => {
       refreshActivationStatus();
     }, [refreshActivationStatus]),
+  );
+
+  // Real per-box birthdays (see GET /box-memberships/upcoming-birthdays) —
+  // refetched alongside the re-sync above so a newly-set birthdate (or a
+  // new box member) shows up without an app restart.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || !hasBoxMembership) {
+        setBirthdays([]);
+        return;
+      }
+      getUpcomingBirthdays(user.id)
+        .then((res) => setBirthdays(res.birthdays))
+        .catch(() => setBirthdays([]));
+    }, [user?.id, hasBoxMembership]),
+  );
+
+  // Push avisos (see GET /box-memberships/announcements) — refetched on
+  // focus so a new one shows up without an app restart. Confirming one
+  // (AnnouncementModal below) removes it from the local queue immediately;
+  // a fresh fetch on the next focus is the source of truth beyond that.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || !hasBoxMembership) {
+        setPushQueue([]);
+        setPinnedPush(null);
+        return;
+      }
+      getBoxAnnouncements(user.id)
+        .then((res) => {
+          setPushQueue(res.push);
+          setPinnedPush(res.pinnedPush);
+        })
+        .catch(() => {
+          setPushQueue([]);
+          setPinnedPush(null);
+        });
+    }, [user?.id, hasBoxMembership]),
+  );
+
+  // Box name + logo shown next to the greeting below.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || !hasBoxMembership) {
+        setMyBox(null);
+        return;
+      }
+      getMyBox(user.id)
+        .then((res) => setMyBox(res.box))
+        .catch(() => setMyBox(null));
+    }, [user?.id, hasBoxMembership]),
   );
 
   // One-time "your box is approved" popup — see boxes.welcome_shown_at.
@@ -198,15 +309,38 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.greeting, { color: colors.foreground }]}>
-          Hola, {getFirstName(user.name)}
-        </Text>
+        <View style={styles.homeHeaderGroup}>
+          <Text style={styles.greeting}>
+            <Text style={{ color: colors.foreground }}>Hola, </Text>
+            <Text style={{ color: colors.navActive }}>{getFirstName(user.name)}</Text>
+          </Text>
+          {myBox ? (
+            <View style={styles.boxBadge}>
+              {myBox.photoUrl ? (
+                <BoxLogoImage uri={myBox.photoUrl} />
+              ) : (
+                <View style={[styles.boxLogoFallback, { backgroundColor: colors.secondary }]}>
+                  <Text style={[styles.boxLogoFallbackText, { color: colors.navActive }]}>
+                    {myBox.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text
+                style={[styles.boxBadgeName, { color: colors.foreground }]}
+                numberOfLines={1}
+              >
+                {myBox.name}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={[styles.homeHeaderDivider, { backgroundColor: colors.navActive }]} />
 
         {hasBoxMembership === false ? (
           <JoinBoxCard onPress={() => setJoinBoxVisible(true)} />
         ) : null}
 
-        {hasBoxMembership ? (
+        {hasActivePlan ? (
           <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
             <View style={styles.cardHeadingRow}>
               <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>
@@ -227,6 +361,28 @@ export default function HomeScreen() {
                 ]}
               />
             </View>
+          </View>
+        ) : null}
+
+        {hasBoxMembership && pinnedPush ? (
+          <View style={[styles.pinnedAvisoCard, { backgroundColor: colors.card }]}>
+            <View style={styles.cardHeadingRow}>
+              <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>Aviso del box</Text>
+              <Feather name="bell" size={16} color={colors.navActive} />
+            </View>
+            {pinnedPush.imageUrl ? (
+              <View style={styles.pinnedAvisoImageWrap}>
+                <AutoFitImage uri={pinnedPush.imageUrl} width={PINNED_AVISO_IMAGE_WIDTH} borderRadius={12} />
+              </View>
+            ) : null}
+            <Text style={[styles.pinnedAvisoTitle, { color: colors.foreground }]}>
+              {pinnedPush.title}
+            </Text>
+            {pinnedPush.body ? (
+              <Text style={[styles.pinnedAvisoBody, { color: colors.mutedForeground }]} numberOfLines={3}>
+                {pinnedPush.body}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -315,7 +471,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {hasBoxMembership ? (
+        {hasBoxMembership && birthdays.length > 0 ? (
           <View style={styles.birthdaySection}>
             <View style={styles.sectionHeadingRow}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -324,18 +480,18 @@ export default function HomeScreen() {
               <Feather name="gift" size={19} color={colors.navActive} />
             </View>
             <View style={styles.birthdayList}>
-              {UPCOMING_BIRTHDAYS.map((birthday) => (
-                <View key={birthday.name} style={styles.birthdayRow}>
+              {birthdays.map((birthday) => (
+                <View key={`${birthday.name}-${birthday.month}-${birthday.day}`} style={styles.birthdayRow}>
                   <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
                     <Text style={[styles.avatarText, { color: colors.navActive }]}>
-                      {birthday.initials}
+                      {birthdayInitials(birthday.name)}
                     </Text>
                   </View>
                   <Text style={[styles.birthdayName, { color: colors.foreground }]}>
                     {birthday.name}
                   </Text>
                   <Text style={[styles.birthdayDay, { color: colors.navInactive }]}>
-                    {birthday.day}
+                    {birthdayDayLabel(birthday.month, birthday.day)}
                   </Text>
                 </View>
               ))}
@@ -365,6 +521,15 @@ export default function HomeScreen() {
           return result;
         }}
       />
+      <AnnouncementModal
+        visible={pushQueue.length > 0}
+        announcement={pushQueue[0] ?? null}
+        onClose={() => setPushQueue((q) => q.slice(1))}
+        onConfirmRead={() => {
+          const current = pushQueue[0];
+          if (current && user?.id) markAnnouncementRead(current.id, user.id).catch(() => {});
+        }}
+      />
     </View>
   );
 }
@@ -372,15 +537,59 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, gap: 14 },
+  homeHeaderGroup: {
+    gap: 18,
+  },
   greeting: {
-    fontSize: 26,
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+  },
+  boxBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  boxLogoFallback: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxLogoFallbackText: {
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+  },
+  boxBadgeName: {
+    fontSize: 21,
     fontFamily: 'Anton_400Regular',
-    marginBottom: 2,
+    flexShrink: 1,
+  },
+  homeHeaderDivider: {
+    height: 2,
+    borderRadius: 1,
   },
   progressCard: {
     borderRadius: 20,
     padding: 17,
     gap: 8,
+  },
+  pinnedAvisoCard: {
+    borderRadius: 20,
+    padding: 16,
+    gap: 8,
+  },
+  pinnedAvisoImageWrap: {
+    marginTop: 2,
+  },
+  pinnedAvisoTitle: {
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
+  },
+  pinnedAvisoBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: 'Inter_400Regular',
   },
   cardHeadingRow: {
     flexDirection: 'row',
