@@ -75,7 +75,9 @@ export default function PlanScreen() {
                 ]}
               >
                 {formatPrice(plan.price)}{' '}
-                <Text style={styles.planPriceUnit}>/ {plan.durationDays} días</Text>
+                <Text style={styles.planPriceUnit}>
+                  / {plan.durationDays} días · {plan.classesPerPeriod != null ? `${plan.classesPerPeriod} clases` : 'Ilimitado'}
+                </Text>
               </Text>
               {plan.benefits.length > 0 ? (
                 <>

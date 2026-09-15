@@ -36,11 +36,13 @@ import { router, usePathname, useFocusEffect } from 'expo-router';
 import {
   getBoxAnnouncements,
   getMyBox,
+  getMyPlans,
   getUpcomingBirthdays,
   markAnnouncementRead,
   markBoxWelcomeShown,
   type BoxAnnouncement,
   type MyBox,
+  type MyPlan,
   type UpcomingBirthday,
 } from '@workspace/api-client-react';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
@@ -55,7 +57,6 @@ import { useColors } from '@/hooks/useColors';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import {
   addDays,
-  daysInMonth,
   formatDayLabel,
   formatHM,
   MONTH_NAMES,
@@ -63,7 +64,6 @@ import {
 } from '@/lib/dateUtils';
 import { hashString } from '@/constants/classSchedule';
 
-const MONTHLY_GOAL = 12;
 // scrollContent has 20px horizontal padding each side; the pinned aviso
 // card itself has 16px padding each side (see pinnedAvisoCard).
 const PINNED_AVISO_IMAGE_WIDTH = Dimensions.get('window').width - 40 - 32;
@@ -104,20 +104,6 @@ function getFirstName(name: string): string {
   return name.trim().split(/\s+/)[0] || 'Atleta';
 }
 
-function getMonthlyBookedCount(
-  now: Date,
-  getSessionsForDate: ReturnType<typeof useBooking>['getSessionsForDate'],
-): number {
-  const count = daysInMonth(now.getFullYear(), now.getMonth());
-  let bookedCount = 0;
-
-  for (let day = 1; day <= count; day += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth(), day);
-    bookedCount += getSessionsForDate(date).filter((session) => session.isBooked).length;
-  }
-
-  return bookedCount;
-}
 
 function findNextAvailableSession(
   now: Date,
@@ -157,6 +143,12 @@ export default function HomeScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [birthdays, setBirthdays] = useState<UpcomingBirthday[]>([]);
   const [myBox, setMyBox] = useState<MyBox | null>(null);
+  // The athlete's subscribed plan, with real per-period stats (classes
+  // used/remaining, days until renewal) computed server-side from
+  // box_members.next_payment_at — drives both "Progreso Mensual" (now the
+  // plan's real period, not the calendar month) and the near-limit notice
+  // below it.
+  const [myPlan, setMyPlan] = useState<MyPlan | null>(null);
   // Push avisos queue — one at a time, most recent first (see
   // GET /box-memberships/announcements). Each one requires the athlete to
   // confirm they've read it before it's removed from the queue.
@@ -194,6 +186,19 @@ export default function HomeScreen() {
         .then((res) => setBirthdays(res.birthdays))
         .catch(() => setBirthdays([]));
     }, [user?.id, hasBoxMembership]),
+  );
+
+  // Subscribed plan + real period stats (see GET /box-memberships/my-plans).
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || !hasActivePlan) {
+        setMyPlan(null);
+        return;
+      }
+      getMyPlans(user.id)
+        .then((res) => setMyPlan(res.plans.find((p) => p.isSubscribed) ?? null))
+        .catch(() => setMyPlan(null));
+    }, [user?.id, hasActivePlan]),
   );
 
   // Push avisos (see GET /box-memberships/announcements) — refetched on
@@ -274,11 +279,21 @@ export default function HomeScreen() {
     router.replace('/login');
   };
 
-  const monthlyBooked = useMemo(
-    () => getMonthlyBookedCount(now, getSessionsForDate),
-    [now, getSessionsForDate],
-  );
-  const monthlyProgress = Math.min(monthlyBooked / MONTHLY_GOAL, 1);
+  // Progreso Mensual only renders once the plan's real period stats are
+  // known (classesPerPeriod set AND next_payment_at seeded server-side) —
+  // an unlimited plan, or one with no period yet, has nothing to show a
+  // ceiling against.
+  const hasPeriodProgress =
+    myPlan?.classesPerPeriod != null && myPlan?.classesUsedInPeriod != null;
+  const periodProgress = hasPeriodProgress
+    ? Math.min((myPlan!.classesUsedInPeriod as number) / (myPlan!.classesPerPeriod as number), 1)
+    : 0;
+  const nearPlanLimit =
+    !!myPlan &&
+    ((myPlan.classesPerPeriod != null &&
+      myPlan.classesRemaining != null &&
+      myPlan.classesRemaining <= 2) ||
+      (myPlan.daysUntilRenewal != null && myPlan.daysUntilRenewal <= 7));
   const nextBooked = getUpcomingBooked(1)[0] ?? null;
   const nextSession = nextBooked ?? findNextAvailableSession(now, getSessionsForDate);
   const isNextSessionBooked = !!nextBooked;
@@ -340,26 +355,54 @@ export default function HomeScreen() {
           <JoinBoxCard onPress={() => setJoinBoxVisible(true)} />
         ) : null}
 
-        {hasActivePlan ? (
+        {hasActivePlan && hasPeriodProgress ? (
           <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
             <View style={styles.cardHeadingRow}>
               <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>
-                Progreso mensual
+                Progreso del período
               </Text>
               <Text style={[styles.progressCount, { color: colors.foreground }]}>
-                {monthlyBooked} de {MONTHLY_GOAL} clases
+                {myPlan!.classesUsedInPeriod} de {myPlan!.classesPerPeriod} clases
               </Text>
             </View>
-            <Text style={[styles.monthLabel, { color: colors.foreground }]}>
-              {MONTH_NAMES[now.getMonth()]}
-            </Text>
+            {myPlan!.daysUntilRenewal != null ? (
+              <Text style={[styles.monthLabel, { color: colors.foreground }]}>
+                {myPlan!.daysUntilRenewal <= 0
+                  ? 'Vence hoy'
+                  : `Vence en ${myPlan!.daysUntilRenewal} día${myPlan!.daysUntilRenewal === 1 ? '' : 's'}`}
+              </Text>
+            ) : null}
             <View style={[styles.progressTrack, { backgroundColor: colors.input }]}>
               <View
                 style={[
                   styles.progressFill,
-                  { backgroundColor: colors.navActive, width: `${monthlyProgress * 100}%` },
+                  { backgroundColor: colors.navActive, width: `${periodProgress * 100}%` },
                 ]}
               />
+            </View>
+          </View>
+        ) : null}
+
+        {hasActivePlan && nearPlanLimit ? (
+          <View style={[styles.noticeCard, { backgroundColor: colors.warningBackground }]}>
+            <View style={[styles.noticeIcon, { backgroundColor: colors.warning }]}>
+              <Feather name="alert-circle" size={16} color={colors.foreground} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              {myPlan!.classesPerPeriod != null &&
+              myPlan!.classesRemaining != null &&
+              myPlan!.classesRemaining <= 2 ? (
+                <Text style={[styles.noticeText, { color: colors.foreground }]}>
+                  Te quedan {myPlan!.classesRemaining} clase{myPlan!.classesRemaining === 1 ? '' : 's'} este período.
+                </Text>
+              ) : null}
+              {myPlan!.daysUntilRenewal != null && myPlan!.daysUntilRenewal <= 7 ? (
+                <Text style={[styles.noticeText, { color: colors.foreground }]}>
+                  Tu plan {myPlan!.daysUntilRenewal <= 0
+                    ? 'vence hoy'
+                    : `vence en ${myPlan!.daysUntilRenewal} día${myPlan!.daysUntilRenewal === 1 ? '' : 's'}`}.
+                </Text>
+              ) : null}
             </View>
           </View>
         ) : null}

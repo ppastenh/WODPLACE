@@ -108,9 +108,12 @@ function MembersPage() {
       <PendingRequests />
       <div className="sticky top-[calc(env(safe-area-inset-top)+56px)] z-20 -mx-4 mb-4 space-y-3 bg-background/95 px-4 pb-3 pt-1 backdrop-blur">
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar miembro..." className="pl-9 rounded-full h-11 bg-card" />
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar miembro..." className="pl-9 rounded-full h-11 bg-card" />
+          </div>
+          <AddMemberFab plans={plans ?? []} />
         </div>
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
           {(["todos", "activo", "pausado", "suspendido", "vencido", "bloqueado"] as Status[]).map((s) => (
@@ -133,9 +136,6 @@ function MembersPage() {
           <MemberRow key={m.id} m={m} />
         ))}
       </div>
-
-
-      <AddMemberFab plans={plans ?? []} />
     </AdminShell>
   );
 }
@@ -270,6 +270,12 @@ export function SelectPlanSheet({
 
   const setPlan = useMutation({
     mutationFn: async (planId: string) => {
+      // Deliberately does NOT touch next_payment_at — only a real payment
+      // (Finanzas' "Registrar pago" or a member's "Renovar", both through
+      // registerPayment) may set/extend it. Seeding a placeholder date here
+      // used to double-count: a payment registered afterward would extend
+      // FROM that still-in-the-future placeholder instead of resetting,
+      // silently doubling the period (e.g. 30+30 days for one payment).
       const { error } = await supabase
         .from("box_members")
         .update({ plan_id: planId })
@@ -280,6 +286,8 @@ export function SelectPlanSheet({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["members"] });
       qc.invalidateQueries({ queryKey: ["member", boxId, userId] });
+      qc.invalidateQueries({ queryKey: ["alert-overdue"] });
+      qc.invalidateQueries({ queryKey: ["alert-upcoming"] });
       toast.success("Plan actualizado");
       onOpenChange(false);
     },
@@ -534,8 +542,11 @@ function AddMemberFab({ plans }: { plans: Array<{ id: string; name: string }> })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="fixed bottom-24 right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 active:scale-95 transition-transform">
-          <Plus className="h-6 w-6" />
+        <button
+          aria-label="Agregar miembro"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95 transition-transform"
+        >
+          <Plus className="h-5 w-5" />
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-sm rounded-3xl">

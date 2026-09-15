@@ -54,9 +54,17 @@ export type MyPlan = {
   name: string;
   price: number;
   durationDays: number;
+  /** null means unlimited (no fixed class count). */
+  classesPerPeriod: number | null;
   benefits: string[];
   isFeatured: boolean;
   isSubscribed: boolean;
+  /** Only ever set on the subscribed plan — null on every other plan, and
+   *  null on the subscribed one too until a payment (or first assignment)
+   *  seeds box_members.next_payment_at. */
+  daysUntilRenewal: number | null;
+  classesUsedInPeriod: number | null;
+  classesRemaining: number | null;
 };
 
 export async function getMyPlans(userId: string): Promise<{ plans: MyPlan[] }> {

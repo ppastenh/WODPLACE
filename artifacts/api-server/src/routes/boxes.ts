@@ -216,6 +216,15 @@ router.get("/box-memberships/my-box", async (req: Request, res: Response) => {
  * box_members.plan_id as `isSubscribed`. No box -> empty list; a box with
  * no plan_id assigned yet still sees the box's real plans, just none
  * marked as theirs.
+ *
+ * For the subscribed plan only, also computes the athlete's current-period
+ * stats (classesUsedInPeriod/classesRemaining/daysUntilRenewal) — the
+ * period window is [next_payment_at - duration_days, next_payment_at).
+ * box_members.next_payment_at is now a real, maintained date (box-admin's
+ * "Registrar pago"/"Renovar" advance it, and assigning a plan seeds it) —
+ * see computeNextPaymentAt on the box-admin side. When it's still null (no
+ * payment or plan assignment has happened yet), these all come back null
+ * rather than guessing a period from some other date.
  */
 router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
@@ -231,24 +240,54 @@ router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
       return;
     }
 
-    const myPlanRows = await db.execute<{ plan_id: string | null }>(sql`
-      SELECT plan_id FROM box_members WHERE box_id = ${boxId} AND user_id = ${userId} LIMIT 1
+    const myMembershipRows = await db.execute<{ plan_id: string | null; next_payment_at: string | null }>(sql`
+      SELECT plan_id, next_payment_at FROM box_members WHERE box_id = ${boxId} AND user_id = ${userId} LIMIT 1
     `);
-    const myPlanId = myPlanRows.rows[0]?.plan_id ?? null;
+    const myPlanId = myMembershipRows.rows[0]?.plan_id ?? null;
+    const nextPaymentAt = myMembershipRows.rows[0]?.next_payment_at ?? null;
 
     const rows = await db.execute<{
       id: string;
       name: string;
       price: string;
       duration_days: number;
+      classes_per_period: number | null;
       benefits: string[] | null;
       is_featured: boolean;
     }>(sql`
-      SELECT id, name, price, duration_days, benefits, is_featured
+      SELECT id, name, price, duration_days, classes_per_period, benefits, is_featured
       FROM plans
       WHERE box_id = ${boxId} AND is_active = true
       ORDER BY price ASC
     `);
+
+    const myPlan = rows.rows.find((r) => r.id === myPlanId);
+    let daysUntilRenewal: number | null = null;
+    let classesUsedInPeriod: number | null = null;
+    let classesRemaining: number | null = null;
+
+    if (myPlan && nextPaymentAt) {
+      const periodEnd = new Date(`${nextPaymentAt}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      daysUntilRenewal = Math.round((periodEnd.getTime() - today.getTime()) / 86_400_000);
+
+      if (myPlan.classes_per_period != null) {
+        const periodStart = new Date(periodEnd);
+        periodStart.setDate(periodStart.getDate() - myPlan.duration_days);
+
+        const usedRows = await db.execute<{ count: number }>(sql`
+          SELECT count(*)::int AS count
+          FROM class_bookings cb
+          JOIN class_sessions cs ON cs.id = cb.session_id
+          WHERE cb.user_id = ${userId} AND cb.status = 'inscrito'
+            AND cs.session_date >= ${periodStart.toISOString().slice(0, 10)}
+            AND cs.session_date < ${nextPaymentAt}
+        `);
+        classesUsedInPeriod = usedRows.rows[0]?.count ?? 0;
+        classesRemaining = Math.max(0, myPlan.classes_per_period - classesUsedInPeriod);
+      }
+    }
 
     res.json({
       plans: rows.rows.map((r) => ({
@@ -256,9 +295,13 @@ router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
         name: r.name,
         price: Number(r.price),
         durationDays: r.duration_days,
+        classesPerPeriod: r.classes_per_period,
         benefits: r.benefits ?? [],
         isFeatured: r.is_featured,
         isSubscribed: r.id === myPlanId,
+        daysUntilRenewal: r.id === myPlanId ? daysUntilRenewal : null,
+        classesUsedInPeriod: r.id === myPlanId ? classesUsedInPeriod : null,
+        classesRemaining: r.id === myPlanId ? classesRemaining : null,
       })),
     });
   } catch (error) {

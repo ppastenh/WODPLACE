@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
+import { registerPayment } from "@/lib/payments";
 
 export const Route = createFileRoute("/_authenticated/_admin/finances")({
   head: () => ({
@@ -140,18 +141,15 @@ function AddPaymentDialog() {
 
 
   const mut = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("payments").insert({
-        box_id: boxId,
-        user_id: form.member_id,
-        plan_id: form.plan_id || null,
+    mutationFn: () =>
+      registerPayment({
+        boxId,
+        userId: form.member_id,
+        planId: form.plan_id || null,
         amount: Number(form.amount),
         method: form.method,
-        status: form.status,
-        paid_at: form.status === "pagado" ? new Date().toISOString() : null,
-      });
-      if (error) throw error;
-    },
+        status: form.status as "pagado" | "pendiente",
+      }),
     onSuccess: () => { toast.success("Pago registrado"); qc.invalidateQueries(); setOpen(false); setQ(""); setForm({ member_id: "", plan_id: "", amount: "", method: "efectivo", status: "pagado" }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
   });

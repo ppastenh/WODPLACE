@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Mail, Phone, Calendar, Edit2, PauseCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { registerPayment } from "@/lib/payments";
 
 export const Route = createFileRoute("/_authenticated/_admin/members/$id")({
   head: ({ params }) => ({
@@ -31,8 +32,9 @@ type MemberDetailRow = {
   notes: string | null;
   joined_at: string | null;
   next_payment_at: string | null;
+  plan_id: string | null;
   wodplace_users: { name: string; email: string; avatar_url: string | null } | null;
-  plans: { name: string; price: number | null } | null;
+  plans: { name: string; price: number | null; duration_days: number | null } | null;
 };
 
 function MemberDetail() {
@@ -46,7 +48,7 @@ function MemberDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("box_members")
-        .select("user_id, status, phone, photo_url, notes, joined_at, next_payment_at, wodplace_users(name, email, avatar_url), plans(name, price)")
+        .select("user_id, status, phone, photo_url, notes, joined_at, next_payment_at, plan_id, wodplace_users(name, email, avatar_url), plans(name, price, duration_days)")
         .eq("box_id", boxId)
         .eq("user_id", id)
         .maybeSingle();
@@ -83,6 +85,33 @@ function MemberDetail() {
     },
   });
 
+  // Shortcut for "renovar": registers a payment for this member's current
+  // plan at its list price — same registerPayment() path Finanzas' own
+  // "Registrar pago" dialog uses, so next_payment_at advances the same way
+  // either place is used from.
+  const renew = useMutation({
+    mutationFn: async () => {
+      if (!m?.plan_id || !m.plans) return;
+      await registerPayment({
+        boxId,
+        userId: id,
+        planId: m.plan_id,
+        amount: Number(m.plans.price ?? 0),
+        method: "efectivo",
+        status: "pagado",
+      });
+    },
+    onSuccess: () => {
+      toast.success("Plan renovado");
+      qc.invalidateQueries({ queryKey: ["member", boxId, id] });
+      qc.invalidateQueries({ queryKey: ["member-payments", boxId, id] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["alert-overdue"] });
+      qc.invalidateQueries({ queryKey: ["alert-upcoming"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo renovar"),
+  });
+
   const m = member.data;
   if (!m) return <AdminShell title="Miembro" showBack><p className="p-6 text-center text-sm text-muted-foreground">{member.isLoading ? "Cargando..." : "No encontrado"}</p></AdminShell>;
 
@@ -106,7 +135,22 @@ function MemberDetail() {
         <Button variant="outline" className="rounded-2xl h-11 flex-col gap-1"><Edit2 className="h-4 w-4" /><span className="text-[10px]">Editar</span></Button>
         <Button variant="outline" onClick={() => toggle.mutate(m.status === "activo" ? "suspendido" : "activo")}
           className="rounded-2xl h-11 flex-col gap-1"><PauseCircle className="h-4 w-4" /><span className="text-[10px]">{m.status === "activo" ? "Suspender" : "Activar"}</span></Button>
-        <Button variant="outline" className="rounded-2xl h-11 flex-col gap-1"><RefreshCw className="h-4 w-4" /><span className="text-[10px]">Renovar</span></Button>
+        <Button
+          variant="outline"
+          disabled={!m.plan_id || !m.plans || renew.isPending}
+          onClick={() => {
+            if (!m.plans) return;
+            const confirmed = confirm(
+              `¿Registrar pago de $${Number(m.plans.price ?? 0).toLocaleString()} y renovar el plan ${
+                m.plans.duration_days ? `por ${m.plans.duration_days} días` : ""
+              }?`,
+            );
+            if (confirmed) renew.mutate();
+          }}
+          className="rounded-2xl h-11 flex-col gap-1"
+        >
+          <RefreshCw className="h-4 w-4" /><span className="text-[10px]">Renovar</span>
+        </Button>
       </div>
 
       <Tabs defaultValue="info" className="mt-5">
