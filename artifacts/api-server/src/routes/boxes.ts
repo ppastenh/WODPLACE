@@ -2,8 +2,23 @@ import { RedeemBoxCodeBody, RedeemBoxCodeResponse } from "@workspace/api-zod";
 import { db, wodplaceUsersTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
+import { z } from "zod";
+
+import { isAdminRequest } from "../lib/adminAuth";
+import { resolveBoxIdForAthlete } from "../lib/boxContext";
+import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 
 const router: IRouter = Router();
+
+// Same allowlist as social.ts's post reactions (kept as its own local
+// constant, same as that file's own local `makeId` — this route file
+// intentionally doesn't import from social.ts to keep the two systems
+// decoupled).
+const ANNOUNCEMENT_REACTION_EMOJIS = ["💪", "🔥", "👏", "❤️", "🎉"] as const;
+
+function makeId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
 /** Shape returned when the code matches nothing (or is blank). */
 const NO_MATCH = {
@@ -150,9 +165,11 @@ router.get("/box-memberships/my-box", async (req: Request, res: Response) => {
       instagram_url: string | null;
       facebook_url: string | null;
       tiktok_url: string | null;
+      photo_url: string | null;
+      plan_id: string | null;
     }>(sql`
       SELECT b.name, b.owner_name, b.location, b.contact_phone, b.whatsapp,
-             b.instagram_url, b.facebook_url, b.tiktok_url
+             b.instagram_url, b.facebook_url, b.tiktok_url, b.photo_url, bm.plan_id
       FROM box_members bm
       JOIN boxes b ON b.id = bm.box_id
       WHERE bm.user_id = ${userId}
@@ -175,11 +192,524 @@ router.get("/box-memberships/my-box", async (req: Request, res: Response) => {
         instagramUrl: row.instagram_url,
         facebookUrl: row.facebook_url,
         tiktokUrl: row.tiktok_url,
+        // The box's "logo" — really just its profile photo, same concept as
+        // an athlete's avatar. Set from box-admin's own "Configuración".
+        photoUrl: row.photo_url,
+        // null until the box_admin assigns one from their own panel — see
+        // Home's "Progreso Mensual" gating (shouldn't show before this
+        // exists, even though the athlete already belongs to the box).
+        planId: row.plan_id,
       },
     });
   } catch (error) {
     req.log.error({ err: error }, "Error loading my-box info");
     res.status(500).json({ error: "Failed to load box info" });
+  }
+});
+
+/**
+ * GET /box-memberships/my-plans?userId=...
+ *
+ * Real plans for this athlete's box (the same `plans` table box-admin's own
+ * "Planes" page manages), replacing wodplace's old hardcoded "Plan
+ * Ilimitado" mock — marks whichever one matches this athlete's
+ * box_members.plan_id as `isSubscribed`. No box -> empty list; a box with
+ * no plan_id assigned yet still sees the box's real plans, just none
+ * marked as theirs.
+ */
+router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  if (!userId) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+
+  try {
+    const boxId = await resolveBoxIdForAthlete(userId);
+    if (!boxId) {
+      res.json({ plans: [] });
+      return;
+    }
+
+    const myPlanRows = await db.execute<{ plan_id: string | null }>(sql`
+      SELECT plan_id FROM box_members WHERE box_id = ${boxId} AND user_id = ${userId} LIMIT 1
+    `);
+    const myPlanId = myPlanRows.rows[0]?.plan_id ?? null;
+
+    const rows = await db.execute<{
+      id: string;
+      name: string;
+      price: string;
+      duration_days: number;
+      benefits: string[] | null;
+      is_featured: boolean;
+    }>(sql`
+      SELECT id, name, price, duration_days, benefits, is_featured
+      FROM plans
+      WHERE box_id = ${boxId} AND is_active = true
+      ORDER BY price ASC
+    `);
+
+    res.json({
+      plans: rows.rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        price: Number(r.price),
+        durationDays: r.duration_days,
+        benefits: r.benefits ?? [],
+        isFeatured: r.is_featured,
+        isSubscribed: r.id === myPlanId,
+      })),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error loading my-plans");
+    res.status(500).json({ error: "Failed to load plans" });
+  }
+});
+
+/** Whole-number days from `now` (inclusive of today = 0) until the next
+ *  occurrence of `month`/`day`, ignoring year entirely. */
+function daysUntilNextOccurrence(month: number, day: number, now: Date): number {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(now.getFullYear(), month - 1, day);
+  if (next.getTime() < today.getTime()) {
+    next = new Date(now.getFullYear() + 1, month - 1, day);
+  }
+  return Math.round((next.getTime() - today.getTime()) / 86_400_000);
+}
+
+/**
+ * GET /box-memberships/upcoming-birthdays?userId=&limit=
+ *
+ * Real per-box birthdays, replacing Home's old hardcoded 3-name mock.
+ * Only birthdays within BIRTHDAY_WINDOW_DAYS days from today are returned —
+ * this is a heads-up notice, not a full roster, so anything further out is
+ * dropped rather than shown early.
+ * Deliberately never returns the birth YEAR — only month/day, both here and
+ * in wodplace_users.birthdate's own doc comment — celebrating a birthday
+ * doesn't require exposing anyone's age to the rest of the box.
+ */
+const BIRTHDAY_WINDOW_DAYS = 7;
+
+router.get("/box-memberships/upcoming-birthdays", async (req: Request, res: Response) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 20);
+  if (!userId) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+
+  try {
+    const boxId = await resolveBoxIdForAthlete(userId);
+    if (!boxId) {
+      res.json({ birthdays: [] });
+      return;
+    }
+
+    const rows = await db.execute<{ name: string; month: number; day: number }>(sql`
+      SELECT wu.name,
+             extract(month from wu.birthdate)::int AS month,
+             extract(day from wu.birthdate)::int AS day
+      FROM box_members bm
+      JOIN wodplace_users wu ON wu.id = bm.user_id
+      WHERE bm.box_id = ${boxId} AND wu.birthdate IS NOT NULL
+    `);
+
+    const now = new Date();
+    const birthdays = rows.rows
+      .map((r) => ({
+        name: r.name,
+        month: r.month,
+        day: r.day,
+        daysUntil: daysUntilNextOccurrence(r.month, r.day, now),
+      }))
+      .filter((b) => b.daysUntil <= BIRTHDAY_WINDOW_DAYS)
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+      .slice(0, limit);
+
+    res.json({ birthdays });
+  } catch (error) {
+    req.log.error({ err: error }, "Error loading upcoming birthdays");
+    res.status(500).json({ error: "Failed to load upcoming birthdays" });
+  }
+});
+
+/** Signs a private "announcements" bucket object path, or passes through
+ *  an already-absolute URL / returns null when there's no image. */
+async function signAnnouncementImage(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  try {
+    const { data } = await getSupabaseAdmin()
+      .storage.from("announcements")
+      .createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GET /box-memberships/announcements?userId=...
+ *
+ * Real box-admin "Avisos" (announcements table), split for the client into:
+ *   - `push`: unread, send_push=true announcements — Home shows these as a
+ *     must-acknowledge popup, one at a time (most recent first). Once the
+ *     athlete confirms reading one via the POST below, it drops off this list.
+ *   - `pinnedPush`: the single most recent send_push=true announcement,
+ *     regardless of read state — Home also shows this as a persistent card
+ *     below "Progreso Mensual", so the athlete can still find it after
+ *     confirming the popup (which removes it from `push`, but this stays).
+ *   - `banner`: show_banner=true announcements — mixed into Comunidad's
+ *     feed as regular-looking posts. Shown regardless of read state (it's a
+ *     passive info card, not a one-time interruption); `readByMe` is
+ *     included so the client can mark it read on first appearance.
+ * Every announcement also carries `reactions`/`myReaction`/`commentCount`
+ * (announcement_reactions / announcement_comments — see those tables' own
+ * comments for why they're separate from social_reactions/social_comments)
+ * so Comunidad's feed card can render like/comment counts without a
+ * separate round trip per aviso.
+ * Both lists exclude expired announcements (`expires_at` in the past).
+ * A box-less athlete gets everything empty.
+ */
+router.get("/box-memberships/announcements", async (req: Request, res: Response) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  if (!userId) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+
+  try {
+    const boxId = await resolveBoxIdForAthlete(userId);
+    if (!boxId) {
+      res.json({ push: [], pinnedPush: null, banner: [] });
+      return;
+    }
+
+    const rows = await db.execute<{
+      id: string;
+      title: string;
+      body: string;
+      image_url: string | null;
+      send_push: boolean;
+      show_banner: boolean;
+      created_at: string;
+    }>(sql`
+      SELECT id, title, body, image_url, send_push, show_banner, created_at
+      FROM announcements
+      WHERE box_id = ${boxId} AND (expires_at IS NULL OR expires_at > now())
+      ORDER BY created_at DESC
+    `);
+    const ids = rows.rows.map((r) => r.id);
+
+    const readRows = await db.execute<{ announcement_id: string }>(sql`
+      SELECT announcement_id FROM announcement_athlete_reads
+      WHERE box_id = ${boxId} AND user_id = ${userId}
+    `);
+    const readIds = new Set(readRows.rows.map((r) => r.announcement_id));
+
+    const reactionCountRows = ids.length
+      ? await db.execute<{ announcement_id: string; emoji: string; count: number }>(sql`
+          SELECT announcement_id, emoji, count(*)::int AS count
+          FROM announcement_reactions
+          WHERE announcement_id = ANY(${ids})
+          GROUP BY announcement_id, emoji
+        `)
+      : { rows: [] as { announcement_id: string; emoji: string; count: number }[] };
+    const reactionsByAnnouncement = new Map<string, { emoji: string; count: number }[]>();
+    for (const r of reactionCountRows.rows) {
+      const list = reactionsByAnnouncement.get(r.announcement_id) ?? [];
+      list.push({ emoji: r.emoji, count: r.count });
+      reactionsByAnnouncement.set(r.announcement_id, list);
+    }
+
+    const myReactionRows = ids.length
+      ? await db.execute<{ announcement_id: string; emoji: string }>(sql`
+          SELECT announcement_id, emoji FROM announcement_reactions
+          WHERE user_id = ${userId} AND announcement_id = ANY(${ids})
+        `)
+      : { rows: [] as { announcement_id: string; emoji: string }[] };
+    const myReactionByAnnouncement = new Map(
+      myReactionRows.rows.map((r) => [r.announcement_id, r.emoji]),
+    );
+
+    const commentCountRows = ids.length
+      ? await db.execute<{ announcement_id: string; count: number }>(sql`
+          SELECT announcement_id, count(*)::int AS count
+          FROM announcement_comments
+          WHERE deleted_at IS NULL AND announcement_id = ANY(${ids})
+          GROUP BY announcement_id
+        `)
+      : { rows: [] as { announcement_id: string; count: number }[] };
+    const commentCountByAnnouncement = new Map(
+      commentCountRows.rows.map((r) => [r.announcement_id, r.count]),
+    );
+
+    const withSignedImages = await Promise.all(
+      rows.rows.map(async (r) => ({
+        id: r.id,
+        title: r.title,
+        body: r.body,
+        imageUrl: await signAnnouncementImage(r.image_url),
+        createdAt: new Date(r.created_at).toISOString(),
+        readByMe: readIds.has(r.id),
+        sendPush: r.send_push,
+        showBanner: r.show_banner,
+        reactions: reactionsByAnnouncement.get(r.id) ?? [],
+        myReaction: myReactionByAnnouncement.get(r.id) ?? null,
+        commentCount: commentCountByAnnouncement.get(r.id) ?? 0,
+      })),
+    );
+
+    const pushList = withSignedImages.filter((a) => a.sendPush);
+
+    res.json({
+      push: pushList.filter((a) => !a.readByMe),
+      pinnedPush: pushList[0] ?? null,
+      banner: withSignedImages.filter((a) => a.showBanner),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error loading announcements");
+    res.status(500).json({ error: "Failed to load announcements" });
+  }
+});
+
+/**
+ * POST /box-memberships/announcements/:id/read  body: { userId }
+ *
+ * Marks one announcement as read by this athlete. Writes to
+ * announcement_athlete_reads (TEXT user_id, athlete-scoped) — NOT the
+ * announcement_reads table box-admin's own bell uses for staff (UUID
+ * user_id), same TEXT-vs-UUID split as box_members vs user_roles.
+ */
+router.post("/box-memberships/announcements/:id/read", async (req: Request, res: Response) => {
+  const id = typeof req.params.id === "string" ? req.params.id : undefined;
+  const userId = typeof req.body?.userId === "string" ? req.body.userId : undefined;
+  if (!id || !userId) {
+    res.status(400).json({ error: "id and userId are required" });
+    return;
+  }
+
+  try {
+    const announcementRows = await db.execute<{ box_id: string }>(sql`
+      SELECT box_id FROM announcements WHERE id = ${id}
+    `);
+    const boxId = announcementRows.rows[0]?.box_id;
+    if (!boxId) {
+      res.status(404).json({ error: "Announcement not found" });
+      return;
+    }
+
+    await db.execute(sql`
+      INSERT INTO announcement_athlete_reads (announcement_id, box_id, user_id)
+      VALUES (${id}, ${boxId}, ${userId})
+      ON CONFLICT (announcement_id, user_id) DO NOTHING
+    `);
+
+    res.status(204).send();
+  } catch (error) {
+    req.log.error({ err: error }, "Error marking announcement as read");
+    res.status(500).json({ error: "Failed to mark announcement as read" });
+  }
+});
+
+// ─── Aviso comments/reactions ──────────────────────────────────────────────
+// Mirrors social.ts's post comments/reactions endpoints in shape, but reads
+// and writes announcement_comments/announcement_reactions — see those
+// tables' own doc comments in lib/db/schema/wodplace.ts for why they're
+// separate tables instead of reusing social_comments/social_reactions.
+
+router.get("/box-memberships/announcements/:id/comments", async (req: Request, res: Response) => {
+  const id = typeof req.params.id === "string" ? req.params.id : undefined;
+  const parsed = z
+    .object({ cursor: z.string().optional(), limit: z.coerce.number().min(1).max(30).default(20) })
+    .safeParse(req.query);
+  if (!id || !parsed.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const { cursor, limit } = parsed.data;
+
+  try {
+    const rows = await db.execute<{
+      id: string;
+      announcement_id: string;
+      user_id: string | null;
+      author_name: string;
+      body: string;
+      created_at: string;
+    }>(sql`
+      SELECT id, announcement_id, user_id, author_name, body, created_at
+      FROM announcement_comments
+      WHERE announcement_id = ${id} AND deleted_at IS NULL
+        ${cursor ? sql`AND created_at > ${new Date(cursor)}` : sql``}
+      ORDER BY created_at ASC
+      LIMIT ${limit + 1}
+    `);
+    const hasMore = rows.rows.length > limit;
+    const page = rows.rows.slice(0, limit);
+    res.json({
+      comments: page.map((r) => ({
+        id: r.id,
+        announcementId: r.announcement_id,
+        userId: r.user_id,
+        authorName: r.author_name,
+        body: r.body,
+        createdAt: new Date(r.created_at).toISOString(),
+      })),
+      nextCursor: hasMore && page.length > 0 ? new Date(page[page.length - 1].created_at).toISOString() : null,
+      hasMore,
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error fetching announcement comments");
+    res.status(500).json({ error: "Failed to fetch comments" });
+  }
+});
+
+router.post("/box-memberships/announcements/:id/comments", async (req: Request, res: Response) => {
+  const id = typeof req.params.id === "string" ? req.params.id : undefined;
+  const parsed = z
+    .object({ userId: z.string(), authorName: z.string(), body: z.string().min(1).max(500) })
+    .safeParse(req.body);
+  if (!id || !parsed.success) {
+    res.status(400).json({ error: "Missing fields" });
+    return;
+  }
+  const { userId, authorName, body } = parsed.data;
+
+  try {
+    const announcementRows = await db.execute<{ box_id: string }>(sql`
+      SELECT box_id FROM announcements WHERE id = ${id}
+    `);
+    const boxId = announcementRows.rows[0]?.box_id;
+    if (!boxId) {
+      res.status(404).json({ error: "No encontrado." });
+      return;
+    }
+    const athleteBoxId = await resolveBoxIdForAthlete(userId);
+    if (athleteBoxId !== boxId) {
+      res.status(403).json({ error: "Necesitás pertenecer a este box para comentar." });
+      return;
+    }
+
+    const commentId = makeId("acomment");
+    await db.execute(sql`
+      INSERT INTO announcement_comments (id, announcement_id, user_id, author_name, body, box_id)
+      VALUES (${commentId}, ${id}, ${userId}, ${authorName}, ${body}, ${boxId})
+    `);
+    res.status(201).json({
+      id: commentId,
+      announcementId: id,
+      userId,
+      authorName,
+      body,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error creating announcement comment");
+    res.status(500).json({ error: "No se pudo comentar." });
+  }
+});
+
+router.delete(
+  "/box-memberships/announcements/:id/comments/:commentId",
+  async (req: Request, res: Response) => {
+    const commentId = typeof req.params.commentId === "string" ? req.params.commentId : undefined;
+    const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+    const isAdmin = isAdminRequest(req);
+    if (!commentId || !userId) {
+      res.status(400).json({ error: "Missing fields" });
+      return;
+    }
+
+    try {
+      const rows = await db.execute<{ user_id: string | null }>(sql`
+        SELECT user_id FROM announcement_comments WHERE id = ${commentId} AND deleted_at IS NULL
+      `);
+      const comment = rows.rows[0];
+      if (!comment) {
+        res.status(404).json({ error: "No encontrado." });
+        return;
+      }
+      if (!isAdmin && comment.user_id !== userId) {
+        res.status(403).json({ error: "No podés eliminar este comentario." });
+        return;
+      }
+      await db.execute(sql`
+        UPDATE announcement_comments SET deleted_at = now() WHERE id = ${commentId}
+      `);
+      res.status(204).end();
+    } catch (error) {
+      req.log.error({ err: error }, "Error deleting announcement comment");
+      res.status(500).json({ error: "No se pudo eliminar." });
+    }
+  },
+);
+
+router.post("/box-memberships/announcements/:id/reactions", async (req: Request, res: Response) => {
+  const id = typeof req.params.id === "string" ? req.params.id : undefined;
+  const parsed = z
+    .object({ userId: z.string(), emoji: z.enum(ANNOUNCEMENT_REACTION_EMOJIS) })
+    .safeParse(req.body);
+  if (!id || !parsed.success) {
+    res.status(400).json({ error: "emoji inválido" });
+    return;
+  }
+  const { userId, emoji } = parsed.data;
+
+  try {
+    const announcementRows = await db.execute<{ box_id: string }>(sql`
+      SELECT box_id FROM announcements WHERE id = ${id}
+    `);
+    const boxId = announcementRows.rows[0]?.box_id;
+    if (!boxId) {
+      res.status(404).json({ error: "No encontrado." });
+      return;
+    }
+
+    const existingRows = await db.execute<{ id: string; emoji: string }>(sql`
+      SELECT id, emoji FROM announcement_reactions
+      WHERE announcement_id = ${id} AND user_id = ${userId}
+    `);
+    const existing = existingRows.rows[0];
+
+    let added = false;
+    if (existing) {
+      if (existing.emoji === emoji) {
+        await db.execute(sql`DELETE FROM announcement_reactions WHERE id = ${existing.id}`);
+      } else {
+        await db.execute(sql`UPDATE announcement_reactions SET emoji = ${emoji} WHERE id = ${existing.id}`);
+        added = true;
+      }
+    } else {
+      const athleteBoxId = await resolveBoxIdForAthlete(userId);
+      if (athleteBoxId !== boxId) {
+        res.status(403).json({ error: "Necesitás pertenecer a este box para reaccionar." });
+        return;
+      }
+      await db.execute(sql`
+        INSERT INTO announcement_reactions (id, announcement_id, user_id, emoji, box_id)
+        VALUES (${makeId("areaction")}, ${id}, ${userId}, ${emoji}, ${boxId})
+      `);
+      added = true;
+    }
+
+    const allReactions = await db.execute<{ emoji: string; count: number }>(sql`
+      SELECT emoji, count(*)::int AS count FROM announcement_reactions
+      WHERE announcement_id = ${id}
+      GROUP BY emoji
+    `);
+    const myReactionRows = await db.execute<{ emoji: string }>(sql`
+      SELECT emoji FROM announcement_reactions WHERE announcement_id = ${id} AND user_id = ${userId}
+    `);
+    res.json({
+      added,
+      myReaction: myReactionRows.rows[0]?.emoji ?? null,
+      reactions: allReactions.rows.map((r) => ({ emoji: r.emoji, count: r.count })),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error toggling announcement reaction");
+    res.status(500).json({ error: "No se pudo reaccionar." });
   }
 });
 

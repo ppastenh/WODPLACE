@@ -350,6 +350,57 @@ export const socialReactionsTable = pgTable(
 );
 export type SocialReactionRow = typeof socialReactionsTable.$inferSelect;
 
+// Comments on box-admin "Avisos" (the `announcements` table — Supabase-
+// managed, not modeled here). Deliberately a SEPARATE table from
+// social_comments rather than reusing it: announcements and social_posts are
+// different models (one admin-authored with no reactions/comments of its
+// own until now, one athlete-authored), and blending them under one table
+// was already rejected once for social_posts.type — same reasoning applies
+// here. `announcementId` has no `.references()` (announcements isn't a
+// Drizzle-owned table, same as `boxId` below), but a real FK constraint to
+// public.announcements(id) was added directly in Postgres, cascade-deleting
+// with the aviso.
+export const announcementCommentsTable = pgTable("announcement_comments", {
+  id: text("id").primaryKey(),
+  announcementId: text("announcement_id").notNull(),
+  userId: text("user_id").references(() => wodplaceUsersTable.id, {
+    onDelete: "set null",
+  }),
+  authorName: text("author_name").notNull(),
+  body: text("body").notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  boxId: text("box_id").notNull(),
+});
+export type AnnouncementCommentRow = typeof announcementCommentsTable.$inferSelect;
+
+// One emoji reaction per user per aviso — see announcementCommentsTable's
+// comment for why this is a separate table from social_reactions.
+export const announcementReactionsTable = pgTable(
+  "announcement_reactions",
+  {
+    id: text("id").primaryKey(),
+    announcementId: text("announcement_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    boxId: text("box_id").notNull(),
+  },
+  (table) => [
+    uniqueIndex("announcement_reactions_announcement_user_idx").on(
+      table.announcementId,
+      table.userId,
+    ),
+  ],
+);
+export type AnnouncementReactionRow = typeof announcementReactionsTable.$inferSelect;
+
 // Moderation reports from users.
 export const socialReportsTable = pgTable("social_reports", {
   id: text("id").primaryKey(),
