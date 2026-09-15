@@ -1,16 +1,23 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
-import { DAY_NAMES_SHORT, getMonthMatrix, isBeforeDay, isSameDay } from '@/lib/dateUtils';
+import { DAY_NAMES_SHORT, getMonthMatrix, isAfterDay, isBeforeDay, isSameDay, toDateKey } from '@/lib/dateUtils';
 
 interface MonthCalendarProps {
   monthDate: Date;
   selectedDate: Date;
   today: Date;
+  /** Last day that can still be selected — booking is limited to a 7-day
+   *  window (today included), so anything after this is disabled the same
+   *  way past days already are. */
+  maxDate: Date;
+  /** dateKeys ("YYYY-MM-DD") that have a confirmed or waitlisted booking —
+   *  shown as a small dot under the day number. */
+  bookedDates: Set<string>;
   onSelect: (date: Date) => void;
 }
 
-export function MonthCalendar({ monthDate, selectedDate, today, onSelect }: MonthCalendarProps) {
+export function MonthCalendar({ monthDate, selectedDate, today, maxDate, bookedDates, onSelect }: MonthCalendarProps) {
   const colors = useColors();
   const weeks = getMonthMatrix(monthDate.getFullYear(), monthDate.getMonth());
 
@@ -28,9 +35,11 @@ export function MonthCalendar({ monthDate, selectedDate, today, onSelect }: Mont
           {week.map((day) => {
             const inMonth = day.getMonth() === monthDate.getMonth();
             const isPast = isBeforeDay(day, today);
+            const isTooFar = isAfterDay(day, maxDate);
             const isToday = isSameDay(day, today);
             const isSelected = isSameDay(day, selectedDate);
-            const disabled = isPast;
+            const isBookedDay = bookedDates.has(toDateKey(day));
+            const disabled = isPast || isTooFar;
 
             return (
               <Pressable
@@ -65,6 +74,7 @@ export function MonthCalendar({ monthDate, selectedDate, today, onSelect }: Mont
                     {day.getDate()}
                   </Text>
                 </View>
+                <View style={[styles.dayDot, { backgroundColor: isBookedDay ? colors.success : 'transparent' }]} />
               </Pressable>
             );
           })}
@@ -92,6 +102,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 4,
+    gap: 3,
   },
   dayCircle: {
     width: 36,
@@ -102,5 +113,10 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 14,
+  },
+  dayDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
 });

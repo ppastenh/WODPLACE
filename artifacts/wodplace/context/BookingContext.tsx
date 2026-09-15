@@ -43,6 +43,9 @@ interface BookingContextValue {
   now: Date;
   getSessionsForDate: (date: Date) => ClassSession[];
   getUpcomingBooked: (limit?: number) => ClassSession[];
+  /** dateKeys ("YYYY-MM-DD") that have at least one confirmed or waitlisted
+   *  booking — drives the calendar's "day with something agendado" dot. */
+  bookedDateKeys: Set<string>;
   book: (session: ClassSession) => Promise<'confirmed' | 'waiting'>;
   cancel: (session: ClassSession) => Promise<void>;
   getAttendeeNames: (session: ClassSession, userName: string) => string[];
@@ -136,6 +139,11 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     return sessions.filter((s) => s.dateKey === key);
   };
 
+  const bookedDateKeys = useMemo(
+    () => new Set(sessions.filter((s) => s.isBooked || s.isWaitlisted).map((s) => s.dateKey)),
+    [sessions],
+  );
+
   const getUpcomingBooked = (limit = 20): ClassSession[] =>
     sessions
       .filter((s) => s.isBooked && s.startDate.getTime() >= now.getTime() - CANCEL_CUTOFF_MS)
@@ -169,12 +177,13 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       now,
       getSessionsForDate,
       getUpcomingBooked,
+      bookedDateKeys,
       book,
       cancel,
       getAttendeeNames,
       refreshSessions: loadSessions,
     }),
-    [isLoading, now, sessions, user?.id, loadSessions],
+    [isLoading, now, sessions, bookedDateKeys, user?.id, loadSessions],
   );
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

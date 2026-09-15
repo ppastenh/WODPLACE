@@ -37,10 +37,14 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 export default function CalendarScreen() {
   const colors = useColors();
   const { user, adminStatus, hasBoxMembership, logout } = useAuth();
-  const { now, getSessionsForDate, book, cancel, getAttendeeNames, refreshSessions } = useBooking();
+  const { now, getSessionsForDate, bookedDateKeys, book, cancel, getAttendeeNames, refreshSessions } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const today = startOfDay(now);
+  // Booking is limited to a 7-day rolling window (today included) — see
+  // MonthCalendar/WeekCalendar's `maxDate`, which dims/disables anything past it
+  // the same way past days already are.
+  const maxBookableDate = addDays(today, 6);
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [monthCursor, setMonthCursor] = useState(new Date(today));
@@ -178,6 +182,8 @@ export default function CalendarScreen() {
               monthDate={monthCursor}
               selectedDate={selectedDate}
               today={today}
+              maxDate={maxBookableDate}
+              bookedDates={bookedDateKeys}
               onSelect={handleSelectDate}
             />
           ) : (
@@ -185,6 +191,8 @@ export default function CalendarScreen() {
               anchorDate={weekCursor}
               selectedDate={selectedDate}
               today={today}
+              maxDate={maxBookableDate}
+              bookedDates={bookedDateKeys}
               onSelect={handleSelectDate}
             />
           )}

@@ -45,6 +45,10 @@ export function isBeforeDay(date: Date, reference: Date): boolean {
   return startOfDay(date).getTime() < startOfDay(reference).getTime();
 }
 
+export function isAfterDay(date: Date, reference: Date): boolean {
+  return startOfDay(date).getTime() > startOfDay(reference).getTime();
+}
+
 export function toDateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
