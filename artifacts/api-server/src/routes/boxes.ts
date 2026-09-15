@@ -408,11 +408,16 @@ router.get("/box-memberships/announcements", async (req: Request, res: Response)
     `);
     const readIds = new Set(readRows.rows.map((r) => r.announcement_id));
 
-    const reactionCountRows = ids.length
+    // `= ANY(${array})` doesn't work with drizzle's `sql` tag — an
+    // interpolated array renders as a parenthesized scalar list, which
+    // Postgres's ANY() rejects; sql.join below builds a real `IN (...)`.
+    const idList = ids.length ? sql.join(ids.map((id) => sql`${id}`), sql`, `) : null;
+
+    const reactionCountRows = idList
       ? await db.execute<{ announcement_id: string; emoji: string; count: number }>(sql`
           SELECT announcement_id, emoji, count(*)::int AS count
           FROM announcement_reactions
-          WHERE announcement_id = ANY(${ids})
+          WHERE announcement_id IN (${idList})
           GROUP BY announcement_id, emoji
         `)
       : { rows: [] as { announcement_id: string; emoji: string; count: number }[] };
@@ -423,21 +428,21 @@ router.get("/box-memberships/announcements", async (req: Request, res: Response)
       reactionsByAnnouncement.set(r.announcement_id, list);
     }
 
-    const myReactionRows = ids.length
+    const myReactionRows = idList
       ? await db.execute<{ announcement_id: string; emoji: string }>(sql`
           SELECT announcement_id, emoji FROM announcement_reactions
-          WHERE user_id = ${userId} AND announcement_id = ANY(${ids})
+          WHERE user_id = ${userId} AND announcement_id IN (${idList})
         `)
       : { rows: [] as { announcement_id: string; emoji: string }[] };
     const myReactionByAnnouncement = new Map(
       myReactionRows.rows.map((r) => [r.announcement_id, r.emoji]),
     );
 
-    const commentCountRows = ids.length
+    const commentCountRows = idList
       ? await db.execute<{ announcement_id: string; count: number }>(sql`
           SELECT announcement_id, count(*)::int AS count
           FROM announcement_comments
-          WHERE deleted_at IS NULL AND announcement_id = ANY(${ids})
+          WHERE deleted_at IS NULL AND announcement_id IN (${idList})
           GROUP BY announcement_id
         `)
       : { rows: [] as { announcement_id: string; count: number }[] };

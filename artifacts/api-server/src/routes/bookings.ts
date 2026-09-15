@@ -134,6 +134,11 @@ router.get("/class-sessions", async (req: Request, res: Response) => {
     }
 
     const sessionIds = sessions.rows.map((r) => r.id);
+    // `= ANY(${array})` doesn't work with drizzle's `sql` tag — interpolating
+    // an array renders as a parenthesized scalar list "($1, $2, ...)", which
+    // Postgres's ANY() rejects ("requires array on right side"); sql.join
+    // builds a real `IN (...)` list instead. sessionIds is never empty here
+    // (guarded by the early return above).
     const bookings = await db.execute<{
       session_id: string;
       user_id: string;
@@ -144,7 +149,7 @@ router.get("/class-sessions", async (req: Request, res: Response) => {
       SELECT cb.session_id, cb.user_id, cb.status, cb.created_at, wu.name AS user_name
       FROM public.class_bookings cb
       JOIN public.wodplace_users wu ON wu.id = cb.user_id
-      WHERE cb.session_id = ANY(${sessionIds})
+      WHERE cb.session_id IN (${sql.join(sessionIds.map((id) => sql`${id}`), sql`, `)})
       ORDER BY cb.created_at ASC
     `);
 
