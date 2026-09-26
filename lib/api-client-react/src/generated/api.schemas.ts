@@ -499,11 +499,11 @@ export const UpsertTrainingSettingsRequestBarUnit = {
 
 export interface UpsertTrainingSettingsRequest {
   userId: string;
-  preferredUnit: UpsertTrainingSettingsRequestPreferredUnit;
-  barWeight: number;
-  barUnit: UpsertTrainingSettingsRequestBarUnit;
+  preferredUnit?: UpsertTrainingSettingsRequestPreferredUnit;
+  barWeight?: number;
+  barUnit?: UpsertTrainingSettingsRequestBarUnit;
   bodyweightKg?: number | null;
-  plates: PlateSpec[];
+  plates?: PlateSpec[];
 }
 
 export type ListClassSessionsParams = {

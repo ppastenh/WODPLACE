@@ -754,15 +754,15 @@ export const GetTrainingSettingsResponse = zod.object({
  */
 export const UpsertTrainingSettingsBody = zod.object({
   "userId": zod.string(),
-  "preferredUnit": zod.enum(['kg', 'lb']),
-  "barWeight": zod.number(),
-  "barUnit": zod.enum(['kg', 'lb']),
+  "preferredUnit": zod.enum(['kg', 'lb']).optional(),
+  "barWeight": zod.number().optional(),
+  "barUnit": zod.enum(['kg', 'lb']).optional(),
   "bodyweightKg": zod.number().nullish(),
   "plates": zod.array(zod.object({
   "unit": zod.enum(['kg', 'lb']),
   "weight": zod.number(),
   "pairs": zod.number()
-}))
+})).optional()
 })
 
 export const UpsertTrainingSettingsResponse = zod.object({

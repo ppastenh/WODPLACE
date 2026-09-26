@@ -434,28 +434,49 @@ router.put("/training-settings", async (req: Request, res: Response) => {
   }
   const { userId, preferredUnit, barWeight, barUnit, bodyweightKg, plates } = parsed.data;
   try {
-    const values = {
-      userId,
-      preferredUnit,
-      barWeight: String(barWeight),
-      barUnit,
-      bodyweightKg: bodyweightKg == null ? null : String(bodyweightKg),
-      plates: plates as PlateSpec[],
-      updatedAt: new Date(),
-    };
+    // Genuine partial merge: a field the caller doesn't send is left exactly
+    // as it is in the row, never reset to a default. Two different screens
+    // (Ajustes, Discos disponibles) each only care about a subset of these
+    // fields — a full-replace here previously let either one silently wipe
+    // whatever the other left out (confirmed for bodyweightKg: neither
+    // screen sends it, so touching bar weight or plates was nulling it out
+    // every time).
+    //
+    // insertValues only needs the fields actually provided — Postgres
+    // applies each column's own DEFAULT for the rest on first-ever creation,
+    // same as before. updateSet is built the same way so onConflictDoUpdate
+    // only touches the columns present in the request, leaving every other
+    // column's current value untouched at the SQL level (no read-before-
+    // write race).
+    const insertValues: typeof trainingSettingsTable.$inferInsert = { userId, updatedAt: new Date() };
+    const updateSet: Partial<typeof trainingSettingsTable.$inferInsert> = { updatedAt: new Date() };
+    if (preferredUnit !== undefined) {
+      insertValues.preferredUnit = preferredUnit;
+      updateSet.preferredUnit = preferredUnit;
+    }
+    if (barWeight !== undefined) {
+      insertValues.barWeight = String(barWeight);
+      updateSet.barWeight = String(barWeight);
+    }
+    if (barUnit !== undefined) {
+      insertValues.barUnit = barUnit;
+      updateSet.barUnit = barUnit;
+    }
+    if (bodyweightKg !== undefined) {
+      insertValues.bodyweightKg = bodyweightKg == null ? null : String(bodyweightKg);
+      updateSet.bodyweightKg = bodyweightKg == null ? null : String(bodyweightKg);
+    }
+    if (plates !== undefined) {
+      insertValues.plates = plates as PlateSpec[];
+      updateSet.plates = plates as PlateSpec[];
+    }
+
     const [row] = await db
       .insert(trainingSettingsTable)
-      .values(values)
+      .values(insertValues)
       .onConflictDoUpdate({
         target: trainingSettingsTable.userId,
-        set: {
-          preferredUnit,
-          barWeight: String(barWeight),
-          barUnit,
-          bodyweightKg: bodyweightKg == null ? null : String(bodyweightKg),
-          plates: plates as PlateSpec[],
-          updatedAt: new Date(),
-        },
+        set: updateSet,
       })
       .returning();
     res.json(UpsertTrainingSettingsResponse.parse(serializeSettings(row)));

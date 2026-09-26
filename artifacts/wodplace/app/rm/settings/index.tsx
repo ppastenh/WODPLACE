@@ -36,20 +36,16 @@ export default function RmSettingsScreen() {
     setBodyweightInput(settings.data?.bodyweightKg != null ? String(settings.data.bodyweightKg) : '');
   }, [settings.data?.bodyweightKg]);
 
+  // PUT /training-settings genuinely merges — a field left out of `patch`
+  // keeps its current value server-side, it's never reset to a default. Only
+  // sending what actually changed (instead of re-sending the rest of `cur`)
+  // means a stale `settings.data` snapshot here can't accidentally stomp a
+  // field this screen doesn't even touch (bodyweightKg used to get wiped
+  // this way every time any other setting changed).
   const save = (patch: Partial<TrainingSettings>) => {
-    const cur = settings.data;
-    if (!cur) return;
+    if (!settings.data) return;
     upsert.mutate(
-      {
-        data: {
-          userId,
-          preferredUnit: cur.preferredUnit,
-          barWeight: cur.barWeight,
-          barUnit: cur.barUnit,
-          plates: cur.plates,
-          ...patch,
-        },
-      },
+      { data: { userId, ...patch } },
       { onSuccess: () => settings.refetch() },
     );
   };

@@ -590,7 +590,7 @@ export const trainingSettingsTable = pgTable("training_settings", {
   userId: text("user_id")
     .primaryKey()
     .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
-  preferredUnit: text("preferred_unit").notNull().default("kg"), // 'kg' | 'lb'
+  preferredUnit: text("preferred_unit").notNull().default("lb"), // 'kg' | 'lb'
   sex: text("sex"), // 'f' | 'm' | 'x' | null
   barWeight: numeric("bar_weight").notNull().default("20"),
   barUnit: text("bar_unit").notNull().default("kg"), // 'kg' | 'lb'
@@ -599,19 +599,22 @@ export const trainingSettingsTable = pgTable("training_settings", {
   // × 1x/1.5x/2x BW). Null until the athlete sets it; those 9 achievements
   // just stay locked until then (see achievements/evaluate.ts).
   bodyweightKg: numeric("bodyweight_kg"),
+  // Mixed lb/kg set (lb for the main plates, kg fractionals for fine
+  // adjustment) — matches preferredUnit's own "lb" default.
   plates: jsonb("plates")
     .$type<PlateSpec[]>()
     .notNull()
     .default(
       sql`'[
-        {"unit":"kg","weight":25,"pairs":4},
-        {"unit":"kg","weight":20,"pairs":4},
-        {"unit":"kg","weight":15,"pairs":2},
-        {"unit":"kg","weight":10,"pairs":2},
-        {"unit":"kg","weight":5,"pairs":2},
-        {"unit":"kg","weight":2.5,"pairs":2},
-        {"unit":"kg","weight":1.25,"pairs":2},
-        {"unit":"kg","weight":0.5,"pairs":2}
+        {"unit":"lb","weight":55,"pairs":2},
+        {"unit":"lb","weight":45,"pairs":2},
+        {"unit":"lb","weight":35,"pairs":2},
+        {"unit":"lb","weight":25,"pairs":4},
+        {"unit":"lb","weight":15,"pairs":4},
+        {"unit":"lb","weight":10,"pairs":2},
+        {"unit":"kg","weight":2,"pairs":2},
+        {"unit":"kg","weight":1.5,"pairs":2},
+        {"unit":"kg","weight":1,"pairs":2}
       ]'::jsonb`,
     ),
   updatedAt: timestamp("updated_at", { withTimezone: true })

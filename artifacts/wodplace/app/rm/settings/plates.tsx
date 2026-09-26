@@ -20,17 +20,19 @@ import { plateKey, type PlateSpec } from '@/lib/rm/barLoad';
 import { plateFill, plateStroke } from '@/lib/rm/plateColors';
 import { trimNum } from '@/lib/rm/units';
 
-/** Set that's enabled by default (kg only, typical box). */
+/** Mixed lb/kg set — lb for the main plates, kg fractionals for fine
+ *  adjustment. Matches training_settings' own DB column default (see
+ *  supabase/migrations/..._training_settings_new_default_plates.sql). */
 export const DEFAULT_PLATES: PlateSpec[] = [
-  { unit: 'kg', weight: 25, pairs: 4 },
-  { unit: 'kg', weight: 20, pairs: 4 },
-  { unit: 'kg', weight: 15, pairs: 2 },
-  { unit: 'kg', weight: 10, pairs: 2 },
-  { unit: 'kg', weight: 5, pairs: 2 },
-  { unit: 'kg', weight: 2.5, pairs: 2 },
-  { unit: 'kg', weight: 1.25, pairs: 2 },
+  { unit: 'lb', weight: 55, pairs: 2 },
+  { unit: 'lb', weight: 45, pairs: 2 },
+  { unit: 'lb', weight: 35, pairs: 2 },
+  { unit: 'lb', weight: 25, pairs: 4 },
+  { unit: 'lb', weight: 15, pairs: 4 },
+  { unit: 'lb', weight: 10, pairs: 2 },
+  { unit: 'kg', weight: 2, pairs: 2 },
+  { unit: 'kg', weight: 1.5, pairs: 2 },
   { unit: 'kg', weight: 1, pairs: 2 },
-  { unit: 'kg', weight: 0.5, pairs: 2 },
 ];
 
 const GROUPS: Array<{ label: string; items: Array<Omit<PlateSpec, 'pairs'>> }> = [
@@ -61,20 +63,16 @@ export default function PlatesScreen() {
     if (settings.data && draft === null) setDraft(settings.data.plates);
   }, [settings.data, draft]);
 
+  // PUT /training-settings merges — sending only { userId, plates } leaves
+  // preferredUnit/barWeight/barUnit/bodyweightKg exactly as they are
+  // server-side (see rm.ts). Previously this re-sent preferredUnit/
+  // barWeight/barUnit from `settings.data` and always omitted
+  // bodyweightKg, silently wiping it back to null on every plate change.
   const persist = (next: PlateSpec[]) => {
     setDraft(next);
-    const s = settings.data;
-    if (!s) return;
+    if (!settings.data) return;
     upsert.mutate(
-      {
-        data: {
-          userId,
-          preferredUnit: s.preferredUnit,
-          barWeight: s.barWeight,
-          barUnit: s.barUnit,
-          plates: next,
-        },
-      },
+      { data: { userId, plates: next } },
       { onSuccess: () => settings.refetch() },
     );
   };

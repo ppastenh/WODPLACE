@@ -1624,7 +1624,11 @@ components:
 
     UpsertTrainingSettingsRequest:
       type: object
-      required: [userId, preferredUnit, barWeight, barUnit, plates]
+      # Only userId is required — every other field is a genuine partial
+      # patch (see PUT /training-settings: omitted fields keep their current
+      # DB value, not a default). A caller that only means to change one
+      # setting sends only that one; it can no longer silently wipe the rest.
+      required: [userId]
       properties:
         userId: { type: string }
         preferredUnit: { type: string, enum: [kg, lb] }
