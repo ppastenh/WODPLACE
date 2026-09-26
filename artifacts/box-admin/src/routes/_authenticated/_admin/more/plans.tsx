@@ -47,7 +47,7 @@ const empty = {
   price: "",
   duration_days: "30",
   classes_per_period: "",
-  unlimited: true,
+  unlimited: false,
   benefits: [] as string[],
   is_active: true,
 };

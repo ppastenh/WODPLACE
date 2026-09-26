@@ -182,7 +182,9 @@ function AddPaymentDialog() {
             <Label>Plan</Label>
             <Select value={form.plan_id} onValueChange={pickPlan}>
               <SelectTrigger><SelectValue placeholder="Selecciona un plan" /></SelectTrigger>
-              <SelectContent>
+              {/* Opens upward — see the same field in members.tsx's "Nuevo
+                  miembro" form for why (keyboard/screen-edge clipping). */}
+              <SelectContent side="top">
                 {(plans.data ?? []).map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.name} — ${Number(p.price).toLocaleString()}</SelectItem>
                 ))}

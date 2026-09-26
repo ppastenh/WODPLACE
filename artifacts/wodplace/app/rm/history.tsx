@@ -61,7 +61,11 @@ export default function RmHistoryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <RmHeader title="Mis RM" onBack={() => router.replace('/home')} />
+      {/* No onBack here — this is a tab root of the module's own bottom nav
+          (RmBottomNav), not a sub-screen; the exit-to-Home arrow lives only
+          on "Barra" (app/rm/index.tsx) to avoid 3 identical-looking arrows
+          that actually do different things (switch tab vs. leave Progreso). */}
+      <RmHeader title="Mis RM" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.ctaRow}>
           <Pressable

@@ -9,6 +9,12 @@ import { useNotifications } from '@/context/NotificationsContext';
 
 interface AppHeaderProps {
   onBack?: () => void;
+  /** Overrides the back arrow's icon — use for an action that isn't really
+   *  "go back one step" (e.g. admin-dashboard's "quit the whole panel",
+   *  which looks identical to a normal back arrow otherwise and gets
+   *  confused with box-admin's own internal back links). Defaults to
+   *  'arrow-left'. */
+  backIcon?: React.ComponentProps<typeof Feather>['name'];
   onMenu?: () => void;
   menuOpen?: boolean;
   dark?: boolean;
@@ -29,6 +35,7 @@ interface AppHeaderProps {
 
 export function AppHeader({
   onBack,
+  backIcon = 'arrow-left',
   onMenu,
   menuOpen,
   dark,
@@ -67,7 +74,7 @@ export function AppHeader({
             hitSlop={12}
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <Feather name="arrow-left" size={24} color={iconColor} />
+            <Feather name={backIcon} size={24} color={iconColor} />
           </Pressable>
         ) : onMenu ? (
           <Pressable

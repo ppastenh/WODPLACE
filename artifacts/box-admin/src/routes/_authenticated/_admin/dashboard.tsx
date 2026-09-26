@@ -4,7 +4,7 @@ import { MetricCard } from "@/components/admin/MetricCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Users, CalendarDays, DollarSign, AlertTriangle, Plus, CreditCard, Dumbbell, UserPlus, ChevronRight, Megaphone } from "lucide-react";
+import { Users, CalendarDays, DollarSign, AlertTriangle, Plus, CreditCard, Dumbbell, UserPlus, ChevronRight, Megaphone, User as UserIcon } from "lucide-react";
 import { format, startOfMonth, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -79,7 +79,41 @@ function useExpiringMembers(enabled: boolean, boxId: string) {
   });
 }
 
-type UpcomingClass = { id: string; name: string; start_time: string | null; capacity: number; bookings: number };
+type UpcomingClass = {
+  id: string;
+  name: string;
+  session_date: string;
+  start_time: string | null;
+  duration_minutes: number | null;
+  capacity: number;
+  bookings: number;
+  coach: { name: string } | null;
+};
+
+type ClassTimeInfo = Pick<UpcomingClass, "session_date" | "start_time" | "duration_minutes">;
+
+function classWindow(c: ClassTimeInfo): { start: Date; end: Date } | null {
+  if (!c.start_time) return null;
+  const [h, m] = c.start_time.split(":").map(Number);
+  const start = new Date(`${c.session_date}T00:00:00`);
+  start.setHours(h, m, 0, 0);
+  const end = new Date(start.getTime() + (c.duration_minutes || 60) * 60_000);
+  return { start, end };
+}
+
+/** Whether `now` falls inside [start_time, start_time + duration) — drives
+ *  the "en curso" green dot on the dashboard's upcoming-classes cards. */
+function isClassLive(c: ClassTimeInfo, now: Date): boolean {
+  const w = classWindow(c);
+  return !!w && now >= w.start && now < w.end;
+}
+
+/** Whether the class has already finished (now past start + duration) —
+ *  used to drop it from "Próximas clases" once it's over. */
+function hasClassEnded(c: ClassTimeInfo, now: Date): boolean {
+  const w = classWindow(c);
+  return !!w && now >= w.end;
+}
 
 function useUpcomingClasses(boxId: string) {
   return useQuery({
@@ -88,12 +122,15 @@ function useUpcomingClasses(boxId: string) {
       const today = format(new Date(), "yyyy-MM-dd");
       const { data: sessions } = await supabase
         .from("class_sessions")
-        .select("id, name, start_time, capacity")
+        .select("id, name, session_date, start_time, duration_minutes, capacity, coach:coaches(name)")
         .eq("box_id", boxId)
         .eq("session_date", today)
-        .order("start_time", { ascending: true })
-        .limit(4);
-      const rows = sessions ?? [];
+        .order("start_time", { ascending: true });
+      // Filtered client-side (not by a `session_date`/`start_time` query
+      // condition) since "ended" depends on duration_minutes too, not just
+      // the start time — a session's end time isn't a column to filter on.
+      const now = new Date();
+      const rows = (sessions ?? []).filter((r) => !hasClassEnded(r, now)).slice(0, 4);
       if (rows.length === 0) return [] as UpcomingClass[];
       const { data: bookings } = await supabase
         .from("class_bookings")
@@ -102,7 +139,7 @@ function useUpcomingClasses(boxId: string) {
         .in("session_id", rows.map((r) => r.id));
       const counts = new Map<string, number>();
       for (const b of bookings ?? []) counts.set(b.session_id, (counts.get(b.session_id) ?? 0) + 1);
-      return rows.map((r) => ({ ...r, bookings: counts.get(r.id) ?? 0 })) as UpcomingClass[];
+      return rows.map((r) => ({ ...r, bookings: counts.get(r.id) ?? 0 })) as unknown as UpcomingClass[];
     },
   });
 }
@@ -162,7 +199,7 @@ function DashboardPage() {
             {(expiring.data ?? []).map((m) => (
               <Link
                 key={m.user_id}
-                to="/members/$id"
+                to="/member-detail/$id"
                 params={{ id: m.user_id }}
                 onClick={() => setExpOpen(false)}
                 className="flex items-center gap-3 rounded-2xl border bg-card p-3"
@@ -210,8 +247,9 @@ function DashboardPage() {
           {(upcoming.data ?? []).map((c) => {
             const enrolled = c.bookings ?? 0;
             const pct = c.capacity ? Math.min(100, (enrolled / c.capacity) * 100) : 0;
+            const live = isClassLive(c, new Date());
             return (
-              <Link to="/classes/$id" params={{ id: c.id }} key={c.id}
+              <Link to="/class-detail/$id" params={{ id: c.id }} key={c.id}
                 className="block rounded-2xl border bg-card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -219,11 +257,29 @@ function DashboardPage() {
                       <Dumbbell className="h-4 w-4 text-primary" />
                       <p className="truncate text-sm font-semibold">{c.name}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{c.start_time?.slice(0, 5)}</p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        {format(new Date(`${c.session_date}T00:00:00`), "EEE d MMM", { locale: es })} ·{" "}
+                        {c.start_time ? format(new Date(`${c.session_date}T${c.start_time}`), "h:mm a") : "—"}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <UserIcon className="h-3 w-3" />
+                        {c.coach?.name ?? "Sin coach"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-bold">{enrolled}/{c.capacity}</div>
-                    <div className="text-[10px] text-muted-foreground">cupos</div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {live && (
+                      <span
+                        className="h-2.5 w-2.5 rounded-full bg-green-500"
+                        title="En horario de clase"
+                      />
+                    )}
+                    <div className="text-right">
+                      <div className="text-sm font-bold">{enrolled}/{c.capacity}</div>
+                      <div className="text-[10px] text-muted-foreground">cupos</div>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">

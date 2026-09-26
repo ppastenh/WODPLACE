@@ -7,9 +7,24 @@ interface CancelConfirmModalProps {
   visible: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  /** Defaults keep this component's original booking-cancellation copy —
+   *  override for other destructive/costly confirmations (e.g. exiting the
+   *  admin panel, see admin-dashboard.tsx). */
+  title?: string;
+  subtitle?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
-export function CancelConfirmModal({ visible, onClose, onConfirm }: CancelConfirmModalProps) {
+export function CancelConfirmModal({
+  visible,
+  onClose,
+  onConfirm,
+  title = '¿Cancelar esta reserva?',
+  subtitle = 'Perderás tu cupo en esta clase.',
+  confirmLabel = 'Sí, cancelar',
+  cancelLabel = 'No, mantener',
+}: CancelConfirmModalProps) {
   const colors = useColors();
 
   return (
@@ -17,13 +32,11 @@ export function CancelConfirmModal({ visible, onClose, onConfirm }: CancelConfir
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.centerWrap} pointerEvents="box-none">
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.title, { color: colors.foreground }]}>¿Cancelar esta reserva?</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Perderás tu cupo en esta clase.
-          </Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
           <View style={styles.actions}>
-            <AppButton label="Sí, cancelar" variant="destructive" fullWidth onPress={onConfirm} />
-            <AppButton label="No, mantener" variant="outlineDark" fullWidth onPress={onClose} />
+            <AppButton label={confirmLabel} variant="destructive" fullWidth onPress={onConfirm} />
+            <AppButton label={cancelLabel} variant="outlineDark" fullWidth onPress={onClose} />
           </View>
         </View>
       </View>

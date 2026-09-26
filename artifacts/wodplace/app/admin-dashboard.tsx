@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useCreateAdminDashLink } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
+import { CancelConfirmModal } from '@/components/CancelConfirmModal';
 import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
 import { getAdminToken } from '@/lib/adminSession';
@@ -92,6 +93,13 @@ export default function AdminDashboardScreen() {
   const [token, setToken] = useState<string | null>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [alertCount, setAlertCount] = useState(0);
+  // Exiting this screen means going through /admin-login (and the PIN) again
+  // next time — see getAdminToken()'s comment above — so it's gated behind a
+  // confirmation instead of a bare tap, and its header icon is deliberately
+  // not the usual back arrow (box-admin's own internal "Volver" links sit
+  // right below it and use that same arrow-left look for a much cheaper,
+  // in-panel action).
+  const [confirmExit, setConfirmExit] = useState(false);
   // Tracks which target the current `uri` was fetched for (not just
   // whether *a* fetch happened) — if this screen instance ever gets reused
   // for a different target instead of a fresh mount, a stale link for the
@@ -160,7 +168,8 @@ export default function AdminDashboardScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
-        onBack={() => router.replace('/profile')}
+        onBack={() => setConfirmExit(true)}
+        backIcon="x"
         dark
         adminAlertCount={alertCount}
         onPressAdminAlerts={() => webViewRef.current?.injectJavaScript(OPEN_ADMIN_NOTIFICATIONS_SCRIPT)}
@@ -261,6 +270,18 @@ export default function AdminDashboardScreen() {
           }
         />
       )}
+      <CancelConfirmModal
+        visible={confirmExit}
+        onClose={() => setConfirmExit(false)}
+        onConfirm={() => {
+          setConfirmExit(false);
+          router.replace('/profile');
+        }}
+        title="¿Salir del panel de administrador?"
+        subtitle="Vas a necesitar ingresar el PIN nuevamente para volver a entrar."
+        confirmLabel="Salir"
+        cancelLabel="Seguir aquí"
+      />
     </View>
   );
 }

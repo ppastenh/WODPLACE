@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
-import { DAY_NAMES_SHORT, getMonthMatrix, isAfterDay, isBeforeDay, isSameDay, toDateKey } from '@/lib/dateUtils';
+import { WEEK_HEADER_DAYS, getMonthMatrix, isAfterDay, isBeforeDay, isSameDay, toDateKey } from '@/lib/dateUtils';
 
 interface MonthCalendarProps {
   monthDate: Date;
@@ -24,7 +24,7 @@ export function MonthCalendar({ monthDate, selectedDate, today, maxDate, bookedD
   return (
     <View>
       <View style={styles.weekHeader}>
-        {DAY_NAMES_SHORT.map((day) => (
+        {WEEK_HEADER_DAYS.map((day) => (
           <Text key={day} style={[styles.weekHeaderText, { color: colors.mutedForeground }]}>
             {day}
           </Text>

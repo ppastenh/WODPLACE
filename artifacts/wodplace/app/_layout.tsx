@@ -25,7 +25,23 @@ SplashScreen.preventAutoHideAsync();
 
 configureApiClient();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Was unset (defaults to 0 — every mount/remount refetched
+      // immediately, no caching benefit at all). A short window means
+      // quickly revisiting a screen doesn't re-hit the network, while
+      // data still feels fresh. Screens that need to react to a change
+      // made elsewhere still `useFocusEffect(() => refetch())`.
+      staleTime: 30_000,
+      // React Native has no browser "window focus" event — without a
+      // focusManager wired to AppState, this default is a no-op here
+      // anyway, but set explicitly so it's not relying on a browser-only
+      // behavior that happens not to fire.
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function RootLayoutNav() {
   const pathname = usePathname();

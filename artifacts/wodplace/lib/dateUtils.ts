@@ -1,4 +1,9 @@
+/** Indexed by `Date.getDay()` (0 = Sunday) — for looking up a specific
+ *  date's label, not for rendering a week's header row in order. */
 export const DAY_NAMES_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+/** Monday-first, for the week/month grid header row (weeks start on
+ *  Monday — see startOfWeek). */
+export const WEEK_HEADER_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 export const MONTH_NAMES = [
   'Enero',
   'Febrero',
@@ -59,7 +64,10 @@ export function toDateKey(date: Date): string {
 export function startOfWeek(date: Date): Date {
   const d = startOfDay(date);
   const day = d.getDay();
-  return addDays(d, -day);
+  // getDay() is 0=Sunday..6=Saturday; weeks start Monday, so Sunday (0)
+  // needs to roll back 6 days instead of 0.
+  const diff = day === 0 ? 6 : day - 1;
+  return addDays(d, -diff);
 }
 
 /** Returns a 6-row x 7-col grid of dates covering the full month view. */

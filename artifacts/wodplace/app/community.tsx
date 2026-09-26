@@ -29,7 +29,6 @@ import { getAdminToken } from '@/lib/adminSession';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import {
   getBoxAnnouncements,
-  getMyBox,
   markAnnouncementRead,
   useAnnouncementComments,
   useAnnouncementMutations,
@@ -898,7 +897,7 @@ function AnnouncementFeedCard({
 export default function CommunityScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, adminStatus, hasBoxMembership, logout } = useAuth();
+  const { user, adminStatus, hasBoxMembership, myBox, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const adminCode = getAdminToken(); // admin session token (PIN flow), passed as Bearer
@@ -908,16 +907,9 @@ export default function CommunityScreen() {
   // at all (see Option A of the Comunidad box-scoping change: the backend
   // now genuinely separates each box's posts/comments/reactions/reports —
   // there's nothing box-less to show here beyond the header itself).
-  const [myBoxName, setMyBoxName] = useState<string | null>(null);
-  useEffect(() => {
-    if (!hasBoxMembership || !user?.id) {
-      setMyBoxName(null);
-      return;
-    }
-    getMyBox(user.id)
-      .then((res) => setMyBoxName(res.box?.name ?? null))
-      .catch(() => setMyBoxName(null));
-  }, [hasBoxMembership, user?.id]);
+  // `myBox` comes from AuthContext (already fetched there) instead of a
+  // separate request here for the same data.
+  const myBoxName = hasBoxMembership ? (myBox?.name ?? null) : null;
 
   // "Avisos del box" (see GET /box-memberships/announcements) — mixed into
   // the feed below as if they were posts (chronologically, by createdAt),

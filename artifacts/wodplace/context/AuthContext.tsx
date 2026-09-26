@@ -8,6 +8,7 @@ import {
   syncUser,
   updateProfileFields,
   verifyAccountRecovery,
+  type MyBox,
   type PlatformAgreementStatus,
   type RedeemBoxCodeResult,
 } from '@workspace/api-client-react';
@@ -71,6 +72,14 @@ interface AuthContextValue {
    * this, not just box membership. Refreshed alongside refreshActivationStatus.
    */
   hasActivePlan: boolean | null;
+  /**
+   * The athlete's box (name, photo, socials, etc.) — the same object
+   * refreshActivationStatus already fetches to derive hasBoxMembership/
+   * hasActivePlan, exposed here so screens that also need the full box
+   * (Home's logo/name badge, Comunidad's title) don't each fetch it again.
+   * null while box-less or not yet resolved.
+   */
+  myBox: MyBox | null;
   /**
    * Where to navigate right after auth resolves (boot, login, register,
    * account recovery): a choice screen ("Entrar como Super Admin" / "Ver
@@ -159,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminStatus, setAdminStatus] = useState<PlatformAgreementStatus | null>(null);
   const [hasBoxMembership, setHasBoxMembership] = useState<boolean | null>(null);
   const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null);
+  const [myBox, setMyBox] = useState<MyBox | null>(null);
 
   // Mirror of adminStatus, updated synchronously (state updates aren't
   // visible until the next render) — getPostAuthRoute reads this right
@@ -246,9 +256,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const myBox = await getMyBox(target.id);
-      setHasBoxMembership(!!myBox.box);
-      setHasActivePlan(!!myBox.box?.planId);
+      const myBoxResult = await getMyBox(target.id);
+      setHasBoxMembership(!!myBoxResult.box);
+      setHasActivePlan(!!myBoxResult.box?.planId);
+      setMyBox(myBoxResult.box);
     } catch (err) {
       console.warn('Failed to refresh box membership status', err);
     }
@@ -428,6 +439,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     adminStatusRef.current = null;
     setHasBoxMembership(null);
     setHasActivePlan(null);
+    setMyBox(null);
   };
 
   const updateProfile = async (partial: Partial<WodplaceUser>) => {
@@ -443,6 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       adminStatus,
       hasBoxMembership,
       hasActivePlan,
+      myBox,
       getPostAuthRoute,
       checkEmailExists,
       login,
@@ -455,7 +468,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshActivationStatus: () => refreshActivationStatus(),
       recoverAccount,
     }),
-    [user, isLoading, adminStatus, hasBoxMembership, hasActivePlan],
+    [user, isLoading, adminStatus, hasBoxMembership, hasActivePlan, myBox],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

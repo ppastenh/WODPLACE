@@ -157,9 +157,9 @@ export function ClassActionButton({
       />
     );
   }
-  if (session.hasStarted) {
-    return <AppButton label="Finalizado" variant="mutedDisabled" disabled compact />;
-  }
+  // A started-but-still-today class stays bookable — calendar.tsx's
+  // handleBook() gates it behind a confirmation ("¿reservar igual?") instead
+  // of blocking it outright here.
   if (session.remaining <= 0) {
     return <AppButton label="Lista de espera" variant="waitlist" onPress={onBook} compact />;
   }

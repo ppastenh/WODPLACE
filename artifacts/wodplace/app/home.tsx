@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
   Dimensions,
@@ -35,15 +36,11 @@ function BoxLogoImage({ uri, height = 48 }: { uri: string; height?: number }) {
 import { router, usePathname, useFocusEffect } from 'expo-router';
 import {
   getBoxAnnouncements,
-  getMyBox,
   getMyPlans,
   getUpcomingBirthdays,
   markAnnouncementRead,
   markBoxWelcomeShown,
   type BoxAnnouncement,
-  type MyBox,
-  type MyPlan,
-  type UpcomingBirthday,
 } from '@workspace/api-client-react';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { AppHeader } from '@/components/AppHeader';
@@ -55,6 +52,7 @@ import { useBooking } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
+import { useRefetchOnFocusIfStale } from '@/lib/useRefetchOnFocusIfStale';
 import {
   addDays,
   formatDayLabel,
@@ -133,6 +131,7 @@ export default function HomeScreen() {
     adminStatus,
     hasBoxMembership,
     hasActivePlan,
+    myBox,
     logout,
     redeemBoxCode,
     refreshActivationStatus,
@@ -141,14 +140,6 @@ export default function HomeScreen() {
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [birthdays, setBirthdays] = useState<UpcomingBirthday[]>([]);
-  const [myBox, setMyBox] = useState<MyBox | null>(null);
-  // The athlete's subscribed plan, with real per-period stats (classes
-  // used/remaining, days until renewal) computed server-side from
-  // box_members.next_payment_at — drives both "Progreso Mensual" (now the
-  // plan's real period, not the calendar month) and the near-limit notice
-  // below it.
-  const [myPlan, setMyPlan] = useState<MyPlan | null>(null);
   // Push avisos queue — one at a time, most recent first (see
   // GET /box-memberships/announcements). Each one requires the athlete to
   // confirm they've read it before it's removed from the queue.
@@ -173,69 +164,52 @@ export default function HomeScreen() {
     }, [refreshActivationStatus]),
   );
 
-  // Real per-box birthdays (see GET /box-memberships/upcoming-birthdays) —
-  // refetched alongside the re-sync above so a newly-set birthdate (or a
-  // new box member) shows up without an app restart.
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.id || !hasBoxMembership) {
-        setBirthdays([]);
-        return;
-      }
-      getUpcomingBirthdays(user.id)
-        .then((res) => setBirthdays(res.birthdays))
-        .catch(() => setBirthdays([]));
-    }, [user?.id, hasBoxMembership]),
-  );
+  // Real per-box birthdays (see GET /box-memberships/upcoming-birthdays).
+  // useQuery instead of a plain fetch-on-focus: within the QueryClient's
+  // staleTime (see _layout.tsx), returning to Home doesn't re-hit the
+  // network — useRefetchOnFocusIfStale only refetches once that window has
+  // passed, so a newly-set birthdate still shows up without needing an app
+  // restart, just not on every single visit.
+  const birthdaysQuery = useQuery({
+    queryKey: ['upcoming-birthdays', user?.id],
+    queryFn: () => getUpcomingBirthdays(user!.id),
+    enabled: !!user?.id && !!hasBoxMembership,
+  });
+  useRefetchOnFocusIfStale(birthdaysQuery);
+  const birthdays = (hasBoxMembership && birthdaysQuery.data?.birthdays) || [];
 
   // Subscribed plan + real period stats (see GET /box-memberships/my-plans).
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.id || !hasActivePlan) {
-        setMyPlan(null);
-        return;
-      }
-      getMyPlans(user.id)
-        .then((res) => setMyPlan(res.plans.find((p) => p.isSubscribed) ?? null))
-        .catch(() => setMyPlan(null));
-    }, [user?.id, hasActivePlan]),
-  );
+  const myPlanQuery = useQuery({
+    queryKey: ['my-plans', user?.id],
+    queryFn: () => getMyPlans(user!.id),
+    enabled: !!user?.id && !!hasActivePlan,
+  });
+  useRefetchOnFocusIfStale(myPlanQuery);
+  const myPlan = hasActivePlan
+    ? (myPlanQuery.data?.plans.find((p) => p.isSubscribed) ?? null)
+    : null;
 
-  // Push avisos (see GET /box-memberships/announcements) — refetched on
-  // focus so a new one shows up without an app restart. Confirming one
-  // (AnnouncementModal below) removes it from the local queue immediately;
-  // a fresh fetch on the next focus is the source of truth beyond that.
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.id || !hasBoxMembership) {
-        setPushQueue([]);
-        setPinnedPush(null);
-        return;
-      }
-      getBoxAnnouncements(user.id)
-        .then((res) => {
-          setPushQueue(res.push);
-          setPinnedPush(res.pinnedPush);
-        })
-        .catch(() => {
-          setPushQueue([]);
-          setPinnedPush(null);
-        });
-    }, [user?.id, hasBoxMembership]),
-  );
-
-  // Box name + logo shown next to the greeting below.
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.id || !hasBoxMembership) {
-        setMyBox(null);
-        return;
-      }
-      getMyBox(user.id)
-        .then((res) => setMyBox(res.box))
-        .catch(() => setMyBox(null));
-    }, [user?.id, hasBoxMembership]),
-  );
+  // Push avisos (see GET /box-memberships/announcements). pushQueue/
+  // pinnedPush stay their own local state, synced from the query result
+  // below — confirming a popup (AnnouncementModal) shrinks the queue
+  // in-place via setPushQueue, which query-driven state alone doesn't
+  // cleanly support yet (that's the mutations/cache-invalidation pass,
+  // deliberately left for later).
+  const announcementsQuery = useQuery({
+    queryKey: ['announcements', user?.id],
+    queryFn: () => getBoxAnnouncements(user!.id),
+    enabled: !!user?.id && !!hasBoxMembership,
+  });
+  useRefetchOnFocusIfStale(announcementsQuery);
+  useEffect(() => {
+    if (!hasBoxMembership || !announcementsQuery.data) {
+      setPushQueue([]);
+      setPinnedPush(null);
+      return;
+    }
+    setPushQueue(announcementsQuery.data.push);
+    setPinnedPush(announcementsQuery.data.pinnedPush);
+  }, [hasBoxMembership, announcementsQuery.data]);
 
   // One-time "your box is approved" popup — see boxes.welcome_shown_at.
   // Marked shown immediately (not on the alert's dismiss) so it can't
@@ -355,6 +329,30 @@ export default function HomeScreen() {
           <JoinBoxCard onPress={() => setJoinBoxVisible(true)} />
         ) : null}
 
+        {hasActivePlan && nearPlanLimit ? (
+          <View style={[styles.noticeCard, { backgroundColor: colors.warningBackground }]}>
+            <View style={[styles.noticeIcon, { backgroundColor: colors.warning }]}>
+              <Feather name="alert-circle" size={16} color={colors.foreground} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              {myPlan!.classesPerPeriod != null &&
+              myPlan!.classesRemaining != null &&
+              myPlan!.classesRemaining <= 2 ? (
+                <Text style={[styles.noticeText, { color: colors.foreground }]}>
+                  Te quedan {myPlan!.classesRemaining} clase{myPlan!.classesRemaining === 1 ? '' : 's'} este período.
+                </Text>
+              ) : null}
+              {myPlan!.daysUntilRenewal != null && myPlan!.daysUntilRenewal <= 7 ? (
+                <Text style={[styles.noticeText, { color: colors.foreground }]}>
+                  Tu plan {myPlan!.daysUntilRenewal <= 0
+                    ? 'vence hoy'
+                    : `vence en ${myPlan!.daysUntilRenewal} día${myPlan!.daysUntilRenewal === 1 ? '' : 's'}`}.
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
         {hasActivePlan && hasPeriodProgress ? (
           <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
             <View style={styles.cardHeadingRow}>
@@ -379,30 +377,6 @@ export default function HomeScreen() {
                   { backgroundColor: colors.navActive, width: `${periodProgress * 100}%` },
                 ]}
               />
-            </View>
-          </View>
-        ) : null}
-
-        {hasActivePlan && nearPlanLimit ? (
-          <View style={[styles.noticeCard, { backgroundColor: colors.warningBackground }]}>
-            <View style={[styles.noticeIcon, { backgroundColor: colors.warning }]}>
-              <Feather name="alert-circle" size={16} color={colors.foreground} />
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              {myPlan!.classesPerPeriod != null &&
-              myPlan!.classesRemaining != null &&
-              myPlan!.classesRemaining <= 2 ? (
-                <Text style={[styles.noticeText, { color: colors.foreground }]}>
-                  Te quedan {myPlan!.classesRemaining} clase{myPlan!.classesRemaining === 1 ? '' : 's'} este período.
-                </Text>
-              ) : null}
-              {myPlan!.daysUntilRenewal != null && myPlan!.daysUntilRenewal <= 7 ? (
-                <Text style={[styles.noticeText, { color: colors.foreground }]}>
-                  Tu plan {myPlan!.daysUntilRenewal <= 0
-                    ? 'vence hoy'
-                    : `vence en ${myPlan!.daysUntilRenewal} día${myPlan!.daysUntilRenewal === 1 ? '' : 's'}`}.
-                </Text>
-              ) : null}
             </View>
           </View>
         ) : null}
