@@ -264,7 +264,7 @@ function ReportRow({ r, onResolve, busy }: { r: PendingReport; onResolve: () => 
 function MemberRow({ m, label, onClick }: { m: MemberAlert; label: string; onClick: () => void }) {
   return (
     <Link
-      to="/members/$id"
+      to="/member-detail/$id"
       params={{ id: m.userId }}
       onClick={onClick}
       className="flex items-center gap-3 rounded-2xl border bg-card p-3 active:bg-secondary/60"
@@ -280,7 +280,7 @@ function MemberRow({ m, label, onClick }: { m: MemberAlert; label: string; onCli
 function PaymentRow({ p, onClick }: { p: UnconfirmedPayment; onClick: () => void }) {
   return (
     <Link
-      to="/members/$id"
+      to="/member-detail/$id"
       params={{ id: p.userId }}
       onClick={onClick}
       className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-3 active:bg-secondary/60"
@@ -297,7 +297,7 @@ function PaymentRow({ p, onClick }: { p: UnconfirmedPayment; onClick: () => void
 function ContractRow({ c, onSeen, busy, onClick }: { c: UnseenContract; onSeen: () => void; busy: boolean; onClick: () => void }) {
   return (
     <div className="flex items-center gap-2 rounded-2xl border bg-card p-3">
-      <Link to="/members/$id" params={{ id: c.userId }} onClick={onClick} className="min-w-0 flex-1">
+      <Link to="/member-detail/$id" params={{ id: c.userId }} onClick={onClick} className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{c.name}</p>
         <p className="text-[11px] text-muted-foreground">Aceptó el {fmtDate(c.acceptedAt)}</p>
       </Link>
@@ -314,7 +314,7 @@ function ContractRow({ c, onSeen, busy, onClick }: { c: UnseenContract; onSeen: 
 function NewMemberRow({ m, onSeen, busy, onClick }: { m: MemberAlert; onSeen: () => void; busy: boolean; onClick: () => void }) {
   return (
     <div className="flex items-center gap-2 rounded-2xl border bg-card p-3">
-      <Link to="/members/$id" params={{ id: m.userId }} onClick={onClick} className="min-w-0 flex-1">
+      <Link to="/member-detail/$id" params={{ id: m.userId }} onClick={onClick} className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{m.name}</p>
         <p className="text-[11px] text-muted-foreground">se unió {fmtDate(m.date)}</p>
       </Link>

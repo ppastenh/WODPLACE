@@ -18,14 +18,13 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as AuthenticatedAdminAttendanceRouteImport } from './routes/_authenticated/_admin/attendance'
 import { Route as AuthenticatedAdminClassesRouteImport } from './routes/_authenticated/_admin/classes'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/_admin/dashboard'
 import { Route as AuthenticatedAdminFinancesRouteImport } from './routes/_authenticated/_admin/finances'
 import { Route as AuthenticatedAdminMembersRouteImport } from './routes/_authenticated/_admin/members'
-import { Route as AuthenticatedAdminClassesIdRouteImport } from './routes/_authenticated/_admin/classes.$id'
+import { Route as AuthenticatedAdminClassDetailIdRouteImport } from './routes/_authenticated/_admin/class-detail.$id'
+import { Route as AuthenticatedAdminMemberDetailIdRouteImport } from './routes/_authenticated/_admin/member-detail.$id'
 import { Route as AuthenticatedAdminMemberProfileIdRouteImport } from './routes/_authenticated/_admin/member-profile.$id'
-import { Route as AuthenticatedAdminMembersIdRouteImport } from './routes/_authenticated/_admin/members.$id'
 import { Route as AuthenticatedAdminMoreIndexRouteImport } from './routes/_authenticated/_admin/more/index'
 import { Route as AuthenticatedAdminMoreCoachesRouteImport } from './routes/_authenticated/_admin/more/coaches'
 import { Route as AuthenticatedAdminMoreFilesRouteImport } from './routes/_authenticated/_admin/more/files'
@@ -81,12 +80,6 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AuthenticatedAdminAttendanceRoute =
-  AuthenticatedAdminAttendanceRouteImport.update({
-    id: '/attendance',
-    path: '/attendance',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminClassesRoute =
   AuthenticatedAdminClassesRouteImport.update({
     id: '/classes',
@@ -111,23 +104,23 @@ const AuthenticatedAdminMembersRoute =
     path: '/members',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminClassesIdRoute =
-  AuthenticatedAdminClassesIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedAdminClassesRoute,
+const AuthenticatedAdminClassDetailIdRoute =
+  AuthenticatedAdminClassDetailIdRouteImport.update({
+    id: '/class-detail/$id',
+    path: '/class-detail/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminMemberDetailIdRoute =
+  AuthenticatedAdminMemberDetailIdRouteImport.update({
+    id: '/member-detail/$id',
+    path: '/member-detail/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminMemberProfileIdRoute =
   AuthenticatedAdminMemberProfileIdRouteImport.update({
     id: '/member-profile/$id',
     path: '/member-profile/$id',
     getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminMembersIdRoute =
-  AuthenticatedAdminMembersIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedAdminMembersRoute,
   } as any)
 const AuthenticatedAdminMoreIndexRoute =
   AuthenticatedAdminMoreIndexRouteImport.update({
@@ -186,14 +179,13 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/attendance': typeof AuthenticatedAdminAttendanceRoute
-  '/classes': typeof AuthenticatedAdminClassesRouteWithChildren
+  '/classes': typeof AuthenticatedAdminClassesRoute
   '/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/finances': typeof AuthenticatedAdminFinancesRoute
-  '/members': typeof AuthenticatedAdminMembersRouteWithChildren
-  '/classes/$id': typeof AuthenticatedAdminClassesIdRoute
+  '/members': typeof AuthenticatedAdminMembersRoute
+  '/class-detail/$id': typeof AuthenticatedAdminClassDetailIdRoute
+  '/member-detail/$id': typeof AuthenticatedAdminMemberDetailIdRoute
   '/member-profile/$id': typeof AuthenticatedAdminMemberProfileIdRoute
-  '/members/$id': typeof AuthenticatedAdminMembersIdRoute
   '/more/coaches': typeof AuthenticatedAdminMoreCoachesRoute
   '/more/files': typeof AuthenticatedAdminMoreFilesRoute
   '/more/invites': typeof AuthenticatedAdminMoreInvitesRoute
@@ -211,14 +203,13 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/attendance': typeof AuthenticatedAdminAttendanceRoute
-  '/classes': typeof AuthenticatedAdminClassesRouteWithChildren
+  '/classes': typeof AuthenticatedAdminClassesRoute
   '/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/finances': typeof AuthenticatedAdminFinancesRoute
-  '/members': typeof AuthenticatedAdminMembersRouteWithChildren
-  '/classes/$id': typeof AuthenticatedAdminClassesIdRoute
+  '/members': typeof AuthenticatedAdminMembersRoute
+  '/class-detail/$id': typeof AuthenticatedAdminClassDetailIdRoute
+  '/member-detail/$id': typeof AuthenticatedAdminMemberDetailIdRoute
   '/member-profile/$id': typeof AuthenticatedAdminMemberProfileIdRoute
-  '/members/$id': typeof AuthenticatedAdminMembersIdRoute
   '/more/coaches': typeof AuthenticatedAdminMoreCoachesRoute
   '/more/files': typeof AuthenticatedAdminMoreFilesRoute
   '/more/invites': typeof AuthenticatedAdminMoreInvitesRoute
@@ -239,14 +230,13 @@ export interface FileRoutesById {
   '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/_authenticated/_admin/attendance': typeof AuthenticatedAdminAttendanceRoute
-  '/_authenticated/_admin/classes': typeof AuthenticatedAdminClassesRouteWithChildren
+  '/_authenticated/_admin/classes': typeof AuthenticatedAdminClassesRoute
   '/_authenticated/_admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/_admin/finances': typeof AuthenticatedAdminFinancesRoute
-  '/_authenticated/_admin/members': typeof AuthenticatedAdminMembersRouteWithChildren
-  '/_authenticated/_admin/classes/$id': typeof AuthenticatedAdminClassesIdRoute
+  '/_authenticated/_admin/members': typeof AuthenticatedAdminMembersRoute
+  '/_authenticated/_admin/class-detail/$id': typeof AuthenticatedAdminClassDetailIdRoute
+  '/_authenticated/_admin/member-detail/$id': typeof AuthenticatedAdminMemberDetailIdRoute
   '/_authenticated/_admin/member-profile/$id': typeof AuthenticatedAdminMemberProfileIdRoute
-  '/_authenticated/_admin/members/$id': typeof AuthenticatedAdminMembersIdRoute
   '/_authenticated/_admin/more/coaches': typeof AuthenticatedAdminMoreCoachesRoute
   '/_authenticated/_admin/more/files': typeof AuthenticatedAdminMoreFilesRoute
   '/_authenticated/_admin/more/invites': typeof AuthenticatedAdminMoreInvitesRoute
@@ -266,14 +256,13 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/attendance'
     | '/classes'
     | '/dashboard'
     | '/finances'
     | '/members'
-    | '/classes/$id'
+    | '/class-detail/$id'
+    | '/member-detail/$id'
     | '/member-profile/$id'
-    | '/members/$id'
     | '/more/coaches'
     | '/more/files'
     | '/more/invites'
@@ -291,14 +280,13 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/attendance'
     | '/classes'
     | '/dashboard'
     | '/finances'
     | '/members'
-    | '/classes/$id'
+    | '/class-detail/$id'
+    | '/member-detail/$id'
     | '/member-profile/$id'
-    | '/members/$id'
     | '/more/coaches'
     | '/more/files'
     | '/more/invites'
@@ -318,14 +306,13 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/_authenticated/_admin/attendance'
     | '/_authenticated/_admin/classes'
     | '/_authenticated/_admin/dashboard'
     | '/_authenticated/_admin/finances'
     | '/_authenticated/_admin/members'
-    | '/_authenticated/_admin/classes/$id'
+    | '/_authenticated/_admin/class-detail/$id'
+    | '/_authenticated/_admin/member-detail/$id'
     | '/_authenticated/_admin/member-profile/$id'
-    | '/_authenticated/_admin/members/$id'
     | '/_authenticated/_admin/more/coaches'
     | '/_authenticated/_admin/more/files'
     | '/_authenticated/_admin/more/invites'
@@ -412,13 +399,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/_admin/attendance': {
-      id: '/_authenticated/_admin/attendance'
-      path: '/attendance'
-      fullPath: '/attendance'
-      preLoaderRoute: typeof AuthenticatedAdminAttendanceRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/_admin/classes': {
       id: '/_authenticated/_admin/classes'
       path: '/classes'
@@ -447,12 +427,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMembersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/_admin/classes/$id': {
-      id: '/_authenticated/_admin/classes/$id'
-      path: '/$id'
-      fullPath: '/classes/$id'
-      preLoaderRoute: typeof AuthenticatedAdminClassesIdRouteImport
-      parentRoute: typeof AuthenticatedAdminClassesRoute
+    '/_authenticated/_admin/class-detail/$id': {
+      id: '/_authenticated/_admin/class-detail/$id'
+      path: '/class-detail/$id'
+      fullPath: '/class-detail/$id'
+      preLoaderRoute: typeof AuthenticatedAdminClassDetailIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/member-detail/$id': {
+      id: '/_authenticated/_admin/member-detail/$id'
+      path: '/member-detail/$id'
+      fullPath: '/member-detail/$id'
+      preLoaderRoute: typeof AuthenticatedAdminMemberDetailIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/member-profile/$id': {
       id: '/_authenticated/_admin/member-profile/$id'
@@ -460,13 +447,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/member-profile/$id'
       preLoaderRoute: typeof AuthenticatedAdminMemberProfileIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/_admin/members/$id': {
-      id: '/_authenticated/_admin/members/$id'
-      path: '/$id'
-      fullPath: '/members/$id'
-      preLoaderRoute: typeof AuthenticatedAdminMembersIdRouteImport
-      parentRoute: typeof AuthenticatedAdminMembersRoute
     }
     '/_authenticated/_admin/more/': {
       id: '/_authenticated/_admin/more/'
@@ -527,40 +507,13 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAdminClassesRouteChildren {
-  AuthenticatedAdminClassesIdRoute: typeof AuthenticatedAdminClassesIdRoute
-}
-
-const AuthenticatedAdminClassesRouteChildren: AuthenticatedAdminClassesRouteChildren =
-  {
-    AuthenticatedAdminClassesIdRoute: AuthenticatedAdminClassesIdRoute,
-  }
-
-const AuthenticatedAdminClassesRouteWithChildren =
-  AuthenticatedAdminClassesRoute._addFileChildren(
-    AuthenticatedAdminClassesRouteChildren,
-  )
-
-interface AuthenticatedAdminMembersRouteChildren {
-  AuthenticatedAdminMembersIdRoute: typeof AuthenticatedAdminMembersIdRoute
-}
-
-const AuthenticatedAdminMembersRouteChildren: AuthenticatedAdminMembersRouteChildren =
-  {
-    AuthenticatedAdminMembersIdRoute: AuthenticatedAdminMembersIdRoute,
-  }
-
-const AuthenticatedAdminMembersRouteWithChildren =
-  AuthenticatedAdminMembersRoute._addFileChildren(
-    AuthenticatedAdminMembersRouteChildren,
-  )
-
 interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminAttendanceRoute: typeof AuthenticatedAdminAttendanceRoute
-  AuthenticatedAdminClassesRoute: typeof AuthenticatedAdminClassesRouteWithChildren
+  AuthenticatedAdminClassesRoute: typeof AuthenticatedAdminClassesRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminFinancesRoute: typeof AuthenticatedAdminFinancesRoute
-  AuthenticatedAdminMembersRoute: typeof AuthenticatedAdminMembersRouteWithChildren
+  AuthenticatedAdminMembersRoute: typeof AuthenticatedAdminMembersRoute
+  AuthenticatedAdminClassDetailIdRoute: typeof AuthenticatedAdminClassDetailIdRoute
+  AuthenticatedAdminMemberDetailIdRoute: typeof AuthenticatedAdminMemberDetailIdRoute
   AuthenticatedAdminMemberProfileIdRoute: typeof AuthenticatedAdminMemberProfileIdRoute
   AuthenticatedAdminMoreCoachesRoute: typeof AuthenticatedAdminMoreCoachesRoute
   AuthenticatedAdminMoreFilesRoute: typeof AuthenticatedAdminMoreFilesRoute
@@ -573,11 +526,12 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminAttendanceRoute: AuthenticatedAdminAttendanceRoute,
-  AuthenticatedAdminClassesRoute: AuthenticatedAdminClassesRouteWithChildren,
+  AuthenticatedAdminClassesRoute: AuthenticatedAdminClassesRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminFinancesRoute: AuthenticatedAdminFinancesRoute,
-  AuthenticatedAdminMembersRoute: AuthenticatedAdminMembersRouteWithChildren,
+  AuthenticatedAdminMembersRoute: AuthenticatedAdminMembersRoute,
+  AuthenticatedAdminClassDetailIdRoute: AuthenticatedAdminClassDetailIdRoute,
+  AuthenticatedAdminMemberDetailIdRoute: AuthenticatedAdminMemberDetailIdRoute,
   AuthenticatedAdminMemberProfileIdRoute:
     AuthenticatedAdminMemberProfileIdRoute,
   AuthenticatedAdminMoreCoachesRoute: AuthenticatedAdminMoreCoachesRoute,

@@ -13,7 +13,7 @@ import { es } from "date-fns/locale";
  * mobile app's own Perfil screen (app/profile.tsx / app/member/[id].tsx in
  * wodplace): avatar, name, phrase, rank badge, and Publicaciones/PRs tabs.
  * Deliberately excludes status/plan/payments/notes — those stay in the
- * full admin screen at /members/$id ("Gestionar membresía").
+ * full admin screen at /member-detail/$id ("Gestionar membresía").
  *
  * Two separate codebases (this is a web app, the mobile screen is React
  * Native) so this is its own implementation querying Supabase directly,
@@ -89,7 +89,7 @@ function MemberSimpleProfile() {
   const p = profile.data;
   if (!p) {
     return (
-      <AdminShell title="Perfil" showBack>
+      <AdminShell title="Perfil" showBack backTo="/members">
         <p className="p-6 text-center text-sm text-muted-foreground">
           {profile.isLoading ? "Cargando..." : "No encontrado"}
         </p>
@@ -102,7 +102,7 @@ function MemberSimpleProfile() {
   const memberSince = p.joined_at ? format(new Date(p.joined_at), "MMMM yyyy", { locale: es }) : null;
 
   return (
-    <AdminShell title="Perfil" showBack>
+    <AdminShell title="Perfil" showBack backTo="/members">
       <div className="flex flex-col items-center rounded-3xl border bg-card p-5 text-center">
         <Avatar name={fullName} url={wu?.avatar_url} size={80} />
         <h1 className="mt-3 text-xl font-black">{fullName}</h1>

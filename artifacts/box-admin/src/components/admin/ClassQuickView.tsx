@@ -147,10 +147,17 @@ export function ClassQuickView({
                 </p>
               </div>
 
+              {/* No onClick to close the drawer here on purpose — it used to
+                  race the Link's own navigation (closing this Drawer could
+                  interfere with the click before TanStack Router got to
+                  navigate, so the drawer just closed with no navigation
+                  happening). Also note the target is /class-detail/$id, a
+                  sibling route, NOT /classes/$id — classes.tsx has no
+                  <Outlet/>, so a route nested under it would change the URL
+                  without ever mounting. */}
               <Link
-                to="/classes/$id"
+                to="/class-detail/$id"
                 params={{ id: c.id }}
-                onClick={() => onOpenChange(false)}
                 className="mt-4 flex items-center justify-between rounded-2xl border bg-card px-4 py-3 text-sm font-semibold"
               >
                 <span className="flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Ver asistentes</span>

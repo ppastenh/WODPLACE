@@ -27,19 +27,22 @@ function BoxSwitcher() {
 type Props = {
   title?: string;
   showBack?: boolean;
+  /** See AdminShell's `backTo` — overrides the default `to=".."` (one URL
+   *  segment up) for routes where that segment isn't a real route. */
+  backTo?: string;
   right?: ReactNode;
 };
 
-export function MobileHeader({ title, showBack, right }: Props) {
+export function MobileHeader({ title, showBack, backTo, right }: Props) {
   const canBack = useRouterState({ select: (s) => s.location.pathname !== "/dashboard" });
   const backVisible = showBack && canBack;
-  const { boxName } = useBox();
+  const { boxName, boxPhotoUrl } = useBox();
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-md items-center gap-3 px-4 pb-3 pt-[max(env(safe-area-inset-top),12px)]">
         {backVisible ? (
           <Link
-            to=".."
+            to={backTo ?? ".."}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-secondary text-foreground"
             aria-label="Volver"
           >
@@ -50,9 +53,17 @@ export function MobileHeader({ title, showBack, right }: Props) {
           // just the dashboard ("Inicio"). Every other screen passes a
           // title, so it stands alone instead of sitting next to it.
           <Link to="/dashboard" className="flex shrink-0 items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-              <Dumbbell className="h-4 w-4" />
-            </div>
+            {boxPhotoUrl ? (
+              <img
+                src={boxPhotoUrl}
+                alt=""
+                className="h-9 w-9 shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+                <Dumbbell className="h-4 w-4" />
+              </div>
+            )}
             <span className="max-w-[45vw] truncate text-base font-black tracking-tight">
               {boxName || "WODPLACE"}
             </span>

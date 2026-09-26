@@ -3,18 +3,24 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
+import { checkPlanLimit } from "@/lib/planLimit";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "./members";
-import { UserPlus, Clock, User as UserIcon, CalendarDays, Pencil, Search } from "lucide-react";
+import { UserPlus, Clock, User as UserIcon, CalendarDays, Pencil, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
-export const Route = createFileRoute("/_authenticated/_admin/classes/$id")({
+// Sibling route, not nested under classes.tsx — classes.tsx (the "Clases"
+// tab) has no <Outlet/>, so a route file named classes.$id.tsx would change
+// the URL on navigation but never actually mount (same bug fixed before for
+// member-profile.$id.tsx vs. members.$id.tsx).
+export const Route = createFileRoute("/_authenticated/_admin/class-detail/$id")({
   head: () => ({
     meta: [
       { title: "Clase — Dlovebox" },
@@ -35,8 +41,10 @@ type BookingRow = {
 function ClassDetail() {
   const { id } = Route.useParams();
   const { boxId } = useBox();
+  const qc = useQueryClient();
   const [tab, setTab] = useState<"asistentes" | "espera">("asistentes");
   const [q, setQ] = useState("");
+  const [toRemove, setToRemove] = useState<BookingRow | null>(null);
 
   const cls = useQuery({
     queryKey: ["class", boxId, id],
@@ -53,8 +61,32 @@ function ClassDetail() {
       .eq("session_id", id)).data ?? []) as unknown as BookingRow[],
   });
 
+  // Admin-side cancellation, bypassing the 1-hour-before-class cutoff that
+  // only exists client-side in the athlete's own app (BookingContext.tsx) —
+  // for when a student asks staff to cancel because they can't do it
+  // themselves anymore. Deliberately just deletes the row: no waitlist
+  // auto-promotion/notification here (unlike POST /bookings/cancel's self-
+  // cancel path) — if a spot needs filling, staff adds someone manually via
+  // "Agregar miembro" below. classesUsedInPeriod is a live COUNT(*) over
+  // class_bookings (see api-server's GET /box-memberships/my-box), so
+  // deleting this row alone already gives the athlete their class credit
+  // back — no separate counter to touch.
+  const removeBooking = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase.from("class_bookings").delete().eq("box_id", boxId).eq("id", bookingId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Reserva eliminada");
+      qc.invalidateQueries({ queryKey: ["class-bookings", boxId, id] });
+      qc.invalidateQueries({ queryKey: ["classes-range"] });
+      setToRemove(null);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo eliminar la reserva"),
+  });
+
   const c = cls.data;
-  if (!c) return <AdminShell title="Clase" showBack><p className="p-6 text-center text-sm">Cargando...</p></AdminShell>;
+  if (!c) return <AdminShell title="Clase" showBack backTo="/classes"><p className="p-6 text-center text-sm">Cargando...</p></AdminShell>;
 
   const inscritos = attendees.data?.filter((a) => a.status !== "lista_espera") ?? [];
   const espera = attendees.data?.filter((a) => a.status === "lista_espera") ?? [];
@@ -70,7 +102,7 @@ function ClassDetail() {
   const activa = c.status === "programada" || c.status === "en_curso";
 
   return (
-    <AdminShell title="Clases" showBack>
+    <AdminShell title="Clases" showBack backTo="/classes">
       <div className="pb-20">
         <div className="flex items-start justify-between gap-3">
           <h1 className="min-w-0 truncate text-2xl font-black tracking-tight">{c.name}</h1>
@@ -134,6 +166,15 @@ function ClassDetail() {
             <div key={a.id} className="flex items-center gap-3 py-3">
               <Avatar name={a.wodplace_users?.name ?? "?"} size={40} />
               <p className="min-w-0 flex-1 truncate text-sm font-semibold">{a.wodplace_users?.name}</p>
+              <button
+                type="button"
+                aria-label={`Quitar a ${a.wodplace_users?.name ?? "este miembro"}`}
+                disabled={removeBooking.isPending}
+                onClick={() => setToRemove(a)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-destructive active:bg-destructive/10 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
           ))}
         </div>
@@ -142,6 +183,17 @@ function ClassDetail() {
       <div className="fixed inset-x-0 bottom-[76px] z-30 mx-auto max-w-md px-4 pb-2">
         <AddParticipant classId={id} />
       </div>
+
+      <ConfirmDialog
+        open={toRemove != null}
+        onOpenChange={(v) => { if (!v) setToRemove(null); }}
+        title="Eliminar reserva"
+        description={`¿Eliminar la reserva de ${toRemove?.wodplace_users?.name ?? "este miembro"}?`}
+        confirmLabel="Eliminar"
+        destructive
+        loading={removeBooking.isPending}
+        onConfirm={() => { if (toRemove) removeBooking.mutate(toRemove.id); }}
+      />
     </AdminShell>
   );
 }
@@ -198,6 +250,8 @@ type MemberHit = { user_id: string; wodplace_users: { name: string } | null };
 function AddParticipant({ classId }: { classId: string }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [pending, setPending] = useState<{ userId: string; name: string; used: number; cap: number } | null>(null);
   const qc = useQueryClient();
   const { boxId } = useBox();
   const search = useQuery({
@@ -220,10 +274,29 @@ function AddParticipant({ classId }: { classId: string }) {
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Agregado"); qc.invalidateQueries({ queryKey: ["class-bookings", boxId, classId] }); setOpen(false); setQ(""); },
+    onSuccess: () => { toast.success("Agregado"); qc.invalidateQueries({ queryKey: ["class-bookings", boxId, classId] }); setOpen(false); setQ(""); setPending(null); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
   });
+
+  // Same reasoning as BookClassSheet's startBooking: this writes
+  // class_bookings directly, bypassing the athlete-side plan limit entirely
+  // — confirm before letting it through once the student's plan is used up.
+  async function startAdd(userId: string, name: string) {
+    setChecking(true);
+    try {
+      const limit = await checkPlanLimit({ boxId, userId });
+      if (limit && limit.used >= limit.cap) {
+        setPending({ userId, name, used: limit.used, cap: limit.cap });
+        return;
+      }
+    } finally {
+      setChecking(false);
+    }
+    add.mutate(userId);
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="h-12 w-full gap-2 rounded-full text-sm font-bold shadow-lg shadow-primary/20">
@@ -235,8 +308,12 @@ function AddParticipant({ classId }: { classId: string }) {
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar miembro..." />
         <div className="max-h-72 space-y-1 overflow-y-auto">
           {(search.data ?? []).map((m) => (
-            <button key={m.user_id} onClick={() => add.mutate(m.user_id)}
-              className="flex w-full items-center gap-3 rounded-xl bg-secondary p-2 text-left">
+            <button
+              key={m.user_id}
+              disabled={checking || add.isPending}
+              onClick={() => startAdd(m.user_id, m.wodplace_users?.name ?? "este miembro")}
+              className="flex w-full items-center gap-3 rounded-xl bg-secondary p-2 text-left disabled:opacity-50"
+            >
               <Avatar name={m.wodplace_users?.name ?? "?"} size={32} />
               <span className="text-sm">{m.wodplace_users?.name}</span>
             </button>
@@ -244,5 +321,20 @@ function AddParticipant({ classId }: { classId: string }) {
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={pending != null}
+      onOpenChange={(v) => { if (!v) setPending(null); }}
+      title="Clase extra fuera del plan"
+      description={
+        pending
+          ? `${pending.name} ya usó ${pending.used}/${pending.cap} clases de su plan en este período. Esta se agregaría como una clase extra.`
+          : undefined
+      }
+      confirmLabel="Agregar igual"
+      loading={add.isPending}
+      onConfirm={() => { if (pending) add.mutate(pending.userId); }}
+    />
+    </>
   );
 }
