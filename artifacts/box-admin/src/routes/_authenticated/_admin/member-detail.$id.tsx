@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { registerPayment } from "@/lib/payments";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUpcomingBookings, type UpcomingClass } from "@/lib/upcomingBookings";
+import { Switch } from "@/components/ui/switch";
+import { MOVEMENT_ACHIEVEMENTS } from "@/lib/movementAchievements";
 
 // Sibling route, not nested under members.tsx — members.tsx (the "Miembros"
 // tab) has no <Outlet/>, so a route file named members.$id.tsx would change
@@ -83,6 +85,51 @@ function MemberDetail() {
   });
 
   const upcoming = useUpcomingBookings(boxId, id);
+
+  // MOVIMIENTO (Fase 2) — coach-granted skill/lift badges. Writes directly
+  // to user_achievements via Supabase (RLS lets box staff manage rows that
+  // carry a box_id — see supabase/migrations/..._movimiento_achievements.sql
+  // — the automatic categories' rows never have one, so this can't touch
+  // those). Names/descriptions/icons shown to the athlete live in
+  // api-server's catalog; this ids-only list must match it exactly.
+  const movimiento = useQuery({
+    queryKey: ["member-movimiento", boxId, id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_achievements")
+        .select("achievement_id")
+        .eq("user_id", id)
+        .in("achievement_id", MOVEMENT_ACHIEVEMENTS.map((a) => a.id));
+      return new Set((data ?? []).map((r) => r.achievement_id));
+    },
+  });
+
+  const toggleMovimiento = useMutation({
+    mutationFn: async ({ achievementId, unlock }: { achievementId: string; unlock: boolean }) => {
+      if (unlock) {
+        const { data: auth } = await supabase.auth.getUser();
+        const { error } = await supabase.from("user_achievements").insert({
+          id: `movimiento-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          user_id: id,
+          achievement_id: achievementId,
+          box_id: boxId,
+          awarded_by: auth.user?.email ?? "—",
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("user_achievements")
+          .delete()
+          .eq("user_id", id)
+          .eq("achievement_id", achievementId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["member-movimiento", boxId, id] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo actualizar la medalla"),
+  });
 
   // Same behavior as class-detail.$id.tsx's Trash2: bypasses the athlete's
   // own 1-hour cutoff, deletes the row outright with no waitlist
@@ -169,11 +216,12 @@ function MemberDetail() {
       </div>
 
       <Tabs defaultValue="info" className="mt-5">
-        <TabsList className="grid w-full grid-cols-4 rounded-full bg-secondary">
+        <TabsList className="grid w-full grid-cols-5 rounded-full bg-secondary">
           <TabsTrigger value="info" className="rounded-full text-xs">Info</TabsTrigger>
           <TabsTrigger value="classes" className="rounded-full text-xs">Clases</TabsTrigger>
           <TabsTrigger value="pay" className="rounded-full text-xs">Pagos</TabsTrigger>
           <TabsTrigger value="prs" className="rounded-full text-xs">PRs</TabsTrigger>
+          <TabsTrigger value="movimiento" className="rounded-full text-xs">Medallas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4 space-y-2">
@@ -245,6 +293,34 @@ function MemberDetail() {
                 <p className="text-[11px] text-muted-foreground">{format(new Date(p.achieved_at), "dd MMM yyyy")}</p>
               </div>
               <p className="text-lg font-black text-primary">{p.weight}<span className="text-xs text-muted-foreground">{p.unit}</span></p>
+            </div>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="movimiento" className="mt-4 space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Medallas de movimiento — {movimiento.data?.size ?? 0}/{MOVEMENT_ACHIEVEMENTS.length} otorgadas.
+          </p>
+          {(["gimnasia", "levantamiento"] as const).map((group) => (
+            <div key={group}>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {group === "gimnasia" ? "Gimnasia" : "Levantamientos"}
+              </p>
+              <div className="divide-y divide-border/60 rounded-2xl border bg-card">
+                {MOVEMENT_ACHIEVEMENTS.filter((a) => a.group === group).map((a) => {
+                  const unlocked = movimiento.data?.has(a.id) ?? false;
+                  return (
+                    <div key={a.id} className="flex items-center justify-between gap-3 p-3">
+                      <p className="text-sm font-medium">{a.name}</p>
+                      <Switch
+                        checked={unlocked}
+                        disabled={toggleMovimiento.isPending}
+                        onCheckedChange={(v) => toggleMovimiento.mutate({ achievementId: a.id, unlock: v })}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </TabsContent>

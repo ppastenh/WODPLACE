@@ -12,9 +12,15 @@
  *
  * Fase 1 covers 5 automatic categories (evaluate.ts computes all of these
  * from data that already exists: bookings, PRs, Comunidad, box tenure, app
- * usage). MOVIMIENTO (coach-granted skill/lift badges) is Fase 2 — its
- * category id is reserved here but has no achievements yet, so it simply
- * won't appear in GET /achievements' response until Fase 2 adds entries.
+ * usage). MOVIMIENTO (Fase 2) is coach-granted instead — box-admin's
+ * member-detail.$id.tsx writes/deletes user_achievements rows directly via
+ * Supabase (RLS lets box staff manage rows that carry a box_id, see
+ * supabase/migrations/..._user_achievements_movimiento_rls.sql), never
+ * evaluate.ts. box-admin keeps its OWN small {id, name} list for rendering
+ * the checkboxes (a separate app, no shared package for this) — its ids
+ * must match the ones below exactly, or a granted achievement won't show up
+ * here with the right name/icon. The BW-relative tiers (back/front squat,
+ * deadlift × 1x/1.5x/2x bodyweight) are Fase 3, not included yet.
  */
 
 export type AchievementCategoryId =
@@ -47,6 +53,39 @@ export const ACHIEVEMENT_CATEGORIES: Array<{ id: AchievementCategoryId; name: st
 ];
 
 export const ACHIEVEMENTS: AchievementDef[] = [
+  // ── MOVIMIENTO — otorgadas a mano por el coach, no evaluadas por evaluate.ts.
+  // Gimnasia:
+  { id: "movimiento_pullup", category: "movimiento", kind: "manual", icon: "arrow-up", name: "Primera dominada", description: "Otorgada por el coach." },
+  { id: "movimiento_strict_pullup", category: "movimiento", kind: "manual", icon: "arrow-up-circle", name: "Dominada estricta", description: "Otorgada por el coach." },
+  { id: "movimiento_bar_muscle_up", category: "movimiento", kind: "manual", icon: "chevrons-up", name: "Muscle-up en barra", description: "Otorgada por el coach." },
+  { id: "movimiento_ring_muscle_up", category: "movimiento", kind: "manual", icon: "circle", name: "Muscle-up en anillas", description: "Otorgada por el coach." },
+  { id: "movimiento_double_under", category: "movimiento", kind: "manual", icon: "rotate-cw", name: "Doble salto", description: "Otorgada por el coach." },
+  { id: "movimiento_triple_under", category: "movimiento", kind: "manual", icon: "repeat", name: "Triple salto", description: "Otorgada por el coach." },
+  { id: "movimiento_handstand", category: "movimiento", kind: "manual", icon: "triangle", name: "Parada de manos", description: "Otorgada por el coach." },
+  { id: "movimiento_hspu", category: "movimiento", kind: "manual", icon: "chevron-down", name: "Flexión de pino", description: "Otorgada por el coach." },
+  { id: "movimiento_pistol_squat", category: "movimiento", kind: "manual", icon: "user", name: "Pistol squat", description: "Otorgada por el coach." },
+  { id: "movimiento_rope_climb", category: "movimiento", kind: "manual", icon: "trending-up", name: "Subida de cuerda", description: "Otorgada por el coach." },
+  { id: "movimiento_toes_to_bar", category: "movimiento", kind: "manual", icon: "corner-up-right", name: "Toes to bar", description: "Otorgada por el coach." },
+  { id: "movimiento_chest_to_bar", category: "movimiento", kind: "manual", icon: "corner-up-left", name: "Chest to bar", description: "Otorgada por el coach." },
+  // Levantamientos:
+  { id: "movimiento_snatch", category: "movimiento", kind: "manual", icon: "zap", name: "Primer snatch", description: "Otorgada por el coach." },
+  { id: "movimiento_clean", category: "movimiento", kind: "manual", icon: "zap", name: "Primer clean", description: "Otorgada por el coach." },
+  { id: "movimiento_clean_and_jerk", category: "movimiento", kind: "manual", icon: "zap", name: "Clean & Jerk", description: "Otorgada por el coach." },
+  { id: "movimiento_power_clean", category: "movimiento", kind: "manual", icon: "zap", name: "Power clean", description: "Otorgada por el coach." },
+  { id: "movimiento_power_snatch", category: "movimiento", kind: "manual", icon: "zap", name: "Power snatch", description: "Otorgada por el coach." },
+  { id: "movimiento_squat_clean", category: "movimiento", kind: "manual", icon: "zap", name: "Squat clean", description: "Otorgada por el coach." },
+  { id: "movimiento_squat_snatch", category: "movimiento", kind: "manual", icon: "zap", name: "Squat snatch", description: "Otorgada por el coach." },
+  { id: "movimiento_jerk", category: "movimiento", kind: "manual", icon: "zap", name: "Primer jerk", description: "Otorgada por el coach." },
+  { id: "movimiento_split_jerk", category: "movimiento", kind: "manual", icon: "zap", name: "Split jerk", description: "Otorgada por el coach." },
+  { id: "movimiento_push_jerk", category: "movimiento", kind: "manual", icon: "zap", name: "Push jerk", description: "Otorgada por el coach." },
+  { id: "movimiento_overhead_squat", category: "movimiento", kind: "manual", icon: "arrow-up", name: "Overhead squat", description: "Otorgada por el coach." },
+  { id: "movimiento_back_squat", category: "movimiento", kind: "manual", icon: "arrow-down", name: "Back squat", description: "Otorgada por el coach." },
+  { id: "movimiento_front_squat", category: "movimiento", kind: "manual", icon: "arrow-down", name: "Front squat", description: "Otorgada por el coach." },
+  { id: "movimiento_deadlift", category: "movimiento", kind: "manual", icon: "arrow-down-circle", name: "Deadlift", description: "Otorgada por el coach." },
+  { id: "movimiento_bench_press", category: "movimiento", kind: "manual", icon: "minus", name: "Bench press", description: "Otorgada por el coach." },
+  { id: "movimiento_strict_press", category: "movimiento", kind: "manual", icon: "arrow-up", name: "Strict press", description: "Otorgada por el coach." },
+  { id: "movimiento_push_press", category: "movimiento", kind: "manual", icon: "arrow-up", name: "Push press", description: "Otorgada por el coach." },
+
   // ── CONSTANCIA — rachas de días consecutivos reservando clases ────────────
   { id: "constancia_3", category: "constancia", kind: "automatic", icon: "zap", name: "Racha de hierro", description: "Entrená 3 días seguidos." },
   { id: "constancia_7", category: "constancia", kind: "automatic", icon: "calendar", name: "Sin excusas", description: "Entrená 7 días seguidos." },
