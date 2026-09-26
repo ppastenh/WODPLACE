@@ -45,6 +45,7 @@ import {
 } from '@workspace/api-client-react';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { AppHeader } from '@/components/AppHeader';
+import { MedalBadge } from '@/components/MedalBadge';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
@@ -545,16 +546,25 @@ export default function HomeScreen() {
             <Text style={[styles.statsValue, { color: colors.foreground }]}>
               {medalsSummary.totalUnlocked}/{medalsSummary.totalAchievements}
             </Text>
+            <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    backgroundColor: colors.navActive,
+                    width: `${
+                      medalsSummary.totalAchievements > 0
+                        ? (medalsSummary.totalUnlocked / medalsSummary.totalAchievements) * 100
+                        : 0
+                    }%`,
+                  },
+                ]}
+              />
+            </View>
             {medalsSummary.recent.length > 0 ? (
               <View style={styles.medalIconsRow}>
                 {medalsSummary.recent.map((a) => (
-                  <View key={a.id} style={[styles.medalIcon, { backgroundColor: colors.navActive }]}>
-                    <Feather
-                      name={a.icon as React.ComponentProps<typeof Feather>['name']}
-                      size={12}
-                      color={colors.primaryForeground}
-                    />
-                  </View>
+                  <MedalBadge key={a.id} icon={a.icon} unlocked size={30} showRibbon={false} />
                 ))}
               </View>
             ) : (
@@ -793,7 +803,7 @@ const styles = StyleSheet.create({
   },
   statsCard: {
     flex: 1,
-    minHeight: 108,
+    minHeight: 128,
     borderRadius: 20,
     padding: 15,
   },
@@ -813,13 +823,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     marginTop: 8,
-  },
-  medalIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   quoteCard: {
     flex: 1,
