@@ -134,6 +134,153 @@ export type Database = {
           },
         ]
       }
+      announcement_athlete_reads: {
+        Row: {
+          announcement_id: string
+          box_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          box_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          box_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_athlete_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_athlete_reads_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_athlete_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wodplace_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_comments: {
+        Row: {
+          announcement_id: string
+          author_name: string
+          body: string
+          box_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          announcement_id: string
+          author_name: string
+          body: string
+          box_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id: string
+          user_id?: string | null
+        }
+        Update: {
+          announcement_id?: string
+          author_name?: string
+          body?: string
+          box_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_comments_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_comments_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wodplace_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_reactions: {
+        Row: {
+          announcement_id: string
+          box_id: string
+          created_at: string
+          emoji: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          box_id: string
+          created_at?: string
+          emoji: string
+          id: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          box_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reactions_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reactions_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wodplace_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -626,6 +773,51 @@ export type Database = {
           },
           {
             foreignKeyName: "classes_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_permission_changes: {
+        Row: {
+          box_id: string
+          changed_by: string
+          changed_by_email: string
+          changes: Json
+          coach_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          box_id: string
+          changed_by: string
+          changed_by_email: string
+          changes: Json
+          coach_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          box_id?: string
+          changed_by?: string
+          changed_by_email?: string
+          changes?: Json
+          coach_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_permission_changes_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_permission_changes_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coaches"
@@ -1609,6 +1801,7 @@ export type Database = {
       storage_box_prefix: { Args: { _name: string }; Returns: string }
       user_is_any_box_admin: { Args: never; Returns: boolean }
       user_is_box_staff: { Args: { _box_id: string }; Returns: boolean }
+      user_is_super_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
