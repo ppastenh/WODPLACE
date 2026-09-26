@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ImagePlus, Megaphone, Send, Trash2, X } from "lucide-react";
+import { ImagePlus, Megaphone, Send, Trash2, X, Check, ShieldAlert } from "lucide-react";
 import { useBox } from "@/lib/box-context";
 import { randomKey } from "@/lib/ids";
 import {
@@ -35,15 +35,20 @@ const DAY_OPTIONS = [1, 3, 7];
 
 function NotificationsPage() {
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin, myPermissions } = useBox();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [push, setPush] = useState(true);
-  const [banner, setBanner] = useState(true);
+  // Mutually exclusive — an announcement is either a popup ("Aviso
+  // Importante") or a Comunidad post ("Post a Comunidad"), never both, so
+  // there's never a case of one type expiring while the other stays live.
+  // A coach (never admin) only ever gets the Comunidad side — see
+  // canPostAsBox below — so their default/only state is banner=true.
+  const [push, setPush] = useState(isAdmin);
+  const [banner, setBanner] = useState(!isAdmin);
   const [days, setDays] = useState(3);
 
   const { data: items = [], isLoading } = useQuery({ queryKey: ["announcements", boxId], queryFn: () => fetchAnnouncements(boxId) });
@@ -71,7 +76,10 @@ function NotificationsPage() {
         imagePath = path;
       }
 
-      const expires = banner ? new Date(Date.now() + days * 86400000).toISOString() : null;
+      // Only "Aviso Importante" (the popup) has a lifespan — a Comunidad
+      // post is permanent, like any other feed post, so `banner` never
+      // drives this.
+      const expires = push ? new Date(Date.now() + days * 86400000).toISOString() : null;
       const { error } = await supabase.from("announcements").insert({
         box_id: boxId,
         title: title.trim(),
@@ -88,7 +96,7 @@ function NotificationsPage() {
     },
     onSuccess: () => {
       toast.success("Aviso enviado");
-      setTitle(""); setBody(""); setFile(null); setPreview(null); setPush(true); setBanner(true); setDays(3);
+      setTitle(""); setBody(""); setFile(null); setPreview(null); setPush(isAdmin); setBanner(!isAdmin); setDays(3);
       if (fileRef.current) fileRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["announcements"] });
     },
@@ -107,6 +115,25 @@ function NotificationsPage() {
   });
 
   const canSend = title.trim().length > 0 && !create.isPending;
+
+  // Belt-and-suspenders — more/index.tsx already hides the menu entry to
+  // this screen for a coach without the permission, but a direct URL visit
+  // should still be turned away rather than silently letting them create a
+  // push announcement they were never meant to have access to.
+  const canPostAsBox = isAdmin || !!myPermissions?.community_post_as_box;
+  if (!canPostAsBox) {
+    return (
+      <AdminShell title="Avisos" showBack>
+        <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed p-10 text-center">
+          <ShieldAlert className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-semibold">Sin acceso</p>
+          <p className="text-xs text-muted-foreground">
+            No tenés el permiso para publicar avisos. Pedile a tu administrador que te lo habilite desde Coaches.
+          </p>
+        </div>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell title="Avisos" showBack>
@@ -156,12 +183,45 @@ function NotificationsPage() {
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
           </div>
 
-          <ToggleRow label="Notificación push" hint="Avisa a los atletas al enviarlo" checked={push} onChange={setPush} />
-          <ToggleRow label="Banner en Inicio del alumno" hint="Se mostrará en la app del atleta" checked={banner} onChange={setBanner} />
+          {isAdmin ? (
+            <>
+              {/* Radio-like, not two independent checkboxes: turning one on
+                  turns the other off; turning the active one off is a
+                  no-op — you switch to the other option instead, so
+                  there's never a state with neither (or both) selected. */}
+              <ToggleRow
+                label="Aviso Importante"
+                hint="Avisa a los atletas al enviarlo"
+                checked={push}
+                onChange={(v) => { if (v) { setPush(true); setBanner(false); } }}
+              />
+              <ToggleRow
+                label="Post a Comunidad"
+                hint="Se publicará en el feed de Comunidad de tu box"
+                checked={banner}
+                onChange={(v) => { if (v) { setBanner(true); setPush(false); } }}
+              />
+            </>
+          ) : (
+            // A coach with community_post_as_box only ever gets this one
+            // outcome — no "Aviso Importante" popup option at all, so
+            // there's nothing to toggle between.
+            <div className="flex items-center gap-3 rounded-2xl border bg-primary/5 p-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                <Check className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Post a Comunidad</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Se publicará en el feed de Comunidad a nombre de tu box.
+                </p>
+              </div>
+            </div>
+          )}
 
-          {banner && (
+          {push && (
             <div className="space-y-2">
-              <Label>Mostrar banner por</Label>
+              <Label>Vigente por</Label>
               <div className="flex gap-2">
                 {DAY_OPTIONS.map((d) => (
                   <button
@@ -206,8 +266,8 @@ function NotificationsPage() {
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isExpired(a) ? "bg-secondary text-muted-foreground" : "bg-primary/15 text-primary"}`}>
                         {isExpired(a) ? "Expirado" : "Activo"}
                       </span>
-                      {a.send_push && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px]">Push</span>}
-                      {a.show_banner && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px]">Banner {a.banner_days}d</span>}
+                      {a.send_push && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px]">Importante {a.banner_days}d</span>}
+                      {a.show_banner && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px]">Comunidad</span>}
                       <span className="text-[10px] text-muted-foreground">{formatDate(a.created_at)}</span>
                     </div>
                   </div>

@@ -412,7 +412,11 @@ async function signAnnouncementImage(path: string | null): Promise<string | null
  * comments for why they're separate from social_reactions/social_comments)
  * so Comunidad's feed card can render like/comment counts without a
  * separate round trip per aviso.
- * Both lists exclude expired announcements (`expires_at` in the past).
+ * `expires_at` only gates the `push`/`pinnedPush` lists (an "Aviso
+ * Importante" can be set to stop showing after N days) — `banner` posts are
+ * permanent, like any other Comunidad post, regardless of `expires_at` (see
+ * box-admin's more/notifications.tsx, where the duration picker only
+ * appears for send_push, not show_banner).
  * A box-less athlete gets everything empty.
  */
 router.get("/box-memberships/announcements", async (req: Request, res: Response) => {
@@ -436,11 +440,12 @@ router.get("/box-memberships/announcements", async (req: Request, res: Response)
       image_url: string | null;
       send_push: boolean;
       show_banner: boolean;
+      expires_at: string | null;
       created_at: string;
     }>(sql`
-      SELECT id, title, body, image_url, send_push, show_banner, created_at
+      SELECT id, title, body, image_url, send_push, show_banner, expires_at, created_at
       FROM announcements
-      WHERE box_id = ${boxId} AND (expires_at IS NULL OR expires_at > now())
+      WHERE box_id = ${boxId}
       ORDER BY created_at DESC
     `);
     const ids = rows.rows.map((r) => r.id);
@@ -503,13 +508,18 @@ router.get("/box-memberships/announcements", async (req: Request, res: Response)
         readByMe: readIds.has(r.id),
         sendPush: r.send_push,
         showBanner: r.show_banner,
+        expiresAt: r.expires_at,
         reactions: reactionsByAnnouncement.get(r.id) ?? [],
         myReaction: myReactionByAnnouncement.get(r.id) ?? null,
         commentCount: commentCountByAnnouncement.get(r.id) ?? 0,
       })),
     );
 
-    const pushList = withSignedImages.filter((a) => a.sendPush);
+    // expires_at only applies to the push side — a banner/Comunidad post
+    // never expires, see the route comment above.
+    const pushList = withSignedImages.filter(
+      (a) => a.sendPush && (!a.expiresAt || new Date(a.expiresAt).getTime() > Date.now()),
+    );
 
     res.json({
       push: pushList.filter((a) => !a.readByMe),
