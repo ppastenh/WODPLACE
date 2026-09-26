@@ -29,7 +29,7 @@ async function resolveAdminContext(userId: string): Promise<AdminContext> {
   const isStaff = roleRows.some((r) => STAFF_ROLES.has(r.role));
   if (!isStaff) return { isStaff: false, isSuperAdmin: false, boxes: [], roles: [] };
 
-  let query = supabase.from("boxes").select("id, name").order("name");
+  let query = supabase.from("boxes").select("id, name, photo_url").order("name");
   if (!isSuperAdmin) {
     const boxIds = [...new Set(roleRows.map((r) => r.box_id).filter((id): id is string => !!id))];
     if (boxIds.length === 0) return { isStaff: true, isSuperAdmin: false, boxes: [], roles: roleRows };

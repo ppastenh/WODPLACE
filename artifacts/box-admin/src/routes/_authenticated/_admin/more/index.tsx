@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserCog, Layers, Settings, LifeBuoy, Bell, FolderOpen, LogOut, ChevronRight, Ticket } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBox } from "@/lib/box-context";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/")({
   head: () => ({
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/_admin/more/")({
 });
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; hint?: string }> = [
-  { to: "/more/invites", label: "Invitaciones admin", icon: Ticket },
+  { to: "/more/invites", label: "Invitar Staff", icon: Ticket },
   { to: "/more/coaches", label: "Coaches", icon: UserCog },
   { to: "/more/plans", label: "Planes", icon: Layers },
   { to: "/more/reports", label: "Soporte", icon: LifeBuoy },
@@ -30,6 +31,7 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; hint?: string 
 function MorePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { isAdmin, myPermissions } = useBox();
 
   async function signOut() {
     await qc.cancelQueries();
@@ -38,10 +40,17 @@ function MorePage() {
     navigate({ to: "/auth", replace: true });
   }
 
+  // "Notificaciones" is where Avisos live — for a coach that's only
+  // useful if they can post to Comunidad as the box (see
+  // more/notifications.tsx); with nothing enabled there's nowhere for the
+  // screen to take them, so it doesn't show at all.
+  const canPostAsBox = isAdmin || !!myPermissions?.community_post_as_box;
+  const visibleItems = items.filter((it) => it.to !== "/more/notifications" || canPostAsBox);
+
   return (
     <AdminShell title="Más">
       <div className="rounded-3xl border bg-card divide-y divide-border/60">
-        {items.map((it) => {
+        {visibleItems.map((it) => {
           const Icon = it.icon;
           return (
             <Link key={it.to} to={it.to} className="flex items-center gap-3 p-4 active:bg-secondary/60">

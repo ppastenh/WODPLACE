@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Plus, UserCog, ShieldCheck, Pause, Play, Trash2, Mail } from "lucide-react";
+import { Plus, UserCog, ShieldCheck, Pause, Play, Trash2, Mail, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/coaches")({
   ssr: false,
@@ -41,28 +43,39 @@ type Coach = {
 const PERMISSIONS: Array<{ key: string; label: string; hint: string }> = [
   { key: "classes_create", label: "Crear clases", hint: "Puede programar nuevas clases y WODs" },
   { key: "classes_edit", label: "Editar clases", hint: "Modificar o cancelar clases existentes" },
-  { key: "attendance_mark", label: "Marcar asistencia", hint: "Check-in de atletas en sus clases" },
   { key: "bookings_manage", label: "Gestionar reservas", hint: "Agregar o quitar inscritos y lista de espera" },
   { key: "members_view", label: "Ver miembros", hint: "Acceso al listado y fichas de atletas" },
   { key: "members_edit", label: "Editar miembros", hint: "Modificar datos y estado de los atletas" },
-  { key: "prs_manage", label: "Gestionar PRs", hint: "Registrar récords personales" },
   { key: "finances_view", label: "Ver finanzas", hint: "Acceso a ingresos y pagos" },
   { key: "payments_register", label: "Registrar pagos", hint: "Puede cobrar y registrar pagos" },
   { key: "files_manage", label: "Gestionar archivos", hint: "Subir o reemplazar contratos y documentos" },
+  {
+    key: "community_post_as_box",
+    label: "Publicar en Comunidad a nombre del box",
+    hint: "Puede subir fotos al feed como aviso oficial del box (no como publicación personal)",
+  },
 ];
 
-// Permisos típicos de un coach (no de un administrador)
+// box_settings key holding the last permission set an admin actually saved
+// for some coach (JSON-serialized in `value`, which is a plain text column
+// — see PermissionsDialog's save and AddCoach's `lastPermissions` query
+// below). Falls back to COACH_DEFAULT_PERMISSIONS below until the box's
+// first edit.
+const LAST_COACH_PERMISSIONS_KEY = "last_coach_permissions";
+
+// Bootstrap default, only used until an admin has saved permissions for any
+// coach at least once (after that, the last-saved set wins — see
+// LAST_COACH_PERMISSIONS_KEY).
 const COACH_DEFAULT_PERMISSIONS: Permissions = {
   classes_create: false,
-  classes_edit: false,
-  attendance_mark: true,
+  classes_edit: true,
   bookings_manage: true,
   members_view: true,
   members_edit: false,
-  prs_manage: true,
   finances_view: false,
   payments_register: false,
   files_manage: false,
+  community_post_as_box: false,
 };
 
 function CoachesPage() {
@@ -77,15 +90,15 @@ function CoachesPage() {
   });
 
   return (
-    <AdminShell title="Coaches" showBack right={<AddCoach />}>
+    <AdminShell title="Coaches" showBack>
       <p className="mb-3 px-1 text-[11px] text-muted-foreground">
         Agrega coaches, invítalos a la app y define exactamente qué puede hacer cada uno.
       </p>
+      <div className="mb-3"><AddCoach /></div>
       <div className="space-y-2">
         {coaches.data?.length === 0 && (
           <div className="rounded-3xl border border-dashed p-8 text-center">
             <p className="text-sm text-muted-foreground">Aún no hay coaches</p>
-            <div className="mt-4 flex justify-center"><AddCoach variant="cta" /></div>
           </div>
         )}
         {coaches.data?.map((c) => <CoachCard key={c.id} coach={c} />)}
@@ -135,6 +148,7 @@ function CoachCard({ coach }: { coach: Coach }) {
 
       <div className="mt-3 flex items-center gap-2">
         <PermissionsDialog coach={coach} granted={granted} />
+        <HistoryDialog coach={coach} />
 
         <button
           onClick={() => update.mutate({ status: paused ? "activo" : "pausado" })}
@@ -163,10 +177,50 @@ function PermissionsDialog({ coach, granted }: { coach: Coach; granted: number }
 
   const save = useMutation({
     mutationFn: async () => {
+      const before = coach.permissions ?? {};
+      // Only the keys that actually flipped — not the whole before/after
+      // permission set, which would make the history log noisy and harder
+      // to skim.
+      const changes: Record<string, { from: boolean; to: boolean }> = {};
+      for (const p of PERMISSIONS) {
+        const from = !!before[p.key];
+        const to = !!perms[p.key];
+        if (from !== to) changes[p.key] = { from, to };
+      }
+
       const { error } = await supabase.from("coaches").update({ permissions: perms }).eq("box_id", boxId).eq("id", coach.id);
       if (error) throw error;
+
+      // Whatever an admin just saved becomes the starting point for the
+      // NEXT coach added — see AddCoach's `lastPermissions` query. Also
+      // best-effort: this shouldn't block/roll back the update above.
+      await supabase
+        .from("box_settings")
+        .upsert(
+          { box_id: boxId, key: LAST_COACH_PERMISSIONS_KEY, value: JSON.stringify(perms) },
+          { onConflict: "box_id,key" },
+        );
+
+      if (Object.keys(changes).length > 0) {
+        const { data: auth } = await supabase.auth.getUser();
+        // Best-effort: the permissions update above already succeeded, so a
+        // failure here shouldn't roll that back or block the admin — it'd
+        // just mean this one change is missing from the history.
+        await supabase.from("coach_permission_changes").insert({
+          box_id: boxId,
+          coach_id: coach.id,
+          changed_by: auth.user?.id ?? "",
+          changed_by_email: auth.user?.email ?? "—",
+          changes,
+        });
+      }
     },
-    onSuccess: () => { toast.success("Permisos actualizados"); qc.invalidateQueries({ queryKey: ["coaches"] }); setOpen(false); },
+    onSuccess: () => {
+      toast.success("Permisos actualizados");
+      qc.invalidateQueries({ queryKey: ["coaches"] });
+      qc.invalidateQueries({ queryKey: ["coach-permission-changes", coach.id] });
+      setOpen(false);
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
   });
 
@@ -202,6 +256,79 @@ function PermissionsDialog({ coach, granted }: { coach: Coach; granted: number }
   );
 }
 
+type PermissionChangeRow = {
+  id: string;
+  changed_by_email: string;
+  changes: Record<string, { from: boolean; to: boolean }>;
+  created_at: string;
+};
+
+function permLabel(key: string) {
+  return PERMISSIONS.find((p) => p.key === key)?.label ?? key;
+}
+
+function HistoryDialog({ coach }: { coach: Coach }) {
+  const { boxId } = useBox();
+  const [open, setOpen] = useState(false);
+
+  const history = useQuery({
+    queryKey: ["coach-permission-changes", coach.id],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coach_permission_changes")
+        .select("id, changed_by_email, changes, created_at")
+        .eq("box_id", boxId)
+        .eq("coach_id", coach.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as PermissionChangeRow[];
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          aria-label={`Ver historial de permisos de ${coach.name}`}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary active:bg-secondary/70"
+        >
+          <History className="h-4 w-4" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto rounded-3xl">
+        <DialogHeader><DialogTitle>Historial de permisos · {coach.name}</DialogTitle></DialogHeader>
+        {history.isLoading && <p className="text-center text-xs text-muted-foreground">Cargando…</p>}
+        {!history.isLoading && (history.data ?? []).length === 0 && (
+          <p className="rounded-2xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+            Sin cambios de permisos registrados todavía.
+          </p>
+        )}
+        <div className="space-y-3">
+          {(history.data ?? []).map((h) => (
+            <div key={h.id} className="rounded-2xl border bg-card p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-xs font-semibold">{h.changed_by_email}</p>
+                <p className="shrink-0 text-[10px] text-muted-foreground">
+                  {format(new Date(h.created_at), "d MMM yyyy · HH:mm", { locale: es })}
+                </p>
+              </div>
+              <ul className="mt-1.5 space-y-0.5">
+                {Object.entries(h.changes).map(([key, c]) => (
+                  <li key={key} className="text-[11px] text-muted-foreground">
+                    <span className="font-medium text-foreground">{permLabel(key)}</span>:{" "}
+                    {c.from ? "activado" : "desactivado"} → {c.to ? "activado" : "desactivado"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 type CandidateRow = {
   user_id: string;
@@ -210,7 +337,7 @@ type CandidateRow = {
 };
 type Candidate = { user_id: string; name: string; email: string | null; phone: string | null };
 
-function AddCoach({ variant }: { variant?: "cta" }) {
+function AddCoach() {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
   const { boxId } = useBox();
@@ -236,12 +363,44 @@ function AddCoach({ variant }: { variant?: "cta" }) {
     enabled: open,
   });
 
+  // Deliberately a DIFFERENT query key from CoachesPage's own `coaches`
+  // query below (same table, narrower shape: no id/permissions/status).
+  // These two used to share the key ["coaches", boxId] — react-query treats
+  // identical keys as one cache entry, so whichever of these two shapes
+  // resolved last after the mutation's invalidateQueries({queryKey:
+  // ["coaches"]}) silently overwrote the OTHER one's data too. That's what
+  // made a freshly-converted coach's card briefly show "Permisos · 0/10"
+  // (this query's rows have no `.permissions` at all) until a manual reload
+  // re-ran CoachesPage's real query cleanly.
   const existing = useQuery({
-    queryKey: ["coaches", boxId],
+    queryKey: ["coaches-emails", boxId],
     queryFn: async () => {
       const { data, error } = await supabase.from("coaches").select("email, name").eq("box_id", boxId);
       if (error) throw error;
       return data ?? [];
+    },
+    enabled: open,
+  });
+
+  // Whatever an admin last saved in PermissionsDialog, for THIS box — falls
+  // back to the fixed COACH_DEFAULT_PERMISSIONS bootstrap until that's
+  // happened at least once.
+  const lastPermissions = useQuery({
+    queryKey: ["box_settings", boxId, LAST_COACH_PERMISSIONS_KEY],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("box_settings")
+        .select("value")
+        .eq("box_id", boxId)
+        .eq("key", LAST_COACH_PERMISSIONS_KEY)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.value) return null;
+      try {
+        return JSON.parse(data.value) as Permissions;
+      } catch {
+        return null;
+      }
     },
     enabled: open,
   });
@@ -254,7 +413,7 @@ function AddCoach({ variant }: { variant?: "cta" }) {
         email: m.email,
         phone: m.phone,
         specialty: specialty[m.user_id] || null,
-        permissions: COACH_DEFAULT_PERMISSIONS,
+        permissions: lastPermissions.data ?? COACH_DEFAULT_PERMISSIONS,
       });
       if (error) throw error;
     },
@@ -278,11 +437,7 @@ function AddCoach({ variant }: { variant?: "cta" }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {variant === "cta" ? (
-          <Button className="h-11 rounded-full px-5 font-semibold"><Plus className="mr-2 h-4 w-4" /> Convertir alumno en coach</Button>
-        ) : (
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground"><Plus className="h-4 w-4" /></button>
-        )}
+        <Button className="h-11 w-full rounded-full font-semibold"><Plus className="mr-2 h-4 w-4" /> Convertir alumno en coach</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto rounded-3xl">
         <DialogHeader><DialogTitle>Convertir alumno en coach</DialogTitle></DialogHeader>

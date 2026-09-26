@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
@@ -8,17 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, Trash2, Mail, Clock, Check } from "lucide-react";
+import { Copy, Trash2, Mail, Clock, Check, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/invites")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Invitaciones — Dlovebox" },
-      { name: "description", content: "Genera enlaces de invitación para nuevos administradores." },
-      { property: "og:title", content: "Invitaciones — Dlovebox" },
-      { property: "og:description", content: "Invita administradores al panel." },
+      { title: "Invitar Staff — Dlovebox" },
+      { name: "description", content: "Genera enlaces de invitación para nuevos administradores y coaches." },
+      { property: "og:title", content: "Invitar Staff — Dlovebox" },
+      { property: "og:description", content: "Otorga rol de administrador o coach a alguien de tu box." },
     ],
   }),
   component: InvitesPage,
@@ -46,7 +46,7 @@ function InvitesPage() {
   const { boxId } = useBox();
   const [email, setEmail] = useState("");
   const [days, setDays] = useState<string>("7");
-  const [role, setRole] = useState<"box_admin" | "coach">("box_admin");
+  const [role, setRole] = useState<"box_admin" | "coach">("coach");
 
   const { data: invites = [], isLoading } = useQuery({
     queryKey: ["admin_invites", boxId],
@@ -111,14 +111,14 @@ function InvitesPage() {
   }
 
   return (
-    <AdminShell title="Invitaciones" showBack>
+    <AdminShell title="Invitar Staff" showBack>
       <div className="rounded-3xl border bg-card p-5">
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Nueva invitación</p>
         <div className="mt-3 space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Tipo de acceso</Label>
             <div className="grid grid-cols-2 gap-2">
-              {(["box_admin", "coach"] as const).map((r) => (
+              {(["coach", "box_admin"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
@@ -131,16 +131,21 @@ function InvitesPage() {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              El coach entra con los permisos que definas en la sección Coaches.
-            </p>
+            {role === "coach" && (
+              <Link
+                to="/more/coaches"
+                className="flex items-center gap-1 text-[10px] font-semibold text-primary"
+              >
+                El coach entra con los permisos que definas en Coaches <ArrowRight className="h-3 w-3" />
+              </Link>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="inv-email" className="text-xs">Email (opcional)</Label>
             <Input
               id="inv-email"
               type="email"
-              placeholder="admin@box.com"
+              placeholder={role === "coach" ? "coach@box.cl" : "admin@box.cl"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
