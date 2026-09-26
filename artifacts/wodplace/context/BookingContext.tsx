@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import {
   cancelBooking,
@@ -46,12 +47,18 @@ interface BookingContextValue {
   /** dateKeys ("YYYY-MM-DD") that have at least one confirmed or waitlisted
    *  booking — drives the calendar's "day with something agendado" dot. */
   bookedDateKeys: Set<string>;
+  /** True if the athlete already has a confirmed or waitlisted booking on
+   *  that date — the self-service daily limit (see book()'s server-side
+   *  enforcement of the same rule). */
+  hasAnyBookingOnDate: (date: Date) => boolean;
   book: (session: ClassSession) => Promise<'confirmed' | 'waiting'>;
   cancel: (session: ClassSession) => Promise<void>;
   getAttendeeNames: (session: ClassSession, userName: string) => string[];
-  /** Re-fetches the current window — e.g. after focus, in case a coach
-   *  added/changed a class since the last load. */
-  refreshSessions: () => Promise<void>;
+  /** Passed straight to useRefetchOnFocusIfStale by consumers (calendar.tsx)
+   *  — only actually re-fetches the current window when past staleTime, e.g.
+   *  in case a coach added/changed a class since the last load, instead of
+   *  unconditionally on every focus. */
+  sessionsQuery: Pick<UseQueryResult, 'isStale' | 'refetch'>;
 }
 
 const BookingContext = createContext<BookingContextValue | undefined>(undefined);
@@ -92,42 +99,37 @@ function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
   };
 }
 
-/** True for a 409 from api-server (the waitlist is already at 5) — thrown
- *  by customFetch as an ApiError, duck-typed here rather than importing
- *  that class just for this one check. */
-function isWaitlistFullError(error: unknown): boolean {
-  return !!error && typeof error === 'object' && (error as { status?: unknown }).status === 409;
+/** Reads the `code` api-server attaches to a 409 booking error body — duck-
+ *  typed here (ApiError.data) rather than importing that class just for
+ *  this. POST /bookings currently returns three distinct 409s (waitlist
+ *  full, daily self-booking limit, plan's classes_per_period reached);
+ *  `code` is what tells them apart, since they all share the same HTTP
+ *  status. */
+function apiErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null;
+  const data = (error as { data?: unknown }).data;
+  if (!data || typeof data !== 'object') return null;
+  const code = (data as { code?: unknown }).code;
+  return typeof code === 'string' ? code : null;
 }
 
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const { user, hasBoxMembership } = useAuth();
-  const [sessions, setSessions] = useState<ClassSession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
-  const loadSessions = useCallback(async () => {
-    if (!user?.id || !hasBoxMembership) {
-      setSessions([]);
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    try {
+  const sessionsQuery = useQuery({
+    queryKey: ['class-sessions', user?.id],
+    queryFn: async () => {
       const reference = new Date();
       const from = toDateKey(addDays(reference, -RANGE_BEFORE_DAYS));
       const to = toDateKey(addDays(reference, RANGE_AFTER_DAYS));
-      const dtos = await listClassSessions({ userId: user.id, from, to });
-      setSessions(dtos.map((dto) => toClassSession(dto, reference)));
-    } catch {
-      setSessions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id, hasBoxMembership]);
-
-  useEffect(() => {
-    void loadSessions();
-  }, [loadSessions]);
+      const dtos = await listClassSessions({ userId: user!.id, from, to });
+      return dtos.map((dto) => toClassSession(dto, reference));
+    },
+    enabled: !!user?.id && !!hasBoxMembership,
+  });
+  const sessions = (hasBoxMembership && sessionsQuery.data) || [];
+  const isLoading = sessionsQuery.isPending;
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60 * 1000);
@@ -154,18 +156,31 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     if (!user) return 'confirmed';
     try {
       const result = await createBooking({ sessionId: session.id, userId: user.id });
-      await loadSessions();
+      // Unconditional, unlike useRefetchOnFocusIfStale elsewhere — we just
+      // changed this data ourselves, so it's known-stale regardless of
+      // staleTime.
+      await sessionsQuery.refetch();
       return result.status === 'waiting' ? 'waiting' : 'confirmed';
     } catch (error) {
-      if (isWaitlistFullError(error)) throw new Error('WAITLIST_FULL');
+      const code = apiErrorCode(error);
+      if (code === 'WAITLIST_FULL' || code === 'DAILY_LIMIT_REACHED' || code === 'PLAN_LIMIT_REACHED') {
+        throw new Error(code);
+      }
       throw error;
     }
   };
 
+  /** Same-day cap the server enforces (one confirmed seat or waitlist spot
+   *  per day, self-service only — see POST /bookings). Lets the calendar
+   *  screen block the attempt client-side, before hitting the network, from
+   *  data it already has loaded. */
+  const hasAnyBookingOnDate = (date: Date): boolean =>
+    getSessionsForDate(date).some((s) => s.isBooked || s.isWaitlisted);
+
   const cancel = async (session: ClassSession): Promise<void> => {
     if (!user) return;
     await cancelBooking({ sessionId: session.id, userId: user.id });
-    await loadSessions();
+    await sessionsQuery.refetch();
   };
 
   const getAttendeeNames = (session: ClassSession, userName: string): string[] =>
@@ -178,12 +193,13 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       getSessionsForDate,
       getUpcomingBooked,
       bookedDateKeys,
+      hasAnyBookingOnDate,
       book,
       cancel,
       getAttendeeNames,
-      refreshSessions: loadSessions,
+      sessionsQuery: { isStale: sessionsQuery.isStale, refetch: sessionsQuery.refetch },
     }),
-    [isLoading, now, sessions, bookedDateKeys, user?.id, loadSessions],
+    [isLoading, now, sessions, bookedDateKeys, user?.id, sessionsQuery.isStale, sessionsQuery.refetch],
   );
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

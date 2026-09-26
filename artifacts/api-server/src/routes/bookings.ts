@@ -254,8 +254,8 @@ router.post("/bookings", async (req: Request, res: Response) => {
     // Real capacity, read straight from the session this box actually
     // scheduled — never trusted from the client (the old mock template
     // used to send its own capacity/baseAttendees guesses here).
-    const sessionRows = await db.execute<{ capacity: number; status: string }>(sql`
-      SELECT capacity, status FROM public.class_sessions
+    const sessionRows = await db.execute<{ capacity: number; status: string; session_date: string }>(sql`
+      SELECT capacity, status, session_date::text AS session_date FROM public.class_sessions
       WHERE id = ${sessionId} AND box_id = ${boxId}
     `);
     const sessionRow = sessionRows.rows[0];
@@ -268,11 +268,16 @@ router.post("/bookings", async (req: Request, res: Response) => {
       return;
     }
     const capacity = sessionRow.capacity;
+    const sessionDate = sessionRow.session_date;
 
     const result = await db.transaction(async (tx) => {
       // Serialize changes for one class so two users cannot take the last
       // seat or fifth waitlist position at the same time.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sessionId}))`);
+      // Serialize per (athlete, day) too — otherwise two concurrent requests
+      // for two DIFFERENT sessions the same day could both pass the daily
+      // limit check below before either has inserted its row.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId + sessionDate}))`);
 
       const existing = await tx
         .select()
@@ -295,6 +300,71 @@ router.post("/bookings", async (req: Request, res: Response) => {
               : null,
           promotedUserId: null,
         };
+      }
+
+      // Self-service auto-booking is capped at one action per day (a
+      // confirmed seat OR a waitlist spot, on ANY session) — a second class
+      // the same day has to go through the box admin instead (see
+      // BookClassSheet in box-admin, which writes here directly and isn't
+      // subject to this cap). Only ever checked for a genuinely new session
+      // — re-confirming/re-reading the same session already returned above.
+      const sameDayRows = await tx.execute<{ id: string }>(sql`
+        SELECT cb.id
+        FROM public.class_bookings cb
+        JOIN public.class_sessions cs ON cs.id = cb.session_id
+        WHERE cb.user_id = ${userId}
+          AND cb.status IN (${DB_CONFIRMED}, ${DB_WAITING})
+          AND cs.session_date = ${sessionDate}
+        LIMIT 1
+      `);
+      if (sameDayRows.rows.length > 0) {
+        throw new Error("DAILY_LIMIT_REACHED");
+      }
+
+      // A plan's classes_per_period is a real cap, not just the informational
+      // "N clases restantes" banner Home shows — same period math as
+      // GET /box-memberships/my-plans (periodStart = next_payment_at -
+      // duration_days, periodEnd = next_payment_at). Missing plan/period data
+      // (no plan assigned, no next_payment_at yet, or classes_per_period
+      // NULL = unlimited) means no limit applies, same as that endpoint
+      // returning classesRemaining: null in those cases. Blocks both a
+      // confirmed seat AND a waitlist spot — letting someone past their
+      // limit onto the waitlist would just let a later promotion do it.
+      const planRows = await tx.execute<{
+        plan_id: string | null;
+        next_payment_at: string | null;
+        classes_per_period: number | null;
+        duration_days: number | null;
+      }>(sql`
+        SELECT bm.plan_id, bm.next_payment_at::text AS next_payment_at,
+               p.classes_per_period, p.duration_days
+        FROM public.box_members bm
+        LEFT JOIN public.plans p ON p.id = bm.plan_id
+        WHERE bm.box_id = ${boxId} AND bm.user_id = ${userId}
+        LIMIT 1
+      `);
+      const plan = planRows.rows[0];
+      if (
+        plan?.plan_id &&
+        plan.next_payment_at &&
+        plan.classes_per_period != null &&
+        plan.duration_days != null
+      ) {
+        const periodEnd = new Date(`${plan.next_payment_at}T00:00:00`);
+        const periodStart = new Date(periodEnd);
+        periodStart.setDate(periodStart.getDate() - plan.duration_days);
+        const usedRows = await tx.execute<{ count: number }>(sql`
+          SELECT count(*)::int AS count
+          FROM public.class_bookings cb
+          JOIN public.class_sessions cs ON cs.id = cb.session_id
+          WHERE cb.user_id = ${userId} AND cb.status = ${DB_CONFIRMED}
+            AND cs.session_date >= ${periodStart.toISOString().slice(0, 10)}
+            AND cs.session_date < ${plan.next_payment_at}
+        `);
+        const usedInPeriod = usedRows.rows[0]?.count ?? 0;
+        if (usedInPeriod >= plan.classes_per_period) {
+          throw new Error("PLAN_LIMIT_REACHED");
+        }
       }
 
       const confirmed = await tx
@@ -358,7 +428,21 @@ router.post("/bookings", async (req: Request, res: Response) => {
     res.json(CreateBookingResponse.parse(result));
   } catch (error) {
     if (error instanceof Error && error.message === "WAITLIST_FULL") {
-      res.status(409).json({ error: "La lista de espera ya tiene 5 alumnos." });
+      res.status(409).json({ code: "WAITLIST_FULL", error: "La lista de espera ya tiene 5 alumnos." });
+      return;
+    }
+    if (error instanceof Error && error.message === "DAILY_LIMIT_REACHED") {
+      res.status(409).json({
+        code: "DAILY_LIMIT_REACHED",
+        error: "Ya tenés algo agendado hoy. Para una segunda clase el mismo día, pedíselo al administrador de tu box.",
+      });
+      return;
+    }
+    if (error instanceof Error && error.message === "PLAN_LIMIT_REACHED") {
+      res.status(409).json({
+        code: "PLAN_LIMIT_REACHED",
+        error: "Ya usaste todas las clases incluidas en tu plan para este período.",
+      });
       return;
     }
     req.log.error({ err: error }, "Error creating class booking");

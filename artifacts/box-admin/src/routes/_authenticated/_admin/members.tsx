@@ -6,6 +6,7 @@ import { useBox } from "@/lib/box-context";
 import { makeWodplaceUserId } from "@/lib/ids";
 import { copyToClipboard } from "@/lib/clipboard";
 import { isInsideAppWebView, postToNative } from "@/lib/rnBridge";
+import { computeNextPaymentAt } from "@/lib/payments";
 import { useState } from "react";
 import {
   Search, Plus, User, Copy, RefreshCw, MessageCircle, Check, X,
@@ -270,15 +271,20 @@ export function SelectPlanSheet({
 
   const setPlan = useMutation({
     mutationFn: async (planId: string) => {
-      // Deliberately does NOT touch next_payment_at — only a real payment
-      // (Finanzas' "Registrar pago" or a member's "Renovar", both through
-      // registerPayment) may set/extend it. Seeding a placeholder date here
-      // used to double-count: a payment registered afterward would extend
-      // FROM that still-in-the-future placeholder instead of resetting,
-      // silently doubling the period (e.g. 30+30 days for one payment).
+      // Resets next_payment_at to today + the NEW plan's duration — a plan
+      // change is a distinct commercial event, not a renewal, so it must not
+      // inherit whatever was left on the OLD plan's cycle (that's exactly how
+      // one member ended up with a 49-day due date: the old plan's leftover
+      // due date just kept sitting there, unrelated to the new plan's own
+      // duration). registerPayment (payments.ts) applies this same reset
+      // rule when a payment itself changes the plan, so neither path can
+      // stack a leftover period on top of a new one.
+      const plan = (plans.data ?? []).find((p) => p.id === planId);
+      const update: { plan_id: string; next_payment_at?: string } = { plan_id: planId };
+      if (plan) update.next_payment_at = computeNextPaymentAt(null, new Date(), plan.duration_days);
       const { error } = await supabase
         .from("box_members")
-        .update({ plan_id: planId })
+        .update(update)
         .eq("box_id", boxId)
         .eq("user_id", userId);
       if (error) throw error;
@@ -467,7 +473,7 @@ function MemberActionsSheet({
               onClick={() => onOpenChange(false)}
             />
           )}
-          <ActionItem icon={Settings} title="Gestionar membresía" subtitle="Estado, plan, pagos y notas" to="/members/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
+          <ActionItem icon={Settings} title="Gestionar membresía" subtitle="Estado, plan, pagos y notas" to="/member-detail/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
 
           <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado del miembro</p>
           <ActionItem icon={CircleCheck} title="Activar miembro" subtitle="El miembro podrá acceder normalmente" tone="primary" onClick={() => setStatus.mutate("activo")} />
@@ -482,7 +488,7 @@ function MemberActionsSheet({
 
           <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Cuenta</p>
           <ActionItem icon={KeyRound} title="Restablecer contraseña" subtitle="Enviar nueva contraseña al miembro" onClick={resetPassword} />
-          <ActionItem icon={Receipt} title="Ver pagos y facturas" subtitle="Historial de pagos y facturación" to="/members/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
+          <ActionItem icon={Receipt} title="Ver pagos y facturas" subtitle="Historial de pagos y facturación" to="/member-detail/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
           <ActionItem
             icon={Trash2}
             title="Eliminar miembro"
@@ -559,7 +565,10 @@ function AddMemberFab({ plans }: { plans: Array<{ id: string; name: string }> })
             <Label>Plan</Label>
             <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
               <SelectTrigger><SelectValue placeholder="Selecciona un plan (opcional)" /></SelectTrigger>
-              <SelectContent>
+              {/* This field sits low in the form, right above the submit
+                  button — opening downward gets clipped by the on-screen
+                  keyboard/screen edge on mobile, so it opens upward instead. */}
+              <SelectContent side="top">
                 {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>

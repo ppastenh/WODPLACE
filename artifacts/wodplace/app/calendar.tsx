@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { router, usePathname, useFocusEffect } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { AppHeader } from '@/components/AppHeader';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -16,6 +16,7 @@ import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
+import { useRefetchOnFocusIfStale } from '@/lib/useRefetchOnFocusIfStale';
 import {
   addDays,
   addMonths,
@@ -37,7 +38,7 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
 export default function CalendarScreen() {
   const colors = useColors();
   const { user, adminStatus, hasBoxMembership, logout } = useAuth();
-  const { now, getSessionsForDate, bookedDateKeys, book, cancel, getAttendeeNames, refreshSessions } = useBooking();
+  const { now, getSessionsForDate, bookedDateKeys, hasAnyBookingOnDate, book, cancel, getAttendeeNames, sessionsQuery } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const today = startOfDay(now);
@@ -53,14 +54,12 @@ export default function CalendarScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [attendeesSession, setAttendeesSession] = useState<ClassSession | null>(null);
   const [cancelSession, setCancelSession] = useState<ClassSession | null>(null);
+  const [startedConfirmSession, setStartedConfirmSession] = useState<ClassSession | null>(null);
 
   // Picks up a class a coach just added/changed in box-admin, or a booking
-  // made from another device, without needing an app restart.
-  useFocusEffect(
-    useCallback(() => {
-      void refreshSessions();
-    }, [refreshSessions]),
-  );
+  // made from another device — only actually refetches once the query is
+  // past staleTime (see useRefetchOnFocusIfStale), not on every focus.
+  useRefetchOnFocusIfStale(sessionsQuery);
 
   const sessions = getSessionsForDate(selectedDate);
 
@@ -78,14 +77,14 @@ export default function CalendarScreen() {
     setSelectedDate(date);
   };
 
-  const handleBook = async (session: ClassSession) => {
-    if (user?.status !== 'active') {
-      Alert.alert(
-        'Cuenta no activa',
-        'Activa tu cuenta completando el registro en Contratos Activos para poder reservar clases. Mientras tanto podés ver el calendario y quién está anotado.',
-      );
-      return;
-    }
+  const warnDailyLimit = () => {
+    Alert.alert(
+      'Ya tenés algo agendado hoy',
+      'El auto-agendamiento admite una sola clase (o lista de espera) por día. Para una segunda clase el mismo día, pedíselo al administrador de tu box.',
+    );
+  };
+
+  const performBook = async (session: ClassSession) => {
     try {
       const status = await book(session);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -100,8 +99,50 @@ export default function CalendarScreen() {
         Alert.alert('Lista de espera llena', 'Ya hay 5 alumnos esperando esta clase.');
         return;
       }
+      if (error instanceof Error && error.message === 'DAILY_LIMIT_REACHED') {
+        warnDailyLimit();
+        return;
+      }
+      if (error instanceof Error && error.message === 'PLAN_LIMIT_REACHED') {
+        Alert.alert(
+          'Alcanzaste el límite de tu plan',
+          'Ya usaste todas las clases incluidas en tu plan para este período.',
+        );
+        return;
+      }
       Alert.alert('No se pudo agendar', 'Intenta nuevamente en unos segundos.');
     }
+  };
+
+  const handleBook = async (session: ClassSession) => {
+    if (user?.status !== 'active') {
+      Alert.alert(
+        'Cuenta no activa',
+        'Activa tu cuenta completando el registro en Contratos Activos para poder reservar clases. Mientras tanto podés ver el calendario y quién está anotado.',
+      );
+      return;
+    }
+    // Checked client-side first (data already loaded, no round-trip) — the
+    // server enforces the same rule regardless, see the DAILY_LIMIT_REACHED
+    // catch below for when this check races with another request.
+    if (hasAnyBookingOnDate(session.date)) {
+      warnDailyLimit();
+      return;
+    }
+    // Still bookable, just gated behind a confirmation — see
+    // startedConfirmSession's CancelConfirmModal below. The server has no
+    // time-of-day restriction of its own to race against here.
+    if (session.hasStarted) {
+      setStartedConfirmSession(session);
+      return;
+    }
+    await performBook(session);
+  };
+
+  const handleConfirmStartedBook = async () => {
+    const session = startedConfirmSession;
+    setStartedConfirmSession(null);
+    if (session) await performBook(session);
   };
 
   const handleConfirmCancel = async () => {
@@ -263,6 +304,15 @@ export default function CalendarScreen() {
         visible={!!cancelSession}
         onClose={() => setCancelSession(null)}
         onConfirm={handleConfirmCancel}
+      />
+      <CancelConfirmModal
+        visible={!!startedConfirmSession}
+        onClose={() => setStartedConfirmSession(null)}
+        onConfirm={handleConfirmStartedBook}
+        title="Esta clase ya empezó"
+        subtitle="Podés perderte parte de la clase si te sumás ahora. ¿Querés reservar igual?"
+        confirmLabel="Reservar igual"
+        cancelLabel="Cancelar"
       />
     </View>
   );

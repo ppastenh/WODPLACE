@@ -40,7 +40,7 @@ export async function registerPayment(params: {
   let nextPaymentAt: string | null = null;
 
   if (isPaid && params.planId) {
-    const [{ data: plan }, { data: member }] = await Promise.all([
+    const [{ data: plan }, { data: member }, { data: lastPayment }] = await Promise.all([
       supabase.from("plans").select("duration_days").eq("id", params.planId).single(),
       supabase
         .from("box_members")
@@ -48,9 +48,25 @@ export async function registerPayment(params: {
         .eq("box_id", params.boxId)
         .eq("user_id", params.userId)
         .single(),
+      supabase
+        .from("payments")
+        .select("plan_id")
+        .eq("box_id", params.boxId)
+        .eq("user_id", params.userId)
+        .eq("status", "pagado")
+        .order("paid_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
     if (plan) {
-      nextPaymentAt = computeNextPaymentAt(member?.next_payment_at ?? null, paidAt!, plan.duration_days);
+      // A payment for a DIFFERENT plan than the member's last paid one is a
+      // plan change, not a renewal — reset from today rather than extending
+      // the existing due date, same rule as members.tsx's "Cambiar plan"
+      // (see its setPlan mutation). Extending here would stack whatever was
+      // left on the old plan's cycle on top of the new plan's full duration.
+      const isPlanChange = lastPayment != null && lastPayment.plan_id !== params.planId;
+      const baseNextPaymentAt = isPlanChange ? null : (member?.next_payment_at ?? null);
+      nextPaymentAt = computeNextPaymentAt(baseNextPaymentAt, paidAt!, plan.duration_days);
     }
   }
 
