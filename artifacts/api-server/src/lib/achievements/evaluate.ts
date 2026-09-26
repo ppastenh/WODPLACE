@@ -1,4 +1,4 @@
-import { db, prsTable, userAchievementsTable, wodplaceUsersTable } from "@workspace/db";
+import { db, prsTable, trainingSettingsTable, userAchievementsTable, wodplaceUsersTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 
 import { resolveBoxIdForAthlete } from "../boxContext";
@@ -211,6 +211,54 @@ async function evaluatePr(userId: string): Promise<{ candidates: Candidate[]; ro
   return { candidates: out, rows };
 }
 
+// Movement ids from the RM module's own catalog (supabase/migrations/
+// 20260902120000_rm_module.sql) — real values, not this file's achievement
+// ids.
+const BW_LIFTS: Array<{ movementId: string; prefix: string }> = [
+  { movementId: "back-squat", prefix: "movimiento_back_squat" },
+  { movementId: "front-squat", prefix: "movimiento_front_squat" },
+  { movementId: "deadlift", prefix: "movimiento_deadlift" },
+];
+const BW_TIERS: Array<[number, string]> = [
+  [1, "1x"],
+  [1.5, "1_5x"],
+  [2, "2x"],
+];
+
+/**
+ * The 9 bodyweight-relative MOVIMIENTO achievements (Fase 3) — reuses the PR
+ * rows evaluatePr() already fetched (no extra query for those) and reads the
+ * athlete's self-reported bodyweight from training_settings. No historical
+ * bodyweight tracking exists, so this always compares against today's
+ * bodyweight against the full lift history — see this feature's own plan
+ * for why that's an accepted simplification. Null bodyweight (never set) or
+ * no PRs yet for a given lift just means those achievements stay locked,
+ * same "missing data" convention as every other category.
+ */
+async function evaluateBodyweightLifts(userId: string, rows: PrRow[]): Promise<Candidate[]> {
+  const [settings] = await db
+    .select({ bodyweightKg: trainingSettingsTable.bodyweightKg })
+    .from(trainingSettingsTable)
+    .where(eq(trainingSettingsTable.userId, userId));
+  const bodyweightKg = settings?.bodyweightKg == null ? null : Number(settings.bodyweightKg);
+  if (bodyweightKg == null || bodyweightKg <= 0) return [];
+
+  const out: Candidate[] = [];
+  for (const { movementId, prefix } of BW_LIFTS) {
+    const lifts = rows
+      .filter((r) => r.movementId === movementId)
+      .sort((a, b) => (a.achievedAt < b.achievedAt ? -1 : a.achievedAt > b.achievedAt ? 1 : 0));
+    if (lifts.length === 0) continue;
+
+    for (const [multiplier, suffix] of BW_TIERS) {
+      const threshold = bodyweightKg * multiplier;
+      const hit = lifts.find((l) => l.weightKg >= threshold);
+      if (hit) out.push({ id: `${prefix}_${suffix}`, unlockedAt: new Date(`${hit.achievedAt}T00:00:00Z`) });
+    }
+  }
+  return out;
+}
+
 async function evaluateComunidad(userId: string): Promise<Candidate[]> {
   const [posts, comments, reactions] = await Promise.all([
     db.execute<{ created_at: string }>(sql`SELECT created_at::text FROM social_posts WHERE user_id = ${userId} AND deleted_at IS NULL`),
@@ -285,6 +333,8 @@ export async function getAchievementsForUser(userId: string): Promise<Achievemen
     evaluateComunidad(userId),
     evaluateWodplaceProfile(userId),
   ]);
+  // Depends on prResult.rows, so it can't join the Promise.all above.
+  const bodyweightLifts = await evaluateBodyweightLifts(userId, prResult.rows);
 
   const allCandidates = [
     ...constancia,
@@ -292,6 +342,7 @@ export async function getAchievementsForUser(userId: string): Promise<Achievemen
     ...prResult.candidates,
     ...comunidad,
     ...wodplaceProfile,
+    ...bodyweightLifts,
   ];
 
   const existing = await db

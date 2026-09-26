@@ -390,6 +390,7 @@ function serializeSettings(row: typeof trainingSettingsTable.$inferSelect) {
     preferredUnit: row.preferredUnit,
     barWeight: num(row.barWeight),
     barUnit: row.barUnit,
+    bodyweightKg: row.bodyweightKg == null ? null : num(row.bodyweightKg),
     plates: (row.plates ?? []) as PlateSpec[],
   };
 }
@@ -431,13 +432,14 @@ router.put("/training-settings", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid fields" });
     return;
   }
-  const { userId, preferredUnit, barWeight, barUnit, plates } = parsed.data;
+  const { userId, preferredUnit, barWeight, barUnit, bodyweightKg, plates } = parsed.data;
   try {
     const values = {
       userId,
       preferredUnit,
       barWeight: String(barWeight),
       barUnit,
+      bodyweightKg: bodyweightKg == null ? null : String(bodyweightKg),
       plates: plates as PlateSpec[],
       updatedAt: new Date(),
     };
@@ -450,6 +452,7 @@ router.put("/training-settings", async (req: Request, res: Response) => {
           preferredUnit,
           barWeight: String(barWeight),
           barUnit,
+          bodyweightKg: bodyweightKg == null ? null : String(bodyweightKg),
           plates: plates as PlateSpec[],
           updatedAt: new Date(),
         },

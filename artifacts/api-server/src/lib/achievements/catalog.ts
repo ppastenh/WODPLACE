@@ -85,6 +85,18 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "movimiento_bench_press", category: "movimiento", kind: "manual", icon: "minus", name: "Bench press", description: "Otorgada por el coach." },
   { id: "movimiento_strict_press", category: "movimiento", kind: "manual", icon: "arrow-up", name: "Strict press", description: "Otorgada por el coach." },
   { id: "movimiento_push_press", category: "movimiento", kind: "manual", icon: "arrow-up", name: "Push press", description: "Otorgada por el coach." },
+  // Relativas al peso corporal (Fase 3) — automáticas, usan el RM ya cargado
+  // + el peso corporal autorreportado en Ajustes de RM. Null bodyweight =
+  // simplemente no se evalúan (evaluate.ts), no un error.
+  { id: "movimiento_back_squat_1x", category: "movimiento", kind: "automatic", icon: "trending-up", name: "Back Squat 1×BW", description: "Levantá 1x tu peso corporal en back squat." },
+  { id: "movimiento_back_squat_1_5x", category: "movimiento", kind: "automatic", icon: "award", name: "Back Squat 1.5×BW", description: "Levantá 1.5x tu peso corporal en back squat." },
+  { id: "movimiento_back_squat_2x", category: "movimiento", kind: "automatic", icon: "star", name: "Back Squat 2×BW", description: "Levantá 2x tu peso corporal en back squat." },
+  { id: "movimiento_front_squat_1x", category: "movimiento", kind: "automatic", icon: "trending-up", name: "Front Squat 1×BW", description: "Levantá 1x tu peso corporal en front squat." },
+  { id: "movimiento_front_squat_1_5x", category: "movimiento", kind: "automatic", icon: "award", name: "Front Squat 1.5×BW", description: "Levantá 1.5x tu peso corporal en front squat." },
+  { id: "movimiento_front_squat_2x", category: "movimiento", kind: "automatic", icon: "star", name: "Front Squat 2×BW", description: "Levantá 2x tu peso corporal en front squat." },
+  { id: "movimiento_deadlift_1x", category: "movimiento", kind: "automatic", icon: "trending-up", name: "Deadlift 1×BW", description: "Levantá 1x tu peso corporal en deadlift." },
+  { id: "movimiento_deadlift_1_5x", category: "movimiento", kind: "automatic", icon: "award", name: "Deadlift 1.5×BW", description: "Levantá 1.5x tu peso corporal en deadlift." },
+  { id: "movimiento_deadlift_2x", category: "movimiento", kind: "automatic", icon: "star", name: "Deadlift 2×BW", description: "Levantá 2x tu peso corporal en deadlift." },
 
   // ── CONSTANCIA — rachas de días consecutivos reservando clases ────────────
   { id: "constancia_3", category: "constancia", kind: "automatic", icon: "zap", name: "Racha de hierro", description: "Entrená 3 días seguidos." },

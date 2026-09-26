@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -25,6 +26,15 @@ export default function RmSettingsScreen() {
   const userId = user?.id ?? '';
   const settings = useGetTrainingSettings({ userId }, { query: { enabled: !!userId } as never });
   const upsert = useUpsertTrainingSettings();
+
+  // Local text buffer so the field doesn't fight the user while typing
+  // ("70" -> "70." -> "70.5") — commits to the server onBlur, not on every
+  // keystroke. Re-synced whenever the server value changes underneath us
+  // (e.g. right after this same screen's own save resolves).
+  const [bodyweightInput, setBodyweightInput] = useState('');
+  useEffect(() => {
+    setBodyweightInput(settings.data?.bodyweightKg != null ? String(settings.data.bodyweightKg) : '');
+  }, [settings.data?.bodyweightKg]);
 
   const save = (patch: Partial<TrainingSettings>) => {
     const cur = settings.data;
@@ -78,6 +88,27 @@ export default function RmSettingsScreen() {
               </Text>
             </Pressable>
           ))}
+        </View>
+
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>Peso corporal</Text>
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          Siempre en kg — se usa para las medallas de fuerza relativa (ej. sentadilla 1.5x tu peso).
+        </Text>
+        <View style={[styles.bodyweightRow, { borderColor: colors.border }]}>
+          <TextInput
+            value={bodyweightInput}
+            onChangeText={setBodyweightInput}
+            onBlur={() => {
+              const trimmed = bodyweightInput.trim().replace(',', '.');
+              const parsed = trimmed ? Number(trimmed) : null;
+              save({ bodyweightKg: parsed != null && !Number.isNaN(parsed) && parsed > 0 ? parsed : null });
+            }}
+            keyboardType="decimal-pad"
+            placeholder="Ej. 72"
+            placeholderTextColor={colors.mutedForeground}
+            style={[styles.bodyweightInput, { color: colors.foreground }]}
+          />
+          <Text style={[styles.bodyweightUnit, { color: colors.mutedForeground }]}>kg</Text>
         </View>
 
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Mi barra</Text>
@@ -155,6 +186,18 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { paddingHorizontal: 24, paddingVertical: 10 },
   toggleText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  bodyweightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    minWidth: 140,
+  },
+  bodyweightInput: { fontSize: 16, fontFamily: 'Inter_600SemiBold', paddingVertical: 8, flex: 1 },
+  bodyweightUnit: { fontSize: 13, fontFamily: 'Inter_500Medium', marginLeft: 6 },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: {
     borderWidth: StyleSheet.hairlineWidth,

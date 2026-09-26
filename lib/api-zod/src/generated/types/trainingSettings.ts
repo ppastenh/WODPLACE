@@ -14,5 +14,6 @@ export interface TrainingSettings {
   preferredUnit: TrainingSettingsPreferredUnit;
   barWeight: number;
   barUnit: TrainingSettingsBarUnit;
+  bodyweightKg?: number | null;
   plates: PlateSpec[];
 }

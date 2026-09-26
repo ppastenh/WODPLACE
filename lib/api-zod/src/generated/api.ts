@@ -740,6 +740,7 @@ export const GetTrainingSettingsResponse = zod.object({
   "preferredUnit": zod.enum(['kg', 'lb']),
   "barWeight": zod.number(),
   "barUnit": zod.enum(['kg', 'lb']),
+  "bodyweightKg": zod.number().nullish(),
   "plates": zod.array(zod.object({
   "unit": zod.enum(['kg', 'lb']),
   "weight": zod.number(),
@@ -756,6 +757,7 @@ export const UpsertTrainingSettingsBody = zod.object({
   "preferredUnit": zod.enum(['kg', 'lb']),
   "barWeight": zod.number(),
   "barUnit": zod.enum(['kg', 'lb']),
+  "bodyweightKg": zod.number().nullish(),
   "plates": zod.array(zod.object({
   "unit": zod.enum(['kg', 'lb']),
   "weight": zod.number(),
@@ -768,6 +770,7 @@ export const UpsertTrainingSettingsResponse = zod.object({
   "preferredUnit": zod.enum(['kg', 'lb']),
   "barWeight": zod.number(),
   "barUnit": zod.enum(['kg', 'lb']),
+  "bodyweightKg": zod.number().nullish(),
   "plates": zod.array(zod.object({
   "unit": zod.enum(['kg', 'lb']),
   "weight": zod.number(),

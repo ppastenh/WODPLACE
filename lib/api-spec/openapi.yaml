@@ -1615,6 +1615,9 @@ components:
         preferredUnit: { type: string, enum: [kg, lb] }
         barWeight: { type: number }
         barUnit: { type: string, enum: [kg, lb] }
+        # Self-reported, always kg. Null until the athlete sets it — used
+        # only for the bodyweight-relative achievements (Fase 3).
+        bodyweightKg: { type: number, nullable: true }
         plates:
           type: array
           items: { $ref: "#/components/schemas/PlateSpec" }
@@ -1627,6 +1630,7 @@ components:
         preferredUnit: { type: string, enum: [kg, lb] }
         barWeight: { type: number }
         barUnit: { type: string, enum: [kg, lb] }
+        bodyweightKg: { type: number, nullable: true }
         plates:
           type: array
           items: { $ref: "#/components/schemas/PlateSpec" }

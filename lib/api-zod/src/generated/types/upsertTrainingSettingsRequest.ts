@@ -14,5 +14,6 @@ export interface UpsertTrainingSettingsRequest {
   preferredUnit: UpsertTrainingSettingsRequestPreferredUnit;
   barWeight: number;
   barUnit: UpsertTrainingSettingsRequestBarUnit;
+  bodyweightKg?: number | null;
   plates: PlateSpec[];
 }

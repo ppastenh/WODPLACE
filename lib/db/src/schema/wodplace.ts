@@ -594,6 +594,11 @@ export const trainingSettingsTable = pgTable("training_settings", {
   sex: text("sex"), // 'f' | 'm' | 'x' | null
   barWeight: numeric("bar_weight").notNull().default("20"),
   barUnit: text("bar_unit").notNull().default("kg"), // 'kg' | 'lb'
+  // Self-reported, always in kg regardless of preferredUnit — used only to
+  // compute the bodyweight-relative achievements (back/front squat, deadlift
+  // × 1x/1.5x/2x BW). Null until the athlete sets it; those 9 achievements
+  // just stay locked until then (see achievements/evaluate.ts).
+  bodyweightKg: numeric("bodyweight_kg"),
   plates: jsonb("plates")
     .$type<PlateSpec[]>()
     .notNull()
