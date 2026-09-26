@@ -35,6 +35,7 @@ function BoxLogoImage({ uri, height = 48 }: { uri: string; height?: number }) {
 }
 import { router, usePathname, useFocusEffect } from 'expo-router';
 import {
+  getAchievements,
   getBoxAnnouncements,
   getMyPlans,
   getUpcomingBirthdays,
@@ -188,6 +189,32 @@ export default function HomeScreen() {
   const myPlan = hasActivePlan
     ? (myPlanQuery.data?.plans.find((p) => p.isSubscribed) ?? null)
     : null;
+
+  // Home's 4 stat cards (total de clases, racha de constancia, PR destacado,
+  // medallas) — see GET /achievements, which computes these as a side effect
+  // of evaluating medallas. Doesn't require box membership/an active plan
+  // (streaks, PRs, and unlocked count are all independent of that).
+  const achievementsQuery = useQuery({
+    queryKey: ['achievements', user?.id],
+    queryFn: () => getAchievements(user!.id),
+    enabled: !!user?.id,
+  });
+  useRefetchOnFocusIfStale(achievementsQuery);
+  const achievementStats = achievementsQuery.data?.stats ?? null;
+
+  // Home's "Medallas" card: total unlocked across every category, plus the
+  // most recently unlocked ones (by unlockedAt) as a little icon preview.
+  const medalsSummary = useMemo(() => {
+    const categories = achievementsQuery.data?.categories ?? [];
+    const totalUnlocked = categories.reduce((sum, c) => sum + c.unlocked, 0);
+    const totalAchievements = categories.reduce((sum, c) => sum + c.total, 0);
+    const recent = categories
+      .flatMap((c) => c.achievements)
+      .filter((a) => a.unlocked && a.unlockedAt)
+      .sort((a, b) => new Date(b.unlockedAt!).getTime() - new Date(a.unlockedAt!).getTime())
+      .slice(0, 3);
+    return { totalUnlocked, totalAchievements, recent };
+  }, [achievementsQuery.data]);
 
   // Push avisos (see GET /box-memberships/announcements). pushQueue/
   // pinnedPush stay their own local state, synced from the query result
@@ -445,31 +472,38 @@ export default function HomeScreen() {
         ) : null}
 
         <View style={styles.twoColumnRow}>
-          <View style={[styles.quoteCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
             <View style={styles.smallCardHeader}>
-              <Feather name="message-circle" size={19} color={colors.navActive} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Compartir frase motivacional"
-                onPress={shareQuote}
-                hitSlop={10}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <Feather name="share-2" size={18} color={colors.navInactive} />
-              </Pressable>
+              <Feather name="calendar" size={19} color={colors.navActive} />
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>
-              Frase del día
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>Total de clases</Text>
+            <Text style={[styles.statsValue, { color: colors.foreground }]}>
+              {achievementStats?.totalBookings ?? 0}
             </Text>
-            <Text style={[styles.quoteText, { color: colors.foreground }]}>“{quote}”</Text>
+            <Text style={[styles.statsDetail, { color: colors.navInactive }]}>clases reservadas</Text>
           </View>
 
+          <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
+            <View style={styles.smallCardHeader}>
+              <Feather name="zap" size={19} color={colors.navActive} />
+            </View>
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>Racha de constancia</Text>
+            <Text style={[styles.statsValue, { color: colors.foreground }]}>
+              {achievementStats?.currentStreakDays ?? 0}
+            </Text>
+            <Text style={[styles.statsDetail, { color: colors.navInactive }]}>
+              {achievementStats?.currentStreakDays ? 'días seguidos' : 'Empezá hoy'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.twoColumnRow, { marginTop: 12 }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ver progreso y PRs"
             onPress={() => router.push('/rm')}
             style={({ pressed }) => [
-              styles.prCard,
+              styles.statsCard,
               { backgroundColor: colors.successBackground },
               pressed && styles.pressedCard,
             ]}
@@ -478,14 +512,74 @@ export default function HomeScreen() {
               <MaterialCommunityIcons name="trophy-outline" size={21} color={colors.success} />
               <Feather name="chevron-right" size={18} color={colors.navInactive} />
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>PR del día</Text>
-            <Text style={[styles.prTitle, { color: colors.foreground }]}>
-              Aún no hay PRs
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>PR destacado</Text>
+            <Text style={[styles.statsValue, { color: colors.foreground }]} numberOfLines={1}>
+              {achievementStats?.featuredPr?.liftName ?? 'Aún no hay PRs'}
             </Text>
-            <Text style={[styles.prDetail, { color: colors.navInactive }]}>
-              Registra tu primera marca
+            <Text style={[styles.statsDetail, { color: colors.navInactive }]}>
+              {achievementStats?.featuredPr
+                ? `${achievementStats.featuredPr.weightKg} kg${
+                    achievementStats.featuredPr.improvementPct > 0
+                      ? ` (+${achievementStats.featuredPr.improvementPct}%)`
+                      : ''
+                  }`
+                : 'Registrá tu primera marca'}
             </Text>
           </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver medallas"
+            onPress={() => router.push('/medallas')}
+            style={({ pressed }) => [
+              styles.statsCard,
+              { backgroundColor: colors.card },
+              pressed && styles.pressedCard,
+            ]}
+          >
+            <View style={styles.smallCardHeader}>
+              <Feather name="award" size={19} color={colors.navActive} />
+              <Feather name="chevron-right" size={18} color={colors.navInactive} />
+            </View>
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>Medallas</Text>
+            <Text style={[styles.statsValue, { color: colors.foreground }]}>
+              {medalsSummary.totalUnlocked}/{medalsSummary.totalAchievements}
+            </Text>
+            {medalsSummary.recent.length > 0 ? (
+              <View style={styles.medalIconsRow}>
+                {medalsSummary.recent.map((a) => (
+                  <View key={a.id} style={[styles.medalIcon, { backgroundColor: colors.navActive }]}>
+                    <Feather
+                      name={a.icon as React.ComponentProps<typeof Feather>['name']}
+                      size={12}
+                      color={colors.primaryForeground}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={[styles.statsDetail, { color: colors.navInactive }]}>Desbloqueá tu primera</Text>
+            )}
+          </Pressable>
+        </View>
+
+        <View style={[styles.quoteCard, { backgroundColor: colors.card, marginTop: 12 }]}>
+          <View style={styles.smallCardHeader}>
+            <Feather name="message-circle" size={19} color={colors.navActive} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Compartir frase motivacional"
+              onPress={shareQuote}
+              hitSlop={10}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Feather name="share-2" size={18} color={colors.navInactive} />
+            </Pressable>
+          </View>
+          <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>
+            Frase del día
+          </Text>
+          <Text style={[styles.quoteText, { color: colors.foreground }]}>“{quote}”</Text>
         </View>
 
         {hasBoxMembership && birthdays.length > 0 ? (
@@ -697,13 +791,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  quoteCard: {
+  statsCard: {
     flex: 1,
-    minHeight: 174,
+    minHeight: 108,
     borderRadius: 20,
     padding: 15,
   },
-  prCard: {
+  statsValue: {
+    fontSize: 22,
+    lineHeight: 26,
+    fontFamily: 'Anton_400Regular',
+    marginTop: 8,
+  },
+  statsDetail: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: 'Inter_500Medium',
+    marginTop: 3,
+  },
+  medalIconsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+  },
+  medalIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quoteCard: {
     flex: 1,
     minHeight: 174,
     borderRadius: 20,
@@ -725,18 +843,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontFamily: 'Inter_600SemiBold',
     marginTop: 8,
-  },
-  prTitle: {
-    fontSize: 18,
-    lineHeight: 22,
-    fontFamily: 'Anton_400Regular',
-    marginTop: 10,
-  },
-  prDetail: {
-    fontSize: 11,
-    lineHeight: 16,
-    fontFamily: 'Inter_500Medium',
-    marginTop: 5,
   },
   birthdaySection: {
     marginTop: 2,

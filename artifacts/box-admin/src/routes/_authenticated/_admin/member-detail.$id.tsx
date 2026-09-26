@@ -43,6 +43,7 @@ type MemberDetailRow = {
   photo_url: string | null;
   notes: string | null;
   joined_at: string | null;
+  member_since: string | null;
   next_payment_at: string | null;
   plan_id: string | null;
   wodplace_users: { name: string; email: string; avatar_url: string | null } | null;
@@ -62,7 +63,7 @@ function MemberDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("box_members")
-        .select("user_id, status, phone, photo_url, notes, joined_at, next_payment_at, plan_id, wodplace_users(name, email, avatar_url), plans(name, price, duration_days)")
+        .select("user_id, status, phone, photo_url, notes, joined_at, member_since, next_payment_at, plan_id, wodplace_users(name, email, avatar_url), plans(name, price, duration_days)")
         .eq("box_id", boxId)
         .eq("user_id", id)
         .maybeSingle();
@@ -179,6 +180,11 @@ function MemberDetail() {
           <InfoRow icon={Mail} label="Email" value={m.wodplace_users?.email || "—"} />
           <InfoRow icon={Phone} label="Teléfono" value={m.phone || "—"} />
           <InfoRow icon={Calendar} label="Ingresó" value={m.joined_at ? format(new Date(m.joined_at), "dd MMM yyyy") : "—"} />
+          <InfoRow
+            icon={Calendar}
+            label="Alumno desde"
+            value={(m.member_since ?? m.joined_at) ? format(new Date(m.member_since ?? m.joined_at!), "dd MMM yyyy") : "—"}
+          />
           <InfoRow icon={Calendar} label="Próximo pago" value={m.next_payment_at ? format(new Date(m.next_payment_at), "dd MMM yyyy") : "—"} />
           {m.notes && (
             <div className="rounded-2xl border bg-card p-4">
@@ -256,6 +262,7 @@ function MemberDetail() {
         userId={id}
         phone={m.phone}
         notes={m.notes}
+        memberSince={m.member_since ?? m.joined_at}
         open={editOpen}
         onOpenChange={setEditOpen}
       />
@@ -277,13 +284,14 @@ function MemberDetail() {
   );
 }
 
-/** Teléfono y Observaciones are the only real editable fields here — name
- *  and email live on wodplace_users, which box-admin never edits. */
+/** Teléfono, Observaciones y Alumno desde son los únicos campos editables
+ *  acá — nombre y email viven en wodplace_users, que box-admin nunca edita. */
 function EditMemberDialog({
   boxId,
   userId,
   phone,
   notes,
+  memberSince,
   open,
   onOpenChange,
 }: {
@@ -291,22 +299,29 @@ function EditMemberDialog({
   userId: string;
   phone: string | null;
   notes: string | null;
+  /** Falls back to joined_at when member_since was never set — see that
+   *  column's own doc comment (supabase/migrations/..._member_since.sql). */
+  memberSince: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ phone: phone ?? "", notes: notes ?? "" });
+  const [form, setForm] = useState({ phone: phone ?? "", notes: notes ?? "", memberSince: memberSince ?? "" });
 
   const openChange = (v: boolean) => {
     onOpenChange(v);
-    if (v) setForm({ phone: phone ?? "", notes: notes ?? "" });
+    if (v) setForm({ phone: phone ?? "", notes: notes ?? "", memberSince: memberSince ?? "" });
   };
 
   const save = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
         .from("box_members")
-        .update({ phone: form.phone.trim() || null, notes: form.notes.trim() || null })
+        .update({
+          phone: form.phone.trim() || null,
+          notes: form.notes.trim() || null,
+          member_since: form.memberSince || null,
+        })
         .eq("box_id", boxId)
         .eq("user_id", userId);
       if (error) throw error;
@@ -328,6 +343,17 @@ function EditMemberDialog({
           <div>
             <Label>Teléfono</Label>
             <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+56 9 1234 5678" />
+          </div>
+          <div>
+            <Label>Alumno desde</Label>
+            <Input
+              type="date"
+              value={form.memberSince}
+              onChange={(e) => setForm({ ...form, memberSince: e.target.value })}
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Usá esto si el alumno entrenaba acá antes de que existiera la app.
+            </p>
           </div>
           <div>
             <Label>Observaciones</Label>

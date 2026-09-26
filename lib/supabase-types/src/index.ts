@@ -475,6 +475,7 @@ export type Database = {
           box_id: string
           created_at: string
           joined_at: string
+          member_since: string | null
           new_member_seen_at: string | null
           next_payment_at: string | null
           notes: string | null
@@ -489,6 +490,7 @@ export type Database = {
           box_id: string
           created_at?: string
           joined_at?: string
+          member_since?: string | null
           new_member_seen_at?: string | null
           next_payment_at?: string | null
           notes?: string | null
@@ -503,6 +505,7 @@ export type Database = {
           box_id?: string
           created_at?: string
           joined_at?: string
+          member_since?: string | null
           new_member_seen_at?: string | null
           next_payment_at?: string | null
           notes?: string | null
@@ -1677,6 +1680,44 @@ export type Database = {
             foreignKeyName: "training_settings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "wodplace_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          awarded_by: string | null
+          box_id: string | null
+          created_at: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          awarded_by?: string | null
+          box_id?: string | null
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          awarded_by?: string | null
+          box_id?: string | null
+          created_at?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "wodplace_users"
             referencedColumns: ["id"]
           },

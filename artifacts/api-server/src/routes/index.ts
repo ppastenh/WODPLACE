@@ -11,6 +11,7 @@ import bookingsRouter from "./bookings";
 import notificationsRouter from "./notifications";
 import rmRouter from "./rm";
 import socialRouter from "./social";
+import achievementsRouter from "./achievements";
 
 const router: IRouter = Router();
 
@@ -25,6 +26,7 @@ router.use(contractsRouter);
 router.use(platformAgreementRouter);
 router.use(socialRouter);
 router.use(rmRouter);
+router.use(achievementsRouter);
 router.use(adminRouter);
 
 export default router;

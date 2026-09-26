@@ -614,3 +614,38 @@ export const trainingSettingsTable = pgTable("training_settings", {
     .defaultNow(),
 });
 export type TrainingSettingsRow = typeof trainingSettingsTable.$inferSelect;
+
+// ── Achievements (medallas) ──────────────────────────────────────────────────
+
+// One row per unlocked achievement. The catalog of definitions (names,
+// descriptions, thresholds) lives in code (api-server's
+// lib/achievements/catalog.ts), not here — this table only records who
+// unlocked what and when. Permanent once written: re-evaluating never
+// deletes a row, even if the data that triggered it (a PR, a booking) is
+// later removed. `awardedBy`/`boxId` are only ever set for MOVIMIENTO
+// achievements (coach-granted) — null for every automatic one.
+export const userAchievementsTable = pgTable(
+  "user_achievements",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    achievementId: text("achievement_id").notNull(),
+    unlockedAt: timestamp("unlocked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    awardedBy: text("awarded_by"),
+    boxId: text("box_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_achievements_user_achievement_idx").on(
+      table.userId,
+      table.achievementId,
+    ),
+  ],
+);
+export type UserAchievementRow = typeof userAchievementsTable.$inferSelect;

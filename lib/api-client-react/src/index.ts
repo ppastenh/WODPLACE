@@ -7,5 +7,6 @@ export * from './users';
 export * from './accountRecovery';
 export * from './platformAgreement';
 export * from './myBox';
+export * from './achievements';
 export * from './generated/api';
 export * from './generated/api.schemas';

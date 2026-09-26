@@ -32,6 +32,7 @@ import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
+  { key: 'medallas', label: 'Medallas', icon: 'star', route: '/medallas' },
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
   { key: 'more', label: 'Más', icon: 'grid', route: '/more' },
