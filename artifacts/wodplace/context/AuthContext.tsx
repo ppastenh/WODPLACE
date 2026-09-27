@@ -272,12 +272,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Detected admins skip the athlete contract check entirely — see the
       // doc comment on refreshActivationStatus in the context type above.
-      const isAdmin = !!platform?.roles.length;
-      const nextStatus: AccountStatus = isAdmin
+      // super_admin is exempt outright (same precedent as the platform
+      // agreement's own acceptance flow — she's the one approving boxes,
+      // not subject to one). A plain box_admin's status instead reflects
+      // her own box's real approval state (boxes.status): 'pendiente' /
+      // 'suspendido' / 'rechazado' all correctly show as not active, not
+      // just "admin = always active" regardless of whether the box was
+      // ever approved.
+      const roles = platform?.roles ?? [];
+      const nextStatus: AccountStatus = roles.includes('super_admin')
         ? 'active'
-        : (await getContractAcceptance({ userId: target.id })).acceptance
-          ? 'active'
-          : 'inactive';
+        : roles.includes('box_admin')
+          ? (platform?.box?.status === 'activo' ? 'active' : 'inactive')
+          : (await getContractAcceptance({ userId: target.id })).acceptance
+            ? 'active'
+            : 'inactive';
       if (nextStatus !== target.status) {
         await persist({ ...target, status: nextStatus });
       }
