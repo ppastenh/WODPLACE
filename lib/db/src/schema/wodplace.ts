@@ -657,3 +657,85 @@ export const userAchievementsTable = pgTable(
   ],
 );
 export type UserAchievementRow = typeof userAchievementsTable.$inferSelect;
+
+// ── WOD del día ───────────────────────────────────────────────────────────
+
+// Catalog: seeded hero/benchmark WODs (boxId null) + a box's own custom ones
+// (boxId set) — same createdBy-scoping shape as the RM module's `movements`
+// table. `description` is free text (the movements/reps breakdown, e.g.
+// "21-15-9 Thrusters (95/65), Pull-ups") rather than a structured
+// movement-by-movement model — matches how boxes actually write these up.
+// `format` drives which result fields wod_results expects: 'for_time' ->
+// timeSeconds, 'amrap' -> rounds (+ optional reps for a partial round;
+// EMOM-style WODs like Chelsea log rounds only, no partial reps), 'max_reps'
+// -> reps only (e.g. Fight Gone Bad).
+export const wodsTable = pgTable("wods", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  format: text("format").notNull(), // 'for_time' | 'amrap' | 'max_reps'
+  timeCapMinutes: integer("time_cap_minutes"),
+  description: text("description").notNull(),
+  boxId: text("box_id"), // null = global hero WOD, set = one box's custom WOD
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type WodRow = typeof wodsTable.$inferSelect;
+
+// One published WOD per box per day — box-admin writes this directly via
+// Supabase (RLS), same pattern as announcements/class_sessions; api-server
+// only reads it (GET /wod/today) for the athlete-facing side.
+export const wodOfDayTable = pgTable(
+  "wod_of_day",
+  {
+    id: text("id").primaryKey(),
+    boxId: text("box_id").notNull(),
+    wodId: text("wod_id")
+      .notNull()
+      .references(() => wodsTable.id, { onDelete: "restrict" }),
+    sessionDate: date("session_date").notNull(),
+    // Day-specific adjustments a coach might add (scaling notes, etc.) —
+    // shown alongside the catalog wod's own description, doesn't replace it.
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("wod_of_day_box_date_idx").on(table.boxId, table.sessionDate),
+  ],
+);
+export type WodOfDayRow = typeof wodOfDayTable.$inferSelect;
+
+// An athlete's logged result for a specific day's published WOD. Tied to
+// wodOfDayId (not directly to wodId) so "how did I do on the exact WOD
+// published that day" is unambiguous; querying wod_results -> wod_of_day ->
+// wods by wods.id gives the full history for a repeating hero WOD (e.g. every
+// time this box has ever run Grace), same join shape as prs -> movements.
+export const wodResultsTable = pgTable(
+  "wod_results",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+    wodOfDayId: text("wod_of_day_id")
+      .notNull()
+      .references(() => wodOfDayTable.id, { onDelete: "cascade" }),
+    timeSeconds: integer("time_seconds"),
+    rounds: integer("rounds"),
+    reps: integer("reps"),
+    scaled: boolean("scaled").notNull().default(false),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // One result per athlete per published WOD — POST /wod-results upserts
+    // on this so re-logging edits instead of duplicating.
+    uniqueIndex("wod_results_user_wod_of_day_idx").on(table.userId, table.wodOfDayId),
+  ],
+);
+export type WodResultRow = typeof wodResultsTable.$inferSelect;

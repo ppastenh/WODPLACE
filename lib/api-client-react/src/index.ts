@@ -8,5 +8,6 @@ export * from './accountRecovery';
 export * from './platformAgreement';
 export * from './myBox';
 export * from './achievements';
+export * from './wod';
 export * from './generated/api';
 export * from './generated/api.schemas';

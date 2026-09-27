@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminMoreNotificationsRouteImport } from './route
 import { Route as AuthenticatedAdminMorePlansRouteImport } from './routes/_authenticated/_admin/more/plans'
 import { Route as AuthenticatedAdminMoreReportsRouteImport } from './routes/_authenticated/_admin/more/reports'
 import { Route as AuthenticatedAdminMoreSettingsRouteImport } from './routes/_authenticated/_admin/more/settings'
+import { Route as AuthenticatedAdminMoreWodRouteImport } from './routes/_authenticated/_admin/more/wod'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -170,6 +171,12 @@ const AuthenticatedAdminMoreSettingsRoute =
     path: '/more/settings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminMoreWodRoute =
+  AuthenticatedAdminMoreWodRouteImport.update({
+    id: '/more/wod',
+    path: '/more/wod',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/more/plans': typeof AuthenticatedAdminMorePlansRoute
   '/more/reports': typeof AuthenticatedAdminMoreReportsRoute
   '/more/settings': typeof AuthenticatedAdminMoreSettingsRoute
+  '/more/wod': typeof AuthenticatedAdminMoreWodRoute
   '/more/': typeof AuthenticatedAdminMoreIndexRoute
 }
 export interface FileRoutesByTo {
@@ -217,6 +225,7 @@ export interface FileRoutesByTo {
   '/more/plans': typeof AuthenticatedAdminMorePlansRoute
   '/more/reports': typeof AuthenticatedAdminMoreReportsRoute
   '/more/settings': typeof AuthenticatedAdminMoreSettingsRoute
+  '/more/wod': typeof AuthenticatedAdminMoreWodRoute
   '/more': typeof AuthenticatedAdminMoreIndexRoute
 }
 export interface FileRoutesById {
@@ -244,6 +253,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/more/plans': typeof AuthenticatedAdminMorePlansRoute
   '/_authenticated/_admin/more/reports': typeof AuthenticatedAdminMoreReportsRoute
   '/_authenticated/_admin/more/settings': typeof AuthenticatedAdminMoreSettingsRoute
+  '/_authenticated/_admin/more/wod': typeof AuthenticatedAdminMoreWodRoute
   '/_authenticated/_admin/more/': typeof AuthenticatedAdminMoreIndexRoute
 }
 export interface FileRouteTypes {
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/more/plans'
     | '/more/reports'
     | '/more/settings'
+    | '/more/wod'
     | '/more/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/more/plans'
     | '/more/reports'
     | '/more/settings'
+    | '/more/wod'
     | '/more'
   id:
     | '__root__'
@@ -320,6 +332,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/more/plans'
     | '/_authenticated/_admin/more/reports'
     | '/_authenticated/_admin/more/settings'
+    | '/_authenticated/_admin/more/wod'
     | '/_authenticated/_admin/more/'
   fileRoutesById: FileRoutesById
 }
@@ -504,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMoreSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/more/wod': {
+      id: '/_authenticated/_admin/more/wod'
+      path: '/more/wod'
+      fullPath: '/more/wod'
+      preLoaderRoute: typeof AuthenticatedAdminMoreWodRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
@@ -522,6 +542,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminMorePlansRoute: typeof AuthenticatedAdminMorePlansRoute
   AuthenticatedAdminMoreReportsRoute: typeof AuthenticatedAdminMoreReportsRoute
   AuthenticatedAdminMoreSettingsRoute: typeof AuthenticatedAdminMoreSettingsRoute
+  AuthenticatedAdminMoreWodRoute: typeof AuthenticatedAdminMoreWodRoute
   AuthenticatedAdminMoreIndexRoute: typeof AuthenticatedAdminMoreIndexRoute
 }
 
@@ -542,6 +563,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminMorePlansRoute: AuthenticatedAdminMorePlansRoute,
   AuthenticatedAdminMoreReportsRoute: AuthenticatedAdminMoreReportsRoute,
   AuthenticatedAdminMoreSettingsRoute: AuthenticatedAdminMoreSettingsRoute,
+  AuthenticatedAdminMoreWodRoute: AuthenticatedAdminMoreWodRoute,
   AuthenticatedAdminMoreIndexRoute: AuthenticatedAdminMoreIndexRoute,
 }
 

@@ -12,6 +12,7 @@ import notificationsRouter from "./notifications";
 import rmRouter from "./rm";
 import socialRouter from "./social";
 import achievementsRouter from "./achievements";
+import wodRouter from "./wod";
 
 const router: IRouter = Router();
 
@@ -27,6 +28,7 @@ router.use(platformAgreementRouter);
 router.use(socialRouter);
 router.use(rmRouter);
 router.use(achievementsRouter);
+router.use(wodRouter);
 router.use(adminRouter);
 
 export default router;

@@ -1651,6 +1651,7 @@ export type Database = {
         Row: {
           bar_unit: string
           bar_weight: number
+          bodyweight_kg: number | null
           plates: Json
           preferred_unit: string
           sex: string | null
@@ -1660,6 +1661,7 @@ export type Database = {
         Insert: {
           bar_unit?: string
           bar_weight?: number
+          bodyweight_kg?: number | null
           plates?: Json
           preferred_unit?: string
           sex?: string | null
@@ -1669,6 +1671,7 @@ export type Database = {
         Update: {
           bar_unit?: string
           bar_weight?: number
+          bodyweight_kg?: number | null
           plates?: Json
           preferred_unit?: string
           sex?: string | null
@@ -1755,6 +1758,102 @@ export type Database = {
           },
         ]
       }
+      wod_of_day: {
+        Row: {
+          box_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          session_date: string
+          wod_id: string
+        }
+        Insert: {
+          box_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          session_date: string
+          wod_id: string
+        }
+        Update: {
+          box_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          session_date?: string
+          wod_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wod_of_day_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wod_of_day_wod_id_fkey"
+            columns: ["wod_id"]
+            isOneToOne: false
+            referencedRelation: "wods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wod_results: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          reps: number | null
+          rounds: number | null
+          scaled: boolean
+          time_seconds: number | null
+          user_id: string
+          wod_of_day_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          notes?: string | null
+          reps?: number | null
+          rounds?: number | null
+          scaled?: boolean
+          time_seconds?: number | null
+          user_id: string
+          wod_of_day_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reps?: number | null
+          rounds?: number | null
+          scaled?: boolean
+          time_seconds?: number | null
+          user_id?: string
+          wod_of_day_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wod_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wodplace_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wod_results_wod_of_day_id_fkey"
+            columns: ["wod_of_day_id"]
+            isOneToOne: false
+            referencedRelation: "wod_of_day"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wodplace_notifications: {
         Row: {
           body: string
@@ -1832,6 +1931,44 @@ export type Database = {
           rank?: string | null
         }
         Relationships: []
+      }
+      wods: {
+        Row: {
+          box_id: string | null
+          created_at: string
+          description: string
+          format: string
+          id: string
+          name: string
+          time_cap_minutes: number | null
+        }
+        Insert: {
+          box_id?: string | null
+          created_at?: string
+          description: string
+          format: string
+          id: string
+          name: string
+          time_cap_minutes?: number | null
+        }
+        Update: {
+          box_id?: string | null
+          created_at?: string
+          description?: string
+          format?: string
+          id?: string
+          name?: string
+          time_cap_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wods_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -38,6 +38,7 @@ import {
   getAchievements,
   getBoxAnnouncements,
   getMyPlans,
+  getTodayWod,
   getUpcomingBirthdays,
   markAnnouncementRead,
   markBoxWelcomeShown,
@@ -216,6 +217,14 @@ export default function HomeScreen() {
       .slice(0, 3);
     return { totalUnlocked, totalAchievements, recent };
   }, [achievementsQuery.data]);
+
+  const wodQuery = useQuery({
+    queryKey: ['wod-today', user?.id],
+    queryFn: () => getTodayWod(user!.id),
+    enabled: !!user?.id,
+  });
+  useRefetchOnFocusIfStale(wodQuery);
+  const todayWod = wodQuery.data?.wod ?? null;
 
   // Push avisos (see GET /box-memberships/announcements). pushQueue/
   // pinnedPush stay their own local state, synced from the query result
@@ -468,6 +477,33 @@ export default function HomeScreen() {
             </Text>
             <Text style={[styles.nextClassCoach, { color: colors.navInactive }]}>
               {nextSession ? `Coach ${nextSession.coach}` : 'Encuentra un horario para tu próximo WOD'}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {hasBoxMembership && todayWod ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver WOD de hoy"
+            onPress={() => router.push('/wod' as never)}
+            style={({ pressed }) => [
+              styles.wodCard,
+              { backgroundColor: colors.card },
+              pressed && styles.pressedCard,
+            ]}
+          >
+            <View style={styles.smallCardHeader}>
+              <View style={styles.wodTitleRow}>
+                <Feather name="zap" size={18} color={colors.navActive} />
+                <Text style={[styles.smallCardLabel, { color: colors.navInactive, marginTop: 0 }]}>
+                  WOD de hoy{todayWod.myResult ? ' · registrado' : ''}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.navInactive} />
+            </View>
+            <Text style={[styles.wodName, { color: colors.foreground }]}>{todayWod.name}</Text>
+            <Text style={[styles.wodDescription, { color: colors.navInactive }]} numberOfLines={2}>
+              {todayWod.description}
             </Text>
           </Pressable>
         ) : null}
@@ -797,6 +833,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     marginTop: 3,
   },
+  wodCard: {
+    borderRadius: 20,
+    padding: 15,
+    marginTop: 12,
+  },
+  wodTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wodName: { fontSize: 18, fontFamily: 'Anton_400Regular', marginTop: 8 },
+  wodDescription: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4, lineHeight: 17 },
   twoColumnRow: {
     flexDirection: 'row',
     gap: 12,

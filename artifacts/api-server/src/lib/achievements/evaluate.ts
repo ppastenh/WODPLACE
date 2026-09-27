@@ -2,6 +2,7 @@ import { db, prsTable, trainingSettingsTable, userAchievementsTable, wodplaceUse
 import { and, eq, sql } from "drizzle-orm";
 
 import { resolveBoxIdForAthlete } from "../boxContext";
+import { todayDateKey } from "../dateUtils";
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, type AchievementCategoryId } from "./catalog";
 
 function makeId(): string {
@@ -9,9 +10,6 @@ function makeId(): string {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-function toDateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 function daysBetween(a: string, b: string): number {
   return Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / DAY_MS);
 }
@@ -42,7 +40,7 @@ function computeStreaks(sortedDates: string[]): {
 
   let currentStreak = 0;
   if (sortedDates.length > 0) {
-    const today = toDateKey(new Date());
+    const today = todayDateKey();
     const last = sortedDates[sortedDates.length - 1];
     const gap = daysBetween(last, today);
     if (gap <= 1) {
