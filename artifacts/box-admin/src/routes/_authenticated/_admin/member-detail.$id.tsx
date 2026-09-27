@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUpcomingBookings, type UpcomingClass } from "@/lib/upcomingBookings";
 import { Switch } from "@/components/ui/switch";
 import { MOVEMENT_ACHIEVEMENTS } from "@/lib/movementAchievements";
+import { COMPETITION_ACHIEVEMENTS } from "@/lib/competitionAchievements";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SKILL_LEVELS, SKILL_LEVEL_LABELS, type SkillLevel } from "@/lib/skillLevel";
 import { Award } from "lucide-react";
@@ -130,6 +131,48 @@ function MemberDetail() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["member-movimiento", boxId, id] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo actualizar la medalla"),
+  });
+
+  // COMPETENCIA — otorgadas a mano por el coach/admin, mismo mecanismo que
+  // MOVIMIENTO (misma política RLS genérica: box_id is not null and
+  // user_is_box_staff(box_id), no necesita nada nuevo).
+  const competencia = useQuery({
+    queryKey: ["member-competencia", boxId, id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_achievements")
+        .select("achievement_id")
+        .eq("user_id", id)
+        .in("achievement_id", COMPETITION_ACHIEVEMENTS.map((a) => a.id));
+      return new Set((data ?? []).map((r) => r.achievement_id));
+    },
+  });
+
+  const toggleCompetencia = useMutation({
+    mutationFn: async ({ achievementId, unlock }: { achievementId: string; unlock: boolean }) => {
+      if (unlock) {
+        const { data: auth } = await supabase.auth.getUser();
+        const { error } = await supabase.from("user_achievements").insert({
+          id: `competencia-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          user_id: id,
+          achievement_id: achievementId,
+          box_id: boxId,
+          awarded_by: auth.user?.email ?? "—",
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("user_achievements")
+          .delete()
+          .eq("user_id", id)
+          .eq("achievement_id", achievementId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["member-competencia", boxId, id] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo actualizar la medalla"),
   });
@@ -356,6 +399,32 @@ function MemberDetail() {
                         checked={unlocked}
                         disabled={toggleMovimiento.isPending}
                         onCheckedChange={(v) => toggleMovimiento.mutate({ achievementId: a.id, unlock: v })}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <p className="pt-2 text-xs text-muted-foreground">
+            Medallas de competencia — {competencia.data?.size ?? 0}/{COMPETITION_ACHIEVEMENTS.length} otorgadas.
+          </p>
+          {(["resultados", "categoría"] as const).map((group) => (
+            <div key={group}>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {group === "resultados" ? "Resultados" : "Categoría"}
+              </p>
+              <div className="divide-y divide-border/60 rounded-2xl border bg-card">
+                {COMPETITION_ACHIEVEMENTS.filter((a) => a.group === group).map((a) => {
+                  const unlocked = competencia.data?.has(a.id) ?? false;
+                  return (
+                    <div key={a.id} className="flex items-center justify-between gap-3 p-3">
+                      <p className="text-sm font-medium">{a.name}</p>
+                      <Switch
+                        checked={unlocked}
+                        disabled={toggleCompetencia.isPending}
+                        onCheckedChange={(v) => toggleCompetencia.mutate({ achievementId: a.id, unlock: v })}
                       />
                     </div>
                   );
