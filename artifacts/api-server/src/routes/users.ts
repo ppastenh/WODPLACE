@@ -4,7 +4,45 @@ import { eq, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
+import { requireSupabaseUser } from "../lib/supabaseAuth";
+
 const router: IRouter = Router();
+
+/**
+ * GET /users/me
+ *
+ * Fase 2 of the real-auth migration: the athlete-facing "who am I, what's
+ * my profile" call for a real account — login()/app boot use this (via the
+ * verified JWT, see requireSupabaseUser) instead of trusting a
+ * client-supplied id, the way every other wodplace endpoint still does
+ * today. Mock accounts never call this; they keep using the local
+ * AsyncStorage flow untouched.
+ */
+router.get("/users/me", requireSupabaseUser, async (req: Request, res: Response) => {
+  try {
+    const [user] = await db
+      .select()
+      .from(wodplaceUsersTable)
+      .where(eq(wodplaceUsersTable.authUserId, req.supabaseUser!.id));
+    if (!user) {
+      res.status(404).json({ error: "No wodplace profile linked to this account" });
+      return;
+    }
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      rank: user.rank,
+      phrase: user.phrase,
+      birthdate: user.birthdate,
+      phone: user.phone,
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error fetching own profile");
+    res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
 
 /**
  * POST /users

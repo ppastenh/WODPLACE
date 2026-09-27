@@ -10,5 +10,6 @@ export * from './myBox';
 export * from './achievements';
 export * from './wod';
 export * from './skillLevel';
+export * from './realAuth';
 export * from './generated/api';
 export * from './generated/api.schemas';

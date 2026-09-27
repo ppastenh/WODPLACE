@@ -41,8 +41,8 @@ export default function RegisterScreen() {
       setError('Ingresa tu nombre completo');
       return;
     }
-    if (password.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres');
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
       return;
     }
     if (!birthdate) {

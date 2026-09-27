@@ -1,19 +1,57 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  getAuthMode,
   getContractAcceptance,
+  getMe,
   getMyBox,
   getPlatformAgreementStatus,
   getPublicProfile,
   redeemBoxCode as redeemBoxCodeApi,
+  registerRealAccount,
+  setAuthTokenGetter,
   syncUser,
   updateProfileFields,
   verifyAccountRecovery,
   type MyBox,
   type PlatformAgreementStatus,
+  type RealAccountProfile,
   type RedeemBoxCodeResult,
   type SkillLevel,
 } from '@workspace/api-client-react';
+import { supabase } from '@/lib/supabase';
+
+// Fase 2 of the mock-auth -> real Supabase Auth migration: every wodplace
+// API call now carries the live Supabase session's JWT when there is one.
+// A no-op for every mock account (no session ever exists), and for a real
+// account before it's logged in — this is safe to set once, unconditionally,
+// at module load rather than only after a real login.
+setAuthTokenGetter(async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+});
+
+/** Builds the local WodplaceUser shape from a real-account server profile. */
+function toWodplaceUser(profile: RealAccountProfile, status: AccountStatus): WodplaceUser {
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    avatarUri: profile.avatarUrl,
+    phrase: profile.phrase ?? '',
+    status,
+    rank: (profile.rank as AthleteRank) || 'beginner',
+    birthdate: profile.birthdate,
+    phone: profile.phone,
+    authMode: 'real',
+  };
+}
+
+/** Server errors (customFetch's ApiError) carry the clean message in
+ *  `.data.error` — `.message` itself is prefixed with "HTTP 409 ...". */
+function extractApiErrorMessage(err: unknown, fallback: string): string {
+  return (err as { data?: { error?: string } })?.data?.error ?? fallback;
+}
 
 export type AccountStatus = 'active' | 'inactive';
 // Assigned by a coach from box-admin (see member-detail.$id.tsx) — new
@@ -31,6 +69,18 @@ export interface WodplaceUser {
   rank: AthleteRank;
   birthdate: string | null;
   phone: string | null;
+  /**
+   * Fase 2 of the mock-auth -> real Supabase Auth migration. `'real'` means
+   * this session has a live Supabase Auth account (register()/login()
+   * resolved it via the server) — boot/logout/verifyPassword branch on this
+   * to use the real Supabase session instead of the local AsyncStorage
+   * flow. `'mock'` is every account from before this fase (still 100% the
+   * old flow, untouched — migrating them is Fase 3). Read with `=== 'real'`
+   * everywhere, never `!== 'mock'`: a profile blob persisted before this
+   * field existed has it `undefined` at runtime despite the type, and that
+   * must fall back to the mock path, not silently be treated as real.
+   */
+  authMode: 'mock' | 'real';
 }
 
 interface AuthContextValue {
@@ -177,34 +227,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const restored = JSON.parse(raw) as WodplaceUser;
-          setUser(restored);
-          // Accounts created before the backend existed (or that failed to
-          // sync last time) never get another chance to sync, since this
-          // boot path used to skip it — only login/register/updateProfile
-          // called persist(). Re-sync on every app open (idempotent upsert)
-          // so contract read/acceptance calls (FK on userId) don't 400.
-          syncUser({
-            id: restored.id,
-            name: restored.name,
-            email: restored.email,
-            birthdate: restored.birthdate,
-          }).catch((err) => {
-            console.warn('Failed to sync restored user to backend', err);
-          });
-          // phrase used to be AsyncStorage-only (no public profile to show
-          // it on); keep the backend copy current too. rank is NOT pushed
-          // here — it's coach-assigned from box-admin, pulled (not pushed)
-          // by refreshActivationStatus below.
-          updateProfileFields(restored.id, { phrase: restored.phrase }).catch((err) => {
-            console.warn('Failed to sync phrase to backend', err);
-          });
-          // Awaited (unlike the two syncs above): the app's very first
-          // navigation decision (see app/index.tsx) depends on adminStatus
-          // having resolved first.
-          await refreshActivationStatus(restored);
+        if (!raw) return;
+        const restored = JSON.parse(raw) as WodplaceUser;
+
+        if (restored.authMode === 'real') {
+          // Supabase's own client already restored its session from
+          // AsyncStorage by the time this runs (see lib/supabase.ts) — this
+          // just checks it's actually still valid before trusting the
+          // cached profile.
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) {
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            return;
+          }
+          try {
+            const me = await getMe();
+            const refreshed = toWodplaceUser(me, restored.status);
+            setUser(refreshed);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
+            await refreshActivationStatus(refreshed);
+          } catch (err) {
+            // Network hiccup, not an invalid session — don't log the user
+            // out over it, just use the cached profile for this session.
+            console.warn('Failed to refresh real account profile on boot', err);
+            setUser(restored);
+            await refreshActivationStatus(restored);
+          }
+          return;
         }
+
+        // Mock account (or a profile persisted before this field existed —
+        // authMode is undefined at runtime for those, which fails the
+        // check above and correctly lands here) — exactly today's flow.
+        setUser(restored);
+        // Accounts created before the backend existed (or that failed to
+        // sync last time) never get another chance to sync, since this
+        // boot path used to skip it — only login/register/updateProfile
+        // called persist(). Re-sync on every app open (idempotent upsert)
+        // so contract read/acceptance calls (FK on userId) don't 400.
+        syncUser({
+          id: restored.id,
+          name: restored.name,
+          email: restored.email,
+          birthdate: restored.birthdate,
+        }).catch((err) => {
+          console.warn('Failed to sync restored user to backend', err);
+        });
+        // phrase used to be AsyncStorage-only (no public profile to show
+        // it on); keep the backend copy current too. rank is NOT pushed
+        // here — it's coach-assigned from box-admin, pulled (not pushed)
+        // by refreshActivationStatus below.
+        updateProfileFields(restored.id, { phrase: restored.phrase }).catch((err) => {
+          console.warn('Failed to sync phrase to backend', err);
+        });
+        // Awaited (unlike the two syncs above): the app's very first
+        // navigation decision (see app/index.tsx) depends on adminStatus
+        // having resolved first.
+        await refreshActivationStatus(restored);
       } finally {
         setIsLoading(false);
       }
@@ -304,27 +383,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(USERS_KEY, JSON.stringify(db));
   };
 
+  // Server-first (Fase 2): sees real accounts AND mock accounts registered
+  // on a different device — the local-only check never could, which is the
+  // whole reason account-recovery exists. Falls back to the local mock db
+  // only if the network check itself fails, not merely when it says "none"
+  // (the server is authoritative there — a local-only fallback in that case
+  // would just be dead code, since a mock register() always syncs its row).
   const checkEmailExists = async (email: string): Promise<boolean> => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const db = await getUsersDb();
-    return !!db[email.trim().toLowerCase()];
+    const key = email.trim().toLowerCase();
+    try {
+      const mode = await getAuthMode(key);
+      return mode !== 'none';
+    } catch (err) {
+      console.warn('Failed to check auth mode, falling back to local check', err);
+      const db = await getUsersDb();
+      return !!db[key];
+    }
   };
 
   const login = async (email: string, password: string) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
     const key = email.trim().toLowerCase();
+
+    // Known mock account on this device — exactly today's flow, unchanged,
+    // no network required. Checked first so an existing mock user's login
+    // stays offline-capable and doesn't slow down waiting on a server
+    // round-trip it never needed before.
     const db = await getUsersDb();
     const existing = db[key];
-    if (!existing) {
+    if (existing) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (existing.password !== password) {
+        throw new Error('Contraseña incorrecta.');
+      }
+      const { password: _pw, ...profile } = existing;
+      const next: WodplaceUser = { ...profile, authMode: 'mock' };
+      await persist(next);
+      // Awaited so getPostAuthRoute() is correct the instant login()
+      // resolves (the caller navigates right after awaiting this).
+      await refreshActivationStatus(next);
+      return;
+    }
+
+    // Not a local mock account — could be a real account, or a mock one
+    // registered on a different device (same "no encontramos" message as
+    // always in that case; recovering it is what account-recovery is for).
+    const mode = await getAuthMode(key);
+    if (mode !== 'real') {
       throw new Error('No encontramos una cuenta con ese email.');
     }
-    if (existing.password !== password) {
+    const { error } = await supabase.auth.signInWithPassword({ email: key, password });
+    if (error) {
       throw new Error('Contraseña incorrecta.');
     }
-    const { password: _pw, ...profile } = existing;
+    const me = await getMe();
+    const profile = toWodplaceUser(me, 'inactive');
     await persist(profile);
-    // Awaited so getPostAuthRoute() is correct the instant login() resolves
-    // (the caller navigates right after awaiting this).
     await refreshActivationStatus(profile);
   };
 
@@ -335,27 +448,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     birthdate: string,
     phone: string,
   ) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const key = email.trim().toLowerCase();
-    const db = await getUsersDb();
-    if (db[key]) {
-      throw new Error('Ya existe una cuenta con ese email.');
+    let created: RealAccountProfile;
+    try {
+      created = await registerRealAccount({
+        email: email.trim(),
+        password,
+        name: name.trim() || nameFromEmail(email),
+        birthdate: birthdate || null,
+        phone: phone || null,
+      });
+    } catch (err) {
+      throw new Error(extractApiErrorMessage(err, 'No se pudo crear la cuenta.'));
     }
-    const profile: WodplaceUser = {
-      id: makeId(),
-      name: name.trim() || nameFromEmail(email),
-      email: email.trim(),
-      avatarUri: null,
-      phrase: '',
-      // Inactive until Contratos Activos records an acceptance —
-      // refreshActivationStatus() is what flips this, not registration.
-      status: 'inactive',
-      rank: 'beginner',
-      birthdate,
-      phone,
-    };
-    db[key] = { ...profile, password };
-    await saveUsersDb(db);
+
+    // The account is pre-confirmed server-side (see the endpoint's own doc
+    // comment for why), so this succeeds immediately — no separate
+    // "verify your email" step.
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: created.email,
+      password,
+    });
+    if (signInError) {
+      throw new Error('La cuenta se creó pero no se pudo iniciar sesión. Intenta ingresar de nuevo.');
+    }
+
+    // Inactive until Contratos Activos records an acceptance —
+    // refreshActivationStatus() is what flips this, not registration.
+    const profile = toWodplaceUser(created, 'inactive');
     await persist(profile);
     // Was missing — adminStatus stayed at its initial null for a freshly
     // registered account until the next login/app restart, hiding e.g. an
@@ -389,6 +508,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       rank: (recovered.rank as WodplaceUser['rank']) || 'beginner',
       birthdate: null,
       phone: null,
+      // account-recovery is entirely a mock-era mechanism (see this
+      // function's own doc comment) — still true in Fase 2, since no
+      // existing account is migrated to real yet (that's Fase 3).
+      authMode: 'mock',
     };
     const db = await getUsersDb();
     db[key] = { ...profile, password: newPassword };
@@ -415,6 +538,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyPassword = async (password: string): Promise<boolean> => {
     if (!user) return false;
+    if (user.authMode === 'real') {
+      // Re-authenticates without disturbing the active session (still the
+      // same account, worst case it just rotates to a fresh token pair) —
+      // there's no local password to compare for a real account.
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+      return !error;
+    }
     const db = await getUsersDb();
     const entry = db[user.email.trim().toLowerCase()];
     return !!entry && entry.password === password;
@@ -432,12 +565,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       rank: 'beginner',
       birthdate: null,
       phone: null,
+      // Still fully simulated — real Google/Apple sign-in is Fase 5.
+      authMode: 'mock',
     };
     await persist(next);
     await refreshActivationStatus(next);
   };
 
   const logout = async () => {
+    if (user?.authMode === 'real') {
+      // Best-effort — a failed sign-out shouldn't block clearing the local
+      // session; a stale Supabase session left behind just means the next
+      // boot's getSession() check finds it and re-establishes it, which is
+      // the correct behavior for a network-blip failure here anyway.
+      await supabase.auth.signOut().catch((err) => {
+        console.warn('Failed to sign out of Supabase', err);
+      });
+    }
     await persist(null);
     setAdminStatus(null);
     adminStatusRef.current = null;

@@ -19,7 +19,17 @@ import {
 export const wodplaceUsersTable = pgTable("wodplace_users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  // Unique as of the Fase 2 auth migration (see supabase/migrations/
+  // ..._wodplace_users_email_unique_and_phone.sql) — a handful of dupes
+  // from the mock era were cleaned up first. Real registration
+  // (POST /auth/register) checks this proactively for a friendly error
+  // instead of surfacing the raw constraint violation.
   email: text("email").notNull(),
+  // Real accounts persist this for real (POST /auth/register); mock
+  // accounts never synced it (client-only, lost on reinstall) — added in
+  // the same migration as the column above, while already touching this
+  // exact area for the auth migration.
+  phone: text("phone"),
   // Uploaded from the mobile profile screen; null until the athlete picks a
   // photo. Canonical avatar for the whole app — box-admin's member views
   // read this too instead of keeping a separate copy.
