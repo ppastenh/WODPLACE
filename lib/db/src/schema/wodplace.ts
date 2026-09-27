@@ -10,6 +10,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 // Mirrors the WodplaceUser id created client-side in AsyncStorage. There is
@@ -33,6 +34,14 @@ export const wodplaceUsersTable = pgTable("wodplace_users", {
   // of a hardcoded mock list. Only ever read back as month/day — never the
   // full date/year — when showing another member's birthday.
   birthdate: date("birthdate"),
+  // Bridge to the real Supabase Auth account, once this athlete has one —
+  // null for every mock/local-only account today. Same pattern as the
+  // admin side's profiles/user_roles-by-email bridge (see lib/adminRole.ts):
+  // `id` (and every FK pointing at it — RM, wod_results, user_achievements,
+  // box_members, etc.) never changes, so migrating to real auth never
+  // touches existing data. See supabase/migrations/
+  // ..._wodplace_users_auth_bridge.sql for the full rationale.
+  authUserId: uuid("auth_user_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

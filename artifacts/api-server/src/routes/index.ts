@@ -13,6 +13,7 @@ import rmRouter from "./rm";
 import socialRouter from "./social";
 import achievementsRouter from "./achievements";
 import wodRouter from "./wod";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
@@ -29,6 +30,7 @@ router.use(socialRouter);
 router.use(rmRouter);
 router.use(achievementsRouter);
 router.use(wodRouter);
+router.use(authRouter);
 router.use(adminRouter);
 
 export default router;
