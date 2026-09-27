@@ -1,9 +1,9 @@
-import { db, prsTable, trainingSettingsTable, userAchievementsTable, wodplaceUsersTable } from "@workspace/db";
+import { db, prsTable, trainingSettingsTable, userAchievementsTable, wodOfDayTable, wodResultsTable, wodplaceUsersTable, wodsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 
 import { resolveBoxIdForAthlete } from "../boxContext";
 import { todayDateKey } from "../dateUtils";
-import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, type AchievementCategoryId } from "./catalog";
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, HERO_WODS, type AchievementCategoryId } from "./catalog";
 
 function makeId(): string {
   return `achv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -257,6 +257,143 @@ async function evaluateBodyweightLifts(userId: string, rows: PrRow[]): Promise<C
   return out;
 }
 
+type WodResultRow = {
+  wodId: string;
+  format: string;
+  boxId: string | null;
+  sessionDate: string;
+  level: string;
+  timeSeconds: number | null;
+  rounds: number | null;
+  reps: number | null;
+};
+
+/** true if `a` is strictly better than `b` for the given format. */
+function isBetterWodResult(format: string, a: WodResultRow, b: WodResultRow): boolean {
+  if (format === "for_time") {
+    if (a.timeSeconds == null || b.timeSeconds == null) return false;
+    return a.timeSeconds < b.timeSeconds;
+  }
+  if (format === "amrap") {
+    const aRounds = a.rounds ?? 0;
+    const bRounds = b.rounds ?? 0;
+    if (aRounds !== bRounds) return aRounds > bRounds;
+    return (a.reps ?? 0) > (b.reps ?? 0);
+  }
+  // max_reps
+  return (a.reps ?? 0) > (b.reps ?? 0);
+}
+
+/** The Monday (as a date key) of the calendar week containing `dateKey`. */
+function mondayOf(dateKey: string): string {
+  const d = new Date(`${dateKey}T00:00:00Z`);
+  const day = d.getUTCDay(); // 0 = Sunday .. 6 = Saturday
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * WOD del día: cantidad total de resultados, primer resultado por nivel,
+ * primera vez completando cada WOD héroe del catálogo, "mejora tu tiempo"
+ * (misma lógica que pr_break_ceiling pero comparando según el formato del
+ * WOD — ver isBetterWodResult) y "Modo Bestia" (5+ resultados en la misma
+ * semana calendario lunes-domingo). Todo derivable de wod_results ya
+ * existente, sin cambios de schema.
+ */
+async function evaluateWod(userId: string): Promise<Candidate[]> {
+  const rows: WodResultRow[] = await db
+    .select({
+      wodId: wodsTable.id,
+      format: wodsTable.format,
+      boxId: wodsTable.boxId,
+      sessionDate: wodOfDayTable.sessionDate,
+      level: wodResultsTable.level,
+      timeSeconds: wodResultsTable.timeSeconds,
+      rounds: wodResultsTable.rounds,
+      reps: wodResultsTable.reps,
+    })
+    .from(wodResultsTable)
+    .innerJoin(wodOfDayTable, eq(wodOfDayTable.id, wodResultsTable.wodOfDayId))
+    .innerJoin(wodsTable, eq(wodsTable.id, wodOfDayTable.wodId))
+    .where(eq(wodResultsTable.userId, userId))
+    .orderBy(wodOfDayTable.sessionDate);
+
+  const out: Candidate[] = [];
+  if (rows.length === 0) return out;
+  const at = (dateKey: string) => new Date(`${dateKey}T00:00:00Z`);
+
+  // Cantidad total.
+  out.push({ id: "wod_count_1", unlockedAt: at(rows[0].sessionDate) });
+  const countMilestones: Array<[number, string]> = [
+    [10, "wod_count_10"],
+    [25, "wod_count_25"],
+    [50, "wod_count_50"],
+    [100, "wod_count_100"],
+    [250, "wod_count_250"],
+    [500, "wod_count_500"],
+  ];
+  for (const [n, id] of countMilestones) {
+    if (rows.length >= n) out.push({ id, unlockedAt: at(rows[n - 1].sessionDate) });
+  }
+
+  // Por nivel — primera vez registrando un resultado en cada uno.
+  const firstByLevel = new Map<string, string>();
+  for (const r of rows) {
+    if (!firstByLevel.has(r.level)) firstByLevel.set(r.level, r.sessionDate);
+  }
+  for (const level of ["beginner", "rookie", "scaled", "master", "rx", "elite"]) {
+    const date = firstByLevel.get(level);
+    if (date) out.push({ id: `wod_level_${level}`, unlockedAt: at(date) });
+  }
+
+  // Por WOD héroe (boxId null = catálogo global, no un WOD propio del box) —
+  // primera vez completándolo + detección de mejora sobre la marca anterior.
+  const heroIds = new Set(HERO_WODS.map((w) => w.id));
+  const byHeroWod = new Map<string, WodResultRow[]>();
+  for (const r of rows) {
+    if (r.boxId != null || !heroIds.has(r.wodId)) continue;
+    const list = byHeroWod.get(r.wodId) ?? [];
+    list.push(r);
+    byHeroWod.set(r.wodId, list);
+  }
+  let improveDate: Date | null = null;
+  for (const [wodId, list] of byHeroWod) {
+    out.push({ id: `wod_hero_${wodId}`, unlockedAt: at(list[0].sessionDate) });
+
+    let best = list[0];
+    for (let i = 1; i < list.length; i++) {
+      const cur = list[i];
+      if (isBetterWodResult(cur.format, cur, best)) {
+        const d = at(cur.sessionDate);
+        if (!improveDate || d < improveDate) improveDate = d;
+        best = cur;
+      }
+    }
+  }
+  if (improveDate) out.push({ id: "wod_improve", unlockedAt: improveDate });
+
+  // Modo Bestia — 5+ resultados en la misma semana calendario (lunes-domingo).
+  const byWeek = new Map<string, string[]>();
+  for (const r of rows) {
+    const monday = mondayOf(r.sessionDate);
+    const list = byWeek.get(monday) ?? [];
+    list.push(r.sessionDate);
+    byWeek.set(monday, list);
+  }
+  let beastDate: Date | null = null;
+  for (const dates of byWeek.values()) {
+    if (dates.length >= 5) {
+      const fifth = [...dates].sort()[4];
+      const d = at(fifth);
+      if (!beastDate || d < beastDate) beastDate = d;
+    }
+  }
+  if (beastDate) out.push({ id: "wod_beast_mode", unlockedAt: beastDate });
+
+  return out;
+}
+
 async function evaluateComunidad(userId: string): Promise<Candidate[]> {
   const [posts, comments, reactions] = await Promise.all([
     db.execute<{ created_at: string }>(sql`SELECT created_at::text FROM social_posts WHERE user_id = ${userId} AND deleted_at IS NULL`),
@@ -324,12 +461,13 @@ export type AchievementsResponse = {
  */
 export async function getAchievementsForUser(userId: string): Promise<AchievementsResponse> {
   const dates = await confirmedBookingDates(userId);
-  const [constancia, boxAndWodplaceBookings, prResult, comunidad, wodplaceProfile] = await Promise.all([
+  const [constancia, boxAndWodplaceBookings, prResult, comunidad, wodplaceProfile, wod] = await Promise.all([
     evaluateConstancia(userId, dates),
     evaluateBoxAndWodplaceBookings(userId, dates),
     evaluatePr(userId),
     evaluateComunidad(userId),
     evaluateWodplaceProfile(userId),
+    evaluateWod(userId),
   ]);
   // Depends on prResult.rows, so it can't join the Promise.all above.
   const bodyweightLifts = await evaluateBodyweightLifts(userId, prResult.rows);
@@ -341,6 +479,7 @@ export async function getAchievementsForUser(userId: string): Promise<Achievemen
     ...comunidad,
     ...wodplaceProfile,
     ...bodyweightLifts,
+    ...wod,
   ];
 
   const existing = await db

@@ -29,7 +29,8 @@ export type AchievementCategoryId =
   | "pr"
   | "comunidad"
   | "box"
-  | "wodplace";
+  | "wodplace"
+  | "wod";
 
 export type AchievementDef = {
   id: string;
@@ -50,6 +51,33 @@ export const ACHIEVEMENT_CATEGORIES: Array<{ id: AchievementCategoryId; name: st
   { id: "comunidad", name: "Comunidad" },
   { id: "box", name: "Box" },
   { id: "wodplace", name: "WODPLACE" },
+  { id: "wod", name: "WOD del Día" },
+];
+
+// Hero/benchmark catalog ids — must match public.wods (see
+// supabase/migrations/20260930090000_wod_of_the_day.sql). A fixed design
+// decision like the rest of this file, not user data, so it's hardcoded here
+// too rather than queried — same reasoning as BW_LIFTS in evaluate.ts.
+export const HERO_WODS: Array<{ id: string; name: string }> = [
+  { id: "fran", name: "Fran" },
+  { id: "grace", name: "Grace" },
+  { id: "helen", name: "Helen" },
+  { id: "isabel", name: "Isabel" },
+  { id: "diane", name: "Diane" },
+  { id: "annie", name: "Annie" },
+  { id: "nancy", name: "Nancy" },
+  { id: "karen", name: "Karen" },
+  { id: "fight-gone-bad", name: "Fight Gone Bad" },
+  { id: "murph", name: "Murph" },
+  { id: "chad", name: "Chad" },
+  { id: "dt", name: "DT" },
+  { id: "cindy", name: "Cindy" },
+  { id: "angie", name: "Angie" },
+  { id: "barbara", name: "Barbara" },
+  { id: "chelsea", name: "Chelsea" },
+  { id: "elizabeth", name: "Elizabeth" },
+  { id: "linda", name: "Linda" },
+  { id: "kalsu", name: "Kalsu" },
 ];
 
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -142,6 +170,38 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "wodplace_10_bookings", category: "wodplace", kind: "automatic", icon: "check-circle", name: "10 reservas", description: "Reservá 10 clases." },
   { id: "wodplace_50_bookings", category: "wodplace", kind: "automatic", icon: "check-circle", name: "50 reservas", description: "Reservá 50 clases." },
   { id: "wodplace_100_bookings", category: "wodplace", kind: "automatic", icon: "check-circle", name: "100 reservas", description: "Reservá 100 clases." },
+
+  // ── WOD DEL DÍA — resultados registrados en el módulo de WOD del día ──────
+  // Cantidad total de resultados registrados (héroe + propios del box):
+  { id: "wod_count_1", category: "wod", kind: "automatic", icon: "zap", name: "Primer WOD", description: "Registrá tu primer resultado de WOD del día." },
+  { id: "wod_count_10", category: "wod", kind: "automatic", icon: "bar-chart-2", name: "10 WODs", description: "Registrá 10 resultados de WOD del día." },
+  { id: "wod_count_25", category: "wod", kind: "automatic", icon: "bar-chart-2", name: "25 WODs", description: "Registrá 25 resultados de WOD del día." },
+  { id: "wod_count_50", category: "wod", kind: "automatic", icon: "bar-chart-2", name: "50 WODs", description: "Registrá 50 resultados de WOD del día." },
+  { id: "wod_count_100", category: "wod", kind: "automatic", icon: "award", name: "100 WODs", description: "Registrá 100 resultados de WOD del día." },
+  { id: "wod_count_250", category: "wod", kind: "automatic", icon: "award", name: "250 WODs", description: "Registrá 250 resultados de WOD del día." },
+  { id: "wod_count_500", category: "wod", kind: "automatic", icon: "star", name: "500 WODs", description: "Registrá 500 resultados de WOD del día." },
+  // Primera vez registrando un resultado en cada nivel:
+  { id: "wod_level_beginner", category: "wod", kind: "automatic", icon: "circle", name: "Nivel Beginner", description: "Registrá un WOD en nivel Beginner." },
+  { id: "wod_level_rookie", category: "wod", kind: "automatic", icon: "circle", name: "Nivel Rookie", description: "Registrá un WOD en nivel Rookie." },
+  { id: "wod_level_scaled", category: "wod", kind: "automatic", icon: "circle", name: "Nivel Scaled", description: "Registrá un WOD en nivel Scaled." },
+  { id: "wod_level_master", category: "wod", kind: "automatic", icon: "award", name: "Nivel Master", description: "Registrá un WOD en nivel Master." },
+  { id: "wod_level_rx", category: "wod", kind: "automatic", icon: "award", name: "Nivel RX", description: "Registrá un WOD en nivel RX." },
+  { id: "wod_level_elite", category: "wod", kind: "automatic", icon: "star", name: "Nivel Elite", description: "Registrá un WOD en nivel Elite." },
+  // Primera vez completando cada WOD héroe del catálogo:
+  ...HERO_WODS.map(
+    (w): AchievementDef => ({
+      id: `wod_hero_${w.id}`,
+      category: "wod",
+      kind: "automatic",
+      icon: "flag",
+      name: w.name,
+      description: `Completá el WOD "${w.name}".`,
+    }),
+  ),
+  // Superar tu propia marca anterior en un WOD héroe ya hecho antes:
+  { id: "wod_improve", category: "wod", kind: "automatic", icon: "trending-up", name: "Mejora tu tiempo", description: "Superá tu propia marca anterior en un WOD que ya habías hecho." },
+  // 5 WODs registrados en la misma semana (lunes a domingo):
+  { id: "wod_beast_mode", category: "wod", kind: "automatic", icon: "flame", name: "Modo Bestia", description: "Completá 5 WODs en la misma semana." },
 ];
 
 export function achievementsByCategory(category: AchievementCategoryId): AchievementDef[] {
