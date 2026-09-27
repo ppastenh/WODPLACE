@@ -81,18 +81,21 @@ router.patch("/users/:id/avatar", async (req: Request, res: Response) => {
 /**
  * PATCH /users/:id/profile
  *
- * Sets self-expression fields shown on the public profile: rank (a fun
- * level tag) and phrase (a short bio line). Both optional/independent —
- * only the ones present in the body are updated. Deliberately excludes
- * `status` ("Cuenta Activa/Inactiva"): that reads as account standing,
- * same category as payments/contracts, kept out of the public profile.
+ * Sets self-expression fields shown on the public profile: currently just
+ * phrase (a short bio line). Deliberately excludes `status` ("Cuenta
+ * Activa/Inactiva"): that reads as account standing, same category as
+ * payments/contracts, kept out of the public profile. Also deliberately
+ * excludes `rank`: that's coach-assigned from box-admin only (RLS-gated
+ * there), never self-service — this endpoint has no auth/ownership check
+ * (the caller is trusted to be that user, same as the rest of WODPLACE's
+ * mock-auth model) and api-server's DB role bypasses RLS, so accepting rank
+ * here would let any athlete set their own level.
  */
 const UpdateProfileFieldsBody = z
   .object({
-    rank: z.string().min(1).max(40).optional(),
     phrase: z.string().max(120).optional(),
   })
-  .refine((v) => v.rank !== undefined || v.phrase !== undefined, {
+  .refine((v) => v.phrase !== undefined, {
     message: "Nothing to update",
   });
 
@@ -112,7 +115,7 @@ router.patch("/users/:id/profile", async (req: Request, res: Response) => {
       res.status(404).json({ error: "User not found" });
       return;
     }
-    res.json({ id: row.id, rank: row.rank, phrase: row.phrase });
+    res.json({ id: row.id, phrase: row.phrase });
   } catch (error) {
     req.log.error({ err: error }, "Error updating profile fields");
     res.status(500).json({ error: "Failed to update profile" });

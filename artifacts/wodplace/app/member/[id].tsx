@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useListPrs, useMyPosts, usePublicProfile, type SocialPost } from '@workspace/api-client-react';
+import { useListPrs, useMyPosts, usePublicProfile, SKILL_LEVEL_LABELS, type SocialPost } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
 import { PostsGrid, PostDetailModal } from '@/components/PostsGrid';
 import { useAuth } from '@/context/AuthContext';
@@ -94,7 +94,9 @@ export default function MemberProfileScreen() {
         {profile?.rank && (
           <View style={styles.badgeRow}>
             <View style={[styles.rankBadge, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>{profile.rank}</Text>
+              <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>
+                {SKILL_LEVEL_LABELS[profile.rank as keyof typeof SKILL_LEVEL_LABELS] ?? profile.rank}
+              </Text>
             </View>
           </View>
         )}

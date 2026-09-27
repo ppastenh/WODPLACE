@@ -4,6 +4,7 @@ import {
   getContractAcceptance,
   getMyBox,
   getPlatformAgreementStatus,
+  getPublicProfile,
   redeemBoxCode as redeemBoxCodeApi,
   syncUser,
   updateProfileFields,
@@ -11,26 +12,14 @@ import {
   type MyBox,
   type PlatformAgreementStatus,
   type RedeemBoxCodeResult,
+  type SkillLevel,
 } from '@workspace/api-client-react';
 
 export type AccountStatus = 'active' | 'inactive';
-export type AthleteRank =
-  | 'Beginner'
-  | 'Rookie'
-  | 'Scaled'
-  | 'Rx'
-  | 'Elite'
-  | 'Coach'
-  | 'Administrador';
-
-export const RANK_OPTIONS: AthleteRank[] = [
-  'Beginner',
-  'Rookie',
-  'Scaled',
-  'Rx',
-  'Elite',
-  'Coach',
-];
+// Assigned by a coach from box-admin (see member-detail.$id.tsx) — new
+// accounts start at 'beginner' until a coach sets it. Same 6-value scale as
+// a WOD result's level (see skillLevel.ts), unified on purpose.
+export type AthleteRank = SkillLevel;
 
 export interface WodplaceUser {
   id: string;
@@ -204,13 +193,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }).catch((err) => {
             console.warn('Failed to sync restored user to backend', err);
           });
-          // rank/phrase used to be AsyncStorage-only (no public profile to
-          // show them on); keep the backend copy current too.
-          updateProfileFields(restored.id, { rank: restored.rank, phrase: restored.phrase }).catch(
-            (err) => {
-              console.warn('Failed to sync rank/phrase to backend', err);
-            },
-          );
+          // phrase used to be AsyncStorage-only (no public profile to show
+          // it on); keep the backend copy current too. rank is NOT pushed
+          // here — it's coach-assigned from box-admin, pulled (not pushed)
+          // by refreshActivationStatus below.
+          updateProfileFields(restored.id, { phrase: restored.phrase }).catch((err) => {
+            console.warn('Failed to sync phrase to backend', err);
+          });
           // Awaited (unlike the two syncs above): the app's very first
           // navigation decision (see app/index.tsx) depends on adminStatus
           // having resolved first.
@@ -234,8 +223,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('Failed to sync user to backend', err);
         },
       );
-      updateProfileFields(next.id, { rank: next.rank, phrase: next.phrase }).catch((err) => {
-        console.warn('Failed to sync rank/phrase to backend', err);
+      // rank is NOT pushed here — see the boot-time sync comment above.
+      updateProfileFields(next.id, { phrase: next.phrase }).catch((err) => {
+        console.warn('Failed to sync phrase to backend', err);
       });
     } else {
       await AsyncStorage.removeItem(STORAGE_KEY);
@@ -243,8 +233,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshActivationStatus = async (forUser?: WodplaceUser) => {
-    const target = forUser ?? user;
+    let target = forUser ?? user;
     if (!target) return;
+
+    // Pull the athlete's real rank from the server — it's coach-assigned
+    // from box-admin, never set locally, so this is the only place `rank`
+    // enters the client. Local-only update (no syncUser/updateProfileFields
+    // push back) to avoid re-triggering the very push model this replaces.
+    try {
+      const profile = await getPublicProfile(target.id);
+      if (profile.rank && profile.rank !== target.rank) {
+        target = { ...target, rank: profile.rank as AthleteRank };
+        setUser(target);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(target));
+      }
+    } catch (err) {
+      console.warn('Failed to pull rank from backend', err);
+    }
 
     let platform: PlatformAgreementStatus | null = null;
     try {
@@ -274,17 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? 'active'
           : 'inactive';
       if (nextStatus !== target.status) {
-        await persist({
-          ...target,
-          status: nextStatus,
-          // Assigned once, at the moment an athlete account actually
-          // activates — not re-applied on later refreshes (the
-          // status-unchanged check above skips those), so a rank set some
-          // other way later isn't stomped on. Skipped for admins: rank is
-          // an athlete-facing concept, irrelevant to their forced-active
-          // status here.
-          ...(nextStatus === 'active' && !isAdmin ? { rank: 'Beginner' as AthleteRank } : {}),
-        });
+        await persist({ ...target, status: nextStatus });
       }
     } catch (err) {
       console.warn('Failed to refresh activation status', err);
@@ -346,7 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Inactive until Contratos Activos records an acceptance —
       // refreshActivationStatus() is what flips this, not registration.
       status: 'inactive',
-      rank: 'Beginner',
+      rank: 'beginner',
       birthdate,
       phone,
     };
@@ -382,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatarUri: recovered.avatarUrl,
       phrase: recovered.phrase ?? '',
       status: 'inactive',
-      rank: (recovered.rank as WodplaceUser['rank']) || 'Beginner',
+      rank: (recovered.rank as WodplaceUser['rank']) || 'beginner',
       birthdate: null,
       phone: null,
     };
@@ -425,7 +420,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatarUri: null,
       phrase: '',
       status: 'inactive',
-      rank: 'Beginner',
+      rank: 'beginner',
       birthdate: null,
       phone: null,
     };

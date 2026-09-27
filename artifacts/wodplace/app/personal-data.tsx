@@ -3,22 +3,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { getMyBox, type MyBox } from '@workspace/api-client-react';
+import { getMyBox, SKILL_LEVEL_LABELS, type MyBox } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
 import { BirthdateModal } from '@/components/BirthdateModal';
 import { PhoneModal } from '@/components/PhoneModal';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
-
-const RANK_LABELS: Record<string, string> = {
-  Beginner: 'Beginner',
-  Rookie: 'Rookie',
-  Scaled: 'Scaled',
-  Rx: 'Rx',
-  Elite: 'Elite',
-  Coach: 'Coach',
-};
 
 export default function PersonalDataScreen() {
   const colors = useColors();
@@ -51,7 +42,7 @@ export default function PersonalDataScreen() {
     {
       icon: 'award',
       label: 'Rango de atleta',
-      value: RANK_LABELS[user.rank] ?? user.rank,
+      value: SKILL_LEVEL_LABELS[user.rank] ?? user.rank,
       valueColor: colors.foreground,
     },
   ];

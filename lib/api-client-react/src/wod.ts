@@ -3,14 +3,21 @@
  * achievements.ts.
  */
 import { customFetch } from "./custom-fetch";
+import { SKILL_LEVELS, SKILL_LEVEL_LABELS, type SkillLevel } from "./skillLevel";
 
 export type WodFormat = "for_time" | "amrap" | "max_reps";
+
+/** Re-exported for existing call sites — see skillLevel.ts, the single
+ *  source of truth shared with wodplace_users.rank. */
+export const WOD_LEVELS = SKILL_LEVELS;
+export const WOD_LEVEL_LABELS = SKILL_LEVEL_LABELS;
+export type WodLevel = SkillLevel;
 
 export type WodResultInput = {
   timeSeconds: number | null;
   rounds: number | null;
   reps: number | null;
-  scaled: boolean;
+  level: WodLevel;
   notes: string | null;
 };
 
@@ -38,7 +45,7 @@ export async function submitWodResult(params: {
   timeSeconds?: number;
   rounds?: number;
   reps?: number;
-  scaled: boolean;
+  level: WodLevel;
   notes?: string;
 }): Promise<void> {
   await customFetch("/api/wod-results", {
@@ -53,7 +60,7 @@ export type WodHistoryEntry = {
   timeSeconds: number | null;
   rounds: number | null;
   reps: number | null;
-  scaled: boolean;
+  level: WodLevel;
   notes: string | null;
   createdAt: string;
   sessionDate: string;

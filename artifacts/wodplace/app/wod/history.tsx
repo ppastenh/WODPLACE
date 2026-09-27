@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { getWodHistory, type WodHistoryEntry } from '@workspace/api-client-react';
+import { getWodHistory, WOD_LEVEL_LABELS, type WodHistoryEntry } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
@@ -82,17 +82,23 @@ export default function WodHistoryScreen() {
                     </View>
                     <View
                       style={[
-                        styles.scaledChip,
-                        { backgroundColor: entry.scaled ? colors.secondary : colors.successBackground },
+                        styles.levelChip,
+                        {
+                          backgroundColor:
+                            entry.level === 'rx' || entry.level === 'elite' ? colors.successBackground : colors.secondary,
+                        },
                       ]}
                     >
                       <Text
                         style={[
-                          styles.scaledChipText,
-                          { color: entry.scaled ? colors.secondaryForeground : colors.success },
+                          styles.levelChipText,
+                          {
+                            color:
+                              entry.level === 'rx' || entry.level === 'elite' ? colors.success : colors.secondaryForeground,
+                          },
                         ]}
                       >
-                        {entry.scaled ? 'Scaled' : 'Rx'}
+                        {WOD_LEVEL_LABELS[entry.level]}
                       </Text>
                     </View>
                   </View>
@@ -126,6 +132,6 @@ const styles = StyleSheet.create({
   },
   result: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   date: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  scaledChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  scaledChipText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
+  levelChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  levelChipText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
 });

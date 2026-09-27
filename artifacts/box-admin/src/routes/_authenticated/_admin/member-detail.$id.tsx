@@ -19,6 +19,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUpcomingBookings, type UpcomingClass } from "@/lib/upcomingBookings";
 import { Switch } from "@/components/ui/switch";
 import { MOVEMENT_ACHIEVEMENTS } from "@/lib/movementAchievements";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SKILL_LEVELS, SKILL_LEVEL_LABELS, type SkillLevel } from "@/lib/skillLevel";
+import { Award } from "lucide-react";
 
 // Sibling route, not nested under members.tsx — members.tsx (the "Miembros"
 // tab) has no <Outlet/>, so a route file named members.$id.tsx would change
@@ -48,7 +51,7 @@ type MemberDetailRow = {
   member_since: string | null;
   next_payment_at: string | null;
   plan_id: string | null;
-  wodplace_users: { name: string; email: string; avatar_url: string | null } | null;
+  wodplace_users: { name: string; email: string; avatar_url: string | null; rank: string | null } | null;
   plans: { name: string; price: number | null; duration_days: number | null } | null;
 };
 
@@ -65,7 +68,7 @@ function MemberDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("box_members")
-        .select("user_id, status, phone, photo_url, notes, joined_at, member_since, next_payment_at, plan_id, wodplace_users(name, email, avatar_url), plans(name, price, duration_days)")
+        .select("user_id, status, phone, photo_url, notes, joined_at, member_since, next_payment_at, plan_id, wodplace_users(name, email, avatar_url, rank), plans(name, price, duration_days)")
         .eq("box_id", boxId)
         .eq("user_id", id)
         .maybeSingle();
@@ -147,6 +150,23 @@ function MemberDetail() {
       setToRemove(null);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo eliminar la reserva"),
+  });
+
+  // Coach-assigned skill level — writes wodplace_users.rank directly (RLS:
+  // box staff can update only the `rank` column, only for athletes in a box
+  // they staff — see supabase/migrations/..._unify_skill_level_scale.sql).
+  // wodplace also uses this same value as the athlete's default WOD result
+  // level, so it's the same 6-value scale on both sides.
+  const setLevel = useMutation({
+    mutationFn: async (level: SkillLevel) => {
+      const { error } = await supabase.from("wodplace_users").update({ rank: level }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Nivel actualizado");
+      qc.invalidateQueries({ queryKey: ["member", boxId, id] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo actualizar el nivel"),
   });
 
   // Shortcut for "renovar": registers a payment for this member's current
@@ -234,6 +254,26 @@ function MemberDetail() {
             value={(m.member_since ?? m.joined_at) ? format(new Date(m.member_since ?? m.joined_at!), "dd MMM yyyy") : "—"}
           />
           <InfoRow icon={Calendar} label="Próximo pago" value={m.next_payment_at ? format(new Date(m.next_payment_at), "dd MMM yyyy") : "—"} />
+          <div className="flex items-center gap-3 rounded-2xl border bg-card p-3">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-secondary"><Award className="h-4 w-4 text-muted-foreground" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Nivel</p>
+              <Select
+                value={m.wodplace_users?.rank ?? "beginner"}
+                onValueChange={(v) => setLevel.mutate(v as SkillLevel)}
+                disabled={setLevel.isPending}
+              >
+                <SelectTrigger className="mt-1 h-8 w-full border-none bg-transparent p-0 text-sm font-medium shadow-none focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SKILL_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>{SKILL_LEVEL_LABELS[level]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           {m.notes && (
             <div className="rounded-2xl border bg-card p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Observaciones</p>

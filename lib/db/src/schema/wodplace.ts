@@ -726,7 +726,11 @@ export const wodResultsTable = pgTable(
     timeSeconds: integer("time_seconds"),
     rounds: integer("rounds"),
     reps: integer("reps"),
-    scaled: boolean("scaled").notNull().default(false),
+    // 6-level scale, low to high: 'beginner' | 'rookie' | 'scaled' | 'master'
+    // | 'rx' | 'elite'. Replaced a plain Rx/Scaled boolean (see
+    // supabase/migrations/..._wod_results_level_scale.sql) — old rows
+    // migrated losslessly (true -> 'scaled', false -> 'rx').
+    level: text("level").notNull(),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

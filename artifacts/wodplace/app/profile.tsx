@@ -26,7 +26,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBooking, ClassSession } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { useMyPosts, uploadAvatarImage, type SocialPost } from '@workspace/api-client-react';
+import { useMyPosts, uploadAvatarImage, SKILL_LEVEL_LABELS, type SocialPost } from '@workspace/api-client-react';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
@@ -179,7 +179,9 @@ export default function ProfileScreen() {
             </View>
           )}
           <View style={[styles.rankBadge, { backgroundColor: colors.secondary }]}>
-            <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>{user.rank}</Text>
+            <Text style={[styles.rankText, { color: colors.secondaryForeground }]}>
+              {SKILL_LEVEL_LABELS[user.rank] ?? user.rank}
+            </Text>
           </View>
         </View>
 

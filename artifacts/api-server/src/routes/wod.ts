@@ -8,6 +8,9 @@ import { todayDateKey } from "../lib/dateUtils";
 
 const router: IRouter = Router();
 
+// Low to high — see supabase/migrations/..._wod_results_level_scale.sql.
+const WOD_LEVELS = ["beginner", "rookie", "scaled", "master", "rx", "elite"] as const;
+
 function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -75,7 +78,7 @@ router.get("/wod/today", async (req: Request, res: Response) => {
               timeSeconds: myResult.timeSeconds,
               rounds: myResult.rounds,
               reps: myResult.reps,
-              scaled: myResult.scaled,
+              level: myResult.level,
               notes: myResult.notes,
             }
           : null,
@@ -93,7 +96,7 @@ const SubmitResultBody = z.object({
   timeSeconds: z.number().int().positive().optional(),
   rounds: z.number().int().min(0).optional(),
   reps: z.number().int().min(0).optional(),
-  scaled: z.boolean().default(false),
+  level: z.enum(WOD_LEVELS),
   notes: z.string().max(300).optional(),
 });
 
@@ -110,7 +113,7 @@ router.post("/wod-results", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid fields" });
     return;
   }
-  const { userId, wodOfDayId, timeSeconds, rounds, reps, scaled, notes } = parsed.data;
+  const { userId, wodOfDayId, timeSeconds, rounds, reps, level, notes } = parsed.data;
   try {
     const [row] = await db
       .insert(wodResultsTable)
@@ -121,7 +124,7 @@ router.post("/wod-results", async (req: Request, res: Response) => {
         timeSeconds: timeSeconds ?? null,
         rounds: rounds ?? null,
         reps: reps ?? null,
-        scaled,
+        level,
         notes: notes ?? null,
       })
       .onConflictDoUpdate({
@@ -130,7 +133,7 @@ router.post("/wod-results", async (req: Request, res: Response) => {
           timeSeconds: timeSeconds ?? null,
           rounds: rounds ?? null,
           reps: reps ?? null,
-          scaled,
+          level,
           notes: notes ?? null,
         },
       })
@@ -161,7 +164,7 @@ router.get("/wod-results", async (req: Request, res: Response) => {
         timeSeconds: wodResultsTable.timeSeconds,
         rounds: wodResultsTable.rounds,
         reps: wodResultsTable.reps,
-        scaled: wodResultsTable.scaled,
+        level: wodResultsTable.level,
         notes: wodResultsTable.notes,
         createdAt: wodResultsTable.createdAt,
         sessionDate: wodOfDayTable.sessionDate,

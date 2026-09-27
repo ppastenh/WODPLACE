@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTodayWod, submitWodResult, type WodFormat } from '@workspace/api-client-react';
+import { getTodayWod, submitWodResult, SKILL_LEVEL_LABELS, type WodFormat } from '@workspace/api-client-react';
 import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
@@ -31,8 +31,11 @@ export default function WodScreen() {
   const [seconds, setSeconds] = useState('');
   const [rounds, setRounds] = useState('');
   const [reps, setReps] = useState('');
-  const [scaled, setScaled] = useState(false);
   const [notes, setNotes] = useState('');
+  // Auto-filled from the athlete's assigned level (coach-set in box-admin) —
+  // no manual picker. Falls back to 'beginner' for the small number of
+  // legacy accounts whose rank was never set.
+  const level = user?.rank ?? 'beginner';
 
   // Prefill from an already-logged result (edit mode) whenever today's WOD
   // data (re)loads — e.g. right after this screen's own submit resolves.
@@ -45,7 +48,6 @@ export default function WodScreen() {
     }
     if (r.rounds != null) setRounds(String(r.rounds));
     if (r.reps != null) setReps(String(r.reps));
-    setScaled(r.scaled);
     setNotes(r.notes ?? '');
   }, [wod?.myResult]);
 
@@ -62,7 +64,7 @@ export default function WodScreen() {
         timeSeconds,
         rounds: wod.format !== 'for_time' && rounds ? Number(rounds) : undefined,
         reps: wod.format !== 'for_time' && reps ? Number(reps) : undefined,
-        scaled,
+        level,
         notes: notes.trim() || undefined,
       });
     },
@@ -138,32 +140,11 @@ export default function WodScreen() {
                 </View>
               )}
 
-              <View style={styles.scaledRow}>
-                {[
-                  { label: 'Rx', value: false },
-                  { label: 'Scaled', value: true },
-                ].map((opt) => (
-                  <Pressable
-                    key={opt.label}
-                    onPress={() => setScaled(opt.value)}
-                    style={[
-                      styles.scaledBtn,
-                      {
-                        backgroundColor: scaled === opt.value ? colors.primary : colors.secondary,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.scaledBtnText,
-                        { color: scaled === opt.value ? colors.primaryForeground : colors.secondaryForeground },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                ))}
+              <View style={[styles.levelRow, { backgroundColor: colors.secondary }]}>
+                <Feather name="award" size={14} color={colors.secondaryForeground} />
+                <Text style={[styles.levelRowText, { color: colors.secondaryForeground }]}>
+                  Nivel: {SKILL_LEVEL_LABELS[level]}
+                </Text>
               </View>
 
               <TextInput
@@ -261,9 +242,17 @@ const styles = StyleSheet.create({
   timeSep: { fontSize: 20, fontFamily: 'Anton_400Regular' },
   timeLabel: { fontSize: 10, fontFamily: 'Inter_500Medium', marginTop: 4 },
 
-  scaledRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  scaledBtn: { flex: 1, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 10, alignItems: 'center' },
-  scaledBtnText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 16,
+  },
+  levelRowText: { fontSize: 13, fontFamily: 'Inter_700Bold' },
 
   notesInput: {
     marginTop: 12,

@@ -85,19 +85,31 @@ export async function uploadAvatarImage(
 }
 
 /**
- * Pushes rank and/or phrase to the backend so they show up on the public
- * profile — both were previously local-only (AsyncStorage). Best-effort,
- * like syncUser: callers should catch and swallow failures rather than
- * block on this. Either field may be omitted to leave it unchanged.
+ * Pushes phrase to the backend so it shows up on the public profile — it
+ * was previously local-only (AsyncStorage). Best-effort, like syncUser:
+ * callers should catch and swallow failures rather than block on this.
+ * Does NOT carry rank: that's coach-assigned from box-admin only, pulled
+ * (never pushed) by the client — see getPublicProfile.
  */
 export async function updateProfileFields(
   userId: string,
-  fields: { rank?: string; phrase?: string },
+  fields: { phrase?: string },
 ): Promise<void> {
-  if (fields.rank === undefined && fields.phrase === undefined) return;
+  if (fields.phrase === undefined) return;
   await customFetch(`/api/users/${userId}/profile`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(fields),
   });
+}
+
+/**
+ * Plain (non-hook) fetch of a user's public profile — used by AuthContext
+ * to pull the athlete's server-truth rank (coach-assigned in box-admin) on
+ * boot, since it's no longer pushed from the client. usePublicProfile above
+ * wraps this same endpoint for screens that just want to render another
+ * user's profile.
+ */
+export async function getPublicProfile(userId: string): Promise<PublicProfile> {
+  return customFetch<PublicProfile>(`/api/users/${userId}/public-profile`);
 }
