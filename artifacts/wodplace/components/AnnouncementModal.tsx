@@ -62,7 +62,7 @@ export function AnnouncementModal({
                 ¿Ya leíste este aviso?
               </Text>
               <Text style={[styles.confirmSubtitle, { color: colors.mutedForeground }]}>
-                Este aviso es importante — confirmá que lo leíste para cerrarlo.
+                Este aviso es importante — confirma que lo leíste para cerrarlo.
               </Text>
               <View style={styles.actions}>
                 <AppButton

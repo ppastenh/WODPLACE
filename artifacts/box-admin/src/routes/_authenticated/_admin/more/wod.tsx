@@ -16,9 +16,9 @@ export const Route = createFileRoute("/_authenticated/_admin/more/wod")({
   head: () => ({
     meta: [
       { title: "WOD del día — Dlovebox" },
-      { name: "description", content: "Publicá el WOD del día para los atletas del box." },
+      { name: "description", content: "Publica el WOD del día para los atletas del box." },
       { property: "og:title", content: "WOD del día — Dlovebox" },
-      { property: "og:description", content: "Elegí un WOD del catálogo o armá uno personalizado." },
+      { property: "og:description", content: "Elige un WOD del catálogo o arma uno personalizado." },
     ],
   }),
   component: WodPage,
@@ -95,7 +95,7 @@ function WodPage() {
 
       if (mode === "custom") {
         if (!customName.trim() || !customDescription.trim()) {
-          throw new Error("Completá nombre y descripción del WOD personalizado");
+          throw new Error("Completa nombre y descripción del WOD personalizado");
         }
         const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
         const { error } = await supabase.from("wods").insert({
@@ -110,7 +110,7 @@ function WodPage() {
         wodId = id;
       }
 
-      if (!wodId) throw new Error("Elegí un WOD del catálogo o armá uno personalizado");
+      if (!wodId) throw new Error("Elige un WOD del catálogo o arma uno personalizado");
 
       const { error } = await supabase.from("wod_of_day").upsert(
         {
@@ -158,7 +158,7 @@ function WodPage() {
           {today.data.notes && (
             <p className="mt-2 rounded-xl bg-card p-2 text-xs">{today.data.notes}</p>
           )}
-          <p className="mt-2 text-[10px] text-muted-foreground">Podés reemplazarlo publicando otro abajo.</p>
+          <p className="mt-2 text-[10px] text-muted-foreground">Puedes reemplazarlo publicando otro abajo.</p>
         </section>
       )}
 

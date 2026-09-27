@@ -1695,6 +1695,7 @@ export type Database = {
           box_id: string | null
           created_at: string
           id: string
+          source_wod_result_id: string | null
           unlocked_at: string
           user_id: string
         }
@@ -1704,6 +1705,7 @@ export type Database = {
           box_id?: string | null
           created_at?: string
           id?: string
+          source_wod_result_id?: string | null
           unlocked_at?: string
           user_id: string
         }
@@ -1713,10 +1715,18 @@ export type Database = {
           box_id?: string | null
           created_at?: string
           id?: string
+          source_wod_result_id?: string | null
           unlocked_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_achievements_source_wod_result_id_fkey"
+            columns: ["source_wod_result_id"]
+            isOneToOne: false
+            referencedRelation: "wod_results"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_achievements_user_id_fkey"
             columns: ["user_id"]
@@ -1807,10 +1817,10 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          level: string
           notes: string | null
           reps: number | null
           rounds: number | null
-          scaled: boolean
           time_seconds: number | null
           user_id: string
           wod_of_day_id: string
@@ -1818,10 +1828,10 @@ export type Database = {
         Insert: {
           created_at?: string
           id: string
+          level: string
           notes?: string | null
           reps?: number | null
           rounds?: number | null
-          scaled?: boolean
           time_seconds?: number | null
           user_id: string
           wod_of_day_id: string
@@ -1829,10 +1839,10 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          level?: string
           notes?: string | null
           reps?: number | null
           rounds?: number | null
-          scaled?: boolean
           time_seconds?: number | null
           user_id?: string
           wod_of_day_id?: string

@@ -152,7 +152,7 @@ function BoxesPage() {
   const authorize = useMutation({
     mutationFn: async (rawEmail: string) => {
       const clean = rawEmail.trim().toLowerCase();
-      if (!clean) throw new Error("Ingresá un email.");
+      if (!clean) throw new Error("Ingresa un email.");
       const { error } = await supabase
         .from("box_creation_authorizations")
         .insert({ email: clean, authorized_by: email });
@@ -234,8 +234,8 @@ function BoxesPage() {
   const grant = useMutation({
     mutationFn: async ({ email: rawEmail, boxId }: { email: string; boxId: string }) => {
       const clean = rawEmail.trim();
-      if (!clean) throw new Error("Ingresá un email.");
-      if (!boxId) throw new Error("Elegí un box.");
+      if (!clean) throw new Error("Ingresa un email.");
+      if (!boxId) throw new Error("Elige un box.");
 
       const { data: profs, error } = await supabase
         .from("profiles")
@@ -432,7 +432,7 @@ function BoxesPage() {
             onChange={(e) => setGrantBoxId(e.target.value)}
             className="w-full rounded-full border border-input bg-background px-4 py-2 text-sm"
           >
-            <option value="">Elegí un box…</option>
+            <option value="">Elige un box…</option>
             {active.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}

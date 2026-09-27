@@ -303,7 +303,7 @@ export function SelectPlanSheet({
   function selectPlan(planName: string, planId: string) {
     if (planName === currentPlanName) return;
     const confirmed = confirm(
-      `Vas a cambiar el plan de ${memberName} de "${currentPlanName ?? "sin plan"}" a "${planName}". ¿Confirmás?\n\n` +
+      `Vas a cambiar el plan de ${memberName} de "${currentPlanName ?? "sin plan"}" a "${planName}". ¿Confirmas?\n\n` +
         "Esto no ajusta pagos ya hechos — los pagos se registran aparte, en Finanzas.",
     );
     if (confirmed) setPlan.mutate(planId);

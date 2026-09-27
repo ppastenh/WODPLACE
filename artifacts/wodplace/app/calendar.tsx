@@ -79,8 +79,8 @@ export default function CalendarScreen() {
 
   const warnDailyLimit = () => {
     Alert.alert(
-      'Ya tenés algo agendado hoy',
-      'El auto-agendamiento admite una sola clase (o lista de espera) por día. Para una segunda clase el mismo día, pedíselo al administrador de tu box.',
+      'Ya tienes algo agendado hoy',
+      'El auto-agendamiento admite una sola clase (o lista de espera) por día. Para una segunda clase el mismo día, pídeselo al administrador de tu box.',
     );
   };
 
@@ -118,7 +118,7 @@ export default function CalendarScreen() {
     if (user?.status !== 'active') {
       Alert.alert(
         'Cuenta no activa',
-        'Activa tu cuenta completando el registro en Contratos Activos para poder reservar clases. Mientras tanto podés ver el calendario y quién está anotado.',
+        'Activa tu cuenta completando el registro en Contratos Activos para poder reservar clases. Mientras tanto puedes ver el calendario y quién está anotado.',
       );
       return;
     }
@@ -251,7 +251,7 @@ export default function CalendarScreen() {
           <View style={styles.emptyState}>
             <Feather name="calendar" size={26} color={colors.mutedForeground} />
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Todavía no tenés un box. Unite desde Inicio para ver sus clases disponibles.
+              Todavía no tienes un box. Únete desde Inicio para ver sus clases disponibles.
             </Text>
           </View>
         ) : sessions.length === 0 ? (
@@ -310,7 +310,7 @@ export default function CalendarScreen() {
         onClose={() => setStartedConfirmSession(null)}
         onConfirm={handleConfirmStartedBook}
         title="Esta clase ya empezó"
-        subtitle="Podés perderte parte de la clase si te sumás ahora. ¿Querés reservar igual?"
+        subtitle="Puedes perderte parte de la clase si te sumas ahora. ¿Quieres reservar igual?"
         confirmLabel="Reservar igual"
         cancelLabel="Cancelar"
       />

@@ -141,7 +141,7 @@ export default function LoginPasswordScreen() {
             <Text style={[styles.recoverText, { color: colors.authMuted }]}>
               ¿Olvidaste tu contraseña o cambiaste de teléfono?{' '}
               <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
-                Recuperá tu cuenta
+                Recupera tu cuenta
               </Text>
             </Text>
           </Pressable>

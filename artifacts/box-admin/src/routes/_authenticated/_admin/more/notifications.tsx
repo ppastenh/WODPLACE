@@ -128,7 +128,7 @@ function NotificationsPage() {
           <ShieldAlert className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-semibold">Sin acceso</p>
           <p className="text-xs text-muted-foreground">
-            No tenés el permiso para publicar avisos. Pedile a tu administrador que te lo habilite desde Coaches.
+            No tienes el permiso para publicar avisos. Pide a tu administrador que te lo habilite desde Coaches.
           </p>
         </div>
       </AdminShell>

@@ -288,7 +288,7 @@ export function BarLoadDiagram({ perSide, barLabel, onRemove }: Props) {
       ) : null}
       {onRemove && perSide.length > 0 ? (
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          Tocá un disco para quitarlo
+          Toca un disco para quitarlo
         </Text>
       ) : null}
     </View>

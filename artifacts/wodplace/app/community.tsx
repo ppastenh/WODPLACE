@@ -1249,10 +1249,10 @@ export default function CommunityScreen() {
           <View style={styles.emptyState}>
             <Feather name="users" size={32} color={colors.navInactive} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              Todavía no tenés un box
+              Todavía no tienes un box
             </Text>
             <Text style={[styles.emptyText, { color: colors.navInactive }]}>
-              Unite a un box desde Inicio para ver y participar en su comunidad.
+              Únete a un box desde Inicio para ver y participar en su comunidad.
             </Text>
           </View>
         </View>

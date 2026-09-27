@@ -87,7 +87,7 @@ function SupportPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight">Soporte</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Problemas y bugs de la app que los admins de box te reportan directamente a vos.
+          Problemas y bugs de la app que los admins de box te reportan directamente a ti.
         </p>
       </div>
 

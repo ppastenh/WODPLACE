@@ -90,7 +90,7 @@ export default function RmHistoryScreen() {
               Todavía no cargaste ningún RM
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Registrá tu primer levantamiento para ver el historial y la evolución.
+              Registra tu primer levantamiento para ver el historial y la evolución.
             </Text>
           </View>
         ) : (

@@ -8,7 +8,11 @@
  * `icon` is a Feather icon name (@expo/vector-icons/Feather, the icon set
  * wodplace already uses everywhere else) — kept as a plain string here so
  * this file has no dependency on any UI library; the client renders it
- * directly (`<Feather name={a.icon} />`).
+ * directly (`<Feather name={a.icon} />`). One exception: `"trophy"` (the 3
+ * podium-place COMPETENCIA achievements) has no Feather equivalent, so
+ * MedalBadge special-cases that one value to MaterialCommunityIcons and
+ * tints it gold/silver/bronze by achievement id — see
+ * wodplace/lib/medalColors.ts.
  *
  * Fase 1 covers 5 automatic categories (evaluate.ts computes all of these
  * from data that already exists: bookings, PRs, Comunidad, box tenure, app
@@ -46,14 +50,14 @@ export type AchievementDef = {
 };
 
 export const ACHIEVEMENT_CATEGORIES: Array<{ id: AchievementCategoryId; name: string }> = [
+  { id: "box", name: "Box" },
   { id: "movimiento", name: "Movimiento" },
   { id: "constancia", name: "Constancia" },
   { id: "pr", name: "PR" },
   { id: "comunidad", name: "Comunidad" },
-  { id: "box", name: "Box" },
-  { id: "wodplace", name: "WODPLACE" },
   { id: "wod", name: "WOD del Día" },
   { id: "competencia", name: "Competencia" },
+  { id: "wodplace", name: "WODPLACE" },
 ];
 
 // Hero/benchmark catalog ids — must match public.wods (see
@@ -209,21 +213,21 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // patrón que MOVIMIENTO (no un sistema de gestión de eventos todavía).
   { id: "competencia_first", category: "competencia", kind: "manual", icon: "flag", name: "Primera competencia", description: "Otorgada por el coach." },
   { id: "competencia_podium", category: "competencia", kind: "manual", icon: "award", name: "Primer podio", description: "Otorgada por el coach." },
-  { id: "competencia_first_place", category: "competencia", kind: "manual", icon: "star", name: "Primer 1er lugar", description: "Otorgada por el coach." },
-  { id: "competencia_second_place", category: "competencia", kind: "manual", icon: "star", name: "Primer 2do lugar", description: "Otorgada por el coach." },
-  { id: "competencia_third_place", category: "competencia", kind: "manual", icon: "star", name: "Primer 3er lugar", description: "Otorgada por el coach." },
+  { id: "competencia_first_place", category: "competencia", kind: "manual", icon: "trophy", name: "Primer 1er lugar", description: "Otorgada por el coach." },
+  { id: "competencia_second_place", category: "competencia", kind: "manual", icon: "trophy", name: "Primer 2do lugar", description: "Otorgada por el coach." },
+  { id: "competencia_third_place", category: "competencia", kind: "manual", icon: "trophy", name: "Primer 3er lugar", description: "Otorgada por el coach." },
   { id: "competencia_recurring", category: "competencia", kind: "manual", icon: "repeat", name: "Competidor recurrente", description: "Otorgada por el coach." },
   { id: "competencia_count_3", category: "competencia", kind: "manual", icon: "bar-chart-2", name: "3 competencias", description: "Otorgada por el coach." },
   { id: "competencia_count_5", category: "competencia", kind: "manual", icon: "bar-chart-2", name: "5 competencias", description: "Otorgada por el coach." },
   { id: "competencia_count_10", category: "competencia", kind: "manual", icon: "bar-chart-2", name: "10 competencias", description: "Otorgada por el coach." },
   // Primera vez compitiendo en cada categoría de la escala de 6 niveles
   // (misma escala que wodplace_users.rank / wod_results.level).
-  { id: "competencia_category_beginner", category: "competencia", kind: "manual", icon: "circle", name: "Compitió en categoría Beginner", description: "Otorgada por el coach." },
-  { id: "competencia_category_rookie", category: "competencia", kind: "manual", icon: "circle", name: "Compitió en categoría Rookie", description: "Otorgada por el coach." },
-  { id: "competencia_category_scaled", category: "competencia", kind: "manual", icon: "circle", name: "Compitió en categoría Scaled", description: "Otorgada por el coach." },
-  { id: "competencia_category_master", category: "competencia", kind: "manual", icon: "award", name: "Compitió en categoría Master", description: "Otorgada por el coach." },
-  { id: "competencia_category_rx", category: "competencia", kind: "manual", icon: "award", name: "Compitió en categoría RX", description: "Otorgada por el coach." },
-  { id: "competencia_category_elite", category: "competencia", kind: "manual", icon: "star", name: "Compitió en categoría Elite", description: "Otorgada por el coach." },
+  { id: "competencia_category_beginner", category: "competencia", kind: "manual", icon: "circle", name: "1era vez en Beginner", description: "Otorgada por el coach." },
+  { id: "competencia_category_rookie", category: "competencia", kind: "manual", icon: "circle", name: "1era vez en Rookie", description: "Otorgada por el coach." },
+  { id: "competencia_category_scaled", category: "competencia", kind: "manual", icon: "circle", name: "1era vez en Scaled", description: "Otorgada por el coach." },
+  { id: "competencia_category_master", category: "competencia", kind: "manual", icon: "award", name: "1era vez en Master", description: "Otorgada por el coach." },
+  { id: "competencia_category_rx", category: "competencia", kind: "manual", icon: "award", name: "1era vez en RX", description: "Otorgada por el coach." },
+  { id: "competencia_category_elite", category: "competencia", kind: "manual", icon: "star", name: "1era vez en Elite", description: "Otorgada por el coach." },
 ];
 
 export function achievementsByCategory(category: AchievementCategoryId): AchievementDef[] {

@@ -95,7 +95,7 @@ export default function BoxDetailsScreen() {
       >
         <Text style={[styles.title, { color: colors.foreground }]}>Datos del Box</Text>
         <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
-          Completá estos datos para que el equipo de WODPLACE pueda revisar y aprobar tu box.
+          Completa estos datos para que el equipo de WODPLACE pueda revisar y aprobar tu box.
         </Text>
 
         <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -148,7 +148,7 @@ export default function BoxDetailsScreen() {
         </View>
 
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-          Redes sociales (opcional — podés completarlo después)
+          Redes sociales (opcional — puedes completarlo después)
         </Text>
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <Field

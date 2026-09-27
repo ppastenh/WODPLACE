@@ -49,7 +49,7 @@ export default function CreateBoxScreen() {
       await refreshActivationStatus();
       Alert.alert(
         'Solicitud enviada',
-        'Ya podés continuar desde el menú: primero el Acuerdo de Plataforma, y después tu PIN de administrador. Mientras tanto, el equipo de WODPLACE va a revisar tu box.',
+        'Ya puedes continuar desde el menú: primero el Acuerdo de Plataforma, y después tu PIN de administrador. Mientras tanto, el equipo de WODPLACE va a revisar tu box.',
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (err: any) {
@@ -94,7 +94,7 @@ export default function CreateBoxScreen() {
         ) : (
           <>
             <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
-              Registrá tu box en WODPLACE. El equipo de WODPLACE va a revisar y aprobar tu
+              Registra tu box en WODPLACE. El equipo de WODPLACE va a revisar y aprobar tu
               solicitud antes de que puedas empezar a usar el panel de administración.
             </Text>
 

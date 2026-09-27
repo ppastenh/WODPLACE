@@ -280,7 +280,7 @@ export default function BarLoaderScreen() {
                 ? 'Exacto para el peso pedido'
                 : autoResult.remainderKg > 0
                   ? `Lo más cercano: faltan ${trimNum(autoResult.remainderKg, 2)} kg`
-                  : `Lo más cercano: te pasás ${trimNum(-autoResult.remainderKg, 2)} kg`}
+                  : `Lo más cercano: te pasas ${trimNum(-autoResult.remainderKg, 2)} kg`}
             </Text>
           ) : perSide.length === 0 ? (
             <View style={[styles.emptyBadge, { backgroundColor: colors.secondary }]}>
@@ -368,7 +368,7 @@ export default function BarLoaderScreen() {
         </Pressable>
         <Text style={[styles.saveHint, { color: colors.mutedForeground }]}>
           {perSide.length === 0
-            ? 'Cargá discos en la barra para guardar el peso.'
+            ? 'Carga discos en la barra para guardar el peso.'
             : `Se guarda el peso total con la barra: ${trimNum(saveWeight, 1)} ${unit}`}
         </Text>
 

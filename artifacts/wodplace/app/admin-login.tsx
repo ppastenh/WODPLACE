@@ -321,7 +321,7 @@ export default function AdminLoginScreen() {
         {mode === 'choose-target' ? (
           <>
             <Text style={[styles.subtitle, { color: colors.authMuted }]}>
-              Tu cuenta tiene acceso a los dos paneles. ¿Cuál querés abrir?
+              Tu cuenta tiene acceso a los dos paneles. ¿Cuál quieres abrir?
             </Text>
             <AppButton
               label="Panel de Box"

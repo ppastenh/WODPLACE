@@ -73,7 +73,7 @@ function AuthPage() {
       >
         {denied && (
           <p className="rounded-xl bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            Tu sesión no tiene permiso para entrar al panel. Iniciá sesión con una cuenta super
+            Tu sesión no tiene permiso para entrar al panel. Inicia sesión con una cuenta super
             administrador.
           </p>
         )}

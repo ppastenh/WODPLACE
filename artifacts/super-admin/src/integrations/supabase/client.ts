@@ -38,7 +38,7 @@ function createSupabaseClient() {
       ...(!SUPABASE_PUBLISHABLE_KEY ? ["VITE_SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
     throw new Error(
-      `Missing Supabase environment variable(s): ${missing.join(", ")}. Revisá el .env.`,
+      `Missing Supabase environment variable(s): ${missing.join(", ")}. Revisa el .env.`,
     );
   }
 

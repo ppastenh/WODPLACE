@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Polygon, RadialGradient, Stop } from 'react-native-svg';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { shade } from '@/lib/rm/plateColors';
 
 const COPPER = '#C79A6B';
@@ -19,24 +19,32 @@ let uidCounter = 0;
  * `base` color feeds every gradient, so `unlocked` is the only thing that
  * changes between states.
  *
- * The icon is a real Feather glyph overlaid as a plain View on top of the
- * SVG (not drawn inside it) — avoids needing to convert each glyph to an
- * SVG path.
+ * The icon is a real glyph overlaid as a plain View on top of the SVG (not
+ * drawn inside it) — avoids needing to convert each glyph to an SVG path.
+ * Almost always a Feather glyph (the catalog's `icon` field convention);
+ * `"trophy"` is the one exception (no Feather equivalent), rendered via
+ * MaterialCommunityIcons instead — see catalog.ts's own doc comment.
+ *
+ * `iconColor` overrides the default copper/gray icon tint (still only while
+ * unlocked — a locked medal always reads as gray regardless) — used for the
+ * gold/silver/bronze podium trophies, see lib/medalColors.ts.
  */
 export function MedalBadge({
   icon,
   unlocked,
   size = 84,
   showRibbon = true,
+  iconColor: iconColorOverride,
 }: {
   icon: string;
   unlocked: boolean;
   size?: number;
   showRibbon?: boolean;
+  iconColor?: string;
 }) {
   const uid = useRef(`medal-${uidCounter++}`).current;
   const base = unlocked ? COPPER : GRAY;
-  const iconColor = unlocked ? COPPER_ICON : GRAY_ICON;
+  const iconColor = unlocked ? (iconColorOverride ?? COPPER_ICON) : GRAY_ICON;
 
   const r = size / 2;
   const cx = r;
@@ -106,7 +114,11 @@ export function MedalBadge({
           { width: iconBoxSize, height: iconBoxSize, left: cx - iconBoxSize / 2, top: cy - iconBoxSize / 2 },
         ]}
       >
-        <Feather name={icon as React.ComponentProps<typeof Feather>['name']} size={size * 0.4} color={iconColor} />
+        {icon === 'trophy' ? (
+          <MaterialCommunityIcons name="trophy" size={size * 0.42} color={iconColor} />
+        ) : (
+          <Feather name={icon as React.ComponentProps<typeof Feather>['name']} size={size * 0.4} color={iconColor} />
+        )}
       </View>
     </View>
   );

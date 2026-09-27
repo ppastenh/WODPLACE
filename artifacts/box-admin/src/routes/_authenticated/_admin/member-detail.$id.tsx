@@ -20,6 +20,7 @@ import { useUpcomingBookings, type UpcomingClass } from "@/lib/upcomingBookings"
 import { Switch } from "@/components/ui/switch";
 import { MOVEMENT_ACHIEVEMENTS } from "@/lib/movementAchievements";
 import { COMPETITION_ACHIEVEMENTS } from "@/lib/competitionAchievements";
+import { WOD_ACHIEVEMENT_NAMES } from "@/lib/wodAchievementNames";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SKILL_LEVELS, SKILL_LEVEL_LABELS, type SkillLevel } from "@/lib/skillLevel";
 import { Award } from "lucide-react";
@@ -56,6 +57,31 @@ type MemberDetailRow = {
   plans: { name: string; price: number | null; duration_days: number | null } | null;
 };
 
+type WodResultRow = {
+  id: string;
+  time_seconds: number | null;
+  rounds: number | null;
+  reps: number | null;
+  level: string;
+  wod_of_day: { session_date: string; wods: { name: string; format: string } | null } | null;
+};
+
+function formatWodResult(row: WodResultRow): string {
+  const format = row.wod_of_day?.wods?.format;
+  if (format === "for_time" && row.time_seconds != null) {
+    const m = Math.floor(row.time_seconds / 60);
+    const s = row.time_seconds % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+  if (format === "amrap") {
+    const parts = [`${row.rounds ?? 0} rounds`];
+    if (row.reps) parts.push(`+${row.reps}`);
+    return parts.join(" ");
+  }
+  if (format === "max_reps") return `${row.reps ?? 0} reps`;
+  return "—";
+}
+
 function MemberDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
@@ -89,6 +115,69 @@ function MemberDetail() {
   });
 
   const upcoming = useUpcomingBookings(boxId, id);
+
+  // Minimal WOD results view — lets the admin see what an athlete logged
+  // and delete a specific bad one (e.g. lied about doing the WOD). Needs
+  // its own SELECT/DELETE RLS on wod_results (had zero policies before,
+  // same "Fase 1" gap user_achievements had) — see supabase/migrations/
+  // ..._box_admin_wod_results_rls.sql.
+  const wodResults = useQuery({
+    queryKey: ["member-wod-results", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("wod_results")
+        .select("id, time_seconds, rounds, reps, level, wod_of_day(session_date, wods(name, format))")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false });
+      return (data as unknown as WodResultRow[] | null) ?? [];
+    },
+  });
+
+  const [wodResultToRemove, setWodResultToRemove] = useState<{ row: WodResultRow; medalNames: string[] } | null>(null);
+  const [loadingMedalsForResult, setLoadingMedalsForResult] = useState<string | null>(null);
+
+  // Looks up which medals this specific result caused BEFORE opening the
+  // confirm dialog, so the admin sees exactly what deleting it will also
+  // remove (source_wod_result_id — see the migration above).
+  const openRemoveWodResult = async (row: WodResultRow) => {
+    setLoadingMedalsForResult(row.id);
+    try {
+      const { data, error } = await supabase
+        .from("user_achievements")
+        .select("achievement_id")
+        .eq("source_wod_result_id", row.id);
+      if (error) throw error;
+      const medalNames = (data ?? []).map((r) => WOD_ACHIEVEMENT_NAMES[r.achievement_id] ?? r.achievement_id);
+      setWodResultToRemove({ row, medalNames });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudieron cargar las medallas asociadas");
+    } finally {
+      setLoadingMedalsForResult(null);
+    }
+  };
+
+  const deleteWodResult = useMutation({
+    mutationFn: async (row: WodResultRow) => {
+      // Delete the medals this result caused FIRST — their RLS delete
+      // policy needs source_wod_result_id to still point at an existing,
+      // box-staffed result. Deleting the result first would null that FK
+      // out (on delete set null) before this query could match them.
+      const { error: achvError } = await supabase
+        .from("user_achievements")
+        .delete()
+        .eq("source_wod_result_id", row.id);
+      if (achvError) throw achvError;
+
+      const { error } = await supabase.from("wod_results").delete().eq("id", row.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Resultado eliminado");
+      qc.invalidateQueries({ queryKey: ["member-wod-results", id] });
+      setWodResultToRemove(null);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo eliminar el resultado"),
+  });
 
   // MOVIMIENTO (Fase 2) — coach-granted skill/lift badges. Writes directly
   // to user_achievements via Supabase (RLS lets box staff manage rows that
@@ -432,6 +521,39 @@ function MemberDetail() {
               </div>
             </div>
           ))}
+
+          <p className="pt-2 text-xs text-muted-foreground">
+            Resultados de WOD registrados.
+          </p>
+          {wodResults.data?.length === 0 ? (
+            <Empty text="Sin resultados de WOD registrados" />
+          ) : (
+            <div className="divide-y divide-border/60 rounded-2xl border bg-card">
+              {wodResults.data?.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-3 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{r.wod_of_day?.wods?.name ?? "—"}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {r.wod_of_day?.session_date ? format(new Date(`${r.wod_of_day.session_date}T00:00:00`), "dd MMM yyyy") : "—"}
+                      {" · "}{SKILL_LEVEL_LABELS[r.level as SkillLevel] ?? r.level}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-black text-primary">{formatWodResult(r)}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      disabled={loadingMedalsForResult === r.id}
+                      onClick={() => openRemoveWodResult(r)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -464,6 +586,23 @@ function MemberDetail() {
         destructive
         loading={removeBooking.isPending}
         onConfirm={() => { if (toRemove) removeBooking.mutate(toRemove.bookingId); }}
+      />
+      <ConfirmDialog
+        open={wodResultToRemove != null}
+        onOpenChange={(v) => { if (!v) setWodResultToRemove(null); }}
+        title="Eliminar resultado de WOD"
+        description={
+          wodResultToRemove
+            ? `¿Eliminar el resultado de ${fullName} en ${wodResultToRemove.row.wod_of_day?.wods?.name ?? "este WOD"}?` +
+              (wodResultToRemove.medalNames.length > 0
+                ? ` Esto también va a quitar: ${wodResultToRemove.medalNames.join(", ")}.`
+                : "")
+            : undefined
+        }
+        confirmLabel="Eliminar"
+        destructive
+        loading={deleteWodResult.isPending}
+        onConfirm={() => { if (wodResultToRemove) deleteWodResult.mutate(wodResultToRemove.row); }}
       />
     </AdminShell>
   );
@@ -537,7 +676,7 @@ function EditMemberDialog({
               onChange={(e) => setForm({ ...form, memberSince: e.target.value })}
             />
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Usá esto si el alumno entrenaba acá antes de que existiera la app.
+              Usa esto si el alumno entrenaba acá antes de que existiera la app.
             </p>
           </div>
           <div>

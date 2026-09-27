@@ -116,7 +116,7 @@ export function MovementSheet({ visible, userId, selectedId, onSelect, onClose }
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Elegí el movimiento</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Elige el movimiento</Text>
           <Pressable onPress={onClose} hitSlop={12}>
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </Pressable>

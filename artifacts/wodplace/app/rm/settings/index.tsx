@@ -109,7 +109,7 @@ export default function RmSettingsScreen() {
 
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Mi barra</Text>
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          La que usás siempre. La calculadora arranca con ésta seleccionada.
+          La que usas siempre. La calculadora arranca con ésta seleccionada.
         </Text>
         <View style={styles.pillRow}>
           {[20, 15].map((kg) => (

@@ -55,7 +55,7 @@ function SuperAdminsPage() {
   const grant = useMutation({
     mutationFn: async (rawEmail: string) => {
       const clean = rawEmail.trim();
-      if (!clean) throw new Error("Ingresá un email.");
+      if (!clean) throw new Error("Ingresa un email.");
 
       const { data: profs, error } = await supabase
         .from("profiles")
@@ -117,7 +117,7 @@ function SuperAdminsPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight">Gestión de Super Admins</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          El rol más poderoso de la plataforma — otorgalo con cuidado. No podés revocarte a vos
+          El rol más poderoso de la plataforma — otórgalo con cuidado. No puedes revocarte a ti
           misma.
         </p>
       </div>
@@ -171,7 +171,7 @@ function SuperAdminsPage() {
               >
                 <span className="text-sm">
                   {a.email}{" "}
-                  {isSelf ? <span className="text-xs text-muted-foreground">(vos)</span> : null}
+                  {isSelf ? <span className="text-xs text-muted-foreground">(tú)</span> : null}
                 </span>
                 <Button
                   onClick={() => setConfirmRevoke(a)}

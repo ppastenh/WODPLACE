@@ -262,7 +262,7 @@ export default function ActiveContractsScreen() {
                   ) : null}
                   {!doc.read && !openedSlugs[doc.slug] ? (
                     <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
-                      Abrí el documento para poder marcarlo como leído.
+                      Abre el documento para poder marcarlo como leído.
                     </Text>
                   ) : null}
                 </View>
@@ -304,7 +304,7 @@ export default function ActiveContractsScreen() {
                   Contacto de emergencia
                 </Text>
                 <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
-                  Para poder avisar a alguien de tu confianza si tenés un accidente durante el
+                  Para poder avisar a alguien de tu confianza si tienes un accidente durante el
                   entrenamiento.
                 </Text>
                 <TextInput
@@ -339,8 +339,8 @@ export default function ActiveContractsScreen() {
                   <View style={[styles.noticeBox, { backgroundColor: colors.secondary }]}>
                     <Feather name="calendar" size={14} color={colors.mutedForeground} />
                     <Text style={[styles.warningText, { color: colors.mutedForeground }]}>
-                      Necesitamos tu fecha de nacimiento para continuar. Agregala en Datos
-                      Personales (queda bloqueada al guardar) y volvé a esta pantalla.
+                      Necesitamos tu fecha de nacimiento para continuar. Agrégala en Datos
+                      Personales (queda bloqueada al guardar) y vuelve a esta pantalla.
                     </Text>
                   </View>
                 ) : null}

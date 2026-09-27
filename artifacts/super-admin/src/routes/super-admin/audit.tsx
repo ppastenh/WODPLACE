@@ -93,7 +93,7 @@ function AuditPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight">Registro de Auditoría</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Últimas 200 acciones sensibles hechas desde este panel. Tocá una fila para ver el
+          Últimas 200 acciones sensibles hechas desde este panel. Toca una fila para ver el
           detalle completo. Nadie puede editar ni borrar una fila ya escrita.
         </p>
       </div>

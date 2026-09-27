@@ -630,8 +630,17 @@ export type TrainingSettingsRow = typeof trainingSettingsTable.$inferSelect;
 // lib/achievements/catalog.ts), not here — this table only records who
 // unlocked what and when. Permanent once written: re-evaluating never
 // deletes a row, even if the data that triggered it (a PR, a booking) is
-// later removed. `awardedBy`/`boxId` are only ever set for MOVIMIENTO
-// achievements (coach-granted) — null for every automatic one.
+// later removed. `awardedBy`/`boxId` are only ever set for MOVIMIENTO/
+// COMPETENCIA achievements (coach-granted) — null for every automatic one.
+//
+// `sourceWodResultId` is the one targeted exception to "permanent": it's set
+// only by evaluate.ts's WOD category (wod_count_*/wod_level_*/wod_hero_*/
+// wod_improve — never wod_beast_mode, which comes from 5 results together,
+// not one) so box-admin's WOD results view can delete exactly the medals a
+// specific bad result caused when the admin deletes that result. `on delete
+// set null` on the FK: if the result is gone for some other reason, the
+// medal row still isn't silently deleted — only the explicit "delete this
+// result" action in box-admin does both together.
 export const userAchievementsTable = pgTable(
   "user_achievements",
   {
@@ -645,6 +654,7 @@ export const userAchievementsTable = pgTable(
       .defaultNow(),
     awardedBy: text("awarded_by"),
     boxId: text("box_id"),
+    sourceWodResultId: text("source_wod_result_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

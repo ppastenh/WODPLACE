@@ -220,9 +220,9 @@ export default function RegisterScreen() {
             hitSlop={8}
           >
             <Text style={[styles.termsText, { color: colors.authMuted }]}>
-              ¿Ya tenés cuenta y cambiaste de teléfono?{' '}
+              ¿Ya tienes cuenta y cambiaste de teléfono?{' '}
               <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
-                Recuperá tu acceso
+                Recupera tu acceso
               </Text>
             </Text>
           </Pressable>

@@ -38,7 +38,7 @@ export default function RecoverAccountScreen() {
 
   const handleRequest = async () => {
     if (!EMAIL_REGEX.test(email.trim())) {
-      setError('Ingresá un email válido');
+      setError('Ingresa un email válido');
       return;
     }
     setError('');
@@ -47,7 +47,7 @@ export default function RecoverAccountScreen() {
       await requestAccountRecovery(email.trim());
       setStep('code');
     } catch {
-      setError('No se pudo procesar la solicitud. Intentá de nuevo.');
+      setError('No se pudo procesar la solicitud. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -76,7 +76,7 @@ export default function RecoverAccountScreen() {
       // A wrong/expired code / lockout surfaces here (verify runs inside
       // recoverAccount) — show the server's message, not the HTTP prefix.
       const serverMsg = (e as { data?: { error?: string } })?.data?.error;
-      setError(serverMsg ?? 'No se pudo recuperar la cuenta. Intentá de nuevo.');
+      setError(serverMsg ?? 'No se pudo recuperar la cuenta. Intenta de nuevo.');
       setStep('code');
     } finally {
       setLoading(false);
@@ -183,7 +183,7 @@ export default function RecoverAccountScreen() {
         {step === 'password' && (
           <View style={styles.form}>
             <Text style={[styles.hint, { color: colors.authMuted }]}>
-              Elegí una contraseña nueva para este dispositivo.
+              Elige una contraseña nueva para este dispositivo.
             </Text>
             <View
               style={[

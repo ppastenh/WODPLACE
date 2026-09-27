@@ -113,15 +113,15 @@ export default function RecordRmScreen() {
 
   const save = () => {
     if (!movement) {
-      Alert.alert('Falta el movimiento', 'Elegí un movimiento.');
+      Alert.alert('Falta el movimiento', 'Elige un movimiento.');
       return;
     }
     if (!liftedValid) {
-      Alert.alert('Peso inválido', 'Ingresá un peso mayor que cero.');
+      Alert.alert('Peso inválido', 'Ingresa un peso mayor que cero.');
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      Alert.alert('Fecha inválida', 'Usá el formato AAAA-MM-DD.');
+      Alert.alert('Fecha inválida', 'Usa el formato AAAA-MM-DD.');
       return;
     }
     create.mutate(
@@ -260,7 +260,7 @@ export default function RecordRmScreen() {
         {/* Esfuerzo */}
         <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 22 }]}>Esfuerzo</Text>
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          Cómo llegás al 1RM proyectado que se guarda.
+          Cómo llegas al 1RM proyectado que se guarda.
         </Text>
 
         <View style={[styles.toggle, styles.effortToggle, { borderColor: colors.border }]}>

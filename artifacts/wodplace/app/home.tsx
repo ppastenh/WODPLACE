@@ -54,6 +54,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBooking } from '@/context/BookingContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
+import { getMedalIconColor } from '@/lib/medalColors';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import { useRefetchOnFocusIfStale } from '@/lib/useRefetchOnFocusIfStale';
 import {
@@ -260,7 +261,7 @@ export default function HomeScreen() {
     markBoxWelcomeShown(user.id).catch(() => {});
     Alert.alert(
       '¡Tu box ya está aprobado!',
-      'Ya podés administrarlo y empezar a invitar alumnos.',
+      'Ya puedes administrarlo y empezar a invitar alumnos.',
     );
   }, [user?.id, adminStatus?.box?.showWelcome]);
 
@@ -488,21 +489,21 @@ export default function HomeScreen() {
             onPress={() => router.push('/wod' as never)}
             style={({ pressed }) => [
               styles.wodCard,
-              { backgroundColor: colors.card },
+              { backgroundColor: colors.accent },
               pressed && styles.pressedCard,
             ]}
           >
             <View style={styles.smallCardHeader}>
               <View style={styles.wodTitleRow}>
-                <Feather name="zap" size={18} color={colors.navActive} />
-                <Text style={[styles.smallCardLabel, { color: colors.navInactive, marginTop: 0 }]}>
+                <Feather name="zap" size={18} color={colors.accentForeground} />
+                <Text style={[styles.smallCardLabel, { color: colors.accentForeground, marginTop: 0 }]}>
                   WOD de hoy{todayWod.myResult ? ' · registrado' : ''}
                 </Text>
               </View>
-              <Feather name="chevron-right" size={18} color={colors.navInactive} />
+              <Feather name="chevron-right" size={18} color={colors.accentForeground} />
             </View>
-            <Text style={[styles.wodName, { color: colors.foreground }]}>{todayWod.name}</Text>
-            <Text style={[styles.wodDescription, { color: colors.navInactive }]} numberOfLines={2}>
+            <Text style={[styles.wodName, { color: colors.accentForeground }]}>{todayWod.name}</Text>
+            <Text style={[styles.wodDescription, { color: colors.accentForeground }]} numberOfLines={2}>
               {todayWod.description}
             </Text>
           </Pressable>
@@ -529,7 +530,7 @@ export default function HomeScreen() {
               {achievementStats?.currentStreakDays ?? 0}
             </Text>
             <Text style={[styles.statsDetail, { color: colors.navInactive }]}>
-              {achievementStats?.currentStreakDays ? 'días seguidos' : 'Empezá hoy'}
+              {achievementStats?.currentStreakDays ? 'días seguidos' : 'Empieza hoy'}
             </Text>
           </View>
         </View>
@@ -560,7 +561,7 @@ export default function HomeScreen() {
                       ? ` (+${achievementStats.featuredPr.improvementPct}%)`
                       : ''
                   }`
-                : 'Registrá tu primera marca'}
+                : 'Registra tu primera marca'}
             </Text>
           </Pressable>
 
@@ -600,18 +601,25 @@ export default function HomeScreen() {
             {medalsSummary.recent.length > 0 ? (
               <View style={styles.medalIconsRow}>
                 {medalsSummary.recent.map((a) => (
-                  <MedalBadge key={a.id} icon={a.icon} unlocked size={30} showRibbon={false} />
+                  <MedalBadge
+                    key={a.id}
+                    icon={a.icon}
+                    unlocked
+                    size={30}
+                    showRibbon={false}
+                    iconColor={getMedalIconColor(a.id)}
+                  />
                 ))}
               </View>
             ) : (
-              <Text style={[styles.statsDetail, { color: colors.navInactive }]}>Desbloqueá tu primera</Text>
+              <Text style={[styles.statsDetail, { color: colors.navInactive }]}>Desbloquea tu primera</Text>
             )}
           </Pressable>
         </View>
 
-        <View style={[styles.quoteCard, { backgroundColor: colors.card, marginTop: 12 }]}>
+        <View style={[styles.quoteCard, { backgroundColor: colors.secondary, marginTop: 12 }]}>
           <View style={styles.smallCardHeader}>
-            <Feather name="message-circle" size={19} color={colors.navActive} />
+            <Feather name="message-circle" size={19} color={colors.secondaryForeground} />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Compartir frase motivacional"
@@ -619,13 +627,13 @@ export default function HomeScreen() {
               hitSlop={10}
               style={({ pressed }) => pressed && styles.pressed}
             >
-              <Feather name="share-2" size={18} color={colors.navInactive} />
+              <Feather name="share-2" size={18} color={colors.secondaryForeground} />
             </Pressable>
           </View>
-          <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>
+          <Text style={[styles.smallCardLabel, { color: colors.secondaryForeground }]}>
             Frase del día
           </Text>
-          <Text style={[styles.quoteText, { color: colors.foreground }]}>“{quote}”</Text>
+          <Text style={[styles.quoteText, { color: colors.secondaryForeground }]}>“{quote}”</Text>
         </View>
 
         {hasBoxMembership && birthdays.length > 0 ? (

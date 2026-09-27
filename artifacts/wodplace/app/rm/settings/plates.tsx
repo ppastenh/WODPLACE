@@ -100,7 +100,7 @@ export default function PlatesScreen() {
       <RmHeader title="Discos disponibles" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.intro, { color: colors.mutedForeground }]}>
-          Marcá los discos que tiene tu box y cuántos pares hay de cada uno. La
+          Marca los discos que tiene tu box y cuántos pares hay de cada uno. La
           calculadora de barra usa esto.
         </Text>
 

@@ -53,7 +53,7 @@ export default function BoxWaitingScreen() {
           Tu box todavía no está disponible
         </Text>
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          Si tenés dudas, contactá a WODPLACE.
+          Si tienes dudas, contacta a WODPLACE.
         </Text>
         <AppButton
           label="Actualizar estado"

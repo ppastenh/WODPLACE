@@ -197,7 +197,7 @@ export default function AdminDashboardScreen() {
             Panel no configurado
           </Text>
           <Text style={[styles.msgSub, { color: colors.mutedForeground }]}>
-            Definí {target === 'super' ? 'EXPO_PUBLIC_SUPERADMIN_URL' : 'EXPO_PUBLIC_DASHBOARD_URL'} en
+            Define {target === 'super' ? 'EXPO_PUBLIC_SUPERADMIN_URL' : 'EXPO_PUBLIC_DASHBOARD_URL'} en
             el .env.local de la app.
           </Text>
         </View>

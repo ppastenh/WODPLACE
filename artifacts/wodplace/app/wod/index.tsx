@@ -95,7 +95,7 @@ export default function WodScreen() {
               Tu box todavía no publicó el WOD de hoy
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Volvé más tarde o consultale a tu coach.
+              Vuelve más tarde o consúltale a tu coach.
             </Text>
           </View>
         ) : (

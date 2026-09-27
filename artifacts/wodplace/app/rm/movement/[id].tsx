@@ -66,7 +66,7 @@ export default function MovementDetailScreen() {
   const saveGoal = () => {
     const t = Number(goalDraft.replace(',', '.'));
     if (!Number.isFinite(t) || t <= 0) {
-      Alert.alert('Meta inválida', 'Ingresá un peso mayor que cero.');
+      Alert.alert('Meta inválida', 'Ingresa un peso mayor que cero.');
       return;
     }
     upsertGoal.mutate(

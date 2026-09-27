@@ -24,9 +24,9 @@ export function JoinBoxCard({ onPress }: JoinBoxCardProps) {
       <View style={[styles.iconWrap, { backgroundColor: colors.navActive }]}>
         <Feather name="key" size={22} color={colors.card} />
       </View>
-      <Text style={[styles.title, { color: colors.accentForeground }]}>Todavía no tenés un box</Text>
+      <Text style={[styles.title, { color: colors.accentForeground }]}>Todavía no tienes un box</Text>
       <Text style={[styles.subtitle, { color: colors.accentForeground }]}>
-        Ingresá el código de invitación que te dio tu box para unirte y desbloquear el resto de la app.
+        Ingresa el código de invitación que te dio tu box para unirte y desbloquear el resto de la app.
       </Text>
       <AppButton
         label="Ingresar código de invitación"

@@ -21,7 +21,7 @@ export default function ChooseViewScreen() {
         <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
           <Feather name="shield" size={22} color={colors.secondaryForeground} />
         </View>
-        <Text style={[styles.title, { color: colors.foreground }]}>¿Cómo querés entrar?</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>¿Cómo quieres entrar?</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           Tu cuenta tiene acceso de Super Admin.
         </Text>

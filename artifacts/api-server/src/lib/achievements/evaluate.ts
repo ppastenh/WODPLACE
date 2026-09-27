@@ -54,7 +54,7 @@ function computeStreaks(sortedDates: string[]): {
   return { maxStreak, firstReachedAt, currentStreak };
 }
 
-type Candidate = { id: string; unlockedAt: Date };
+type Candidate = { id: string; unlockedAt: Date; sourceWodResultId?: string };
 
 async function confirmedBookingDates(userId: string): Promise<string[]> {
   const rows = await db.execute<{ session_date: string }>(sql`
@@ -258,6 +258,7 @@ async function evaluateBodyweightLifts(userId: string, rows: PrRow[]): Promise<C
 }
 
 type WodResultRow = {
+  id: string;
   wodId: string;
   format: string;
   boxId: string | null;
@@ -304,6 +305,7 @@ function mondayOf(dateKey: string): string {
 async function evaluateWod(userId: string): Promise<Candidate[]> {
   const rows: WodResultRow[] = await db
     .select({
+      id: wodResultsTable.id,
       wodId: wodsTable.id,
       format: wodsTable.format,
       boxId: wodsTable.boxId,
@@ -324,7 +326,7 @@ async function evaluateWod(userId: string): Promise<Candidate[]> {
   const at = (dateKey: string) => new Date(`${dateKey}T00:00:00Z`);
 
   // Cantidad total.
-  out.push({ id: "wod_count_1", unlockedAt: at(rows[0].sessionDate) });
+  out.push({ id: "wod_count_1", unlockedAt: at(rows[0].sessionDate), sourceWodResultId: rows[0].id });
   const countMilestones: Array<[number, string]> = [
     [10, "wod_count_10"],
     [25, "wod_count_25"],
@@ -334,17 +336,19 @@ async function evaluateWod(userId: string): Promise<Candidate[]> {
     [500, "wod_count_500"],
   ];
   for (const [n, id] of countMilestones) {
-    if (rows.length >= n) out.push({ id, unlockedAt: at(rows[n - 1].sessionDate) });
+    if (rows.length >= n) {
+      out.push({ id, unlockedAt: at(rows[n - 1].sessionDate), sourceWodResultId: rows[n - 1].id });
+    }
   }
 
   // Por nivel — primera vez registrando un resultado en cada uno.
-  const firstByLevel = new Map<string, string>();
+  const firstByLevel = new Map<string, { sessionDate: string; id: string }>();
   for (const r of rows) {
-    if (!firstByLevel.has(r.level)) firstByLevel.set(r.level, r.sessionDate);
+    if (!firstByLevel.has(r.level)) firstByLevel.set(r.level, { sessionDate: r.sessionDate, id: r.id });
   }
   for (const level of ["beginner", "rookie", "scaled", "master", "rx", "elite"]) {
-    const date = firstByLevel.get(level);
-    if (date) out.push({ id: `wod_level_${level}`, unlockedAt: at(date) });
+    const hit = firstByLevel.get(level);
+    if (hit) out.push({ id: `wod_level_${level}`, unlockedAt: at(hit.sessionDate), sourceWodResultId: hit.id });
   }
 
   // Por WOD héroe (boxId null = catálogo global, no un WOD propio del box) —
@@ -358,20 +362,26 @@ async function evaluateWod(userId: string): Promise<Candidate[]> {
     byHeroWod.set(r.wodId, list);
   }
   let improveDate: Date | null = null;
+  let improveResultId: string | null = null;
   for (const [wodId, list] of byHeroWod) {
-    out.push({ id: `wod_hero_${wodId}`, unlockedAt: at(list[0].sessionDate) });
+    out.push({ id: `wod_hero_${wodId}`, unlockedAt: at(list[0].sessionDate), sourceWodResultId: list[0].id });
 
     let best = list[0];
     for (let i = 1; i < list.length; i++) {
       const cur = list[i];
       if (isBetterWodResult(cur.format, cur, best)) {
         const d = at(cur.sessionDate);
-        if (!improveDate || d < improveDate) improveDate = d;
+        if (!improveDate || d < improveDate) {
+          improveDate = d;
+          improveResultId = cur.id;
+        }
         best = cur;
       }
     }
   }
-  if (improveDate) out.push({ id: "wod_improve", unlockedAt: improveDate });
+  if (improveDate) {
+    out.push({ id: "wod_improve", unlockedAt: improveDate, sourceWodResultId: improveResultId ?? undefined });
+  }
 
   // Modo Bestia — 5+ resultados en la misma semana calendario (lunes-domingo).
   const byWeek = new Map<string, string[]>();
@@ -498,6 +508,7 @@ export async function getAchievementsForUser(userId: string): Promise<Achievemen
           userId,
           achievementId: c.id,
           unlockedAt: c.unlockedAt,
+          sourceWodResultId: c.sourceWodResultId ?? null,
         })),
       )
       .onConflictDoNothing();

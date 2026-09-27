@@ -17,6 +17,7 @@ import { MedalBadge } from '@/components/MedalBadge';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { formatLongDate } from '@/lib/dateUtils';
+import { getMedalIconColor } from '@/lib/medalColors';
 
 const MEDAL_SIZE = 76;
 const GRID_GAP = 14;
@@ -73,7 +74,7 @@ export default function MedallasScreen() {
       <View style={styles.headerBlock}>
         <Text style={[styles.title, { color: colors.foreground }]}>Medallas</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Tus logros en WODPLACE, por categoría.
+          Tus logros por categoría.
         </Text>
       </View>
 
@@ -144,13 +145,18 @@ export default function MedallasScreen() {
                   <View style={styles.grid}>
                     {cat.achievements.map((a) => (
                       <View key={a.id} style={styles.gridItem}>
-                        <MedalBadge icon={a.icon} unlocked={a.unlocked} size={MEDAL_SIZE} />
+                        <MedalBadge
+                          icon={a.icon}
+                          unlocked={a.unlocked}
+                          size={MEDAL_SIZE}
+                          iconColor={getMedalIconColor(a.id)}
+                        />
                         <Text
                           style={[
                             styles.medalName,
                             { color: a.unlocked ? colors.foreground : colors.mutedForeground },
                           ]}
-                          numberOfLines={1}
+                          numberOfLines={2}
                         >
                           {a.name}
                         </Text>

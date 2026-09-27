@@ -81,7 +81,7 @@ export default function PlatformAgreementScreen() {
       await refreshActivationStatus();
       Alert.alert(
         'Acuerdo aceptado',
-        'Ya podés ingresar al panel de administración desde el menú.',
+        'Ya puedes ingresar al panel de administración desde el menú.',
         [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch {
@@ -100,7 +100,7 @@ export default function PlatformAgreementScreen() {
       >
         <Text style={[styles.title, { color: colors.foreground }]}>Acuerdo de Plataforma</Text>
         <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
-          Para administrar tu box desde la app necesitás aceptar el acuerdo de uso de la
+          Para administrar tu box desde la app necesitas aceptar el acuerdo de uso de la
           plataforma WODPLACE.
         </Text>
 
@@ -143,7 +143,7 @@ export default function PlatformAgreementScreen() {
             />
             {!opened ? (
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                Abrí el documento para poder aceptarlo.
+                Abre el documento para poder aceptarlo.
               </Text>
             ) : null}
           </>

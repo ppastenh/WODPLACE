@@ -129,7 +129,7 @@ function AgreementsPage() {
         <h1 className="text-xl font-bold tracking-tight">Acuerdos de Plataforma</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Qué admins de box aceptaron el acuerdo de uso de la plataforma. super_admin queda exento
-          — es la otra parte del acuerdo, no quien lo acepta. Tocá un box para ver el email del
+          — es la otra parte del acuerdo, no quien lo acepta. Toca un box para ver el email del
           admin y la fecha.
         </p>
       </div>
