@@ -14,7 +14,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { checkEmailExists, loginWithProvider } = useAuth();
+  const { checkEmailExists, loginWithProvider, loginWithGoogle, getPostAuthRoute } = useAuth();
   const [step, setStep] = useState<'options' | 'email'>('options');
   const [email, setEmail] = useState('');
   const [touched, setTouched] = useState(false);
@@ -48,10 +48,35 @@ export default function LoginScreen() {
     }
   };
 
-  const handleProvider = async (provider: 'google' | 'apple') => {
-    setLoading(provider);
+  const handleGoogle = async () => {
+    setError('');
+    setLoading('google');
     try {
-      await loginWithProvider(provider);
+      const result = await loginWithGoogle();
+      console.log('[login.tsx] loginWithGoogle result ->', result.status);
+      if (result.status === 'cancelled') return;
+      if (result.status === 'needs-profile') {
+        console.log('[login.tsx] navigating -> /register-google');
+        router.push({
+          pathname: '/register-google',
+          params: { name: result.prefillName, email: result.email },
+        });
+        return;
+      }
+      const dest = getPostAuthRoute('/home');
+      console.log('[login.tsx] navigating ->', dest);
+      router.replace(dest as never);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleApple = async () => {
+    setLoading('apple');
+    try {
+      await loginWithProvider('apple');
       router.replace('/profile');
     } finally {
       setLoading(null);
@@ -100,7 +125,7 @@ export default function LoginScreen() {
                 variant="outlineLight"
                 fullWidth
                 loading={loading === 'google'}
-                onPress={() => handleProvider('google')}
+                onPress={handleGoogle}
                 icon={<Ionicons name="logo-google" size={18} color={colors.authText} />}
               />
               <AppButton
@@ -108,10 +133,14 @@ export default function LoginScreen() {
                 variant="outlineLight"
                 fullWidth
                 loading={loading === 'apple'}
-                onPress={() => handleProvider('apple')}
+                onPress={handleApple}
                 icon={<Ionicons name="logo-apple" size={19} color={colors.authText} />}
                 style={styles.appleButton}
               />
+
+              {error ? (
+                <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
+              ) : null}
             </View>
           </>
         ) : (

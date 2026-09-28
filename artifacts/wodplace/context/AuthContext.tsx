@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import {
+  completeGoogleProfile,
   getAuthMode,
   getContractAcceptance,
   getMe,
@@ -20,6 +23,11 @@ import {
   type SkillLevel,
 } from '@workspace/api-client-react';
 import { supabase } from '@/lib/supabase';
+
+// No-op on native; on web this closes the OAuth popup and hands control
+// back to the opener window once Google redirects — required there for
+// openAuthSessionAsync's promise to ever resolve.
+WebBrowser.maybeCompleteAuthSession();
 
 // Fase 2 of the mock-auth -> real Supabase Auth migration: every wodplace
 // API call now carries the live Supabase session's JWT when there is one.
@@ -52,6 +60,21 @@ function toWodplaceUser(profile: RealAccountProfile, status: AccountStatus): Wod
 function extractApiErrorMessage(err: unknown, fallback: string): string {
   return (err as { data?: { error?: string } })?.data?.error ?? fallback;
 }
+
+/**
+ * Result of loginWithGoogle() — a discriminated union rather than a thrown
+ * error for the two non-error outcomes (the caller shouldn't show an
+ * "algo salió mal" banner for either): `'cancelled'` when the athlete backs
+ * out of the Google screen (not a failure), `'needs-profile'` for a
+ * first-time Google sign-in that still needs birthdate/phone before the
+ * account is complete (see completeGoogleOnboarding), `'logged-in'` for an
+ * existing account that's ready to use immediately, same as login()/
+ * register().
+ */
+export type LoginWithGoogleResult =
+  | { status: 'cancelled' }
+  | { status: 'needs-profile'; prefillName: string; email: string }
+  | { status: 'logged-in'; user: WodplaceUser };
 
 export type AccountStatus = 'active' | 'inactive';
 // Assigned by a coach from box-admin (see member-detail.$id.tsx) — new
@@ -158,7 +181,26 @@ interface AuthContextValue {
    * server-side data reconnects) with a fresh local password.
    */
   recoverAccount: (email: string, code: string, newPassword: string) => Promise<void>;
-  loginWithProvider: (provider: 'google' | 'apple') => Promise<void>;
+  /**
+   * Still fully simulated (real Apple sign-in needs a paid Apple Developer
+   * account, not done yet) — see loginWithGoogle for the real Fase 5 flow.
+   */
+  loginWithProvider: (provider: 'apple') => Promise<void>;
+  /**
+   * Real Google sign-in (Fase 5): opens Google's consent screen in the
+   * system browser via Supabase's OAuth flow, exchanges the redirect for a
+   * real session, then checks whether this identity already has a
+   * wodplace_users row. See LoginWithGoogleResult for what each outcome
+   * means and what the caller should do next.
+   */
+  loginWithGoogle: () => Promise<LoginWithGoogleResult>;
+  /**
+   * Finishes onboarding after loginWithGoogle() returns 'needs-profile' —
+   * birthdate/phone are mandatory here too, same as email/password
+   * register(), since birthdate drives the existing under-18 legal
+   * restrictions and can't be left incomplete or filled in later.
+   */
+  completeGoogleOnboarding: (name: string, birthdate: string, phone: string) => Promise<WodplaceUser>;
   logout: () => Promise<void>;
   updateProfile: (partial: Partial<WodplaceUser>) => Promise<void>;
   /**
@@ -184,6 +226,13 @@ type StoredUser = WodplaceUser & { password: string };
 
 const STORAGE_KEY = 'wodplace_user';
 const USERS_KEY = 'wodplace_users';
+// Emails this device has ever seen the server confirm as 'real' via
+// getAuthMode() — not a cache of the answer (still asked fresh every time),
+// just a safety net for when that ask fails outright. See the hardening
+// note on login()'s network-failure fallback for why this exists: once an
+// email is known-real, a network failure must never silently fall back to
+// trusting a local mock password for it again.
+const KNOWN_REAL_EMAILS_KEY = 'wodplace_known_real_emails';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -247,6 +296,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
             await refreshActivationStatus(refreshed);
           } catch (err) {
+            if ((err as { status?: number })?.status === 401) {
+              // The server is rejecting this session outright, not just a
+              // network hiccup — clean logout instead of running
+              // half-authenticated with stale cached data (same fix as
+              // login()'s own auth-mode check, for the boot path).
+              await supabase.auth.signOut().catch(() => {});
+              await AsyncStorage.removeItem(STORAGE_KEY);
+              return;
+            }
             // Network hiccup, not an invalid session — don't log the user
             // out over it, just use the cached profile for this session.
             console.warn('Failed to refresh real account profile on boot', err);
@@ -258,7 +316,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Mock account (or a profile persisted before this field existed —
         // authMode is undefined at runtime for those, which fails the
-        // check above and correctly lands here) — exactly today's flow.
+        // check above and correctly lands here). But the server may have
+        // migrated this exact email to real auth since it was last cached
+        // on this device (Fase 3 migrated every mock account that existed
+        // at the time) — the local mock flow can never establish a
+        // Supabase session, so continuing would silently 401 on every
+        // protected call forever (Fase 4 enforcement). Check first; if the
+        // server says real, clean up instead of running half-authenticated.
+        const restoredKey = restored.email.trim().toLowerCase();
+        try {
+          const mode = await getAuthMode(restoredKey);
+          if (mode === 'real') {
+            await markEmailKnownReal(restoredKey);
+            const db = await getUsersDb();
+            delete db[restoredKey];
+            await saveUsersDb(db);
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to check auth mode on boot, continuing with cached mock account', err);
+        }
+
         setUser(restored);
         // Accounts created before the backend existed (or that failed to
         // sync last time) never get another chance to sync, since this
@@ -383,6 +462,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(USERS_KEY, JSON.stringify(db));
   };
 
+  const markEmailKnownReal = async (key: string) => {
+    const raw = await AsyncStorage.getItem(KNOWN_REAL_EMAILS_KEY);
+    const known = new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+    if (known.has(key)) return;
+    known.add(key);
+    await AsyncStorage.setItem(KNOWN_REAL_EMAILS_KEY, JSON.stringify([...known]));
+  };
+
+  const isEmailKnownReal = async (key: string): Promise<boolean> => {
+    const raw = await AsyncStorage.getItem(KNOWN_REAL_EMAILS_KEY);
+    if (!raw) return false;
+    return (JSON.parse(raw) as string[]).includes(key);
+  };
+
   // Server-first (Fase 2): sees real accounts AND mock accounts registered
   // on a different device — the local-only check never could, which is the
   // whole reason account-recovery exists. Falls back to the local mock db
@@ -393,6 +486,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const key = email.trim().toLowerCase();
     try {
       const mode = await getAuthMode(key);
+      if (mode === 'real') await markEmailKnownReal(key);
       return mode !== 'none';
     } catch (err) {
       console.warn('Failed to check auth mode, falling back to local check', err);
@@ -404,41 +498,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const key = email.trim().toLowerCase();
 
-    // Known mock account on this device — exactly today's flow, unchanged,
-    // no network required. Checked first so an existing mock user's login
-    // stays offline-capable and doesn't slow down waiting on a server
-    // round-trip it never needed before.
-    const db = await getUsersDb();
-    const existing = db[key];
-    if (existing) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      if (existing.password !== password) {
+    // Server-first, not local-first (fixed after Fase 3/4 exposed the bug
+    // in the old local-first order): every mock account that existed got
+    // migrated to real auth in Fase 3, so a local mock record surviving on
+    // some device is now NECESSARILY stale for an email the server
+    // considers real — trusting it would skip Supabase entirely (no
+    // session, no JWT) and silently 401 on every protected call from then
+    // on (Fase 4 enforcement). Only an unreachable server falls back to
+    // the local check below, same offline resilience as before.
+    let mode: 'real' | 'mock' | 'none' | null = null;
+    try {
+      mode = await getAuthMode(key);
+      console.log('[login] getAuthMode ->', mode);
+    } catch (err) {
+      console.warn('[login] getAuthMode failed, falling back to local mock check ->', err);
+      // Hardening: a network failure must never silently fall back to a
+      // local mock password for an email this device has ALREADY seen the
+      // server confirm as real — that's precisely the combination that let
+      // a stale mock password through undetected. Only genuinely unknown
+      // emails get the offline fallback below.
+      if (await isEmailKnownReal(key)) {
+        throw new Error('No pudimos verificar tu cuenta, revisa tu conexión e intenta de nuevo.');
+      }
+    }
+
+    if (mode === 'real') {
+      await markEmailKnownReal(key);
+      // Clear the stale local record so it can never intercept a future
+      // login for this email again.
+      const db = await getUsersDb();
+      const hadStaleMockRecord = !!db[key];
+      if (hadStaleMockRecord) {
+        delete db[key];
+        await saveUsersDb(db);
+      }
+      console.log('[login] mode=real -> signing in with Supabase. Had stale mock record:', hadStaleMockRecord);
+      const { error } = await supabase.auth.signInWithPassword({ email: key, password });
+      if (error) {
         throw new Error('Contraseña incorrecta.');
       }
-      const { password: _pw, ...profile } = existing;
-      const next: WodplaceUser = { ...profile, authMode: 'mock' };
-      await persist(next);
-      // Awaited so getPostAuthRoute() is correct the instant login()
-      // resolves (the caller navigates right after awaiting this).
-      await refreshActivationStatus(next);
+      const me = await getMe();
+      const profile = toWodplaceUser(me, 'inactive');
+      await persist(profile);
+      await refreshActivationStatus(profile);
       return;
     }
 
-    // Not a local mock account — could be a real account, or a mock one
-    // registered on a different device (same "no encontramos" message as
-    // always in that case; recovering it is what account-recovery is for).
-    const mode = await getAuthMode(key);
-    if (mode !== 'real') {
+    if (mode === 'none') {
+      // The server is authoritative here: a mock register() always synced
+      // its row, so "no account" from the server means there really isn't
+      // one — no point falling back to a local check that could only ever
+      // be stale in this case.
       throw new Error('No encontramos una cuenta con ese email.');
     }
-    const { error } = await supabase.auth.signInWithPassword({ email: key, password });
-    if (error) {
+
+    // mode is 'mock', or the auth-mode check itself failed (mode still
+    // null) — the local mock flow, unchanged, no network required.
+    console.log('[login] mode=', mode, '-> trying local mock db');
+    const db = await getUsersDb();
+    const existing = db[key];
+    if (!existing) {
+      throw new Error('No encontramos una cuenta con ese email.');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (existing.password !== password) {
       throw new Error('Contraseña incorrecta.');
     }
-    const me = await getMe();
-    const profile = toWodplaceUser(me, 'inactive');
-    await persist(profile);
-    await refreshActivationStatus(profile);
+    const { password: _pw, ...profile } = existing;
+    const next: WodplaceUser = { ...profile, authMode: 'mock' };
+    await persist(next);
+    // Awaited so getPostAuthRoute() is correct the instant login()
+    // resolves (the caller navigates right after awaiting this).
+    await refreshActivationStatus(next);
   };
 
   const register = async (
@@ -553,23 +684,118 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return !!entry && entry.password === password;
   };
 
-  const loginWithProvider = async (provider: 'google' | 'apple') => {
+  const loginWithProvider = async (provider: 'apple') => {
     await new Promise((resolve) => setTimeout(resolve, 700));
     const next: WodplaceUser = {
       id: makeId(),
-      name: provider === 'google' ? 'Atleta Google' : 'Atleta Apple',
-      email: provider === 'google' ? 'atleta@gmail.com' : 'atleta@icloud.com',
+      name: 'Atleta Apple',
+      email: 'atleta@icloud.com',
       avatarUri: null,
       phrase: '',
       status: 'inactive',
       rank: 'beginner',
       birthdate: null,
       phone: null,
-      // Still fully simulated — real Google/Apple sign-in is Fase 5.
+      // Still fully simulated — needs a paid Apple Developer account first.
       authMode: 'mock',
     };
     await persist(next);
     await refreshActivationStatus(next);
+  };
+
+  const loginWithGoogle = async (): Promise<LoginWithGoogleResult> => {
+    // An explicit path, not just the scheme root — see auth-callback.tsx's
+    // own doc comment for why a bare `wodplace://`/`exp://host:port` (no
+    // path) made expo-router race its own deep-link navigation against
+    // WebBrowser.openAuthSessionAsync's handling of that same URL,
+    // sometimes interrupting this whole function mid-flight. Computed at
+    // call time, not hardcoded: in Expo Go this resolves to that session's
+    // exp://<lan-ip>:<port>/--/auth-callback proxy address (different every
+    // time the dev server restarts or the network changes), in a real
+    // build it resolves to wodplace://auth-callback. Whichever it is, it
+    // must match one of the entries configured in Supabase's
+    // Authentication -> URL Configuration -> Redirect URLs.
+    const redirectTo = AuthSession.makeRedirectUri({ scheme: 'wodplace', path: 'auth-callback' });
+    // Left in on purpose (not just for local debugging): if Google/Supabase
+    // ever rejects the redirect as unrecognized, this is the exact literal
+    // string to add to Supabase's Redirect URLs allow-list.
+    console.log('[loginWithGoogle] redirectTo:', redirectTo);
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+        // Forces Google to always show the account picker, even when the
+        // shared in-app browser session already has one signed in — without
+        // this, a stale/unrelated Google session can silently complete the
+        // flow with the wrong account instead of the one actually chosen.
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    console.log('[loginWithGoogle] signInWithOAuth ->', { url: data?.url, error: error?.message });
+    if (error || !data.url) {
+      throw new Error('No se pudo iniciar sesión con Google.');
+    }
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    console.log('[loginWithGoogle] openAuthSessionAsync ->', result.type, 'url' in result ? result.url : undefined);
+    if (result.type !== 'success') {
+      return { status: 'cancelled' };
+    }
+
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(result.url);
+    console.log('[loginWithGoogle] exchangeCodeForSession ->', exchangeError ? exchangeError.message : 'ok');
+    if (exchangeError) {
+      throw new Error('No se pudo completar el inicio de sesión con Google.');
+    }
+
+    const {
+      data: { user: supabaseUser },
+    } = await supabase.auth.getUser();
+    console.log('[loginWithGoogle] session email ->', supabaseUser?.email);
+
+    try {
+      const me = await getMe();
+      console.log('[loginWithGoogle] existing wodplace_users row found -> logged-in, id:', me.id);
+      const profile = toWodplaceUser(me, 'inactive');
+      await persist(profile);
+      await refreshActivationStatus(profile);
+      return { status: 'logged-in', user: profile };
+    } catch (err) {
+      // No wodplace_users row yet for this identity — first-time Google
+      // sign-in (any other error, e.g. a network hiccup, is unexpected and
+      // should surface instead of silently routing to onboarding).
+      if ((err as { status?: number })?.status !== 404) throw err;
+      console.log('[loginWithGoogle] no wodplace_users row (404) -> needs-profile');
+      const meta = (supabaseUser?.user_metadata ?? {}) as Record<string, unknown>;
+      const prefillName =
+        (typeof meta.full_name === 'string' && meta.full_name) ||
+        (typeof meta.name === 'string' && meta.name) ||
+        '';
+      return { status: 'needs-profile', prefillName, email: supabaseUser?.email ?? '' };
+    }
+  };
+
+  const completeGoogleOnboarding = async (
+    name: string,
+    birthdate: string,
+    phone: string,
+  ): Promise<WodplaceUser> => {
+    let created: RealAccountProfile;
+    try {
+      created = await completeGoogleProfile({
+        name: name.trim(),
+        birthdate: birthdate || null,
+        phone: phone || null,
+      });
+    } catch (err) {
+      throw new Error(extractApiErrorMessage(err, 'No se pudo completar el perfil.'));
+    }
+    const profile = toWodplaceUser(created, 'inactive');
+    await persist(profile);
+    await refreshActivationStatus(profile);
+    return profile;
   };
 
   const logout = async () => {
@@ -611,6 +837,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       redeemBoxCode,
       verifyPassword,
       loginWithProvider,
+      loginWithGoogle,
+      completeGoogleOnboarding,
       logout,
       updateProfile,
       refreshActivationStatus: () => refreshActivationStatus(),

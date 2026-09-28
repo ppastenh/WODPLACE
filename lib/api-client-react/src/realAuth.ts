@@ -62,3 +62,22 @@ export async function registerRealAccount(input: {
 export async function getMe(): Promise<RealAccountProfile> {
   return customFetch<RealAccountProfile>("/api/users/me");
 }
+
+/**
+ * Fase 5 (Google real login): finishes onboarding for a Supabase Auth
+ * identity that already exists (from Google OAuth) but has no
+ * wodplace_users row yet — see the endpoint's own doc comment. Requires a
+ * live Supabase session (the JWT is what ties this to the right identity,
+ * same as getMe()).
+ */
+export async function completeGoogleProfile(input: {
+  name: string;
+  birthdate?: string | null;
+  phone?: string | null;
+}): Promise<RealAccountProfile> {
+  return customFetch<RealAccountProfile>("/api/auth/complete-profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}

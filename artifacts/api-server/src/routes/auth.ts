@@ -150,6 +150,113 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   }
 });
 
+const CompleteProfileBody = z.object({
+  name: z.string().min(1),
+  birthdate: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+});
+
+/**
+ * POST /auth/complete-profile
+ *
+ * Fase 5 (Google real login): finishes onboarding for a Supabase Auth
+ * identity that already exists (created by Google OAuth, not by
+ * /auth/register) but has no wodplace_users row yet — same bridge-row
+ * shape /auth/register creates, just without also minting the auth
+ * account itself. The client calls this only after GET /users/me 404s for
+ * the freshly-established Google session, exactly once per new athlete.
+ * Protected by requireSupabaseUser: the id being bridged is always the
+ * caller's OWN verified identity, never a client-supplied one.
+ */
+router.post("/auth/complete-profile", requireSupabaseUser, async (req: Request, res: Response) => {
+  const parsed = CompleteProfileBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid fields" });
+    return;
+  }
+  const supabaseUser = req.supabaseUser!;
+  if (!supabaseUser.email) {
+    res.status(400).json({ error: "This account has no email on file." });
+    return;
+  }
+  const { name, birthdate, phone } = parsed.data;
+  const cleanEmail = supabaseUser.email.trim().toLowerCase();
+
+  try {
+    const [existingByAuthId] = await db
+      .select()
+      .from(wodplaceUsersTable)
+      .where(eq(wodplaceUsersTable.authUserId, supabaseUser.id));
+    if (existingByAuthId) {
+      // Already completed (a retry, e.g. a double-tap) — idempotent, just
+      // return the existing profile instead of erroring.
+      res.json({
+        id: existingByAuthId.id,
+        name: existingByAuthId.name,
+        email: existingByAuthId.email,
+        avatarUrl: existingByAuthId.avatarUrl,
+        rank: existingByAuthId.rank,
+        phrase: existingByAuthId.phrase,
+        birthdate: existingByAuthId.birthdate,
+        phone: existingByAuthId.phone,
+      });
+      return;
+    }
+
+    // Same duplicate-email guard as /auth/register — covers the edge case
+    // where this Google email already has an unrelated (mock-era or real)
+    // wodplace_users row under a different identity.
+    const [existingByEmail] = await db
+      .select({ id: wodplaceUsersTable.id })
+      .from(wodplaceUsersTable)
+      .where(eq(wodplaceUsersTable.email, cleanEmail));
+    if (existingByEmail) {
+      res.status(409).json({ error: "Ya existe una cuenta con ese email." });
+      return;
+    }
+
+    const [row] = await db
+      .insert(wodplaceUsersTable)
+      .values({
+        id: makeWodplaceUserId(),
+        name: name.trim(),
+        email: cleanEmail,
+        birthdate: birthdate || null,
+        phone: phone || null,
+        rank: "beginner",
+        authUserId: supabaseUser.id,
+      })
+      .onConflictDoNothing({
+        target: wodplaceUsersTable.authUserId,
+        where: isNotNull(wodplaceUsersTable.authUserId),
+      })
+      .returning();
+
+    const finalRow =
+      row ??
+      (
+        await db
+          .select()
+          .from(wodplaceUsersTable)
+          .where(eq(wodplaceUsersTable.authUserId, supabaseUser.id))
+      )[0];
+
+    res.json({
+      id: finalRow.id,
+      name: finalRow.name,
+      email: finalRow.email,
+      avatarUrl: finalRow.avatarUrl,
+      rank: finalRow.rank,
+      phrase: finalRow.phrase,
+      birthdate: finalRow.birthdate,
+      phone: finalRow.phone,
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "Error completing Google profile");
+    res.status(500).json({ error: "No se pudo completar el perfil." });
+  }
+});
+
 /**
  * GET /auth/mode?email=...
  *
