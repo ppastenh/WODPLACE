@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { todayDateKey } from "../lib/dateUtils";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,7 @@ router.get("/wod/today", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const boxId = await resolveBoxIdForAthlete(parsed.data.userId);
     if (!boxId) {
@@ -114,6 +116,7 @@ router.post("/wod-results", async (req: Request, res: Response) => {
     return;
   }
   const { userId, wodOfDayId, timeSeconds, rounds, reps, level, notes } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const [row] = await db
       .insert(wodResultsTable)
@@ -157,6 +160,7 @@ router.get("/wod-results", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const rows = await db
       .select({

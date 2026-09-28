@@ -19,6 +19,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { resolveBoxId } from "../lib/boxContext";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { sendContractAcceptanceEmail } from "../lib/ownerNotifications";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -34,6 +35,7 @@ router.get("/contracts", async (req: Request, res: Response) => {
     await ensureDefaultDocuments(boxId);
     const userId =
       typeof req.query.userId === "string" ? req.query.userId : undefined;
+    if (userId && !(await assertOwnsAccount(req, res, userId))) return;
 
     const documents = await db
       .select()
@@ -84,9 +86,10 @@ router.post("/contracts/:slug/read", async (req: Request, res: Response) => {
     return;
   }
 
+  const { userId } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const slug = String(req.params.slug);
-    const { userId } = parsed.data;
     const boxId = await resolveBoxId();
 
     const [document] = await db
@@ -138,6 +141,7 @@ router.get("/contracts/acceptance", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const [row] = await db
@@ -180,6 +184,7 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
     return;
   }
 
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const boxId = await resolveBoxId();
     await ensureDefaultDocuments(boxId);

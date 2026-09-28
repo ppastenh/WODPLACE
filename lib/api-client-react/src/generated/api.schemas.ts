@@ -543,7 +543,15 @@ userId: string;
 movementId?: string;
 };
 
+export type DeletePrParams = {
+userId: string;
+};
+
 export type ListPrGoalsParams = {
+userId: string;
+};
+
+export type DeletePrGoalParams = {
 userId: string;
 };
 

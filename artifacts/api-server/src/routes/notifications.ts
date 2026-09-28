@@ -9,6 +9,8 @@ import { db, wodplaceNotificationsTable } from "@workspace/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
+import { assertOwnsAccount } from "../lib/supabaseAuth";
+
 const router: IRouter = Router();
 
 router.get("/notifications", async (req: Request, res: Response) => {
@@ -17,6 +19,7 @@ router.get("/notifications", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
 
   try {
     const rows = await db
@@ -50,6 +53,7 @@ router.post("/notifications/:id/read", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid notification fields" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, body.data.userId))) return;
 
   try {
     await db
@@ -74,6 +78,7 @@ router.post("/notifications/read-all", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, body.data.userId))) return;
 
   try {
     await db

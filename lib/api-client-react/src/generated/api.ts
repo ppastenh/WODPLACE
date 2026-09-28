@@ -42,6 +42,8 @@ import type {
   CreateBookingRequest,
   CreateMovementRequest,
   CreatePrRequest,
+  DeletePrGoalParams,
+  DeletePrParams,
   ErrorEnvelope,
   GetContractAcceptanceParams,
   GetTrainingSettingsParams,
@@ -2414,20 +2416,29 @@ export const useUpdatePr = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getUpdatePrMutationOptions(options));
     }
 
-export const getDeletePrUrl = (id: string,) => {
+export const getDeletePrUrl = (id: string,
+    params: DeletePrParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/prs/${id}`
+  return stringifiedParams.length > 0 ? `/api/prs/${id}?${stringifiedParams}` : `/api/prs/${id}`
 }
 
 /**
  * @summary Delete a record
  */
-export const deletePr = async (id: string, options?: RequestInit): Promise<RmOkResult> => {
+export const deletePr = async (id: string,
+    params: DeletePrParams, options?: RequestInit): Promise<RmOkResult> => {
 
-  return customFetch<RmOkResult>(getDeletePrUrl(id),
+  return customFetch<RmOkResult>(getDeletePrUrl(id,params),
   {
     ...options,
     method: 'DELETE'
@@ -2441,8 +2452,8 @@ export const deletePr = async (id: string, options?: RequestInit): Promise<RmOkR
 
 
 export const getDeletePrMutationOptions = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePr>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deletePr>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePr>>, TError,{id: string;params: DeletePrParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePr>>, TError,{id: string;params: DeletePrParams}, TContext> => {
 
 const mutationKey = ['deletePr'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2454,10 +2465,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePr>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePr>>, {id: string;params: DeletePrParams}> = (props) => {
+          const {id,params} = props ?? {};
 
-          return  deletePr(id,requestOptions)
+          return  deletePr(id,params,requestOptions)
         }
 
 
@@ -2475,11 +2486,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Delete a record
  */
 export const useDeletePr = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePr>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePr>>, TError,{id: string;params: DeletePrParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deletePr>>,
         TError,
-        {id: string},
+        {id: string;params: DeletePrParams},
         TContext
       > => {
       return useMutation(getDeletePrMutationOptions(options));
@@ -2640,20 +2651,29 @@ export const useUpsertPrGoal = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getUpsertPrGoalMutationOptions(options));
     }
 
-export const getDeletePrGoalUrl = (id: string,) => {
+export const getDeletePrGoalUrl = (id: string,
+    params: DeletePrGoalParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/pr-goals/${id}`
+  return stringifiedParams.length > 0 ? `/api/pr-goals/${id}?${stringifiedParams}` : `/api/pr-goals/${id}`
 }
 
 /**
  * @summary Remove a goal by its id
  */
-export const deletePrGoal = async (id: string, options?: RequestInit): Promise<RmOkResult> => {
+export const deletePrGoal = async (id: string,
+    params: DeletePrGoalParams, options?: RequestInit): Promise<RmOkResult> => {
 
-  return customFetch<RmOkResult>(getDeletePrGoalUrl(id),
+  return customFetch<RmOkResult>(getDeletePrGoalUrl(id,params),
   {
     ...options,
     method: 'DELETE'
@@ -2667,8 +2687,8 @@ export const deletePrGoal = async (id: string, options?: RequestInit): Promise<R
 
 
 export const getDeletePrGoalMutationOptions = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePrGoal>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deletePrGoal>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePrGoal>>, TError,{id: string;params: DeletePrGoalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePrGoal>>, TError,{id: string;params: DeletePrGoalParams}, TContext> => {
 
 const mutationKey = ['deletePrGoal'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2680,10 +2700,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePrGoal>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePrGoal>>, {id: string;params: DeletePrGoalParams}> = (props) => {
+          const {id,params} = props ?? {};
 
-          return  deletePrGoal(id,requestOptions)
+          return  deletePrGoal(id,params,requestOptions)
         }
 
 
@@ -2701,11 +2721,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Remove a goal by its id
  */
 export const useDeletePrGoal = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePrGoal>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePrGoal>>, TError,{id: string;params: DeletePrGoalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deletePrGoal>>,
         TError,
-        {id: string},
+        {id: string;params: DeletePrGoalParams},
         TContext
       > => {
       return useMutation(getDeletePrGoalMutationOptions(options));

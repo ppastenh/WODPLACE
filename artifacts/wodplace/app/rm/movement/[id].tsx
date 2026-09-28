@@ -90,7 +90,7 @@ export default function MovementDetailScreen() {
 
   const removeGoal = () => {
     if (!goal) return;
-    deleteGoal.mutate({ id: goal.id }, { onSuccess: () => goals.refetch() });
+    deleteGoal.mutate({ id: goal.id, params: { userId } }, { onSuccess: () => goals.refetch() });
   };
 
   const removeRecord = (recordId: string) => {
@@ -99,7 +99,7 @@ export default function MovementDetailScreen() {
       {
         text: 'Borrar',
         style: 'destructive',
-        onPress: () => deletePr.mutate({ id: recordId }, { onSuccess: () => prs.refetch() }),
+        onPress: () => deletePr.mutate({ id: recordId, params: { userId } }, { onSuccess: () => prs.refetch() }),
       },
     ]);
   };

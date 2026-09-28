@@ -13,6 +13,7 @@ import { resolveAdminRoles, type AdminRole } from "../lib/adminRole";
 import { resolveBoxIdForWodplaceUserId } from "../lib/boxContext";
 import { ensureDefaultPlatformDocument, PLATFORM_AGREEMENT_DOCUMENT } from "../lib/contractDocuments";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -172,6 +173,7 @@ router.get("/platform-agreement", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     res.json(await loadStatus(userId));
@@ -197,6 +199,7 @@ router.post("/platform-agreement/accept", async (req: Request, res: Response) =>
     return;
   }
 
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const { userId } = parsed.data;
     const [appUser] = await db
@@ -266,6 +269,7 @@ router.get("/platform-agreement/box-authorization-status", async (req: Request, 
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const [appUser] = await db
@@ -331,6 +335,7 @@ router.post("/platform-agreement/create-box", async (req: Request, res: Response
     return;
   }
 
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const { userId, boxName } = parsed.data;
     const [appUser] = await db
@@ -432,6 +437,7 @@ router.post("/platform-agreement/box-details", async (req: Request, res: Respons
     return;
   }
 
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const { userId, name, ownerName, location, contactPhone, whatsapp, instagramUrl, facebookUrl, tiktokUrl } =
       parsed.data;
@@ -490,6 +496,7 @@ router.post("/platform-agreement/box-welcome-shown", async (req: Request, res: R
     return;
   }
 
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const { userId } = parsed.data;
     const boxId = await resolveBoxIdForWodplaceUserId(userId);

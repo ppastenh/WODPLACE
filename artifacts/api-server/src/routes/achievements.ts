@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
 import { getAchievementsForUser } from "../lib/achievements/evaluate";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -22,6 +23,7 @@ router.get("/achievements", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const result = await getAchievementsForUser(parsed.data.userId);
     res.json(result);

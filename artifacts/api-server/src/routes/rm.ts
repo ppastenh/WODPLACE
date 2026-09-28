@@ -4,8 +4,10 @@ import {
   CreatePrBody,
   CreatePrResponse,
   DeletePrGoalParams,
+  DeletePrGoalQueryParams,
   DeletePrGoalResponse,
   DeletePrParams,
+  DeletePrQueryParams,
   DeletePrResponse,
   GetTrainingSettingsQueryParams,
   GetTrainingSettingsResponse,
@@ -34,6 +36,8 @@ import {
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
+import { assertOwnsAccount } from "../lib/supabaseAuth";
+
 const router: IRouter = Router();
 
 const num = (v: string | number | null): number => Number(v ?? 0);
@@ -61,6 +65,7 @@ router.get("/movements", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const rows = await db
       .select()
@@ -97,6 +102,7 @@ router.post("/movements", async (req: Request, res: Response) => {
   }
   const { userId, name } = parsed.data;
   const category = parsed.data.category ?? null;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const [existing] = await db
       .select()
@@ -151,6 +157,7 @@ router.get("/prs", async (req: Request, res: Response) => {
     return;
   }
   const { userId, movementId } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const where = movementId
       ? and(eq(prsTable.userId, userId), eq(prsTable.movementId, movementId))
@@ -174,6 +181,7 @@ router.post("/prs", async (req: Request, res: Response) => {
     return;
   }
   const { id, userId, movementId, weight, unit } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const [movement] = await db
       .select({ name: movementsTable.name })
@@ -224,6 +232,7 @@ router.patch("/prs/:id", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid fields" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, body.data.userId))) return;
   try {
     const set: Partial<typeof prsTable.$inferInsert> = {};
     if (body.data.weight != null) set.weight = String(body.data.weight);
@@ -257,12 +266,24 @@ router.patch("/prs/:id", async (req: Request, res: Response) => {
 
 router.delete("/prs/:id", async (req: Request, res: Response) => {
   const params = DeletePrParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: "Missing id" });
+  const query = DeletePrQueryParams.safeParse(req.query);
+  if (!params.success || !query.success) {
+    res.status(400).json({ error: "Missing id or userId" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, query.data.userId))) return;
   try {
-    await db.delete(prsTable).where(eq(prsTable.id, params.data.id));
+    // userId in the WHERE, not just id — previously this deleted by id
+    // alone, so anyone who knew/guessed a PR's id could delete any
+    // athlete's record. Fixed alongside the Fase 4 ownership enforcement.
+    const [row] = await db
+      .delete(prsTable)
+      .where(and(eq(prsTable.id, params.data.id), eq(prsTable.userId, query.data.userId)))
+      .returning();
+    if (!row) {
+      res.status(404).json({ error: "Record not found" });
+      return;
+    }
     res.json(DeletePrResponse.parse({ ok: true }));
   } catch (error) {
     req.log.error({ err: error }, "Error deleting pr");
@@ -278,6 +299,7 @@ router.get("/pr-goals", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const rows = await db
       .select({
@@ -329,6 +351,7 @@ router.put("/pr-goals", async (req: Request, res: Response) => {
     return;
   }
   const { id, userId, movementId, targetWeight, targetUnit } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const [row] = await db
       .insert(prGoalsTable)
@@ -369,12 +392,22 @@ router.put("/pr-goals", async (req: Request, res: Response) => {
 
 router.delete("/pr-goals/:id", async (req: Request, res: Response) => {
   const params = DeletePrGoalParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: "Missing id" });
+  const query = DeletePrGoalQueryParams.safeParse(req.query);
+  if (!params.success || !query.success) {
+    res.status(400).json({ error: "Missing id or userId" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, query.data.userId))) return;
   try {
-    await db.delete(prGoalsTable).where(eq(prGoalsTable.id, params.data.id));
+    // Same fix as DELETE /prs/:id — userId in the WHERE, not just id.
+    const [row] = await db
+      .delete(prGoalsTable)
+      .where(and(eq(prGoalsTable.id, params.data.id), eq(prGoalsTable.userId, query.data.userId)))
+      .returning();
+    if (!row) {
+      res.status(404).json({ error: "Goal not found" });
+      return;
+    }
     res.json(DeletePrGoalResponse.parse({ ok: true }));
   } catch (error) {
     req.log.error({ err: error }, "Error deleting pr-goal");
@@ -401,6 +434,7 @@ router.get("/training-settings", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     let [row] = await db
       .select()
@@ -433,6 +467,7 @@ router.put("/training-settings", async (req: Request, res: Response) => {
     return;
   }
   const { userId, preferredUnit, barWeight, barUnit, bodyweightKg, plates } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     // Genuine partial merge: a field the caller doesn't send is left exactly
     // as it is in the row, never reset to a default. Two different screens

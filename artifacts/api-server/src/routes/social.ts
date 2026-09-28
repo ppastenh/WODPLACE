@@ -27,6 +27,7 @@ import { z } from "zod";
 import { validateSocialImageUris } from "../lib/socialImageValidation";
 import { isAdminRequest, requireAdminSession } from "../lib/adminAuth";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -145,6 +146,7 @@ router.get("/social/feed", async (req: Request, res: Response) => {
   }).safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: "Invalid query" }); return; }
   const { userId, cursor, limit } = parsed.data;
+  if (userId && !(await assertOwnsAccount(req, res, userId))) return;
   const cutoff = new Date(Date.now() - FEED_DAYS * 86_400_000);
   try {
     // Box-scoped: an athlete only ever sees their own box's Comunidad
@@ -230,6 +232,7 @@ router.post("/social/posts", async (req: Request, res: Response) => {
   if (!body.trim() && imageUris.length === 0) {
     res.status(400).json({ error: "Se requiere texto o al menos una foto." }); return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const boxId = await resolveBoxIdForAthlete(userId);
     if (!boxId) {
@@ -266,6 +269,7 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
   const parsed = z.object({ userId: z.string(), body: z.string().min(1) }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Body required" }); return; }
   const { userId, body } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
@@ -286,6 +290,10 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
 router.delete("/social/posts/:id", async (req: Request, res: Response) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
   const isAdmin = isAdminRequest(req);
+  if (!isAdmin) {
+    if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
+    if (!(await assertOwnsAccount(req, res, userId))) return;
+  }
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
@@ -335,6 +343,7 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
   const parsed = z.object({ userId: z.string(), authorName: z.string(), body: z.string().min(1).max(500) }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Missing fields" }); return; }
   const { userId, authorName, body } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
@@ -365,6 +374,10 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
 router.delete("/social/posts/:id/comments/:commentId", async (req: Request, res: Response) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
   const isAdmin = isAdminRequest(req);
+  if (!isAdmin) {
+    if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
+    if (!(await assertOwnsAccount(req, res, userId))) return;
+  }
   try {
     const [comment] = await db.select().from(socialCommentsTable).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
     if (!comment || comment.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
@@ -383,6 +396,7 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
   const parsed = z.object({ userId: z.string(), emoji: z.enum(ALLOWED_EMOJIS) }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "emoji inválido" }); return; }
   const { userId, emoji } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
@@ -440,6 +454,7 @@ router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
     imageUrl: z.string().url().optional(),
   }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Datos inválidos" }); return; }
+  if (!(await assertOwnsAccount(req, res, parsed.data.reporterId))) return;
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post) { res.status(404).json({ error: "No encontrado." }); return; }

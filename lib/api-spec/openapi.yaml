@@ -914,6 +914,7 @@ paths:
       summary: Delete a record
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: userId, in: query, required: true, schema: { type: string } }
       responses:
         "200":
           description: Deleted.
@@ -972,6 +973,7 @@ paths:
       summary: Remove a goal by its id
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: userId, in: query, required: true, schema: { type: string } }
       responses:
         "200":
           description: Deleted.

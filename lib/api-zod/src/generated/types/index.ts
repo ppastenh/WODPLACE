@@ -33,6 +33,8 @@ export * from './createBookingRequest';
 export * from './createMovementRequest';
 export * from './createPrRequest';
 export * from './createPrRequestUnit';
+export * from './deletePrGoalParams';
+export * from './deletePrParams';
 export * from './errorEnvelope';
 export * from './getContractAcceptanceParams';
 export * from './getTrainingSettingsParams';

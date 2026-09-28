@@ -34,6 +34,7 @@ import { resolveBoxIdForWodplaceUserId } from "../lib/boxContext";
 import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { hashPin, verifyPin } from "../lib/pinHash";
 import { getDashboardUrl, getSuperAdminUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -57,6 +58,7 @@ router.post("/admin/pin/status", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
 
   try {
     const [row] = await db
@@ -83,6 +85,13 @@ router.post("/admin/pin/status", async (req: Request, res: Response) => {
  * First-time PIN, or a new PIN after "I forgot my PIN" (the app has already
  * re-verified the account password client-side). Clears attempts + lockout
  * and returns a fresh admin session token.
+ *
+ * Fase 4: this used to be the root-of-trust bypass for the whole admin
+ * session system — it minted a valid admin token for ANY userId the caller
+ * claimed, with no server-side proof of ownership (the client-side password
+ * re-verify mentioned above was never checked here). assertOwnsAccount now
+ * requires this account's own Supabase JWT once it's migrated, closing that
+ * hole the same way as every other athlete-facing endpoint.
  */
 router.post("/admin/pin/setup", async (req: Request, res: Response) => {
   const parsed = SetupAdminPinBody.safeParse(req.body);
@@ -90,6 +99,7 @@ router.post("/admin/pin/setup", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
 
   const { userId, pin } = parsed.data;
   try {
@@ -128,6 +138,8 @@ router.post("/admin/pin/verify", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
 
   const { userId, pin } = parsed.data;
   try {
@@ -206,6 +218,11 @@ router.post("/admin/pin/verify", async (req: Request, res: Response) => {
  * Issues a session with no PIN — after a device biometric check, or after
  * re-entering the account password while the PIN is locked. Clears the
  * lockout. Requires an existing PIN (first-time setup must use /setup).
+ *
+ * Fase 4: same root-of-trust bypass as /setup above — this issued a valid
+ * admin token for any userId with a PIN row, with zero server-side proof
+ * (the biometric/password check was entirely client-side). Now requires
+ * this account's own Supabase JWT once migrated.
  */
 router.post("/admin/pin/session", async (req: Request, res: Response) => {
   const parsed = CreateAdminSessionBody.safeParse(req.body);
@@ -213,6 +230,7 @@ router.post("/admin/pin/session", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
 
   const { userId } = parsed.data;
   try {

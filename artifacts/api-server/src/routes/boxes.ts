@@ -7,6 +7,7 @@ import { z } from "zod";
 import { isAdminRequest } from "../lib/adminAuth";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -68,6 +69,7 @@ router.post(
 
     const { userId, name, email, code } = parsed.data;
     const normalized = code.trim().toUpperCase();
+    if (!(await assertOwnsAccount(req, res, userId))) return;
 
     try {
       await db
@@ -154,6 +156,7 @@ router.get("/box-memberships/my-box", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const rows = await db.execute<{
@@ -232,6 +235,7 @@ router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const boxId = await resolveBoxIdForAthlete(userId);
@@ -341,6 +345,7 @@ router.get("/box-memberships/upcoming-birthdays", async (req: Request, res: Resp
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const boxId = await resolveBoxIdForAthlete(userId);
@@ -425,6 +430,7 @@ router.get("/box-memberships/announcements", async (req: Request, res: Response)
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const boxId = await resolveBoxIdForAthlete(userId);
@@ -547,6 +553,7 @@ router.post("/box-memberships/announcements/:id/read", async (req: Request, res:
     res.status(400).json({ error: "id and userId are required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const announcementRows = await db.execute<{ box_id: string }>(sql`
@@ -634,6 +641,7 @@ router.post("/box-memberships/announcements/:id/comments", async (req: Request, 
     return;
   }
   const { userId, authorName, body } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const announcementRows = await db.execute<{ box_id: string }>(sql`
@@ -679,6 +687,7 @@ router.delete(
       res.status(400).json({ error: "Missing fields" });
       return;
     }
+    if (!isAdmin && !(await assertOwnsAccount(req, res, userId))) return;
 
     try {
       const rows = await db.execute<{ user_id: string | null }>(sql`
@@ -714,6 +723,7 @@ router.post("/box-memberships/announcements/:id/reactions", async (req: Request,
     return;
   }
   const { userId, emoji } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const announcementRows = await db.execute<{ box_id: string }>(sql`

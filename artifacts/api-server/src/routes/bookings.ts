@@ -17,6 +17,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
+import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 const WAITLIST_LIMIT = 5;
@@ -95,6 +96,7 @@ router.get("/class-sessions", async (req: Request, res: Response) => {
     return;
   }
   const { userId, from, to } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const boxId = await resolveBoxIdForAthlete(userId);
@@ -206,6 +208,7 @@ router.get("/bookings", async (req: Request, res: Response) => {
     res.status(400).json({ error: "userId is required" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
 
   try {
     const rows = await db
@@ -243,6 +246,7 @@ router.post("/bookings", async (req: Request, res: Response) => {
   }
 
   const { sessionId, userId } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     const boxId = await resolveBoxIdForAthlete(userId);
@@ -460,6 +464,7 @@ router.post("/bookings/cancel", async (req: Request, res: Response) => {
   }
 
   const { sessionId, userId } = parsed.data;
+  if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
     // Fetched once, up front — the promotion notification needs it inside

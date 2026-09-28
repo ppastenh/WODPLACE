@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
-import { requireSupabaseUser } from "../lib/supabaseAuth";
+import { assertOwnsAccount, requireSupabaseUser, resolveSupabaseUser } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -49,14 +49,31 @@ router.get("/users/me", requireSupabaseUser, async (req: Request, res: Response)
  *
  * Upserts the mobile app's locally-generated user id/name/email so later
  * contract read-progress and acceptance rows have a stable owner to attach
- * to. There is no session/auth here — the client is trusted to send its own
- * local id, matching the rest of WODPLACE's current mock-auth model.
+ * to. Unlike every other endpoint here, this one is ALSO how a brand-new
+ * mock account (still simulated Google/Apple login, Fase 5) gets its very
+ * first row — so it can't use assertOwnsAccount as-is, which 404s when the
+ * row doesn't exist yet. Instead: a genuinely new id (no row yet) or an
+ * existing not-yet-migrated mock row is trusted as before; an existing
+ * MIGRATED row now requires a matching Supabase JWT, closing the hole where
+ * this upsert could otherwise overwrite a real athlete's name/email just by
+ * knowing their id.
  */
 router.post("/users", async (req: Request, res: Response) => {
   const parsed = SyncUserBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
+  }
+  const [existing] = await db
+    .select({ authUserId: wodplaceUsersTable.authUserId })
+    .from(wodplaceUsersTable)
+    .where(eq(wodplaceUsersTable.id, parsed.data.id));
+  if (existing?.authUserId) {
+    const supabaseUser = await resolveSupabaseUser(req);
+    if (!supabaseUser || supabaseUser.id !== existing.authUserId) {
+      res.status(supabaseUser ? 403 : 401).json({ error: supabaseUser ? "Forbidden" : "Missing or invalid Authorization token" });
+      return;
+    }
   }
 
   try {
@@ -88,8 +105,9 @@ router.post("/users", async (req: Request, res: Response) => {
  *
  * Sets the athlete's profile photo (uploaded separately via
  * POST /storage/avatar-uploads/request-url — this just records the
- * resulting URL). Same trust model as POST /users: no session/auth, the
- * caller is trusted to be that user.
+ * resulting URL). For a not-yet-migrated mock account the caller is still
+ * trusted to be that user, same as always; a migrated account now needs a
+ * matching Supabase JWT (Fase 4, see assertOwnsAccount).
  */
 const SetAvatarBody = z.object({ avatarUrl: z.string().url() });
 
@@ -99,6 +117,7 @@ router.patch("/users/:id/avatar", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid avatarUrl" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, String(req.params.id)))) return;
   try {
     const [row] = await db
       .update(wodplaceUsersTable)
@@ -124,10 +143,10 @@ router.patch("/users/:id/avatar", async (req: Request, res: Response) => {
  * Activa/Inactiva"): that reads as account standing, same category as
  * payments/contracts, kept out of the public profile. Also deliberately
  * excludes `rank`: that's coach-assigned from box-admin only (RLS-gated
- * there), never self-service — this endpoint has no auth/ownership check
- * (the caller is trusted to be that user, same as the rest of WODPLACE's
- * mock-auth model) and api-server's DB role bypasses RLS, so accepting rank
- * here would let any athlete set their own level.
+ * there), never self-service — api-server's DB role bypasses RLS, so
+ * accepting rank here would let any athlete set their own level. Ownership
+ * of the account itself is enforced by assertOwnsAccount (Fase 4), same as
+ * every other endpoint that acts on a specific userId.
  */
 const UpdateProfileFieldsBody = z
   .object({
@@ -143,6 +162,7 @@ router.patch("/users/:id/profile", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Missing or invalid fields" });
     return;
   }
+  if (!(await assertOwnsAccount(req, res, String(req.params.id)))) return;
   try {
     const [row] = await db
       .update(wodplaceUsersTable)

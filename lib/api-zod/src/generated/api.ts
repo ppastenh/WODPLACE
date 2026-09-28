@@ -666,6 +666,10 @@ export const DeletePrParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const DeletePrQueryParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
 export const DeletePrResponse = zod.object({
   "ok": zod.boolean()
 })
@@ -721,6 +725,10 @@ export const UpsertPrGoalResponse = zod.object({
  */
 export const DeletePrGoalParams = zod.object({
   "id": zod.coerce.string()
+})
+
+export const DeletePrGoalQueryParams = zod.object({
+  "userId": zod.coerce.string()
 })
 
 export const DeletePrGoalResponse = zod.object({

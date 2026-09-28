@@ -2,19 +2,18 @@ import { Router, type IRouter, type Request, type Response } from 'express';
 import { z } from 'zod';
 
 import { createUploadUrl, getPublicUrl } from '../lib/objectStorage';
+import { assertOwnsAccount } from '../lib/supabaseAuth';
 
 const router: IRouter = Router();
 
 /**
  * POST /storage/social-uploads/request-url
  *
- * Request a presigned URL for social feed image uploads.
- *
- * SECURITY NOTE: WODPLACE has no real auth system yet (the app syncs a
- * locally generated user id), so this endpoint cannot verify the caller's
- * identity — adding real authentication is tracked as separate work.
- * The declared `size`/`contentType` below are informational metadata only,
- * NOT security controls (the client controls the actual PUT). Real
+ * Request a presigned URL for social feed image uploads. `userId` is now
+ * checked against the caller's Supabase JWT (Fase 4, see assertOwnsAccount)
+ * for a migrated account — still trusted as-is for a not-yet-migrated mock
+ * one. The declared `size`/`contentType` below are informational metadata
+ * only, NOT security controls (the client controls the actual PUT). Real
  * enforcement of size/content happens at publish time in the social posts
  * route, against the stored object's actual bytes
  * (see lib/socialImageValidation.ts).
@@ -49,6 +48,7 @@ router.post(
       res.status(400).json({ error: 'Missing or invalid required fields' });
       return;
     }
+    if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
     try {
       const { name, size, contentType } = parsed.data;
       const { uploadURL, key } = await createUploadUrl('social', contentType);
@@ -70,9 +70,9 @@ router.post(
  * POST /storage/avatar-uploads/request-url
  *
  * Request a presigned URL for a member's own profile photo. Mirrors
- * /storage/social-uploads/request-url (same object storage, same "no real
- * auth yet" caveat — the client is trusted to send its own local user id).
- * Smaller size cap since it's a single square photo, not a feed attachment.
+ * /storage/social-uploads/request-url (same object storage, same ownership
+ * check). Smaller size cap since it's a single square photo, not a feed
+ * attachment.
  */
 const MAX_AVATAR_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -90,6 +90,7 @@ router.post(
       res.status(400).json({ error: 'Missing or invalid required fields' });
       return;
     }
+    if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
     try {
       const { size, contentType } = parsed.data;
       const { uploadURL, key } = await createUploadUrl('avatars', contentType);
@@ -112,8 +113,8 @@ router.post(
  *
  * Request a presigned URL for an optional screenshot/evidence photo
  * attached to a Comunidad report. Mirrors the other upload endpoints —
- * same "no real auth yet" caveat, same bucket, own "reports" prefix so the
- * evidence stays organized separately from feed/avatar images.
+ * same ownership check, same bucket, own "reports" prefix so the evidence
+ * stays organized separately from feed/avatar images.
  */
 const MAX_REPORT_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB — screenshot-sized
 
@@ -131,6 +132,7 @@ router.post(
       res.status(400).json({ error: 'Missing or invalid required fields' });
       return;
     }
+    if (!(await assertOwnsAccount(req, res, parsed.data.reporterId))) return;
     try {
       const { size, contentType } = parsed.data;
       const { uploadURL, key } = await createUploadUrl('reports', contentType);
