@@ -38,24 +38,30 @@ export function BookClassSheet({
   const [checking, setChecking] = useState(false);
   const [toRemove, setToRemove] = useState<UpcomingClass | null>(null);
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin, myCoachId } = useBox();
   const today = format(new Date(), "yyyy-MM-dd");
   const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
   const upcoming = useUpcomingBookings(boxId, memberId, open);
 
   const classes = useQuery({
-    queryKey: ["bookable-classes", boxId, today],
+    queryKey: ["bookable-classes", boxId, today, isAdmin, myCoachId],
     enabled: open,
     queryFn: async () => {
       // Only today + tomorrow — a member almost always needs one of those
       // two, and the full week just made this list longer to scroll
       // through for no benefit.
-      const { data: sessions } = await supabase
+      let query = supabase
         .from("class_sessions")
         .select("id, name, session_date, start_time, capacity, coach:coaches(name)")
         .eq("box_id", boxId)
         .gte("session_date", today)
-        .lte("session_date", tomorrow)
+        .lte("session_date", tomorrow);
+      // A coach can only ever book into their OWN classes — RLS already
+      // guarantees this (see Fase 3's "box staff read class_sessions"
+      // policy), but filtering here too keeps the list itself from
+      // showing classes they couldn't act on in the first place.
+      if (!isAdmin) query = query.eq("coach_id", myCoachId ?? "__none__");
+      const { data: sessions } = await query
         .order("session_date")
         .order("start_time")
         .limit(80);
