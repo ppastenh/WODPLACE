@@ -13,6 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { COACH_PERMISSIONS, mergeWithDefaults, type Permissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/coaches")({
   ssr: false,
@@ -27,8 +28,6 @@ export const Route = createFileRoute("/_authenticated/_admin/more/coaches")({
   component: CoachesPage,
 });
 
-type Permissions = Record<string, boolean>;
-
 type Coach = {
   id: string;
   name: string;
@@ -40,43 +39,12 @@ type Coach = {
   permissions: Permissions;
 };
 
-const PERMISSIONS: Array<{ key: string; label: string; hint: string }> = [
-  { key: "classes_create", label: "Crear clases", hint: "Puede programar nuevas clases y WODs" },
-  { key: "classes_edit", label: "Editar clases", hint: "Modificar o cancelar clases existentes" },
-  { key: "bookings_manage", label: "Gestionar reservas", hint: "Agregar o quitar inscritos y lista de espera" },
-  { key: "members_view", label: "Ver miembros", hint: "Acceso al listado y fichas de atletas" },
-  { key: "members_edit", label: "Editar miembros", hint: "Modificar datos y estado de los atletas" },
-  { key: "finances_view", label: "Ver finanzas", hint: "Acceso a ingresos y pagos" },
-  { key: "payments_register", label: "Registrar pagos", hint: "Puede cobrar y registrar pagos" },
-  { key: "files_manage", label: "Gestionar archivos", hint: "Subir o reemplazar contratos y documentos" },
-  {
-    key: "community_post_as_box",
-    label: "Publicar en Comunidad a nombre del box",
-    hint: "Puede subir fotos al feed como aviso oficial del box (no como publicación personal)",
-  },
-];
-
 // box_settings key holding the last permission set an admin actually saved
 // for some coach (JSON-serialized in `value`, which is a plain text column
 // — see PermissionsDialog's save and AddCoach's `lastPermissions` query
-// below). Falls back to COACH_DEFAULT_PERMISSIONS below until the box's
-// first edit.
+// below). Falls back to the catalog's own defaults (via mergeWithDefaults)
+// until the box's first edit.
 const LAST_COACH_PERMISSIONS_KEY = "last_coach_permissions";
-
-// Bootstrap default, only used until an admin has saved permissions for any
-// coach at least once (after that, the last-saved set wins — see
-// LAST_COACH_PERMISSIONS_KEY).
-const COACH_DEFAULT_PERMISSIONS: Permissions = {
-  classes_create: false,
-  classes_edit: true,
-  bookings_manage: true,
-  members_view: true,
-  members_edit: false,
-  finances_view: false,
-  payments_register: false,
-  files_manage: false,
-  community_post_as_box: false,
-};
 
 function CoachesPage() {
   const { boxId } = useBox();
@@ -111,7 +79,7 @@ function CoachCard({ coach }: { coach: Coach }) {
   const qc = useQueryClient();
   const { boxId } = useBox();
   const perms = coach.permissions ?? {};
-  const granted = PERMISSIONS.filter((p) => perms[p.key]).length;
+  const granted = COACH_PERMISSIONS.filter((p) => perms[p.key]).length;
   const paused = coach.status === "pausado";
 
   const update = useMutation({
@@ -182,7 +150,7 @@ function PermissionsDialog({ coach, granted }: { coach: Coach; granted: number }
       // permission set, which would make the history log noisy and harder
       // to skim.
       const changes: Record<string, { from: boolean; to: boolean }> = {};
-      for (const p of PERMISSIONS) {
+      for (const p of COACH_PERMISSIONS) {
         const from = !!before[p.key];
         const to = !!perms[p.key];
         if (from !== to) changes[p.key] = { from, to };
@@ -229,13 +197,13 @@ function PermissionsDialog({ coach, granted }: { coach: Coach; granted: number }
       <DialogTrigger asChild>
         <button className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary px-3 text-xs font-semibold active:bg-secondary/70">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          Permisos · {granted}/{PERMISSIONS.length}
+          Permisos · {granted}/{COACH_PERMISSIONS.length}
         </button>
       </DialogTrigger>
       <DialogContent className="max-h-[85dvh] max-w-sm overflow-y-auto rounded-3xl">
         <DialogHeader><DialogTitle>Permisos de {coach.name}</DialogTitle></DialogHeader>
         <div className="divide-y divide-border/60">
-          {PERMISSIONS.map((p) => (
+          {COACH_PERMISSIONS.map((p) => (
             <div key={p.key} className="flex items-start gap-3 py-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{p.label}</p>
@@ -264,7 +232,7 @@ type PermissionChangeRow = {
 };
 
 function permLabel(key: string) {
-  return PERMISSIONS.find((p) => p.key === key)?.label ?? key;
+  return COACH_PERMISSIONS.find((p) => p.key === key)?.label ?? key;
 }
 
 function HistoryDialog({ coach }: { coach: Coach }) {
@@ -382,9 +350,10 @@ function AddCoach() {
     enabled: open,
   });
 
-  // Whatever an admin last saved in PermissionsDialog, for THIS box — falls
-  // back to the fixed COACH_DEFAULT_PERMISSIONS bootstrap until that's
-  // happened at least once.
+  // Whatever an admin last saved in PermissionsDialog, for THIS box —
+  // merged with the catalog's own defaults (mergeWithDefaults) so a
+  // permission added to the catalog after this template was saved still
+  // shows up instead of silently defaulting to "off" forever.
   const lastPermissions = useQuery({
     queryKey: ["box_settings", boxId, LAST_COACH_PERMISSIONS_KEY],
     queryFn: async () => {
@@ -413,7 +382,7 @@ function AddCoach() {
         email: m.email,
         phone: m.phone,
         specialty: specialty[m.user_id] || null,
-        permissions: lastPermissions.data ?? COACH_DEFAULT_PERMISSIONS,
+        permissions: mergeWithDefaults(lastPermissions.data),
       });
       if (error) throw error;
     },
