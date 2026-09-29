@@ -145,43 +145,21 @@ function PermissionsDialog({ coach, granted }: { coach: Coach; granted: number }
 
   const save = useMutation({
     mutationFn: async () => {
-      const before = coach.permissions ?? {};
-      // Only the keys that actually flipped — not the whole before/after
-      // permission set, which would make the history log noisy and harder
-      // to skim.
-      const changes: Record<string, { from: boolean; to: boolean }> = {};
-      for (const p of COACH_PERMISSIONS) {
-        const from = !!before[p.key];
-        const to = !!perms[p.key];
-        if (from !== to) changes[p.key] = { from, to };
-      }
-
-      const { error } = await supabase.from("coaches").update({ permissions: perms }).eq("box_id", boxId).eq("id", coach.id);
+      // update_coach_permissions does all three writes (coaches.permissions,
+      // box_settings.last_coach_permissions, coach_permission_changes) in
+      // ONE transaction — see its own definition (supabase/migrations/
+      // 20261001140000_atomic_coach_permissions_update.sql) for why: the
+      // old 3-separate-calls version could leave the audit log or the
+      // "last used" template out of sync if anything failed partway
+      // through. SECURITY INVOKER, so this is gated by the exact same RLS
+      // this box_admin already satisfies for each of those 3 writes.
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase.rpc("update_coach_permissions", {
+        p_coach_id: coach.id,
+        p_new_permissions: perms,
+        p_changed_by_email: auth.user?.email ?? "—",
+      });
       if (error) throw error;
-
-      // Whatever an admin just saved becomes the starting point for the
-      // NEXT coach added — see AddCoach's `lastPermissions` query. Also
-      // best-effort: this shouldn't block/roll back the update above.
-      await supabase
-        .from("box_settings")
-        .upsert(
-          { box_id: boxId, key: LAST_COACH_PERMISSIONS_KEY, value: JSON.stringify(perms) },
-          { onConflict: "box_id,key" },
-        );
-
-      if (Object.keys(changes).length > 0) {
-        const { data: auth } = await supabase.auth.getUser();
-        // Best-effort: the permissions update above already succeeded, so a
-        // failure here shouldn't roll that back or block the admin — it'd
-        // just mean this one change is missing from the history.
-        await supabase.from("coach_permission_changes").insert({
-          box_id: boxId,
-          coach_id: coach.id,
-          changed_by: auth.user?.id ?? "",
-          changed_by_email: auth.user?.email ?? "—",
-          changes,
-        });
-      }
     },
     onSuccess: () => {
       toast.success("Permisos actualizados");

@@ -1991,12 +1991,53 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      box_member_next_payment_at: {
+        Args: { _box_id: string; _user_id: string }
+        Returns: string
+      }
+      box_member_plan_id: {
+        Args: { _box_id: string; _user_id: string }
+        Returns: string
+      }
       check_invite_code: {
         Args: { p_code: string; p_email: string }
         Returns: boolean
       }
       is_super_admin: { Args: never; Returns: boolean }
+      my_coach_id: { Args: { _box_id: string }; Returns: string }
+      session_coach_id: { Args: { _session_id: string }; Returns: string }
       storage_box_prefix: { Args: { _name: string }; Returns: string }
+      update_coach_permissions: {
+        Args: {
+          p_changed_by_email: string
+          p_coach_id: string
+          p_new_permissions: Json
+        }
+        Returns: {
+          box_id: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          permissions: Json
+          phone: string | null
+          photo_url: string | null
+          specialty: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "coaches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      user_has_box_permission: {
+        Args: { _box_id: string; _permission: string }
+        Returns: boolean
+      }
       user_is_any_box_admin: { Args: never; Returns: boolean }
       user_is_box_staff: { Args: { _box_id: string }; Returns: boolean }
       user_is_super_admin: { Args: never; Returns: boolean }
