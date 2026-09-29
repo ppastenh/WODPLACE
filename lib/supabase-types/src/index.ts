@@ -1911,32 +1911,38 @@ export type Database = {
       }
       wodplace_users: {
         Row: {
+          auth_user_id: string | null
           avatar_url: string | null
           birthdate: string | null
           created_at: string
           email: string
           id: string
           name: string
+          phone: string | null
           phrase: string | null
           rank: string | null
         }
         Insert: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           birthdate?: string | null
           created_at?: string
           email: string
           id: string
           name: string
+          phone?: string | null
           phrase?: string | null
           rank?: string | null
         }
         Update: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           birthdate?: string | null
           created_at?: string
           email?: string
           id?: string
           name?: string
+          phone?: string | null
           phrase?: string | null
           rank?: string | null
         }
@@ -1985,6 +1991,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_invite_code: {
+        Args: { p_code: string; p_email: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: never; Returns: boolean }
       storage_box_prefix: { Args: { _name: string }; Returns: string }
       user_is_any_box_admin: { Args: never; Returns: boolean }

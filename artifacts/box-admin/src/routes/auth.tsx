@@ -56,6 +56,22 @@ function AuthPage() {
     try {
       if (mode === "signup") {
         const trimmedInvite = inviteCode.trim();
+        if (trimmedInvite) {
+          // Read-only pre-flight check (never marks the invite used) so an
+          // invalid/expired/mismatched-email code fails with a clear
+          // message here, instead of silently creating a plain athlete
+          // account with no role and no explanation (the actual
+          // redemption trigger on the server always fails silently toward
+          // no privilege for exactly that reason, by design).
+          const { data: valid, error: checkError } = await supabase.rpc("check_invite_code", {
+            p_code: trimmedInvite,
+            p_email: email,
+          });
+          if (checkError) throw checkError;
+          if (!valid) {
+            throw new Error("Este código de invitación no es válido o venció.");
+          }
+        }
         const { error } = await supabase.auth.signUp({
           email, password,
           options: {

@@ -63,6 +63,10 @@ function InvitesPage() {
 
   const create = useMutation({
     mutationFn: async () => {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        throw new Error("El email es obligatorio: la invitación solo la puede canjear esa dirección.");
+      }
       const code = genCode();
       const expires_at =
         days && Number(days) > 0
@@ -73,8 +77,7 @@ function InvitesPage() {
         box_id: boxId,
         code,
         role,
-        // "" = sin restricción de email (cualquiera con el código lo puede canjear)
-        email: email.trim(),
+        email: trimmedEmail,
         expires_at,
         created_by: userRes.user?.id ?? null,
       });
@@ -141,16 +144,17 @@ function InvitesPage() {
             )}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="inv-email" className="text-xs">Email (opcional)</Label>
+            <Label htmlFor="inv-email" className="text-xs">Email</Label>
             <Input
               id="inv-email"
               type="email"
+              required
               placeholder={role === "coach" ? "coach@box.cl" : "admin@box.cl"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             <p className="text-[10px] text-muted-foreground">
-              Si lo especificas, solo esa dirección podrá canjear el código.
+              Solo esa dirección podrá canjear el código.
             </p>
           </div>
           <div className="space-y-1.5">
@@ -167,7 +171,7 @@ function InvitesPage() {
           </div>
           <Button
             onClick={() => create.mutate()}
-            disabled={create.isPending}
+            disabled={create.isPending || !email.trim()}
             className="h-11 w-full rounded-full font-semibold"
           >
             {create.isPending ? "Creando..." : "Generar invitación"}
