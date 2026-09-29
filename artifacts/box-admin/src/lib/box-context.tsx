@@ -39,6 +39,10 @@ type BoxContextValue = {
    * ANOTHER coach's permissions, a different concern.
    */
   myPermissions: Permissions | null;
+  /** The signed-in coach's OWN coaches.id for the active box — null for an
+   *  admin or while unresolved. Used to scope "Mis clases de hoy" to
+   *  class_sessions.coach_id = this. */
+  myCoachId: string | null;
   setBoxId: (id: string) => void;
 };
 
@@ -112,14 +116,17 @@ export function BoxProvider({
     queryKey: ["my-coach-permissions", boxId],
     queryFn: async () => {
       const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return null;
+      if (!auth.user) return { id: null, permissions: null };
       const { data } = await supabase
         .from("coaches")
-        .select("permissions")
+        .select("id, permissions")
         .eq("box_id", boxId)
         .eq("user_id", auth.user.id)
         .maybeSingle();
-      return (data?.permissions as Permissions | undefined) ?? null;
+      return {
+        id: data?.id ?? null,
+        permissions: (data?.permissions as Permissions | undefined) ?? null,
+      };
     },
     enabled: !!boxId && !isAdmin,
   });
@@ -132,7 +139,8 @@ export function BoxProvider({
       boxes,
       isSuperAdmin,
       isAdmin,
-      myPermissions: isAdmin ? null : (myPermissionsQuery.data ?? null),
+      myPermissions: isAdmin ? null : (myPermissionsQuery.data?.permissions ?? null),
+      myCoachId: isAdmin ? null : (myPermissionsQuery.data?.id ?? null),
       setBoxId,
     }),
     [boxId, boxes, isSuperAdmin, isAdmin, setBoxId, photoQuery.data, myPermissionsQuery.data],

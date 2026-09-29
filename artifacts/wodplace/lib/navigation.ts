@@ -1,9 +1,9 @@
 import type { PlatformAgreementStatus } from '@workspace/api-client-react';
 
 export type AdminNavItem = {
-  key: 'admin' | 'platform-agreement' | 'create-box';
+  key: 'admin' | 'coach' | 'platform-agreement' | 'create-box';
   label: string;
-  icon: 'shield' | 'file-text' | 'plus-circle';
+  icon: 'shield' | 'file-text' | 'plus-circle' | 'users';
   route: string;
 };
 
@@ -18,7 +18,12 @@ export type AdminNavItem = {
  * item pointing at that acceptance screen instead of straight into the
  * admin panel — this is what actually hides "Administrador" until they
  * accept (point 2 of the platform-agreement design). super_admin is exempt
- * (see routes/platformAgreement.ts) and always gets "Administrador".
+ * (see routes/platformAgreement.ts) and always gets "Administrador". A pure
+ * coach (no box_admin/super_admin) is ALSO exempt from the agreement
+ * outright — it's between WODPLACE and the box's owner, not staff the
+ * owner hires — and gets "Coach" instead of "Administrador": same PIN
+ * flow, same underlying box-admin panel, just a different label/icon and
+ * (once Fase 3 lands) only the modules their permissions allow.
  *
  * An account with NO admin role at all gets "Crear mi Box" — but only if a
  * super_admin has pre-authorized its email first
@@ -47,6 +52,13 @@ export function getAdminNavItem(
       icon: 'file-text',
       route: '/platform-agreement',
     };
+  }
+  const isPureCoach =
+    adminStatus.roles.includes('coach') &&
+    !adminStatus.roles.includes('box_admin') &&
+    !adminStatus.roles.includes('super_admin');
+  if (isPureCoach) {
+    return { key: 'coach', label: 'Coach', icon: 'users', route: '/admin-login' };
   }
   return { key: 'admin', label: 'Administrador', icon: 'shield', route: '/admin-login' };
 }

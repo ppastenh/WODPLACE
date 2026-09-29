@@ -7,7 +7,7 @@
  */
 import { customFetch } from "./custom-fetch";
 
-export type AdminRole = "box_admin" | "super_admin";
+export type AdminRole = "box_admin" | "super_admin" | "coach";
 
 export type PlatformAgreementStatus = {
   /** Every admin role this account holds — empty means "not an admin at

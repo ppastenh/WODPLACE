@@ -9,7 +9,7 @@ import { sql } from "drizzle-orm";
  * through `profiles`/`user_roles` by (lowercased) email, never by id.
  */
 
-export type AdminRole = "box_admin" | "super_admin";
+export type AdminRole = "box_admin" | "super_admin" | "coach";
 
 type AdminRoleRow = {
   email: string;
@@ -28,7 +28,7 @@ async function findAdminRoleRows(email: string): Promise<AdminRoleRow[]> {
     JOIN public.user_roles ur ON ur.user_id = p.id
     WHERE lower(p.email) = lower(${email})
       AND p.email IS NOT NULL
-      AND ur.role IN ('box_admin', 'super_admin')
+      AND ur.role IN ('box_admin', 'super_admin', 'coach')
   `);
   return result.rows;
 }
@@ -57,6 +57,7 @@ export async function resolveAdminRoleForEmail(
   const roles = await resolveAdminRoles(email);
   if (roles.includes("super_admin")) return "super_admin";
   if (roles.includes("box_admin")) return "box_admin";
+  if (roles.includes("coach")) return "coach";
   return null;
 }
 

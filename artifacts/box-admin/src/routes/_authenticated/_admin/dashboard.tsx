@@ -145,7 +145,136 @@ function useUpcomingClasses(boxId: string) {
 }
 
 function DashboardPage() {
-  const { boxId } = useBox();
+  const { boxId, isAdmin, myCoachId } = useBox();
+  if (!isAdmin) return <CoachHome boxId={boxId} coachId={myCoachId} />;
+  return <AdminHome boxId={boxId} />;
+}
+
+type MyClassRow = {
+  id: string;
+  name: string;
+  session_date: string;
+  start_time: string | null;
+  duration_minutes: number | null;
+  capacity: number;
+  athletes: { name: string; rank: string | null; status: string }[];
+};
+
+// Fase 2: read-only by design (point 8 of the coach permission list) — a
+// coach never manages bookings from here, just sees who's coming and their
+// level. Fase 3 adds the matching RLS restriction (class_bookings scoped
+// to sessions this coach actually teaches) for the "gestionar reservas"
+// permission itself; this view doesn't need that yet since it's select-only.
+function useMyClassesToday(boxId: string, coachId: string | null) {
+  return useQuery({
+    queryKey: ["my-classes-today", boxId, coachId],
+    enabled: !!boxId && !!coachId,
+    queryFn: async () => {
+      // Guarded by `enabled` above — queryFn never runs with a null coachId.
+      const coach = coachId!;
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { data: sessions } = await supabase
+        .from("class_sessions")
+        .select("id, name, session_date, start_time, duration_minutes, capacity")
+        .eq("box_id", boxId)
+        .eq("coach_id", coach)
+        .eq("session_date", today)
+        .order("start_time", { ascending: true });
+      if (!sessions || sessions.length === 0) return [] as MyClassRow[];
+
+      const { data: bookings } = await supabase
+        .from("class_bookings")
+        .select("session_id, status, wodplace_users(name, rank)")
+        .eq("box_id", boxId)
+        .in("session_id", sessions.map((s) => s.id));
+
+      const bySession = new Map<string, MyClassRow["athletes"]>();
+      for (const b of (bookings ?? []) as unknown as {
+        session_id: string;
+        status: string;
+        wodplace_users: { name: string; rank: string | null } | null;
+      }[]) {
+        const list = bySession.get(b.session_id) ?? [];
+        list.push({
+          name: b.wodplace_users?.name ?? "—",
+          rank: b.wodplace_users?.rank ?? null,
+          status: b.status,
+        });
+        bySession.set(b.session_id, list);
+      }
+
+      return sessions.map((s) => ({ ...s, athletes: bySession.get(s.id) ?? [] })) as MyClassRow[];
+    },
+  });
+}
+
+function CoachHome({ boxId, coachId }: { boxId: string; coachId: string | null }) {
+  const classes = useMyClassesToday(boxId, coachId);
+
+  return (
+    <AdminShell>
+      <div className="mb-5">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">
+          {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
+        </p>
+        <h1 className="mt-1 text-2xl font-black">Hola, coach 👋</h1>
+        <p className="text-sm text-muted-foreground">Tus clases de hoy</p>
+      </div>
+
+      {!coachId && !classes.isLoading && (
+        <div className="rounded-3xl border border-dashed p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            Tu cuenta todavía no está vinculada a un perfil de coach en este box.
+          </p>
+        </div>
+      )}
+
+      {classes.isLoading && <p className="text-xs text-muted-foreground">Cargando…</p>}
+
+      {!classes.isLoading && coachId && (classes.data ?? []).length === 0 && (
+        <div className="rounded-3xl border border-dashed p-8 text-center">
+          <p className="text-sm text-muted-foreground">No tienes clases programadas hoy</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {(classes.data ?? []).map((c) => (
+          <div key={c.id} className="rounded-3xl border bg-card p-4">
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">{c.name}</p>
+            </div>
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <CalendarDays className="h-3 w-3" />
+              {c.start_time ? format(new Date(`${c.session_date}T${c.start_time}`), "h:mm a") : "—"}
+              {" · "}
+              {c.athletes.length}/{c.capacity} inscritos
+            </p>
+            {c.athletes.length > 0 ? (
+              <ul className="mt-3 space-y-1.5">
+                {c.athletes.map((a, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <UserIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{a.name}</span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold capitalize text-muted-foreground">
+                      {a.rank ?? "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">Nadie anotado todavía</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </AdminShell>
+  );
+}
+
+function AdminHome({ boxId }: { boxId: string }) {
   const stats = useDashboardStats(boxId);
   const upcoming = useUpcomingClasses(boxId);
   const [expOpen, setExpOpen] = useState(false);

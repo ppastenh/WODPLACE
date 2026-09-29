@@ -127,6 +127,14 @@ async function loadStatus(userId: string): Promise<PlatformAgreementStatus> {
     };
   }
 
+  // A pure coach (no box_admin/super_admin) never accepts the platform
+  // agreement at all — it's between WODPLACE and the box's OWNER, not staff
+  // the owner hires. Checked before any of the box_admin/super_admin-only
+  // data below is fetched, since none of it applies to a coach.
+  if (roles.includes("coach") && !roles.includes("box_admin") && !roles.includes("super_admin")) {
+    return { roles, accepted: true, acceptedAt: null, document: null, box: null, boxCreationAuthorized: false };
+  }
+
   const boxId = await resolveBoxIdForWodplaceUserId(userId);
   const box = roles.includes("box_admin") ? await loadBoxSummary(boxId) : null;
   await ensureDefaultPlatformDocument(boxId);
