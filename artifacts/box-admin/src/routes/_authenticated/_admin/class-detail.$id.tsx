@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -117,6 +118,7 @@ function ClassDetail() {
               duration_minutes: c.duration_minutes ?? 60,
               capacity: c.capacity ?? 15,
               session_date: c.session_date,
+              notes: c.notes ?? "",
             }} />
           </div>
         </div>
@@ -126,6 +128,12 @@ function ClassDetail() {
           <span className="flex items-center gap-1"><UserIcon className="h-3.5 w-3.5" />{c.coaches?.name || "Sin coach"}</span>
           <span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{format(parseISO(c.session_date), "dd MMM yyyy", { locale: es })}</span>
         </div>
+
+        {c.notes && (
+          <p className="mt-3 rounded-2xl border border-border/60 bg-secondary/40 p-3 text-sm text-foreground">
+            {c.notes}
+          </p>
+        )}
 
         <div className="mt-4 flex items-center gap-3">
           <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-secondary">
@@ -200,7 +208,7 @@ function ClassDetail() {
 
 function EditClass({ classId, initial }: {
   classId: string;
-  initial: { name: string; start_time: string; duration_minutes: number; capacity: number; session_date: string };
+  initial: { name: string; start_time: string; duration_minutes: number; capacity: number; session_date: string; notes: string };
 }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initial);
@@ -208,7 +216,12 @@ function EditClass({ classId, initial }: {
   const { boxId } = useBox();
   const mut = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("class_sessions").update(form).eq("box_id", boxId).eq("id", classId);
+      const { notes, ...rest } = form;
+      const { error } = await supabase
+        .from("class_sessions")
+        .update({ ...rest, notes: notes.trim() || null })
+        .eq("box_id", boxId)
+        .eq("id", classId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -237,6 +250,16 @@ function EditClass({ classId, initial }: {
           <div className="grid grid-cols-2 gap-2">
             <div><Label>Duración (min)</Label><Input type="number" min={5} step={5} value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: Number(e.target.value) })} /></div>
             <div><Label>Cupos</Label><Input type="number" min={1} value={form.capacity} onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })} /></div>
+          </div>
+          <div>
+            <Label>Notas de la clase</Label>
+            <Textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="Qué se trabajó ese día (visible para los alumnos anotados)"
+              maxLength={500}
+              rows={3}
+            />
           </div>
           <Button type="submit" disabled={mut.isPending} className="h-11 w-full rounded-full font-semibold">Guardar</Button>
         </form>

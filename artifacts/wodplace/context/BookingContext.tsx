@@ -29,6 +29,9 @@ export interface ClassSession {
   isWaitlisted: boolean;
   waitlistPosition: number | null;
   attendeeNames: string[];
+  /** Coach's short note on what was worked on this session -- only ever
+   *  populated by the server when this athlete is booked into it. */
+  notes: string | null;
 }
 
 const CANCEL_CUTOFF_MS = 60 * 60 * 1000;
@@ -96,6 +99,7 @@ function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
     isWaitlisted,
     waitlistPosition: dto.myWaitlistPosition,
     attendeeNames: dto.attendeeNames,
+    notes: dto.notes,
   };
 }
 

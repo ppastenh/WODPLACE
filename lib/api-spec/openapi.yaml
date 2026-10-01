@@ -1206,6 +1206,7 @@ components:
           myStatus,
           myWaitlistPosition,
           attendeeNames,
+          notes,
         ]
       properties:
         id:
@@ -1243,6 +1244,14 @@ components:
           type: array
           items:
             type: string
+        notes:
+          type: string
+          nullable: true
+          description: >-
+            Short free-text note from the coach about what was worked on
+            that day. Only populated when the viewer is booked into this
+            session (myStatus != "none"); null otherwise, including for
+            sessions with no note set.
 
     Notification:
       type: object

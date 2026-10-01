@@ -96,6 +96,7 @@ type ClassRow = {
   capacity: number;
   level: string;
   status: string;
+  notes: string | null;
   coach: { name: string } | null;
   class_bookings: { id: string; status: string }[];
 };
@@ -109,7 +110,7 @@ function useClassesRange(from: Date, to: Date) {
     queryFn: async () => {
       const { data: sessions } = await supabase
         .from("class_sessions")
-        .select("id, name, session_date, start_time, duration_minutes, capacity, level, status, coach:coaches(name)")
+        .select("id, name, session_date, start_time, duration_minutes, capacity, level, status, notes, coach:coaches(name)")
         .eq("box_id", boxId)
         .gte("session_date", f)
         .lte("session_date", t)

@@ -1,0 +1,14 @@
+-- Fase A of the new coach features batch: "Notas de la clase" -- a short
+-- free-text note per session (what was worked on that day), visible to
+-- athletes booked into it.
+--
+-- No RLS change needed: writes ride the existing "admin manage
+-- class_sessions" (unrestricted) and "coach edit own class_sessions"
+-- (classes_edit permission, own session only) policies from
+-- 20261001130000_coach_classes_members_edit_enforcement.sql -- notes is
+-- just another column those UPDATE policies already cover. Athlete reads
+-- happen through api-server (service-role Postgres connection, bypasses
+-- RLS entirely, same as every other athlete-facing endpoint), which is
+-- responsible for only surfacing notes to athletes who are actually
+-- booked into that session.
+alter table public.class_sessions add column if not exists notes text;

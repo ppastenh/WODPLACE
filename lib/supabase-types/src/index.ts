@@ -676,6 +676,7 @@ export type Database = {
           id: string
           level: string
           name: string
+          notes: string | null
           session_date: string
           start_time: string
           status: string
@@ -691,6 +692,7 @@ export type Database = {
           id?: string
           level?: string
           name: string
+          notes?: string | null
           session_date: string
           start_time: string
           status?: string
@@ -706,6 +708,7 @@ export type Database = {
           id?: string
           level?: string
           name?: string
+          notes?: string | null
           session_date?: string
           start_time?: string
           status?: string

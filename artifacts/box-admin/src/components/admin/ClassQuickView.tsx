@@ -7,6 +7,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Clock, User as UserIcon, CalendarDays, Pencil, Trash2, ArrowRight, Users } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -22,6 +23,7 @@ export type QuickViewClass = {
   coach?: { name: string } | null;
   enrolled?: number;
   attended?: number;
+  notes?: string | null;
 };
 
 export function ClassQuickView({
@@ -42,6 +44,7 @@ export function ClassQuickView({
     start_time: "",
     duration_minutes: 60,
     capacity: 15,
+    notes: "",
   });
 
   useEffect(() => {
@@ -53,6 +56,7 @@ export function ClassQuickView({
         start_time: String(c.start_time).slice(0, 5),
         duration_minutes: c.duration_minutes || 60,
         capacity: c.capacity ?? 15,
+        notes: c.notes ?? "",
       });
     }
   }, [c?.id]);
@@ -65,7 +69,12 @@ export function ClassQuickView({
   const save = useMutation({
     mutationFn: async () => {
       if (!c) return;
-      const { error } = await supabase.from("class_sessions").update(form).eq("box_id", boxId).eq("id", c.id);
+      const { notes, ...rest } = form;
+      const { error } = await supabase
+        .from("class_sessions")
+        .update({ ...rest, notes: notes.trim() || null })
+        .eq("box_id", boxId)
+        .eq("id", c.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -121,6 +130,16 @@ export function ClassQuickView({
                 <div><Label>Duración (min)</Label><Input type="number" min={5} step={5} value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: Number(e.target.value) })} /></div>
                 <div><Label>Cupos</Label><Input type="number" min={1} value={form.capacity} onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })} /></div>
               </div>
+              <div>
+                <Label>Notas de la clase</Label>
+                <Textarea
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  placeholder="Qué se trabajó ese día (visible para los alumnos anotados)"
+                  maxLength={500}
+                  rows={3}
+                />
+              </div>
               <div className="flex gap-2 pt-1">
                 <Button type="button" variant="outline" className="h-11 flex-1 rounded-full" onClick={() => setEditing(false)}>Cancelar</Button>
                 <Button type="submit" disabled={save.isPending} className="h-11 flex-1 rounded-full font-semibold">Guardar</Button>
@@ -136,6 +155,12 @@ export function ClassQuickView({
                   {format(parseISO(c.session_date), "dd MMM yyyy", { locale: es })}
                 </span>
               </div>
+
+              {c.notes && (
+                <p className="mt-3 rounded-2xl border border-border/60 bg-secondary/40 p-3 text-sm text-foreground">
+                  {c.notes}
+                </p>
+              )}
 
               <div className="mt-4 flex items-center gap-3">
                 <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-secondary">

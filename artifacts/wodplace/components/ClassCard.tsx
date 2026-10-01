@@ -42,6 +42,12 @@ export function ClassCard({
         Imparte: {session.coach}
       </Text>
 
+      {session.notes ? (
+        <Text style={[styles.notes, { color: colors.foreground }]} numberOfLines={3}>
+          {session.notes}
+        </Text>
+      ) : null}
+
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <View style={[styles.dot, { backgroundColor: colors.primary }]} />
@@ -189,6 +195,11 @@ const styles = StyleSheet.create({
   coach: {
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
+  },
+  notes: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    fontStyle: 'italic',
   },
   statsRow: {
     flexDirection: 'row',

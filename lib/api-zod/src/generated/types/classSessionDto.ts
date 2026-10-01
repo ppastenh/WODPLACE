@@ -29,4 +29,6 @@ export interface ClassSessionDto {
   myStatus: ClassSessionDtoMyStatus;
   myWaitlistPosition: number | null;
   attendeeNames: string[];
+  /** Short free-text note from the coach about what was worked on that day. Only populated when the viewer is booked into this session (myStatus != "none"); null otherwise, including for sessions with no note set. */
+  notes: string | null;
 }

@@ -118,7 +118,8 @@ export const ListClassSessionsResponseItem = zod.object({
   "remaining": zod.number(),
   "myStatus": zod.enum(['none', 'confirmed', 'waiting']),
   "myWaitlistPosition": zod.number().nullable(),
-  "attendeeNames": zod.array(zod.string())
+  "attendeeNames": zod.array(zod.string()),
+  "notes": zod.string().nullable().describe('Short free-text note from the coach about what was worked on that day. Only populated when the viewer is booked into this session (myStatus != \"none\"); null otherwise, including for sessions with no note set.')
 }).describe('A real class_sessions row (the same table box-admin\'s class-scheduling\nUI reads\/writes), enriched with this specific viewer\'s booking status\nfor it and the confirmed roster\'s names.\n')
 export const ListClassSessionsResponse = zod.array(ListClassSessionsResponseItem)
 

@@ -115,11 +115,12 @@ router.get("/class-sessions", async (req: Request, res: Response) => {
       capacity: number;
       level: string;
       coach_name: string | null;
+      notes: string | null;
     }>(sql`
       SELECT cs.id, cs.box_id, coalesce(nullif(cs.name, ''), cl.name, 'Clase') AS name,
              cs.session_date::text AS session_date, cs.start_time::text AS start_time,
              cs.duration_minutes, cs.capacity, cs.level,
-             co.name AS coach_name
+             co.name AS coach_name, cs.notes
       FROM public.class_sessions cs
       LEFT JOIN public.classes cl ON cl.id = cs.class_id
       LEFT JOIN public.coaches co ON co.id = cs.coach_id
@@ -192,6 +193,9 @@ router.get("/class-sessions", async (req: Request, res: Response) => {
         myStatus,
         myWaitlistPosition,
         attendeeNames: confirmed.map((r) => r.user_name),
+        // Only for athletes actually booked into it -- never leak a
+        // coach's class notes to someone just browsing the calendar.
+        notes: myStatus !== "none" ? s.notes : null,
       };
     });
 
