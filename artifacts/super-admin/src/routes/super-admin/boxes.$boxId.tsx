@@ -20,6 +20,7 @@ const COACH_PERMISSION_LABELS: Array<{ key: string; label: string }> = [
   { key: "manual_achievements_manage", label: "Dar medallas de movimiento y competencia" },
   { key: "wod_of_day_publish", label: "Publicar el WOD del día" },
   { key: "athlete_rank_assign", label: "Asignar nivel (rank) del alumno" },
+  { key: "calendar_view_all", label: "Ver calendario completo del box" },
   { key: "classes_create", label: "Crear clases" },
   { key: "classes_edit", label: "Editar clases" },
   { key: "members_edit", label: "Editar miembros" },

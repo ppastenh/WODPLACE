@@ -47,6 +47,13 @@ export const COACH_PERMISSIONS: PermissionDef[] = [
     group: "miembros",
     default: true,
   },
+  {
+    key: "calendar_view_all",
+    label: "Ver calendario completo del box",
+    hint: "Ver todas las clases de la semana, de cualquier coach (solo lectura, no puede editarlas)",
+    group: "clases",
+    default: true,
+  },
   // Off by default — an admin has to turn each of these on explicitly.
   { key: "classes_create", label: "Crear clases", hint: "Puede programar nuevas clases y WODs", group: "clases", default: false },
   { key: "classes_edit", label: "Editar clases", hint: "Modificar o cancelar clases existentes", group: "clases", default: false },
