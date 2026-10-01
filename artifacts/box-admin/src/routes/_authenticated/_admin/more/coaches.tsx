@@ -3,12 +3,13 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Plus, UserCog, ShieldCheck, Pause, Play, Trash2, Mail, History } from "lucide-react";
+import { Plus, UserCog, ShieldCheck, Pause, Play, UserMinus, Mail, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -78,9 +79,11 @@ function CoachesPage() {
 function CoachCard({ coach }: { coach: Coach }) {
   const qc = useQueryClient();
   const { boxId } = useBox();
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const perms = coach.permissions ?? {};
   const granted = COACH_PERMISSIONS.filter((p) => perms[p.key]).length;
   const paused = coach.status === "pausado";
+  const removed = coach.status === "inactivo";
 
   const update = useMutation({
     mutationFn: async (patch: { status?: string }) => {
@@ -91,13 +94,28 @@ function CoachCard({ coach }: { coach: Coach }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
   });
 
-  const remove = useMutation({
+  // Replaces the old hard-delete (which removed the coaches row outright --
+  // that's exactly what breaks history, since class_sessions.coach_id/
+  // user_achievements.coach_id are ON DELETE SET NULL and
+  // coach_permission_changes.coach_id is ON DELETE CASCADE). This RPC keeps
+  // the row (status -> 'inactivo', classes dictadas/medallas/auditoría de
+  // permisos intactas) and only revokes the role + unlinks the account --
+  // see supabase/migrations/20261001200000_coach_remove_role.sql.
+  const removeRole = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("coaches").delete().eq("box_id", boxId).eq("id", coach.id);
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase.rpc("remove_coach_role", {
+        p_coach_id: coach.id,
+        p_removed_by_email: auth.user?.email ?? "—",
+      });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Coach eliminado"); qc.invalidateQueries({ queryKey: ["coaches"] }); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
+    onSuccess: () => {
+      toast.success("Rol de coach retirado");
+      qc.invalidateQueries({ queryKey: ["coaches"] });
+      setConfirmRemove(false);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo quitar el rol"),
   });
 
   return (
@@ -107,32 +125,50 @@ function CoachCard({ coach }: { coach: Coach }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold">{coach.name}</p>
-            {paused && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Pausado</span>}
-            {coach.user_id && <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">Vinculado</span>}
+            {removed && <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">Inactivo</span>}
+            {!removed && paused && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Pausado</span>}
+            {!removed && coach.user_id && <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">Vinculado</span>}
           </div>
           <p className="truncate text-[11px] text-muted-foreground">{coach.specialty || coach.email || "—"}</p>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <PermissionsDialog coach={coach} granted={granted} />
-        <HistoryDialog coach={coach} />
+      {removed ? (
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Ya no tiene rol de coach. Su historial (clases, medallas, cambios de permisos) se conserva. Para volver a darle el rol, invítalo de nuevo.
+        </p>
+      ) : (
+        <div className="mt-3 flex items-center gap-2">
+          <PermissionsDialog coach={coach} granted={granted} />
+          <HistoryDialog coach={coach} />
 
-        <button
-          onClick={() => update.mutate({ status: paused ? "activo" : "pausado" })}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary active:bg-secondary/70"
-          aria-label={paused ? "Reanudar" : "Pausar"}
-        >
-          {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-        </button>
-        <button
-          onClick={() => remove.mutate()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-destructive/15 text-destructive active:bg-destructive/25"
-          aria-label="Eliminar"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      </div>
+          <button
+            onClick={() => update.mutate({ status: paused ? "activo" : "pausado" })}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary active:bg-secondary/70"
+            aria-label={paused ? "Reanudar" : "Pausar"}
+          >
+            {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => setConfirmRemove(true)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-destructive/15 text-destructive active:bg-destructive/25"
+            aria-label="Quitar rol de coach"
+          >
+            <UserMinus className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        title="Quitar rol de coach"
+        description={`${coach.name} dejará de ser coach y pasará a ser un alumno más. Su historial (clases dictadas, medallas otorgadas, cambios de permisos) se conserva. Para volver a darle el rol, necesitarás invitarlo de nuevo.`}
+        confirmLabel="Quitar rol"
+        destructive
+        loading={removeRole.isPending}
+        onConfirm={() => removeRole.mutate()}
+      />
     </div>
   );
 }

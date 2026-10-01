@@ -845,6 +845,8 @@ export type Database = {
           permissions: Json
           phone: string | null
           photo_url: string | null
+          removed_at: string | null
+          removed_by_email: string | null
           specialty: string | null
           status: string
           updated_at: string
@@ -860,6 +862,8 @@ export type Database = {
           permissions?: Json
           phone?: string | null
           photo_url?: string | null
+          removed_at?: string | null
+          removed_by_email?: string | null
           specialty?: string | null
           status?: string
           updated_at?: string
@@ -875,6 +879,8 @@ export type Database = {
           permissions?: Json
           phone?: string | null
           photo_url?: string | null
+          removed_at?: string | null
+          removed_by_email?: string | null
           specialty?: string | null
           status?: string
           updated_at?: string
@@ -2034,6 +2040,8 @@ export type Database = {
           permissions: Json
           phone: string | null
           photo_url: string | null
+          removed_at: string | null
+          removed_by_email: string | null
           specialty: string | null
           status: string
           updated_at: string
@@ -2048,6 +2056,32 @@ export type Database = {
       }
       is_super_admin: { Args: never; Returns: boolean }
       my_coach_id: { Args: { _box_id: string }; Returns: string }
+      remove_coach_role: {
+        Args: { p_coach_id: string; p_removed_by_email: string }
+        Returns: {
+          bio: string | null
+          box_id: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          permissions: Json
+          phone: string | null
+          photo_url: string | null
+          removed_at: string | null
+          removed_by_email: string | null
+          specialty: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "coaches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       session_coach_id: { Args: { _session_id: string }; Returns: string }
       storage_box_prefix: { Args: { _name: string }; Returns: string }
       update_coach_permissions: {
@@ -2066,6 +2100,8 @@ export type Database = {
           permissions: Json
           phone: string | null
           photo_url: string | null
+          removed_at: string | null
+          removed_by_email: string | null
           specialty: string | null
           status: string
           updated_at: string
