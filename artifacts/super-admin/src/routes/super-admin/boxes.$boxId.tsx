@@ -98,7 +98,12 @@ function StaffSection({ boxId }: { boxId: string }) {
                 <UserCog className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{c.name}</p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className="truncate text-sm font-semibold">{c.name}</p>
+                  <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+                    Coach
+                  </span>
+                </div>
                 <p className="truncate text-xs text-muted-foreground">
                   {c.email ?? "(sin email)"} · {c.status}
                 </p>

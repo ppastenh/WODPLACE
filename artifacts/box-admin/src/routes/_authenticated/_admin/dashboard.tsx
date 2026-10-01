@@ -501,7 +501,7 @@ function AdminHome({ boxId }: { boxId: string }) {
                       </span>
                       <span className="flex items-center gap-1">
                         <UserIcon className="h-3 w-3" />
-                        {c.coach?.name ?? "Sin coach"}
+                        {c.coach?.name ? `Coach ${c.coach.name}` : "Sin coach"}
                       </span>
                     </div>
                   </div>
