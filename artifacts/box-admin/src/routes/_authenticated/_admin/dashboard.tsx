@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { MetricCard } from "@/components/admin/MetricCard";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Users, CalendarDays, DollarSign, AlertTriangle, Plus, CreditCard, Dumbbell, UserPlus, ChevronRight, Megaphone, User as UserIcon, Award } from "lucide-react";
+import { Users, CalendarDays, DollarSign, AlertTriangle, Plus, CreditCard, Dumbbell, UserPlus, ChevronRight, Megaphone, User as UserIcon, Award, Check, X } from "lucide-react";
+import { toast } from "sonner";
 import { format, startOfMonth, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -157,14 +158,15 @@ type MyClassRow = {
   start_time: string | null;
   duration_minutes: number | null;
   capacity: number;
-  athletes: { name: string; rank: string | null; status: string }[];
+  athletes: { bookingId: string; name: string; rank: string | null; status: string; attended: boolean | null }[];
 };
 
 // Fase 2: read-only by design (point 8 of the coach permission list) — a
 // coach never manages bookings from here, just sees who's coming and their
 // level. Fase 3 adds the matching RLS restriction (class_bookings scoped
 // to sessions this coach actually teaches) for the "gestionar reservas"
-// permission itself; this view doesn't need that yet since it's select-only.
+// permission itself. Fase C adds the one write this view needs after all:
+// marking real attendance (see useMyClassesToday's bookings select below).
 function useMyClassesToday(boxId: string, coachId: string | null) {
   return useQuery({
     queryKey: ["my-classes-today", boxId, coachId],
@@ -184,21 +186,25 @@ function useMyClassesToday(boxId: string, coachId: string | null) {
 
       const { data: bookings } = await supabase
         .from("class_bookings")
-        .select("session_id, status, wodplace_users(name, rank)")
+        .select("id, session_id, status, attended, wodplace_users(name, rank)")
         .eq("box_id", boxId)
         .in("session_id", sessions.map((s) => s.id));
 
       const bySession = new Map<string, MyClassRow["athletes"]>();
       for (const b of (bookings ?? []) as unknown as {
+        id: string;
         session_id: string;
         status: string;
+        attended: boolean | null;
         wodplace_users: { name: string; rank: string | null } | null;
       }[]) {
         const list = bySession.get(b.session_id) ?? [];
         list.push({
+          bookingId: b.id,
           name: b.wodplace_users?.name ?? "—",
           rank: b.wodplace_users?.rank ?? null,
           status: b.status,
+          attended: b.attended,
         });
         bySession.set(b.session_id, list);
       }
@@ -254,9 +260,29 @@ function useMyActivitySummary(boxId: string, coachId: string | null) {
   });
 }
 
+// Fase C: marking attendance here uses the exact same column/semantics as
+// class-detail.$id.tsx's roster view (attended: null/true/false, clicking
+// the active state again clears it) -- this is just the natural
+// right-after-class place a coach would do it from.
+function useMarkAttendance(boxId: string, coachId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bookingId, attended }: { bookingId: string; attended: boolean | null }) => {
+      const { error } = await supabase.from("class_bookings").update({ attended }).eq("box_id", boxId).eq("id", bookingId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-classes-today", boxId, coachId] });
+      qc.invalidateQueries({ queryKey: ["classes-range"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo marcar la asistencia"),
+  });
+}
+
 function CoachHome({ boxId, coachId }: { boxId: string; coachId: string | null }) {
   const classes = useMyClassesToday(boxId, coachId);
   const summary = useMyActivitySummary(boxId, coachId);
+  const markAttendance = useMarkAttendance(boxId, coachId);
 
   return (
     <AdminShell>
@@ -309,14 +335,38 @@ function CoachHome({ boxId, coachId }: { boxId: string; coachId: string | null }
             </p>
             {c.athletes.length > 0 ? (
               <ul className="mt-3 space-y-1.5">
-                {c.athletes.map((a, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="flex items-center gap-1.5 truncate">
+                {c.athletes.map((a) => (
+                  <li key={a.bookingId} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="flex min-w-0 items-center gap-1.5">
                       <UserIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
                       <span className="truncate">{a.name}</span>
+                      <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold capitalize text-muted-foreground">
+                        {a.rank ?? "—"}
+                      </span>
                     </span>
-                    <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold capitalize text-muted-foreground">
-                      {a.rank ?? "—"}
+                    <span className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Marcar a ${a.name} como asistió`}
+                        disabled={markAttendance.isPending}
+                        onClick={() => markAttendance.mutate({ bookingId: a.bookingId, attended: a.attended === true ? null : true })}
+                        className={`grid h-7 w-7 place-items-center rounded-lg disabled:opacity-50 ${
+                          a.attended === true ? "bg-primary text-primary-foreground" : "text-muted-foreground active:bg-secondary"
+                        }`}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Marcar a ${a.name} como ausente`}
+                        disabled={markAttendance.isPending}
+                        onClick={() => markAttendance.mutate({ bookingId: a.bookingId, attended: a.attended === false ? null : false })}
+                        className={`grid h-7 w-7 place-items-center rounded-lg disabled:opacity-50 ${
+                          a.attended === false ? "bg-destructive text-destructive-foreground" : "text-muted-foreground active:bg-secondary"
+                        }`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </span>
                   </li>
                 ))}

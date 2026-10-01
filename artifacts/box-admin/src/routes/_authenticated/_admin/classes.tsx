@@ -98,7 +98,7 @@ type ClassRow = {
   status: string;
   notes: string | null;
   coach: { name: string } | null;
-  class_bookings: { id: string; status: string }[];
+  class_bookings: { id: string; status: string; attended: boolean | null }[];
 };
 
 function useClassesRange(from: Date, to: Date) {
@@ -122,13 +122,13 @@ function useClassesRange(from: Date, to: Date) {
       // it can't be embedded — fetch and group in JS.
       const { data: bookings } = await supabase
         .from("class_bookings")
-        .select("id, status, session_id")
+        .select("id, status, attended, session_id")
         .eq("box_id", boxId)
         .in("session_id", rows.map((r) => r.id));
-      const bySession = new Map<string, { id: string; status: string }[]>();
+      const bySession = new Map<string, { id: string; status: string; attended: boolean | null }[]>();
       for (const b of bookings ?? []) {
         const arr = bySession.get(b.session_id) ?? [];
-        arr.push({ id: b.id, status: b.status });
+        arr.push({ id: b.id, status: b.status, attended: b.attended });
         bySession.set(b.session_id, arr);
       }
       return rows.map((r) => ({ ...r, class_bookings: bySession.get(r.id) ?? [] })) as ClassRow[];
@@ -295,7 +295,7 @@ function WeekView({ selected, onSelect }: { selected: Date; onSelect: (d: Date) 
               const top = scale.y(startMin);
               const height = Math.max(34, scale.y(endMin) - top - 4);
               const enrolled = c.class_bookings?.length ?? 0;
-              const attended = (c.class_bookings ?? []).filter((a) => a.status === "asistio").length;
+              const attended = (c.class_bookings ?? []).filter((a) => a.attended === true).length;
               const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
               const widthPct = 100 / cols;
               return (
@@ -329,7 +329,7 @@ function WeekView({ selected, onSelect }: { selected: Date; onSelect: (d: Date) 
       )}
 
       <ClassQuickView
-        c={quick ? { ...quick, enrolled: quick.class_bookings?.length ?? 0, attended: (quick.class_bookings ?? []).filter((a) => a.status === "asistio").length } : null}
+        c={quick ? { ...quick, enrolled: quick.class_bookings?.length ?? 0, attended: (quick.class_bookings ?? []).filter((a) => a.attended === true).length } : null}
         open={!!quick}
         onOpenChange={(v) => !v && setQuick(null)}
       />
@@ -507,7 +507,7 @@ function MonthView({
       )}
 
       <ClassQuickView
-        c={quick ? { ...quick, enrolled: quick.class_bookings?.length ?? 0, attended: (quick.class_bookings ?? []).filter((a) => a.status === "asistio").length } : null}
+        c={quick ? { ...quick, enrolled: quick.class_bookings?.length ?? 0, attended: (quick.class_bookings ?? []).filter((a) => a.attended === true).length } : null}
         open={!!quick}
         onOpenChange={(v: boolean) => !v && setQuick(null)}
       />
@@ -517,7 +517,7 @@ function MonthView({
 
 function ClassCard({ c, onQuick }: { c: ClassRow; onQuick: () => void }) {
   const enrolled = c.class_bookings?.length ?? 0;
-  const attended = (c.class_bookings ?? []).filter((a) => a.status === "asistio").length;
+  const attended = (c.class_bookings ?? []).filter((a) => a.attended === true).length;
   const [h, m] = c.start_time.split(":").map(Number);
   const endMin = h * 60 + m + (c.duration_minutes || 60);
   const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;

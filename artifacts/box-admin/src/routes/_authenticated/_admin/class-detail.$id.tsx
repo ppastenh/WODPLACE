@@ -6,7 +6,7 @@ import { useBox } from "@/lib/box-context";
 import { checkPlanLimit } from "@/lib/planLimit";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "./members";
-import { UserPlus, Clock, User as UserIcon, CalendarDays, Pencil, Search, Trash2 } from "lucide-react";
+import { UserPlus, Clock, User as UserIcon, CalendarDays, Pencil, Search, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -36,12 +36,14 @@ export const Route = createFileRoute("/_authenticated/_admin/class-detail/$id")(
 type BookingRow = {
   id: string;
   status: string;
+  attended: boolean | null;
   wodplace_users: { name: string } | null;
 };
 
 function ClassDetail() {
   const { id } = Route.useParams();
-  const { boxId } = useBox();
+  const { boxId, isAdmin, myPermissions } = useBox();
+  const canMarkAttendance = isAdmin || !!myPermissions?.bookings_manage;
   const qc = useQueryClient();
   const [tab, setTab] = useState<"asistentes" | "espera">("asistentes");
   const [q, setQ] = useState("");
@@ -57,9 +59,26 @@ function ClassDetail() {
     queryKey: ["class-bookings", boxId, id],
     queryFn: async () => ((await supabase
       .from("class_bookings")
-      .select("id, status, wodplace_users(name)")
+      .select("id, status, attended, wodplace_users(name)")
       .eq("box_id", boxId)
       .eq("session_id", id)).data ?? []) as unknown as BookingRow[],
+  });
+
+  // Fase C: "asistencia real" -- whether the athlete actually showed up,
+  // separate from the booking status (see
+  // 20261001170000_class_bookings_attendance.sql for why it's not just
+  // another status value). Clicking the same state again clears it back to
+  // "sin marcar" (null) rather than toggling only between the two.
+  const markAttendance = useMutation({
+    mutationFn: async ({ bookingId, attended }: { bookingId: string; attended: boolean | null }) => {
+      const { error } = await supabase.from("class_bookings").update({ attended }).eq("box_id", boxId).eq("id", bookingId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["class-bookings", boxId, id] });
+      qc.invalidateQueries({ queryKey: ["classes-range"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo marcar la asistencia"),
   });
 
   // Admin-side cancellation, bypassing the 1-hour-before-class cutoff that
@@ -174,6 +193,32 @@ function ClassDetail() {
             <div key={a.id} className="flex items-center gap-3 py-3">
               <Avatar name={a.wodplace_users?.name ?? "?"} size={40} />
               <p className="min-w-0 flex-1 truncate text-sm font-semibold">{a.wodplace_users?.name}</p>
+              {tab === "asistentes" && canMarkAttendance && (
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={`Marcar a ${a.wodplace_users?.name ?? "este miembro"} como asistió`}
+                    disabled={markAttendance.isPending}
+                    onClick={() => markAttendance.mutate({ bookingId: a.id, attended: a.attended === true ? null : true })}
+                    className={`grid h-9 w-9 place-items-center rounded-xl disabled:opacity-50 ${
+                      a.attended === true ? "bg-primary text-primary-foreground" : "text-muted-foreground active:bg-secondary"
+                    }`}
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Marcar a ${a.wodplace_users?.name ?? "este miembro"} como ausente`}
+                    disabled={markAttendance.isPending}
+                    onClick={() => markAttendance.mutate({ bookingId: a.id, attended: a.attended === false ? null : false })}
+                    className={`grid h-9 w-9 place-items-center rounded-xl disabled:opacity-50 ${
+                      a.attended === false ? "bg-destructive text-destructive-foreground" : "text-muted-foreground active:bg-secondary"
+                    }`}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 aria-label={`Quitar a ${a.wodplace_users?.name ?? "este miembro"}`}

@@ -625,6 +625,7 @@ export type Database = {
       }
       class_bookings: {
         Row: {
+          attended: boolean | null
           box_id: string
           created_at: string
           id: string
@@ -633,6 +634,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attended?: boolean | null
           box_id: string
           created_at?: string
           id?: string
@@ -641,6 +643,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attended?: boolean | null
           box_id?: string
           created_at?: string
           id?: string

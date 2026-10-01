@@ -1,0 +1,20 @@
+-- Fase C of the new coach features batch: "Asistencia real" -- whether an
+-- athlete actually showed up, not just whether they booked.
+--
+-- Deliberately a SEPARATE column from `status` ("inscrito"/"lista_espera"),
+-- not a new status value: `status = 'inscrito'` is load-bearing elsewhere
+-- (plan-limit's classesUsedInPeriod in box-admin's planLimit.ts and
+-- api-server's boxes.ts, and achievements/evaluate.ts's confirmedBookingDates
+-- both filter on status = 'inscrito' to count a booking as "used this
+-- period"/"counts for constancia"). Overloading status with an "asistio"
+-- value on attendance-mark would silently make a booking stop counting
+-- toward the athlete's plan usage and achievement streaks the moment a
+-- coach marks them present -- exactly backwards. attended is purely
+-- orthogonal: null = not marked yet, true = asistio, false = no-show.
+--
+-- No RLS change needed: writes ride the existing "admin manage
+-- class_bookings" (unrestricted) and "coach manage own class_bookings"
+-- (bookings_manage permission, own session only) FOR ALL policies from
+-- 20261001120000_coach_permission_enforcement.sql -- attended is just
+-- another column those UPDATE policies already cover.
+alter table public.class_bookings add column if not exists attended boolean;

@@ -258,6 +258,10 @@ export const classBookingsTable = pgTable(
       .notNull()
       .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
     status: text("status").notNull(), // "inscrito" | "lista_espera"
+    // Whether the athlete actually showed up -- orthogonal to `status` on
+    // purpose (see 20261001170000_class_bookings_attendance.sql). null =
+    // not marked yet, true = asistio, false = no-show.
+    attended: boolean("attended"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
