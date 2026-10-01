@@ -85,7 +85,7 @@ function formatWodResult(row: WodResultRow): string {
 function MemberDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, myCoachId } = useBox();
   const [selectPlan, setSelectPlan] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [toRemove, setToRemove] = useState<UpcomingClass | null>(null);
@@ -207,6 +207,7 @@ function MemberDetail() {
           achievement_id: achievementId,
           box_id: boxId,
           awarded_by: auth.user?.email ?? "—",
+          coach_id: myCoachId,
         });
         if (error) throw error;
       } else {
@@ -249,6 +250,7 @@ function MemberDetail() {
           achievement_id: achievementId,
           box_id: boxId,
           awarded_by: auth.user?.email ?? "—",
+          coach_id: myCoachId,
         });
         if (error) throw error;
       } else {

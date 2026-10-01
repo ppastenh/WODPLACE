@@ -4,7 +4,7 @@ import { MetricCard } from "@/components/admin/MetricCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Users, CalendarDays, DollarSign, AlertTriangle, Plus, CreditCard, Dumbbell, UserPlus, ChevronRight, Megaphone, User as UserIcon } from "lucide-react";
+import { Users, CalendarDays, DollarSign, AlertTriangle, Plus, CreditCard, Dumbbell, UserPlus, ChevronRight, Megaphone, User as UserIcon, Award } from "lucide-react";
 import { format, startOfMonth, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -208,8 +208,55 @@ function useMyClassesToday(boxId: string, coachId: string | null) {
   });
 }
 
+/** Fase B: a coach's own contribution, never box-wide — "clases dictadas"
+ *  only counts sessions that already happened (today or earlier, not
+ *  cancelled), distinct athletes come from their own class rosters, and
+ *  medals come from the coach_id now stamped on user_achievements at grant
+ *  time (see 20261001160000_user_achievements_coach_id.sql). */
+function useMyActivitySummary(boxId: string, coachId: string | null) {
+  return useQuery({
+    queryKey: ["my-activity-summary", boxId, coachId],
+    enabled: !!boxId && !!coachId,
+    queryFn: async () => {
+      const coach = coachId!;
+      const today = format(new Date(), "yyyy-MM-dd");
+
+      const [sessionsTaught, medals] = await Promise.all([
+        supabase
+          .from("class_sessions")
+          .select("id")
+          .eq("box_id", boxId)
+          .eq("coach_id", coach)
+          .neq("status", "cancelada")
+          .lte("session_date", today),
+        supabase
+          .from("user_achievements")
+          .select("id", { count: "exact", head: true })
+          .eq("coach_id", coach),
+      ]);
+
+      const sessionIds = (sessionsTaught.data ?? []).map((s) => s.id);
+      let distinctAthletes = 0;
+      if (sessionIds.length > 0) {
+        const { data: bookings } = await supabase
+          .from("class_bookings")
+          .select("user_id")
+          .in("session_id", sessionIds);
+        distinctAthletes = new Set((bookings ?? []).map((b) => b.user_id)).size;
+      }
+
+      return {
+        classesTaught: sessionIds.length,
+        distinctAthletes,
+        medalsAwarded: medals.count ?? 0,
+      };
+    },
+  });
+}
+
 function CoachHome({ boxId, coachId }: { boxId: string; coachId: string | null }) {
   const classes = useMyClassesToday(boxId, coachId);
+  const summary = useMyActivitySummary(boxId, coachId);
 
   return (
     <AdminShell>
@@ -218,8 +265,18 @@ function CoachHome({ boxId, coachId }: { boxId: string; coachId: string | null }
           {format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
         </p>
         <h1 className="mt-1 text-2xl font-black">Hola, coach 👋</h1>
-        <p className="text-sm text-muted-foreground">Tus clases de hoy</p>
+        <p className="text-sm text-muted-foreground">Tu actividad</p>
       </div>
+
+      {coachId && (
+        <div className="mb-5 grid grid-cols-3 gap-2">
+          <MetricCard icon={Dumbbell} label="Clases dictadas" value={summary.data?.classesTaught ?? "—"} />
+          <MetricCard icon={Users} label="Alumnos distintos" value={summary.data?.distinctAthletes ?? "—"} />
+          <MetricCard icon={Award} label="Medallas otorgadas" value={summary.data?.medalsAwarded ?? "—"} />
+        </div>
+      )}
+
+      <p className="mb-2 text-sm font-bold">Tus clases de hoy</p>
 
       {!coachId && !classes.isLoading && (
         <div className="rounded-3xl border border-dashed p-8 text-center">

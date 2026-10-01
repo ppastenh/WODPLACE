@@ -1696,6 +1696,7 @@ export type Database = {
           achievement_id: string
           awarded_by: string | null
           box_id: string | null
+          coach_id: string | null
           created_at: string
           id: string
           source_wod_result_id: string | null
@@ -1706,6 +1707,7 @@ export type Database = {
           achievement_id: string
           awarded_by?: string | null
           box_id?: string | null
+          coach_id?: string | null
           created_at?: string
           id?: string
           source_wod_result_id?: string | null
@@ -1716,6 +1718,7 @@ export type Database = {
           achievement_id?: string
           awarded_by?: string | null
           box_id?: string | null
+          coach_id?: string | null
           created_at?: string
           id?: string
           source_wod_result_id?: string | null
@@ -1723,6 +1726,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_achievements_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_achievements_source_wod_result_id_fkey"
             columns: ["source_wod_result_id"]

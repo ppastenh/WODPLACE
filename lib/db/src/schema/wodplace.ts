@@ -673,6 +673,12 @@ export const userAchievementsTable = pgTable(
       .defaultNow(),
     awardedBy: text("awarded_by"),
     boxId: text("box_id"),
+    // Real FK to the granting coach, added alongside the coach activity
+    // summary feature -- awardedBy (an email string) stays as the historical
+    // audit trail, but this is what "medals I've granted" queries join on.
+    // Null for every automatic achievement (never coach-granted) and for
+    // admin-granted ones (admins have no coaches row).
+    coachId: text("coach_id"),
     sourceWodResultId: text("source_wod_result_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
