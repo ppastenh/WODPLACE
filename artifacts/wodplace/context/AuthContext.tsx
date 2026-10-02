@@ -744,7 +744,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { status: 'cancelled' };
     }
 
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(result.url);
+    // exchangeCodeForSession wants the bare `code` value, not the full
+    // callback URL -- the installed @supabase/auth-js (2.112.4) sends
+    // whatever string it's given straight through as `auth_code` with no
+    // URL parsing of its own (older supabase-js releases did parse a full
+    // URL internally, which is why passing `result.url` directly used to
+    // be the documented pattern elsewhere). Passing the whole URL here
+    // made the server reject it with "invalid flow state, no valid flow
+    // state found" since it never matched any real code.
+    const code = new URL(result.url).searchParams.get('code');
+    if (!code) {
+      throw new Error('No se pudo completar el inicio de sesión con Google.');
+    }
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     console.log('[loginWithGoogle] exchangeCodeForSession ->', exchangeError ? exchangeError.message : 'ok');
     if (exchangeError) {
       throw new Error('No se pudo completar el inicio de sesión con Google.');

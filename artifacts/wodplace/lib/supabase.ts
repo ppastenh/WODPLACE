@@ -1,4 +1,5 @@
 import 'react-native-url-polyfill/auto';
+import './webcrypto-polyfill';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 
@@ -33,6 +34,15 @@ function createSupabaseClient() {
       persistSession: true,
       // React Native has no URL bar to land a redirect in.
       detectSessionInUrl: false,
+      // Without this, signInWithOAuth defaults to the implicit flow --
+      // Google then returns the token directly in the redirect's URL
+      // fragment (#access_token=...) instead of a `code` to exchange,
+      // which breaks AuthContext.tsx's loginWithGoogle() (it calls
+      // exchangeCodeForSession, the PKCE-flow method, and gets "both auth
+      // code and code verifier should be non-empty" since there was never
+      // a code). PKCE is also the flow Supabase's own docs recommend for
+      // mobile apps redirecting through a custom URL scheme.
+      flowType: 'pkce',
     },
   });
 }

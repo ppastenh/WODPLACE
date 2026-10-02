@@ -10,7 +10,9 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "package": "cl.wodplace.app"
+    },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
@@ -35,6 +37,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f7efdf33-deeb-4db3-b90e-2994cbb18e9e"
+      }
+    },
+    "owner": "keirap"
   }
 }
