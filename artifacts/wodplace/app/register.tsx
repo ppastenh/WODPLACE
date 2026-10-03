@@ -215,19 +215,6 @@ export default function RegisterScreen() {
           />
 
           <Pressable
-            onPress={() => router.push({ pathname: '/recover-account', params: { email } })}
-            style={styles.termsLink}
-            hitSlop={8}
-          >
-            <Text style={[styles.termsText, { color: colors.authMuted }]}>
-              ¿Ya tienes cuenta y cambiaste de teléfono?{' '}
-              <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
-                Recupera tu acceso
-              </Text>
-            </Text>
-          </Pressable>
-
-          <Pressable
             onPress={() =>
               Alert.alert('Términos y Condiciones', 'Función próximamente disponible.')
             }

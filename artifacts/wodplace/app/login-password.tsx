@@ -133,18 +133,6 @@ export default function LoginPasswordScreen() {
             testID="login-password-submit"
           />
 
-          <Pressable
-            onPress={() => router.push({ pathname: '/recover-account', params: { email } })}
-            style={styles.recoverLink}
-            hitSlop={8}
-          >
-            <Text style={[styles.recoverText, { color: colors.authMuted }]}>
-              ¿Olvidaste tu contraseña o cambiaste de teléfono?{' '}
-              <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
-                Recupera tu cuenta
-              </Text>
-            </Text>
-          </Pressable>
         </View>
       </KeyboardAwareScrollViewCompat>
     </View>
@@ -238,13 +226,5 @@ const styles = StyleSheet.create({
   },
   entrarButton: {
     marginTop: 6,
-  },
-  recoverLink: {
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  recoverText: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
   },
 });

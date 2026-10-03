@@ -1,6 +1,6 @@
 /**
  * Fase 2 of the mock-auth -> real Supabase Auth migration — hand-written,
- * same infrastructure as accountRecovery.ts/platformAgreement.ts. Only
+ * same infrastructure as platformAgreement.ts. Only
  * covers NEW accounts; mock accounts keep using the local AsyncStorage
  * flow untouched (see AuthContext.tsx).
  */

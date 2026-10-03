@@ -265,7 +265,8 @@ router.post("/auth/complete-profile", requireSupabaseUser, async (req: Request, 
  * one (`login()` uses the local AsyncStorage flow, unchanged), or none at
  * all. Also replaces the old fully-local `checkEmailExists()` — this one
  * actually sees accounts created on a different device, which the mock
- * flow never could (the whole reason account-recovery exists today).
+ * flow never could (the whole reason the old account-recovery system
+ * existed, before real auth made it obsolete — see Fase 6's removal).
  */
 router.get("/auth/mode", async (req: Request, res: Response) => {
   const parsed = z.object({ email: z.string().email() }).safeParse(req.query);
