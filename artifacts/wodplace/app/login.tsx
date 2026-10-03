@@ -54,21 +54,30 @@ export default function LoginScreen() {
     try {
       const result = await loginWithGoogle();
       console.log('[login.tsx] loginWithGoogle result ->', result.status);
-      if (result.status === 'cancelled') return;
+      if (result.status === 'cancelled') {
+        setLoading(null);
+        return;
+      }
       if (result.status === 'needs-profile') {
         console.log('[login.tsx] navigating -> /register-google');
         router.push({
           pathname: '/register-google',
           params: { name: result.prefillName, email: result.email },
         });
+        // Navigating away -- this screen is being replaced, so resetting
+        // local state here (the old `finally` below used to do this
+        // unconditionally) raced React's own unmount and triggered "Can't
+        // perform a React state update on a component that hasn't mounted
+        // yet".
         return;
       }
       const dest = getPostAuthRoute('/home');
       console.log('[login.tsx] navigating ->', dest);
       router.replace(dest as never);
+      // Same reasoning as the needs-profile branch above -- no setLoading
+      // after navigating away.
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Algo salió mal. Intenta de nuevo.');
-    } finally {
       setLoading(null);
     }
   };

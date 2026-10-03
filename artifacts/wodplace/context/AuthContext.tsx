@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
@@ -661,6 +662,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = async (): Promise<LoginWithGoogleResult> => {
+    try {
+      return await loginWithGoogleInner();
+    } catch (err) {
+      // Full-detail logging kept permanently (not just error.message, which
+      // is all the login screen's own catch surfaces to the UI) -- this is
+      // an external OAuth flow spanning a browser hand-off and whatever the
+      // OS/device does in between, so a future failure on some other
+      // device needs more than a one-line message to diagnose, same as the
+      // "undefined is not a function" this helped pin down.
+      console.error('[loginWithGoogle] FULL ERROR:', err);
+      console.error('[loginWithGoogle] STACK:', (err as Error)?.stack);
+      throw err;
+    }
+  };
+
+  const loginWithGoogleInner = async (): Promise<LoginWithGoogleResult> => {
     // An explicit path, not just the scheme root — see auth-callback.tsx's
     // own doc comment for why a bare `wodplace://`/`exp://host:port` (no
     // path) made expo-router race its own deep-link navigation against
@@ -695,7 +712,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('No se pudo iniciar sesión con Google.');
     }
 
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    // Without an explicit browserPackage, openAuthSessionAsync's Custom Tab
+    // relies on Android's own app-resolution for the URL instead of pinning
+    // a real Custom-Tabs-capable browser -- confirmed live on a Samsung
+    // device: with Samsung Internet (the device's default browser) hosting
+    // the Custom Tab, tapping an account on Google's picker opened Gmail's
+    // compose screen instead of continuing the OAuth flow, even though the
+    // authorize URL itself (logged above) was a completely ordinary
+    // Supabase URL -- a Samsung Internet Custom Tabs bug, not anything in
+    // this app's own flow. Forcing Chrome specifically (not just whatever
+    // the OS/user picked as default) avoided it; confirmed end-to-end on
+    // the same device.
+    let browserPackage: string | undefined;
+    if (Platform.OS === 'android') {
+      try {
+        const browsers = await WebBrowser.getCustomTabsSupportingBrowsersAsync();
+        const CHROME = 'com.android.chrome';
+        browserPackage =
+          [...browsers.browserPackages, ...browsers.servicePackages].find((pkg) => pkg === CHROME) ??
+          browsers.preferredBrowserPackage ??
+          browsers.browserPackages[0];
+        console.log('[loginWithGoogle] custom tabs browsers ->', browsers, '| using:', browserPackage);
+      } catch (err) {
+        console.warn('[loginWithGoogle] getCustomTabsSupportingBrowsersAsync failed', err);
+      }
+    }
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { browserPackage });
     console.log('[loginWithGoogle] openAuthSessionAsync ->', result.type, 'url' in result ? result.url : undefined);
     if (result.type !== 'success') {
       return { status: 'cancelled' };
