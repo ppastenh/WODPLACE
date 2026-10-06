@@ -46,6 +46,11 @@ const colors = {
 
     // Bottom navigation
     navActive: '#B98250',
+    // Darker copper for SMALL text on the beige background only (box name,
+    // small labels) — navActive itself is ~2.9:1 against `background`, under
+    // the 4.5:1 small-text minimum; this one is ~5:1. Icons/borders/buttons
+    // keep using navActive.
+    navActiveTextSmall: '#8B5E34',
     navInactive: '#706B63',
     navFloating: '#18191A',
     navFloatingForeground: '#F6F1E8',

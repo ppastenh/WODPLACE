@@ -43,6 +43,11 @@ export const Route = createFileRoute("/_authenticated/_admin/member-detail/$id")
   component: MemberDetail,
 });
 
+// Kept in sync by hand with wodplace's own BIRTHDAY_CONSENT_TEXT_VERSION
+// (active-contracts.tsx) — bump both together if the informational copy
+// either surface shows ever changes meaningfully.
+const BIRTHDAY_CONSENT_TEXT_VERSION = "v1";
+
 type MemberDetailRow = {
   user_id: string;
   status: string;
@@ -53,7 +58,13 @@ type MemberDetailRow = {
   member_since: string | null;
   next_payment_at: string | null;
   plan_id: string | null;
-  wodplace_users: { name: string; email: string; avatar_url: string | null; rank: string | null } | null;
+  wodplace_users: {
+    name: string;
+    email: string;
+    avatar_url: string | null;
+    rank: string | null;
+    birthdate: string | null;
+  } | null;
   plans: { name: string; price: number | null; duration_days: number | null } | null;
 };
 
@@ -85,22 +96,87 @@ function formatWodResult(row: WodResultRow): string {
 function MemberDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
-  const { boxId, myCoachId } = useBox();
+  const { boxId, myCoachId, isAdmin } = useBox();
   const [selectPlan, setSelectPlan] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [toRemove, setToRemove] = useState<UpcomingClass | null>(null);
+  const [confirmBirthdayConsent, setConfirmBirthdayConsent] = useState(false);
 
   const member = useQuery({
     queryKey: ["member", boxId, id],
     queryFn: async () => {
       const { data } = await supabase
         .from("box_members")
-        .select("user_id, status, phone, photo_url, notes, joined_at, member_since, next_payment_at, plan_id, wodplace_users(name, email, avatar_url, rank), plans(name, price, duration_days)")
+        .select("user_id, status, phone, photo_url, notes, joined_at, member_since, next_payment_at, plan_id, wodplace_users(name, email, avatar_url, rank, birthdate), plans(name, price, duration_days)")
         .eq("box_id", boxId)
         .eq("user_id", id)
         .maybeSingle();
       return (data as unknown as MemberDetailRow | null) ?? null;
     },
+  });
+
+  // By birthdate only — never by whether a guardianName happens to be on
+  // file (that's wodplace's own, unrelated, trust signal for the contract
+  // flow). No birthdate on file means we can't tell, so the switch stays
+  // hidden rather than guessing either way.
+  const birthdate = member.data?.wodplace_users?.birthdate ?? null;
+  const isMinor = (() => {
+    if (!birthdate) return false;
+    const [by, bm, bd] = birthdate.split("-").map(Number);
+    const today = new Date();
+    let age = today.getFullYear() - by;
+    const hadBirthdayThisYear =
+      today.getMonth() + 1 > bm || (today.getMonth() + 1 === bm && today.getDate() >= bd);
+    if (!hadBirthdayThisYear) age -= 1;
+    return age < 18;
+  })();
+
+  // Admin-only (never coach) by RLS on this table — see supabase/migrations/
+  // 20261005090000_birthday_visibility_consents.sql. A coach's query here
+  // would just come back empty/denied rather than ever showing real data.
+  const birthdayConsent = useQuery({
+    queryKey: ["member-birthday-consent", boxId, id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("birthday_visibility_consents")
+        .select("consent")
+        .eq("user_id", id)
+        .maybeSingle();
+      return data?.consent ?? false;
+    },
+    enabled: isAdmin && isMinor,
+  });
+
+  const setBirthdayConsent = useMutation({
+    mutationFn: async (consent: boolean) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase.from("birthday_visibility_consents").upsert(
+        consent
+          ? {
+              user_id: id,
+              box_id: boxId,
+              consent: true,
+              granted_at: new Date().toISOString(),
+              source: "admin",
+              granted_by_email: auth.user?.email ?? "—",
+              text_version: BIRTHDAY_CONSENT_TEXT_VERSION,
+              revoked_at: null,
+            }
+          : {
+              user_id: id,
+              box_id: boxId,
+              consent: false,
+              revoked_at: new Date().toISOString(),
+            },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Autorización de cumpleaños actualizada");
+      qc.invalidateQueries({ queryKey: ["member-birthday-consent", boxId, id] });
+      setConfirmBirthdayConsent(false);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo actualizar la autorización"),
   });
 
   const payments = useQuery({
@@ -408,6 +484,32 @@ function MemberDetail() {
               </Select>
             </div>
           </div>
+          {isAdmin && isMinor && (
+            <div className="flex items-center gap-3 rounded-2xl border bg-card p-3">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-secondary">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Cumpleaños visible en el box
+                </p>
+                <p className="text-sm font-medium">
+                  {birthdayConsent.data ? "Autorizado" : "No autorizado"}
+                </p>
+              </div>
+              <Switch
+                checked={!!birthdayConsent.data}
+                disabled={birthdayConsent.isLoading || setBirthdayConsent.isPending}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setConfirmBirthdayConsent(true);
+                  } else {
+                    setBirthdayConsent.mutate(false);
+                  }
+                }}
+              />
+            </div>
+          )}
           {m.notes && (
             <div className="rounded-2xl border bg-card p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Observaciones</p>
@@ -605,6 +707,22 @@ function MemberDetail() {
         destructive
         loading={deleteWodResult.isPending}
         onConfirm={() => { if (wodResultToRemove) deleteWodResult.mutate(wodResultToRemove.row); }}
+      />
+      <ConfirmDialog
+        open={confirmBirthdayConsent}
+        onOpenChange={setConfirmBirthdayConsent}
+        title="Autorizar cumpleaños visible"
+        description={
+          `Si autorizas, mostraremos el cumpleaños de ${fullName} en la pantalla de Inicio de WODPLACE. ` +
+          "Qué se muestra: solo su primer nombre y el día y mes de su cumpleaños, nunca su edad ni su año de nacimiento. " +
+          "Dónde: en la sección \"Próximos cumpleaños\" de Inicio, durante los 7 días previos y el día de su cumpleaños. " +
+          "Quién lo ve: los demás alumnos de este box — no otros boxes, no es público. " +
+          "Es opcional y se puede retirar en cualquier momento desde la app o desde aquí. " +
+          "Confirmo que informé al apoderado de lo anterior y que autoriza."
+        }
+        confirmLabel="Confirmar y autorizar"
+        loading={setBirthdayConsent.isPending}
+        onConfirm={() => setBirthdayConsent.mutate(true)}
       />
     </AdminShell>
   );

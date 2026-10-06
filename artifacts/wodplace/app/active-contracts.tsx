@@ -16,6 +16,7 @@ import {
   useGetContractAcceptance,
   useListContracts,
   useMarkContractRead,
+  useSetBirthdayConsentSelf,
 } from '@workspace/api-client-react';
 import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
@@ -26,6 +27,13 @@ import { getContractFileUrl } from '@/lib/apiConfig';
 import { getAge } from '@/lib/dateUtils';
 
 const MINOR_AGE_THRESHOLD = 18;
+
+// Bump this whenever the informational copy below (or the checkbox label)
+// changes meaningfully, so a stored consent can still be matched back to
+// exactly what the guardian read when they granted it — see
+// birthdayVisibilityConsentTextVersion's doc comment in the OpenAPI spec.
+// Draft copy — pending legal review before publishing.
+const BIRTHDAY_CONSENT_TEXT_VERSION = 'v1';
 
 /**
  * Formats a ContractAcceptance timestamp in a readable, legally-relevant
@@ -60,6 +68,14 @@ export default function ActiveContractsScreen() {
   // Explicit, separate consent to process the minor's personal data —
   // distinct from accepting the box's contract. Only asked when isMinor.
   const [minorDataConsent, setMinorDataConsent] = useState(false);
+  // Separate again from both of the above: optional, defaults unchecked,
+  // and — unlike minorDataConsent — never blocks acceptance. Only takes
+  // effect server-side on the FIRST acceptance (see POST /contracts/
+  // acceptance); the app simply never shows this checkbox again
+  // afterward, which is the UI half of "once accepted, can't reactivate
+  // this way" — withdrawal afterward is a separate, always-available
+  // action (see handleWithdrawBirthdayConsent below).
+  const [birthdayVisibilityConsent, setBirthdayVisibilityConsent] = useState(false);
 
   // Minor status is derived *only* from the real birthdate on file — never
   // a self-declaration. If there's no birthdate yet, acceptance is blocked
@@ -82,6 +98,7 @@ export default function ActiveContractsScreen() {
   );
   const markReadMutation = useMarkContractRead();
   const acceptMutation = useAcceptContracts();
+  const withdrawBirthdayConsentMutation = useSetBirthdayConsentSelf();
 
   const documents = contractsQuery.data ?? [];
   const acceptance = acceptanceQuery.data?.acceptance ?? null;
@@ -154,6 +171,12 @@ export default function ActiveContractsScreen() {
                 ...(guardianRelationship.trim()
                   ? { guardianRelationship: guardianRelationship.trim() }
                   : {}),
+                ...(birthdayVisibilityConsent
+                  ? {
+                      birthdayVisibilityConsent: true,
+                      birthdayVisibilityConsentTextVersion: BIRTHDAY_CONSENT_TEXT_VERSION,
+                    }
+                  : {}),
               }
             : {}),
         },
@@ -170,6 +193,29 @@ export default function ActiveContractsScreen() {
           Alert.alert('No se pudo aceptar', message);
         },
       },
+    );
+  };
+
+  const handleWithdrawBirthdayConsent = () => {
+    Alert.alert(
+      'Retirar autorización',
+      'Si retiras la autorización, el cumpleaños de tu hijo o hija dejará de mostrarse a los demás alumnos del box.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Retirar',
+          style: 'destructive',
+          onPress: () => {
+            withdrawBirthdayConsentMutation.mutate(
+              { userId, data: { consent: false } },
+              {
+                onSuccess: () => acceptanceQuery.refetch(),
+                onError: () => Alert.alert('Error', 'No se pudo retirar la autorización. Intenta de nuevo.'),
+              },
+            );
+          },
+        },
+      ],
     );
   };
 
@@ -296,6 +342,21 @@ export default function ActiveContractsScreen() {
                       Consentimiento de datos del menor: {formatAcceptedAt(acceptance.minorDataConsentAt)}
                     </Text>
                   ) : null}
+                  {isMinor ? (
+                    <View style={styles.birthdayConsentStatusRow}>
+                      <Text style={[styles.acceptedSubtitle, { color: colors.secondaryForeground, flex: 1 }]}>
+                        Cumpleaños visible en el box:{' '}
+                        {acceptance.birthdayVisibilityConsent ? 'Autorizado' : 'No autorizado'}
+                      </Text>
+                      {acceptance.birthdayVisibilityConsent ? (
+                        <Pressable onPress={handleWithdrawBirthdayConsent} hitSlop={6}>
+                          <Text style={[styles.withdrawLink, { color: colors.destructive }]}>
+                            Retirar
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
               </View>
             ) : (
@@ -421,6 +482,50 @@ export default function ActiveContractsScreen() {
                       <Text style={[styles.checkLabel, { color: colors.foreground }]}>
                         Autorizo el tratamiento de los datos personales de mi hijo/a para los
                         fines de esta aplicación.
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {isMinor ? (
+                  <View style={[styles.birthdayConsentSection, { borderColor: colors.border }]}>
+                    <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                      Cumpleaños visible en el box (opcional)
+                    </Text>
+                    <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
+                      Si autorizas, mostraremos el cumpleaños de tu hijo o hija en la pantalla de
+                      Inicio de WODPLACE.{'\n\n'}
+                      • Qué se muestra: solo su primer nombre y el día y mes de su cumpleaños.
+                      Nunca su edad ni su año de nacimiento.{'\n'}
+                      • Dónde: en la sección "Próximos cumpleaños" de Inicio, durante los 7 días
+                      previos y el día de su cumpleaños.{'\n'}
+                      • Quién lo ve: los demás alumnos de su mismo box. No lo ven otros boxes ni
+                      es público.{'\n'}
+                      • Para qué: para que su comunidad pueda saludarlo(a).{'\n'}
+                      • Es opcional: no afecta su inscripción, y puedes retirarla cuando quieras
+                      desde la app o pidiéndoselo al administrador del box.
+                    </Text>
+                    <Pressable
+                      onPress={() => setBirthdayVisibilityConsent((prev) => !prev)}
+                      style={styles.checkRow}
+                      hitSlop={6}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          {
+                            borderColor: colors.foreground,
+                            backgroundColor: birthdayVisibilityConsent ? colors.primary : 'transparent',
+                          },
+                        ]}
+                      >
+                        {birthdayVisibilityConsent ? (
+                          <Feather name="check" size={16} color={colors.primaryForeground} />
+                        ) : null}
+                      </View>
+                      <Text style={[styles.checkLabel, { color: colors.foreground }]}>
+                        Autorizo que el primer nombre y el día y mes de cumpleaños de mi hijo o
+                        hija se muestren a los demás alumnos de su box en WODPLACE.
                       </Text>
                     </Pressable>
                   </View>
@@ -598,5 +703,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
     lineHeight: 16,
+  },
+  birthdayConsentSection: {
+    gap: 10,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  birthdayConsentStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  withdrawLink: {
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
   },
 });

@@ -12,7 +12,34 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Line } from 'react-native-svg';
 import { AutoFitImage } from '@/components/AutoFitImage';
+
+/** Purely decorative, no photos: a faint diagonal-line pattern (abstract
+ *  "weight plates lined up" motif) behind the header's text, low enough
+ *  opacity to never compete with the greeting/box name sitting on top of
+ *  it. `color` is supplied by the caller so it follows the theme's own
+ *  accent instead of a hardcoded value. */
+function HeaderPattern({ color }: { color: string }) {
+  const lines = Array.from({ length: 10 }, (_, i) => i * 16);
+  return (
+    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+      {lines.map((x) => (
+        <Line
+          key={x}
+          x1={x}
+          y1={0}
+          x2={x - 40}
+          y2={120}
+          stroke={color}
+          strokeWidth={10}
+          strokeOpacity={0.06}
+        />
+      ))}
+    </Svg>
+  );
+}
 
 /** The box logo in Home's header — height-fixed, width follows the image's
  *  real aspect ratio (measured on load), never cropped or circle-masked
@@ -40,8 +67,10 @@ import {
   getMyPlans,
   getTodayWod,
   getUpcomingBirthdays,
+  listPrs,
   markAnnouncementRead,
   markBoxWelcomeShown,
+  SKILL_LEVEL_LABELS,
   type BoxAnnouncement,
 } from '@workspace/api-client-react';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
@@ -61,10 +90,13 @@ import {
   addDays,
   formatDayLabel,
   formatHM,
+  isBirthdayToday,
   MONTH_NAMES,
   toDateKey,
+  todayInChile,
 } from '@/lib/dateUtils';
 import { hashString } from '@/constants/classSchedule';
+import { FONT_SIZE } from '@/constants/typography';
 
 // scrollContent has 20px horizontal padding each side; the pinned aviso
 // card itself has 16px padding each side (see pinnedAvisoCard).
@@ -90,21 +122,19 @@ function birthdayDayLabel(month: number, day: number): string {
   return `${day} ${abbrev}`;
 }
 
-type CoachNotice = {
-  text: string;
-  active: boolean;
-};
-
-// The coach dashboard can replace this local seed with an active API notice
-// without changing the Home layout.
-const COACH_NOTICE: CoachNotice = {
-  active: false,
-  text: 'Trae guantes — WOD con cuerdas.',
-};
-
 function getFirstName(name: string): string {
   return name.trim().split(/\s+/)[0] || 'Atleta';
 }
+
+// Matches the level values box-admin's own class-scheduling UI writes
+// (classes.tsx's level Select) -- "todos" means no restriction, shown as
+// "Todos los niveles" rather than literally "Todos".
+const CLASS_LEVEL_LABELS: Record<string, string> = {
+  todos: 'Todos los niveles',
+  principiante: 'Principiante',
+  intermedio: 'Intermedio',
+  avanzado: 'Avanzado',
+};
 
 
 function findNextAvailableSession(
@@ -193,10 +223,11 @@ export default function HomeScreen() {
     ? (myPlanQuery.data?.plans.find((p) => p.isSubscribed) ?? null)
     : null;
 
-  // Home's 4 stat cards (total de clases, racha de constancia, PR destacado,
-  // medallas) — see GET /achievements, which computes these as a side effect
-  // of evaluating medallas. Doesn't require box membership/an active plan
-  // (streaks, PRs, and unlocked count are all independent of that).
+  // Racha de constancia + the achievements catalog behind Medallas — see
+  // GET /achievements, which computes these as a side effect of evaluating
+  // medallas. Doesn't require box membership/an active plan (streaks and
+  // unlocked count are independent of that). "PR destacado" now comes from
+  // its own rotating pick below instead of achievementStats.featuredPr.
   const achievementsQuery = useQuery({
     queryKey: ['achievements', user?.id],
     queryFn: () => getAchievements(user!.id),
@@ -218,6 +249,36 @@ export default function HomeScreen() {
       .slice(0, 3);
     return { totalUnlocked, totalAchievements, recent };
   }, [achievementsQuery.data]);
+
+  // "PR destacado" now rotates one movement per day, instead of always
+  // showing the single biggest recent % jump (that's still what /api/
+  // achievements computes for other uses, e.g. the achievements screen --
+  // this is Home-only). Only rotates through movements the athlete has
+  // logged at least one PR for, so a day never lands on an empty one; the
+  // day-index pick reuses the exact same hashString(dateKey) % length
+  // pattern as the "Frase del día" rotation below, so it's deterministic
+  // (stable all day, no re-roll on refresh) without needing a server call.
+  const prsQuery = useQuery({
+    queryKey: ['prs', user?.id],
+    queryFn: () => listPrs({ userId: user!.id }),
+    enabled: !!user?.id,
+  });
+  useRefetchOnFocusIfStale(prsQuery);
+  const rotatingFeaturedPr = useMemo(() => {
+    const prs = prsQuery.data ?? [];
+    if (prs.length === 0) return null;
+    const bestByMovement = new Map<string, (typeof prs)[number]>();
+    for (const pr of prs) {
+      const current = bestByMovement.get(pr.movementId);
+      if (!current || pr.weightKg > current.weightKg) {
+        bestByMovement.set(pr.movementId, pr);
+      }
+    }
+    const movementIds = Array.from(bestByMovement.keys()).sort();
+    if (movementIds.length === 0) return null;
+    const index = hashString(toDateKey(now)) % movementIds.length;
+    return bestByMovement.get(movementIds[index]) ?? null;
+  }, [prsQuery.data, now]);
 
   const wodQuery = useQuery({
     queryKey: ['wod-today', user?.id],
@@ -291,15 +352,12 @@ export default function HomeScreen() {
     router.replace('/login');
   };
 
-  // Progreso Mensual only renders once the plan's real period stats are
-  // known (classesPerPeriod set AND next_payment_at seeded server-side) —
-  // an unlimited plan, or one with no period yet, has nothing to show a
-  // ceiling against.
+  // "Clases del plan" (the stat card below) only shows real numbers once
+  // the plan's period stats are known (classesPerPeriod set AND
+  // next_payment_at seeded server-side) — an unlimited plan, or one with no
+  // period yet, has nothing to show a ceiling against.
   const hasPeriodProgress =
     myPlan?.classesPerPeriod != null && myPlan?.classesUsedInPeriod != null;
-  const periodProgress = hasPeriodProgress
-    ? Math.min((myPlan!.classesUsedInPeriod as number) / (myPlan!.classesPerPeriod as number), 1)
-    : 0;
   const nearPlanLimit =
     !!myPlan &&
     ((myPlan.classesPerPeriod != null &&
@@ -326,8 +384,14 @@ export default function HomeScreen() {
   };
 
   const nextClassLabel = nextSession
-    ? `${formatDayLabel(nextSession.startDate, now)} a las ${formatHM(nextSession.startMinutes)}`
+    ? `${formatDayLabel(nextSession.startDate, now)} · ${formatHM(nextSession.startMinutes)}`
     : 'Sin clases disponibles';
+
+  const isOwnBirthdayToday = (() => {
+    if (!user.birthdate) return false;
+    const [, birthMonth, birthDay] = user.birthdate.split('-').map(Number);
+    return isBirthdayToday(birthMonth, birthDay, todayInChile());
+  })();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -336,32 +400,51 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.homeHeaderGroup}>
-          <Text style={styles.greeting}>
-            <Text style={{ color: colors.foreground }}>Hola, </Text>
-            <Text style={{ color: colors.navActive }}>{getFirstName(user.name)}</Text>
-          </Text>
-          {myBox ? (
-            <View style={styles.boxBadge}>
-              {myBox.photoUrl ? (
-                <BoxLogoImage uri={myBox.photoUrl} />
-              ) : (
-                <View style={[styles.boxLogoFallback, { backgroundColor: colors.secondary }]}>
-                  <Text style={[styles.boxLogoFallbackText, { color: colors.navActive }]}>
-                    {myBox.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <Text
-                style={[styles.boxBadgeName, { color: colors.foreground }]}
-                numberOfLines={1}
-              >
-                {myBox.name}
+        <View style={[styles.homeHeaderWrap, { backgroundColor: colors.card }]}>
+          <HeaderPattern color={colors.navActive} />
+          <View style={styles.homeHeaderGroup}>
+          {myBox?.photoUrl ? (
+            <BoxLogoImage uri={myBox.photoUrl} height={48} />
+          ) : myBox ? (
+            <View style={[styles.boxLogoFallback, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.boxLogoFallbackText, { color: colors.navActive }]}>
+                {myBox.name.charAt(0).toUpperCase()}
               </Text>
             </View>
           ) : null}
+          <View style={styles.homeHeaderTextCol}>
+            {myBox ? (
+              <Text
+                style={[styles.boxBadgeNameSmall, { color: colors.navActiveTextSmall }]}
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.3}
+              >
+                {myBox.name}
+              </Text>
+            ) : null}
+            <Text style={[styles.greeting, { color: colors.foreground }]}>
+              Hola, {getFirstName(user.name)}
+            </Text>
+          </View>
+          </View>
         </View>
         <View style={[styles.homeHeaderDivider, { backgroundColor: colors.navActive }]} />
+
+        {isOwnBirthdayToday ? (
+          <View style={[styles.ownBirthdayCard, { backgroundColor: colors.accent }]}>
+            <View style={[styles.iconBadge, { backgroundColor: colors.card }]}>
+              <Feather name="gift" size={17} color={colors.navActive} />
+            </View>
+            <View style={styles.ownBirthdayTextCol}>
+              <Text style={[styles.ownBirthdayTitle, { color: colors.accentForeground }]}>
+                ¡Feliz cumpleaños, {getFirstName(user.name)}!
+              </Text>
+              <Text style={[styles.ownBirthdaySubtitle, { color: colors.accentForeground }]}>
+                Que tengas un gran entrenamiento hoy
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         {hasBoxMembership === false ? (
           <JoinBoxCard onPress={() => setJoinBoxVisible(true)} />
@@ -391,67 +474,6 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {hasActivePlan && hasPeriodProgress ? (
-          <View style={[styles.progressCard, { backgroundColor: colors.card }]}>
-            <View style={styles.cardHeadingRow}>
-              <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>
-                Progreso del período
-              </Text>
-              <Text style={[styles.progressCount, { color: colors.foreground }]}>
-                {myPlan!.classesUsedInPeriod} de {myPlan!.classesPerPeriod} clases
-              </Text>
-            </View>
-            {myPlan!.daysUntilRenewal != null ? (
-              <Text style={[styles.monthLabel, { color: colors.foreground }]}>
-                {myPlan!.daysUntilRenewal <= 0
-                  ? 'Vence hoy'
-                  : `Vence en ${myPlan!.daysUntilRenewal} día${myPlan!.daysUntilRenewal === 1 ? '' : 's'}`}
-              </Text>
-            ) : null}
-            <View style={[styles.progressTrack, { backgroundColor: colors.input }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { backgroundColor: colors.navActive, width: `${periodProgress * 100}%` },
-                ]}
-              />
-            </View>
-          </View>
-        ) : null}
-
-        {hasBoxMembership && pinnedPush ? (
-          <View style={[styles.pinnedAvisoCard, { backgroundColor: colors.card }]}>
-            <View style={styles.cardHeadingRow}>
-              <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>Aviso del box</Text>
-              <Feather name="bell" size={16} color={colors.navActive} />
-            </View>
-            {pinnedPush.imageUrl ? (
-              <View style={styles.pinnedAvisoImageWrap}>
-                <AutoFitImage uri={pinnedPush.imageUrl} width={PINNED_AVISO_IMAGE_WIDTH} borderRadius={12} />
-              </View>
-            ) : null}
-            <Text style={[styles.pinnedAvisoTitle, { color: colors.foreground }]}>
-              {pinnedPush.title}
-            </Text>
-            {pinnedPush.body ? (
-              <Text style={[styles.pinnedAvisoBody, { color: colors.mutedForeground }]} numberOfLines={3}>
-                {pinnedPush.body}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
-
-        {hasBoxMembership && COACH_NOTICE.active ? (
-          <View style={[styles.noticeCard, { backgroundColor: colors.warningBackground }]}>
-            <View style={[styles.noticeIcon, { backgroundColor: colors.warning }]}>
-              <Feather name="alert-triangle" size={16} color={colors.foreground} />
-            </View>
-            <Text style={[styles.noticeText, { color: colors.foreground }]}>
-              {COACH_NOTICE.text}
-            </Text>
-          </View>
-        ) : null}
-
         {hasBoxMembership ? (
           <Pressable
             accessibilityRole="button"
@@ -465,7 +487,7 @@ export default function HomeScreen() {
           >
             <View style={styles.nextClassTop}>
               <View style={[styles.timeChip, { backgroundColor: colors.navActive }]}>
-                <Feather name="clock" size={13} color={colors.card} />
+                <Feather name="calendar" size={13} color={colors.card} />
                 <Text style={[styles.timeChipText, { color: colors.card }]}>{nextClassLabel}</Text>
               </View>
               <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
@@ -477,9 +499,80 @@ export default function HomeScreen() {
               {nextSession?.type ?? 'Revisa el calendario'}
             </Text>
             <Text style={[styles.nextClassCoach, { color: colors.navInactive }]}>
-              {nextSession ? `Coach ${nextSession.coach}` : 'Encuentra un horario para tu próximo WOD'}
+              {nextSession
+                ? `Coach ${nextSession.coach}${myBox?.name ? ` · ${myBox.name}` : ''}`
+                : 'Encuentra un horario para tu próximo WOD'}
             </Text>
+            {nextSession ? (
+              <View style={styles.nextClassMetaRow}>
+                <View style={styles.nextClassMetaChip}>
+                  <Feather name="clock" size={12} color={colors.navInactive} />
+                  <Text style={[styles.nextClassMetaText, { color: colors.navInactive }]}>
+                    {nextSession.durationLabel}
+                  </Text>
+                </View>
+                <View style={styles.nextClassMetaChip}>
+                  <Feather name="bar-chart-2" size={12} color={colors.navInactive} />
+                  <Text style={[styles.nextClassMetaText, { color: colors.navInactive }]}>
+                    {CLASS_LEVEL_LABELS[nextSession.level] ?? nextSession.level}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </Pressable>
+        ) : null}
+
+        <LinearGradient
+          colors={[colors.accent, colors.card]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.quoteRow}
+        >
+          <MaterialCommunityIcons
+            name="image-filter-hdr"
+            size={30}
+            color={colors.accentForeground}
+            style={styles.quoteIconLeft}
+          />
+          <View style={styles.quoteRowTextWrap}>
+            <Text style={[styles.quoteRowText, { color: colors.accentForeground }]} numberOfLines={3}>
+              {quote.toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.quoteRowActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Compartir frase motivacional"
+              onPress={shareQuote}
+              hitSlop={10}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Feather name="share-2" size={16} color={colors.accentForeground} />
+            </Pressable>
+            <Feather name="chevron-right" size={20} color={colors.accentForeground} />
+          </View>
+        </LinearGradient>
+
+        {hasBoxMembership && pinnedPush ? (
+          <View style={[styles.pinnedAvisoCard, { backgroundColor: colors.warningBackground }]}>
+            <View style={styles.cardHeadingRow}>
+              <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>Aviso Importante</Text>
+              <Feather name="bell" size={16} color={colors.warning} />
+            </View>
+            {pinnedPush.imageUrl ? (
+              <View style={styles.pinnedAvisoImageWrap}>
+                <AutoFitImage uri={pinnedPush.imageUrl} width={PINNED_AVISO_IMAGE_WIDTH} borderRadius={12} />
+              </View>
+            ) : null}
+            <Text style={[styles.pinnedAvisoTitle, { color: colors.foreground }]}>
+              {pinnedPush.title}
+            </Text>
+            {pinnedPush.body ? (
+              <Text style={[styles.pinnedAvisoBodyBold, { color: colors.foreground }]} numberOfLines={3}>
+                {pinnedPush.body}
+              </Text>
+            ) : null}
+          </View>
         ) : null}
 
         {hasBoxMembership && todayWod ? (
@@ -512,24 +605,75 @@ export default function HomeScreen() {
         <View style={styles.twoColumnRow}>
           <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
             <View style={styles.smallCardHeader}>
-              <Feather name="calendar" size={19} color={colors.navActive} />
+              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
+                <Feather name="calendar" size={17} color={colors.accentForeground} />
+              </View>
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>Total de clases</Text>
-            <Text style={[styles.statsValue, { color: colors.foreground }]}>
-              {achievementStats?.totalBookings ?? 0}
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              Clases del plan
             </Text>
-            <Text style={[styles.statsDetail, { color: colors.navInactive }]}>clases reservadas</Text>
+            {hasPeriodProgress ? (
+              <>
+                <Text
+                  style={[styles.statsValue, { color: colors.foreground }]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  {myPlan!.classesUsedInPeriod} / {myPlan!.classesPerPeriod}
+                </Text>
+                <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        backgroundColor: colors.navActive,
+                        width: `${Math.min(
+                          ((myPlan!.classesUsedInPeriod as number) /
+                            (myPlan!.classesPerPeriod as number)) *
+                            100,
+                          100,
+                        )}%`,
+                      },
+                    ]}
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text
+                  style={[styles.statsValue, { color: colors.foreground }]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  —
+                </Text>
+                <Text
+                  style={[styles.statsDetail, { color: colors.navInactive }]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  Sin plan activo
+                </Text>
+              </>
+            )}
           </View>
 
           <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
             <View style={styles.smallCardHeader}>
-              <Feather name="zap" size={19} color={colors.navActive} />
+              <View style={[styles.iconBadge, { backgroundColor: colors.warningBackground }]}>
+                <MaterialCommunityIcons name="fire" size={18} color={colors.warning} />
+              </View>
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>Racha de constancia</Text>
-            <Text style={[styles.statsValue, { color: colors.foreground }]}>
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              Racha de constancia
+            </Text>
+            <Text
+              style={[styles.statsValue, { color: colors.foreground }]}
+              maxFontSizeMultiplier={1.3}
+            >
               {achievementStats?.currentStreakDays ?? 0}
             </Text>
-            <Text style={[styles.statsDetail, { color: colors.navInactive }]}>
+            <Text
+              style={[styles.statsDetail, { color: colors.navInactive }]}
+              maxFontSizeMultiplier={1.3}
+            >
               {achievementStats?.currentStreakDays ? 'días seguidos' : 'Empieza hoy'}
             </Text>
           </View>
@@ -547,28 +691,52 @@ export default function HomeScreen() {
             ]}
           >
             <View style={styles.smallCardHeader}>
-              <MaterialCommunityIcons name="trophy-outline" size={21} color={colors.success} />
+              <View style={[styles.iconBadge, { backgroundColor: colors.card }]}>
+                <MaterialCommunityIcons name="trophy-outline" size={18} color={colors.success} />
+              </View>
               <Feather name="chevron-right" size={18} color={colors.navInactive} />
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>PR destacado</Text>
-            <Text style={[styles.statsValue, { color: colors.foreground }]} numberOfLines={1}>
-              {achievementStats?.featuredPr?.liftName ?? 'Aún no hay PRs'}
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              PR destacado
             </Text>
-            <Text style={[styles.statsDetail, { color: colors.navInactive }]}>
-              {achievementStats?.featuredPr
-                ? `${achievementStats.featuredPr.weightKg} kg${
-                    achievementStats.featuredPr.improvementPct > 0
-                      ? ` (+${achievementStats.featuredPr.improvementPct}%)`
-                      : ''
-                  }`
-                : 'Registra tu primera marca'}
-            </Text>
+            {rotatingFeaturedPr ? (
+              <>
+                <Text
+                  style={[styles.statsValue, { color: colors.foreground }]}
+                  numberOfLines={2}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  {rotatingFeaturedPr.liftName}
+                </Text>
+                <Text
+                  style={[styles.statsDetail, { color: colors.navInactive }]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  {rotatingFeaturedPr.weightKg} kg
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text
+                  style={[styles.prEmptyValue, { color: colors.foreground }]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  Aún no hay PRs
+                </Text>
+                <Text
+                  style={[styles.statsDetail, { color: colors.navInactive }]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  Registra tu primera marca
+                </Text>
+              </>
+            )}
           </Pressable>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ver medallas"
-            onPress={() => router.push('/medallas')}
+            accessibilityLabel="Ver perfil"
+            onPress={() => router.push('/personal-data')}
             style={({ pressed }) => [
               styles.statsCard,
               { backgroundColor: colors.card },
@@ -576,12 +744,54 @@ export default function HomeScreen() {
             ]}
           >
             <View style={styles.smallCardHeader}>
-              <Feather name="award" size={19} color={colors.navActive} />
+              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
+                <Feather name="shield" size={17} color={colors.accentForeground} />
+              </View>
               <Feather name="chevron-right" size={18} color={colors.navInactive} />
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]}>Medallas</Text>
-            <Text style={[styles.statsValue, { color: colors.foreground }]}>
-              {medalsSummary.totalUnlocked}/{medalsSummary.totalAchievements}
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              Tu nivel
+            </Text>
+            <Text
+              style={[styles.statsValue, { color: colors.foreground }]}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
+            >
+              {SKILL_LEVEL_LABELS[user.rank] ?? user.rank}
+            </Text>
+            <Text
+              style={[styles.statsDetail, { color: colors.navInactive }]}
+              maxFontSizeMultiplier={1.3}
+            >
+              Sigue avanzando
+            </Text>
+          </Pressable>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ver medallas"
+          onPress={() => router.push('/medallas')}
+          style={({ pressed }) => [
+            styles.medalsWideCard,
+            { backgroundColor: colors.card, marginTop: 12 },
+            pressed && styles.pressedCard,
+          ]}
+        >
+          <View style={styles.medalsWideLeft}>
+            <View style={styles.smallCardHeader}>
+              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
+                <Feather name="award" size={17} color={colors.accentForeground} />
+              </View>
+            </View>
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              Medallas
+            </Text>
+            <Text
+              style={[styles.statsValue, { color: colors.foreground }]}
+              maxFontSizeMultiplier={1.3}
+            >
+              {medalsSummary.totalUnlocked} de {medalsSummary.totalAchievements}
             </Text>
             <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
               <View
@@ -598,43 +808,35 @@ export default function HomeScreen() {
                 ]}
               />
             </View>
-            {medalsSummary.recent.length > 0 ? (
-              <View style={styles.medalIconsRow}>
-                {medalsSummary.recent.map((a) => (
-                  <MedalBadge
-                    key={a.id}
-                    icon={a.icon}
-                    unlocked
-                    size={30}
-                    showRibbon={false}
-                    iconColor={getMedalIconColor(a.id)}
-                  />
-                ))}
-              </View>
-            ) : (
-              <Text style={[styles.statsDetail, { color: colors.navInactive }]}>Desbloquea tu primera</Text>
-            )}
-          </Pressable>
-        </View>
-
-        <View style={[styles.quoteCard, { backgroundColor: colors.secondary, marginTop: 12 }]}>
-          <View style={styles.smallCardHeader}>
-            <Feather name="message-circle" size={19} color={colors.secondaryForeground} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Compartir frase motivacional"
-              onPress={shareQuote}
-              hitSlop={10}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <Feather name="share-2" size={18} color={colors.secondaryForeground} />
-            </Pressable>
           </View>
-          <Text style={[styles.smallCardLabel, { color: colors.secondaryForeground }]}>
-            Frase del día
-          </Text>
-          <Text style={[styles.quoteText, { color: colors.secondaryForeground }]}>“{quote}”</Text>
-        </View>
+          <View style={styles.medalsWideRight}>
+            {medalsSummary.recent[0] ? (
+              <>
+                <MedalBadge
+                  icon={medalsSummary.recent[0].icon}
+                  unlocked
+                  size={40}
+                  showRibbon={false}
+                  iconColor={getMedalIconColor(medalsSummary.recent[0].id)}
+                />
+                <Text
+                  style={[styles.medalsRecentName, { color: colors.navInactive }]}
+                  numberOfLines={2}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  {medalsSummary.recent[0].name}
+                </Text>
+              </>
+            ) : (
+              <Text
+                style={[styles.statsDetail, { color: colors.navInactive }]}
+                maxFontSizeMultiplier={1.3}
+              >
+                Desbloquea tu primera
+              </Text>
+            )}
+          </View>
+        </Pressable>
 
         {hasBoxMembership && birthdays.length > 0 ? (
           <View style={styles.birthdaySection}>
@@ -656,7 +858,7 @@ export default function HomeScreen() {
                     {birthday.name}
                   </Text>
                   <Text style={[styles.birthdayDay, { color: colors.navInactive }]}>
-                    {birthdayDayLabel(birthday.month, birthday.day)}
+                    {birthday.daysUntil === 0 ? 'Hoy' : birthdayDayLabel(birthday.month, birthday.day)}
                   </Text>
                 </View>
               ))}
@@ -701,60 +903,63 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, gap: 14 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, gap: 11 },
+  homeHeaderWrap: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
   homeHeaderGroup: {
-    gap: 18,
-  },
-  greeting: {
-    fontSize: 16,
-    fontFamily: 'Inter_700Bold',
-  },
-  boxBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   },
+  homeHeaderTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  greeting: {
+    fontSize: FONT_SIZE.md,
+    fontFamily: 'Inter_700Bold',
+  },
   boxLogoFallback: {
     width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   boxLogoFallbackText: {
-    fontSize: 18,
+    fontSize: FONT_SIZE.lg,
     fontFamily: 'Inter_700Bold',
   },
-  boxBadgeName: {
-    fontSize: 21,
-    fontFamily: 'Anton_400Regular',
+  boxBadgeNameSmall: {
+    fontSize: FONT_SIZE.xs,
+    fontFamily: 'Inter_700Bold',
     flexShrink: 1,
   },
   homeHeaderDivider: {
     height: 2,
     borderRadius: 1,
   },
-  progressCard: {
-    borderRadius: 20,
-    padding: 17,
-    gap: 8,
-  },
   pinnedAvisoCard: {
     borderRadius: 20,
-    padding: 16,
-    gap: 8,
+    padding: 12,
+    gap: 6,
   },
   pinnedAvisoImageWrap: {
     marginTop: 2,
   },
   pinnedAvisoTitle: {
-    fontSize: 15,
+    fontSize: FONT_SIZE.md,
     fontFamily: 'Inter_700Bold',
   },
-  pinnedAvisoBody: {
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: 'Inter_400Regular',
+  pinnedAvisoBodyBold: {
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 18,
+    fontFamily: 'Inter_700Bold',
   },
   cardHeadingRow: {
     flexDirection: 'row',
@@ -762,16 +967,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardEyebrow: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_600SemiBold',
-  },
-  progressCount: {
-    fontSize: 12,
-    fontFamily: 'Inter_700Bold',
-  },
-  monthLabel: {
-    fontSize: 21,
-    fontFamily: 'Anton_400Regular',
   },
   progressTrack: {
     height: 7,
@@ -790,6 +987,25 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 13,
   },
+  ownBirthdayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 16,
+    padding: 13,
+  },
+  ownBirthdayTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  ownBirthdayTitle: {
+    fontSize: FONT_SIZE.sm,
+    fontFamily: 'Inter_700Bold',
+  },
+  ownBirthdaySubtitle: {
+    fontSize: FONT_SIZE.xs,
+    fontFamily: 'Inter_500Medium',
+  },
   noticeIcon: {
     width: 30,
     height: 30,
@@ -799,14 +1015,14 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 17,
     fontFamily: 'Inter_600SemiBold',
   },
   nextClassCard: {
-    borderRadius: 22,
+    borderRadius: 20,
     padding: 18,
-    minHeight: 148,
+    minHeight: 170,
     justifyContent: 'space-between',
   },
   nextClassTop: {
@@ -823,81 +1039,143 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   timeChipText: {
-    fontSize: 11,
+    fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_700Bold',
   },
   nextClassLabel: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_500Medium',
     marginTop: 12,
   },
   nextClassName: {
-    fontSize: 25,
+    fontSize: FONT_SIZE.hero,
     fontFamily: 'Anton_400Regular',
     marginTop: 1,
   },
   nextClassCoach: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_500Medium',
     marginTop: 3,
   },
-  wodCard: {
-    borderRadius: 20,
-    padding: 15,
+  nextClassMetaRow: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 12,
   },
+  nextClassMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  nextClassMetaText: {
+    fontSize: FONT_SIZE.xs,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  wodCard: {
+    borderRadius: 20,
+    padding: 12,
+    marginTop: 10,
+  },
   wodTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  wodName: { fontSize: 18, fontFamily: 'Anton_400Regular', marginTop: 8 },
-  wodDescription: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4, lineHeight: 17 },
+  wodName: { fontSize: FONT_SIZE.lg, fontFamily: 'Anton_400Regular', marginTop: 8 },
+  wodDescription: {
+    fontSize: FONT_SIZE.xs,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 4,
+    lineHeight: 16,
+  },
   twoColumnRow: {
     flexDirection: 'row',
     gap: 12,
   },
   statsCard: {
     flex: 1,
-    minHeight: 128,
+    minHeight: 112,
     borderRadius: 20,
-    padding: 15,
+    padding: 12,
   },
   statsValue: {
-    fontSize: 22,
+    fontSize: FONT_SIZE.display,
     lineHeight: 26,
     fontFamily: 'Anton_400Regular',
     marginTop: 8,
   },
   statsDetail: {
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: FONT_SIZE.xs,
+    lineHeight: 15,
     fontFamily: 'Inter_500Medium',
     marginTop: 3,
   },
-  medalIconsRow: {
-    flexDirection: 'row',
-    gap: 6,
+  // "PR destacado" empty state only — deliberately smaller than statsValue
+  // so "Aún no hay PRs" fits the card's width without truncating (statsValue
+  // is 22px Anton, too wide for that string in a 2-column card).
+  prEmptyValue: {
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 16,
+    fontFamily: 'Inter_700Bold',
     marginTop: 8,
   },
-  quoteCard: {
-    flex: 1,
-    minHeight: 174,
+  quoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 104,
     borderRadius: 20,
-    padding: 15,
+    padding: 16,
+    gap: 12,
+  },
+  quoteIconLeft: {
+    opacity: 0.8,
+  },
+  quoteRowTextWrap: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  quoteRowText: {
+    fontSize: FONT_SIZE.base,
+    lineHeight: 18,
+    fontFamily: 'Inter_700Bold',
+    fontStyle: 'italic',
+  },
+  quoteRowActions: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  medalsWideCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    padding: 12,
+  },
+  medalsWideLeft: {
+    flex: 1,
+  },
+  medalsWideRight: {
+    alignItems: 'center',
+    gap: 6,
+    width: 72,
+  },
+  medalsRecentName: {
+    fontSize: FONT_SIZE.xs,
+    fontFamily: 'Inter_600SemiBold',
+    textAlign: 'center',
   },
   smallCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 22,
+    minHeight: 32,
+  },
+  iconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   smallCardLabel: {
-    fontSize: 11,
+    fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_600SemiBold',
     marginTop: 12,
-  },
-  quoteText: {
-    fontSize: 15,
-    lineHeight: 21,
-    fontFamily: 'Inter_600SemiBold',
-    marginTop: 8,
   },
   birthdaySection: {
     marginTop: 2,
@@ -909,7 +1187,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: FONT_SIZE.xl,
     fontFamily: 'Anton_400Regular',
   },
   birthdayList: {
@@ -929,16 +1207,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 11,
+    fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_700Bold',
   },
   birthdayName: {
     flex: 1,
-    fontSize: 13,
+    fontSize: FONT_SIZE.sm,
     fontFamily: 'Inter_600SemiBold',
   },
   birthdayDay: {
-    fontSize: 11,
+    fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_700Bold',
   },
   pressed: { opacity: 0.65 },

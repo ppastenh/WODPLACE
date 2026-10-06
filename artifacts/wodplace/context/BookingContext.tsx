@@ -32,6 +32,11 @@ export interface ClassSession {
   /** Coach's short note on what was worked on this session -- only ever
    *  populated by the server when this athlete is booked into it. */
   notes: string | null;
+  /** "todos" | "principiante" | "intermedio" | "avanzado" -- set by the
+   *  coach/admin when scheduling the class (see box-admin's classes.tsx).
+   *  Already present on the server DTO, just wasn't mapped through here
+   *  before. */
+  level: string;
 }
 
 const CANCEL_CUTOFF_MS = 60 * 60 * 1000;
@@ -100,6 +105,7 @@ function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
     waitlistPosition: dto.myWaitlistPosition,
     attendeeNames: dto.attendeeNames,
     notes: dto.notes,
+    level: dto.level,
   };
 }
 

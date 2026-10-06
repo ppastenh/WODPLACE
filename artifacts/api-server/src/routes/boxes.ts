@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { isAdminRequest } from "../lib/adminAuth";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
+import { todayDateKey } from "../lib/dateUtils";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 
@@ -315,7 +316,13 @@ router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
 });
 
 /** Whole-number days from `now` (inclusive of today = 0) until the next
- *  occurrence of `month`/`day`, ignoring year entirely. */
+ *  occurrence of `month`/`day`, ignoring year entirely. `now` must already
+ *  be Chile's calendar date (see chileToday()) — this function itself just
+ *  does date-math on whatever y/m/d it's handed, same as any JS Date
+ *  arithmetic. Feb 29 in a non-leap `now.getFullYear()`/`+1` rolls over to
+ *  March 1 automatically (JS Date's own normalization) — the chosen, and
+ *  simplest, answer for a leap birthday in a non-leap year.
+ */
 function daysUntilNextOccurrence(month: number, day: number, now: Date): number {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let next = new Date(now.getFullYear(), month - 1, day);
@@ -325,18 +332,58 @@ function daysUntilNextOccurrence(month: number, day: number, now: Date): number 
   return Math.round((next.getTime() - today.getTime()) / 86_400_000);
 }
 
+/** Chile's actual calendar date, as a plain Date used only for calendar
+ *  math (getFullYear/getMonth/getDate) — never as a real instant. Building
+ *  it from todayDateKey()'s Chile-aware y/m/d, rather than calling
+ *  `new Date()` and reading its LOCAL y/m/d (the exact bug already fixed
+ *  for the WOD-del-día feature — see dateUtils.ts), is what makes "today"
+ *  correct regardless of the server's own timezone. */
+function chileToday(): Date {
+  const [y, m, d] = todayDateKey().split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Whole-years age as of `today` (a chileToday()-shaped Date) from a
+ *  Postgres `date` column's "YYYY-MM-DD" string. Used only to decide
+ *  whether a member is a minor for the birthdays list — never returned to
+ *  any client. */
+function ageAt(birthdate: string, today: Date): number {
+  const [by, bm, bd] = birthdate.split("-").map(Number);
+  let age = today.getFullYear() - by;
+  const hadBirthdayThisYear =
+    today.getMonth() + 1 > bm || (today.getMonth() + 1 === bm && today.getDate() >= bd);
+  if (!hadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] ?? fullName;
+}
+
 /**
  * GET /box-memberships/upcoming-birthdays?userId=&limit=
  *
  * Real per-box birthdays, replacing Home's old hardcoded 3-name mock.
  * Only birthdays within BIRTHDAY_WINDOW_DAYS days from today are returned —
  * this is a heads-up notice, not a full roster, so anything further out is
- * dropped rather than shown early.
- * Deliberately never returns the birth YEAR — only month/day, both here and
- * in wodplace_users.birthdate's own doc comment — celebrating a birthday
- * doesn't require exposing anyone's age to the rest of the box.
+ * dropped rather than shown early. Excludes the caller's own upcoming
+ * birthday (they get their own "¡Feliz cumpleaños!" card on Home instead).
+ *
+ * Deliberately never returns the birth YEAR or age — only month/day, both
+ * here and in wodplace_users.birthdate's own doc comment — celebrating a
+ * birthday doesn't require exposing anyone's age to the rest of the box.
+ *
+ * Minors (by birthdate, not by whether they happen to have a guardianName
+ * on file — see contracts.ts, which uses that signal for a different,
+ * unrelated purpose) are included ONLY when
+ * birthday_visibility_consents.consent is true for them, and only with
+ * their first name — see routes/contracts.ts and
+ * supabase/migrations/20261005090000_birthday_visibility_consents.sql for
+ * how that consent is granted/withdrawn. A minor with no consent row at
+ * all is excluded, same as one with consent explicitly false.
  */
 const BIRTHDAY_WINDOW_DAYS = 7;
+const MINOR_AGE_CUTOFF = 18;
 
 router.get("/box-memberships/upcoming-birthdays", async (req: Request, res: Response) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
@@ -354,23 +401,39 @@ router.get("/box-memberships/upcoming-birthdays", async (req: Request, res: Resp
       return;
     }
 
-    const rows = await db.execute<{ name: string; month: number; day: number }>(sql`
+    const rows = await db.execute<{
+      name: string;
+      birthdate: string;
+      month: number;
+      day: number;
+      birthday_visibility_consent: boolean;
+    }>(sql`
       SELECT wu.name,
+             wu.birthdate,
              extract(month from wu.birthdate)::int AS month,
-             extract(day from wu.birthdate)::int AS day
+             extract(day from wu.birthdate)::int AS day,
+             coalesce(bvc.consent, false) AS birthday_visibility_consent
       FROM box_members bm
       JOIN wodplace_users wu ON wu.id = bm.user_id
-      WHERE bm.box_id = ${boxId} AND wu.birthdate IS NOT NULL
+      LEFT JOIN birthday_visibility_consents bvc ON bvc.user_id = wu.id
+      WHERE bm.box_id = ${boxId} AND wu.birthdate IS NOT NULL AND wu.id <> ${userId}
     `);
 
-    const now = new Date();
+    const today = chileToday();
     const birthdays = rows.rows
-      .map((r) => ({
-        name: r.name,
-        month: r.month,
-        day: r.day,
-        daysUntil: daysUntilNextOccurrence(r.month, r.day, now),
-      }))
+      .filter((r) => {
+        const isMinor = ageAt(r.birthdate, today) < MINOR_AGE_CUTOFF;
+        return !isMinor || r.birthday_visibility_consent;
+      })
+      .map((r) => {
+        const isMinor = ageAt(r.birthdate, today) < MINOR_AGE_CUTOFF;
+        return {
+          name: isMinor ? firstName(r.name) : r.name,
+          month: r.month,
+          day: r.day,
+          daysUntil: daysUntilNextOccurrence(r.month, r.day, today),
+        };
+      })
       .filter((b) => b.daysUntil <= BIRTHDAY_WINDOW_DAYS)
       .sort((a, b) => a.daysUntil - b.daysUntil)
       .slice(0, limit);

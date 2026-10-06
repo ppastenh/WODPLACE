@@ -330,7 +330,8 @@ export const GetContractAcceptanceResponse = zod.object({
   "acceptedAt": zod.string(),
   "guardianName": zod.string().nullish(),
   "guardianRelationship": zod.string().nullish(),
-  "minorDataConsentAt": zod.string().nullish().describe('Set only when the member accepted while under 18 — the timestamp\nof the separate consent to process the minor\'s personal data,\ndistinct from acceptedAt.\n')
+  "minorDataConsentAt": zod.string().nullish().describe('Set only when the member accepted while under 18 — the timestamp\nof the separate consent to process the minor\'s personal data,\ndistinct from acceptedAt.\n'),
+  "birthdayVisibilityConsent": zod.boolean().optional().describe('Whether this minor\'s first name + birthday (month\/day) may be\nshown in the box\'s \"Próximos cumpleaños\". Always false for\nadults (meaningless for them). Settable true only via the\nguardian\'s checkbox at initial contract acceptance, or by a\nbox admin — see PATCH \/contracts\/acceptance\/{userId}\/birthday-consent,\nwhich can only ever set it back to false.\n')
 }).nullish()
 })
 
@@ -353,7 +354,9 @@ export const AcceptContractsBody = zod.object({
   "emergencyContactPhone": zod.string().min(1),
   "guardianName": zod.string().min(1).optional().describe('Required when the member is under 18. The guardian\'s acceptance\nstands in for the minor\'s own signature.\n'),
   "guardianRelationship": zod.string().min(1).optional().describe('Optional, e.g. \"Madre\", \"Padre\", \"Tutor legal\".'),
-  "minorDataConsent": zod.boolean().optional().describe('Required to be true when the member is under 18: an explicit,\nseparate consent to process the minor\'s personal data for this\napp, distinct from accepting the box\'s contract. The server\nrecords its own timestamp (minorDataConsentAt).\n')
+  "minorDataConsent": zod.boolean().optional().describe('Required to be true when the member is under 18: an explicit,\nseparate consent to process the minor\'s personal data for this\napp, distinct from accepting the box\'s contract. The server\nrecords its own timestamp (minorDataConsentAt).\n'),
+  "birthdayVisibilityConsent": zod.boolean().optional().describe('Optional, minors only: the guardian\'s checkbox authorizing the\nminor\'s first name + birthday to be shown in the box\'s\n\"Próximos cumpleaños\". Defaults to false\/unchecked. Only takes\neffect on the FIRST acceptance — ignored on any later\nre-acceptance, since by then the app no longer offers this\ncheckbox at all (it can still be withdrawn afterward via PATCH\n\/contracts\/acceptance\/{userId}\/birthday-consent, or granted\nlater by a box admin).\n'),
+  "birthdayVisibilityConsentTextVersion": zod.string().optional().describe('Which revision of the informational\/consent copy was shown\nalongside the checkbox (e.g. \"v1\") — required when\nbirthdayVisibilityConsent is true.\n')
 })
 
 export const AcceptContractsResponse = zod.object({
@@ -363,7 +366,28 @@ export const AcceptContractsResponse = zod.object({
   "acceptedAt": zod.string(),
   "guardianName": zod.string().nullish(),
   "guardianRelationship": zod.string().nullish(),
-  "minorDataConsentAt": zod.string().nullish().describe('Set only when the member accepted while under 18 — the timestamp\nof the separate consent to process the minor\'s personal data,\ndistinct from acceptedAt.\n')
+  "minorDataConsentAt": zod.string().nullish().describe('Set only when the member accepted while under 18 — the timestamp\nof the separate consent to process the minor\'s personal data,\ndistinct from acceptedAt.\n'),
+  "birthdayVisibilityConsent": zod.boolean().optional().describe('Whether this minor\'s first name + birthday (month\/day) may be\nshown in the box\'s \"Próximos cumpleaños\". Always false for\nadults (meaningless for them). Settable true only via the\nguardian\'s checkbox at initial contract acceptance, or by a\nbox admin — see PATCH \/contracts\/acceptance\/{userId}\/birthday-consent,\nwhich can only ever set it back to false.\n')
+})
+
+
+/**
+ * Self-service only, and only ever to false — granting (true) must
+ * come from the guardian's checkbox at contract acceptance, or from
+ * a box admin. The server rejects any request body with consent
+ * other than false.
+ * @summary Self-service withdrawal of the minor birthday-visibility consent
+ */
+export const SetBirthdayConsentSelfParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const SetBirthdayConsentSelfBody = zod.object({
+  "consent": zod.literal(false).describe('Self-service can only ever withdraw, never grant — the server\nrejects any value other than false. Granting requires either\nthe guardian\'s checkbox at contract acceptance, or a box admin.\n')
+})
+
+export const SetBirthdayConsentSelfResponse = zod.object({
+  "birthdayVisibilityConsent": zod.boolean()
 })
 
 

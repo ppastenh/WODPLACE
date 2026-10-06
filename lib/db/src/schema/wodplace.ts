@@ -143,6 +143,48 @@ export const contractAcceptancesTable = pgTable("contract_acceptances", {
 
 export type ContractAcceptanceRow = typeof contractAcceptancesTable.$inferSelect;
 
+// Whether a MINOR's first name + birthday (month/day only, never year or
+// age) may be shown to the rest of the box in "Próximos cumpleaños". A
+// deliberately separate table from contract_acceptances rather than a
+// column there: contract_acceptances already has a broader box-staff
+// (admin + coach) RLS update policy for "mark seen", and RLS can't
+// restrict individual columns within a row — a dedicated table lets this
+// specific grant get its own admin-only (never coach) RLS policy instead
+// of fighting the existing one. Adults never get a row here at all; the
+// birthdays query treats "minor with no row" the same as "not authorized".
+export const birthdayVisibilityConsentsTable = pgTable("birthday_visibility_consents", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
+  boxId: text("box_id").notNull(),
+  // Current effective state — what GET /box-memberships/upcoming-birthdays
+  // actually checks. false is the only value the athlete's own self-service
+  // endpoint may ever write (see routes/contracts.ts); true can only be set
+  // via the guardian's checkbox at initial contract acceptance, or by a
+  // box_admin (never a coach — enforced by this table's RLS policy) acting
+  // on the guardian's in-person authorization.
+  consent: boolean("consent").notNull().default(false),
+  // Below: history of the most recent grant — preserved across a later
+  // withdrawal so it's still answerable "who granted this, and when" even
+  // after the athlete (or an admin) turns it back off.
+  grantedAt: timestamp("granted_at", { withTimezone: true }),
+  // 'contrato' (the guardian's checkbox at acceptance time) or 'admin'.
+  source: text("source"),
+  // The admin's email, captured only when source = 'admin'. Null for
+  // 'contrato' — that path has no separate guardian login/identity to
+  // record (same trust-model limit as the rest of the minor contract flow).
+  grantedByEmail: text("granted_by_email"),
+  // Which revision of the informational/consent copy was shown when this
+  // was granted (e.g. "v1") — so a later copy change doesn't retroactively
+  // blur what a given guardian actually agreed to.
+  textVersion: text("text_version"),
+  // Set on withdrawal (self-service or admin), cleared on the next grant.
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
+
+export type BirthdayVisibilityConsentRow =
+  typeof birthdayVisibilityConsentsTable.$inferSelect;
+
 // Acceptance of the platform agreement (box-admin/super-admin <-> WODPLACE
 // itself, about using the software) — separate from contract_acceptances
 // (box <-> athlete, about training there). One row per admin; no per-slug

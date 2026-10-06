@@ -192,6 +192,15 @@ export interface ContractAcceptance {
      * distinct from acceptedAt.
      */
   minorDataConsentAt?: string | null;
+  /**
+     * Whether this minor's first name + birthday (month/day) may be
+     * shown in the box's "Próximos cumpleaños". Always false for
+     * adults (meaningless for them). Settable true only via the
+     * guardian's checkbox at initial contract acceptance, or by a
+     * box admin — see PATCH /contracts/acceptance/{userId}/birthday-consent,
+     * which can only ever set it back to false.
+     */
+  birthdayVisibilityConsent?: boolean;
 }
 
 export interface ContractAcceptanceResponse {
@@ -223,6 +232,36 @@ export interface AcceptContractsRequest {
      * records its own timestamp (minorDataConsentAt).
      */
   minorDataConsent?: boolean;
+  /**
+     * Optional, minors only: the guardian's checkbox authorizing the
+     * minor's first name + birthday to be shown in the box's
+     * "Próximos cumpleaños". Defaults to false/unchecked. Only takes
+     * effect on the FIRST acceptance — ignored on any later
+     * re-acceptance, since by then the app no longer offers this
+     * checkbox at all (it can still be withdrawn afterward via PATCH
+     * /contracts/acceptance/{userId}/birthday-consent, or granted
+     * later by a box admin).
+     */
+  birthdayVisibilityConsent?: boolean;
+  /**
+     * Which revision of the informational/consent copy was shown
+     * alongside the checkbox (e.g. "v1") — required when
+     * birthdayVisibilityConsent is true.
+     */
+  birthdayVisibilityConsentTextVersion?: string;
+}
+
+export interface BirthdayConsentRequest {
+  /**
+     * Self-service can only ever withdraw, never grant — the server
+     * rejects any value other than false. Granting requires either
+     * the guardian's checkbox at contract acceptance, or a box admin.
+     */
+  consent: false;
+}
+
+export interface BirthdayConsentResponse {
+  birthdayVisibilityConsent: boolean;
 }
 
 export interface AdminPinStatusRequest {

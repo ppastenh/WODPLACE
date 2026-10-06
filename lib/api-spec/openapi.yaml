@@ -521,6 +521,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /contracts/acceptance/{userId}/birthday-consent:
+    patch:
+      tags: [Contracts]
+      operationId: setBirthdayConsentSelf
+      summary: Self-service withdrawal of the minor birthday-visibility consent
+      description: |
+        Self-service only, and only ever to false — granting (true) must
+        come from the guardian's checkbox at contract acceptance, or from
+        a box admin. The server rejects any request body with consent
+        other than false.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BirthdayConsentRequest"
+      responses:
+        "200":
+          description: Updated consent state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BirthdayConsentResponse"
+        "400":
+          description: Missing or invalid required fields, or an attempt to set true.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /admin/pin/status:
     post:
       tags: [Admin]
@@ -1332,6 +1368,15 @@ components:
             Set only when the member accepted while under 18 — the timestamp
             of the separate consent to process the minor's personal data,
             distinct from acceptedAt.
+        birthdayVisibilityConsent:
+          type: boolean
+          description: |
+            Whether this minor's first name + birthday (month/day) may be
+            shown in the box's "Próximos cumpleaños". Always false for
+            adults (meaningless for them). Settable true only via the
+            guardian's checkbox at initial contract acceptance, or by a
+            box admin — see PATCH /contracts/acceptance/{userId}/birthday-consent,
+            which can only ever set it back to false.
     ContractAcceptanceResponse:
       type: object
       properties:
@@ -1369,6 +1414,41 @@ components:
             separate consent to process the minor's personal data for this
             app, distinct from accepting the box's contract. The server
             records its own timestamp (minorDataConsentAt).
+        birthdayVisibilityConsent:
+          type: boolean
+          description: |
+            Optional, minors only: the guardian's checkbox authorizing the
+            minor's first name + birthday to be shown in the box's
+            "Próximos cumpleaños". Defaults to false/unchecked. Only takes
+            effect on the FIRST acceptance — ignored on any later
+            re-acceptance, since by then the app no longer offers this
+            checkbox at all (it can still be withdrawn afterward via PATCH
+            /contracts/acceptance/{userId}/birthday-consent, or granted
+            later by a box admin).
+        birthdayVisibilityConsentTextVersion:
+          type: string
+          description: |
+            Which revision of the informational/consent copy was shown
+            alongside the checkbox (e.g. "v1") — required when
+            birthdayVisibilityConsent is true.
+
+    BirthdayConsentRequest:
+      type: object
+      required: [consent]
+      properties:
+        consent:
+          type: boolean
+          enum: [false]
+          description: |
+            Self-service can only ever withdraw, never grant — the server
+            rejects any value other than false. Granting requires either
+            the guardian's checkbox at contract acceptance, or a box admin.
+    BirthdayConsentResponse:
+      type: object
+      required: [birthdayVisibilityConsent]
+      properties:
+        birthdayVisibilityConsent:
+          type: boolean
 
     AdminPinStatusRequest:
       type: object

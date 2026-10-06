@@ -861,6 +861,47 @@ export type Database = {
           },
         ]
       }
+      birthday_visibility_consents: {
+        Row: {
+          box_id: string
+          consent: boolean
+          granted_at: string | null
+          granted_by_email: string | null
+          revoked_at: string | null
+          source: string | null
+          text_version: string | null
+          user_id: string
+        }
+        Insert: {
+          box_id: string
+          consent?: boolean
+          granted_at?: string | null
+          granted_by_email?: string | null
+          revoked_at?: string | null
+          source?: string | null
+          text_version?: string | null
+          user_id: string
+        }
+        Update: {
+          box_id?: string
+          consent?: boolean
+          granted_at?: string | null
+          granted_by_email?: string | null
+          revoked_at?: string | null
+          source?: string | null
+          text_version?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "birthday_visibility_consents_user_id_wodplace_users_id_fk"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "wodplace_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_acceptances: {
         Row: {
           accepted_at: string

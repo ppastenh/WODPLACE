@@ -5,8 +5,11 @@ import {
   ListContractsResponse,
   MarkContractReadBody,
   MarkContractReadResponse,
+  SetBirthdayConsentSelfBody,
+  SetBirthdayConsentSelfResponse,
 } from "@workspace/api-zod";
 import {
+  birthdayVisibilityConsentsTable,
   contractAcceptancesTable,
   contractDocumentsTable,
   contractReadProgressTable,
@@ -149,6 +152,15 @@ router.get("/contracts/acceptance", async (req: Request, res: Response) => {
       .from(contractAcceptancesTable)
       .where(eq(contractAcceptancesTable.userId, userId));
 
+    let birthdayVisibilityConsent = false;
+    if (row) {
+      const [consentRow] = await db
+        .select({ consent: birthdayVisibilityConsentsTable.consent })
+        .from(birthdayVisibilityConsentsTable)
+        .where(eq(birthdayVisibilityConsentsTable.userId, userId));
+      birthdayVisibilityConsent = consentRow?.consent ?? false;
+    }
+
     res.json(
       GetContractAcceptanceResponse.parse({
         acceptance: row
@@ -160,6 +172,7 @@ router.get("/contracts/acceptance", async (req: Request, res: Response) => {
               guardianName: row.guardianName,
               guardianRelationship: row.guardianRelationship,
               minorDataConsentAt: row.minorDataConsentAt?.toISOString() ?? null,
+              birthdayVisibilityConsent,
             }
           : null,
       }),
@@ -195,7 +208,22 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
       guardianName,
       guardianRelationship,
       minorDataConsent,
+      birthdayVisibilityConsent,
+      birthdayVisibilityConsentTextVersion,
     } = parsed.data;
+
+    // Whether this is the member's FIRST acceptance ever — the birthday-
+    // visibility checkbox only has any effect here on that first
+    // submission. A later re-acceptance (e.g. after the contract text
+    // changes) must never be able to flip it back on through this path;
+    // by then the app no longer even renders the checkbox, but this is
+    // the server-side half of "once accepted, the app can't reactivate
+    // it" — a replayed/crafted request can't bypass it either.
+    const [existingAcceptance] = await db
+      .select({ userId: contractAcceptancesTable.userId })
+      .from(contractAcceptancesTable)
+      .where(eq(contractAcceptancesTable.userId, userId));
+    const isFirstAcceptance = !existingAcceptance;
 
     // A guardian name is the signal that this is a minor accepting. For a
     // minor, the separate data-processing consent is mandatory too.
@@ -264,6 +292,38 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         },
       });
 
+    // Grant birthday-visibility consent only on the FIRST acceptance, and
+    // only for a minor — see isFirstAcceptance above for why a later
+    // re-acceptance can never flip this on, regardless of what's sent.
+    const grantsBirthdayVisibility =
+      isMinor && isFirstAcceptance && birthdayVisibilityConsent === true;
+    if (grantsBirthdayVisibility) {
+      await db
+        .insert(birthdayVisibilityConsentsTable)
+        .values({
+          userId,
+          boxId,
+          consent: true,
+          grantedAt: acceptedAt,
+          source: "contrato",
+          grantedByEmail: null,
+          textVersion: birthdayVisibilityConsentTextVersion ?? null,
+          revokedAt: null,
+        })
+        .onConflictDoUpdate({
+          target: birthdayVisibilityConsentsTable.userId,
+          set: {
+            boxId,
+            consent: true,
+            grantedAt: acceptedAt,
+            source: "contrato",
+            grantedByEmail: null,
+            textVersion: birthdayVisibilityConsentTextVersion ?? null,
+            revokedAt: null,
+          },
+        });
+    }
+
     res.json(
       AcceptContractsResponse.parse({
         userId,
@@ -273,6 +333,7 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
         guardianName: guardianName ?? null,
         guardianRelationship: guardianRelationship ?? null,
         minorDataConsentAt: minorDataConsentAt?.toISOString() ?? null,
+        birthdayVisibilityConsent: grantsBirthdayVisibility,
       }),
     );
 
@@ -309,5 +370,59 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * PATCH /contracts/acceptance/:userId/birthday-consent
+ *
+ * Self-service only, and only ever to false. Granting (true) can only
+ * come from the guardian's checkbox inside POST /contracts/acceptance
+ * (first acceptance only) or from a box admin (via the direct-to-Postgres
+ * RLS-gated path in box-admin, not this endpoint) — enforced here in
+ * application code since this endpoint runs on a privileged DB
+ * connection that bypasses RLS entirely.
+ */
+router.patch(
+  "/contracts/acceptance/:userId/birthday-consent",
+  async (req: Request, res: Response) => {
+    const userId = String(req.params.userId);
+    const parsed = SetBirthdayConsentSelfBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Missing or invalid required fields" });
+      return;
+    }
+    if (parsed.data.consent !== false) {
+      res.status(400).json({
+        error:
+          "La autorización solo puede otorgarse al aceptar el contrato o por un administrador del box.",
+      });
+      return;
+    }
+    if (!(await assertOwnsAccount(req, res, userId))) return;
+
+    try {
+      const boxId = await resolveBoxId();
+      await db
+        .insert(birthdayVisibilityConsentsTable)
+        .values({
+          userId,
+          boxId,
+          consent: false,
+          revokedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: birthdayVisibilityConsentsTable.userId,
+          set: {
+            consent: false,
+            revokedAt: new Date(),
+          },
+        });
+
+      res.json(SetBirthdayConsentSelfResponse.parse({ birthdayVisibilityConsent: false }));
+    } catch (error) {
+      req.log.error({ err: error }, "Error withdrawing birthday-visibility consent");
+      res.status(500).json({ error: "Failed to update consent" });
+    }
+  },
+);
 
 export default router;

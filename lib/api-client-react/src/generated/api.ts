@@ -30,6 +30,8 @@ import type {
   AdminPinVerifyRequest,
   AdminPinVerifyResult,
   AdminSessionRequest,
+  BirthdayConsentRequest,
+  BirthdayConsentResponse,
   BookingActionResponse,
   BookingRecord,
   CancelBookingRequest,
@@ -1350,6 +1352,82 @@ export const useAcceptContracts = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getAcceptContractsMutationOptions(options));
+    }
+
+export const getSetBirthdayConsentSelfUrl = (userId: string,) => {
+
+
+
+
+  return `/api/contracts/acceptance/${userId}/birthday-consent`
+}
+
+/**
+ * Self-service only, and only ever to false — granting (true) must
+ * come from the guardian's checkbox at contract acceptance, or from
+ * a box admin. The server rejects any request body with consent
+ * other than false.
+ * @summary Self-service withdrawal of the minor birthday-visibility consent
+ */
+export const setBirthdayConsentSelf = async (userId: string,
+    birthdayConsentRequest: BirthdayConsentRequest, options?: RequestInit): Promise<BirthdayConsentResponse> => {
+
+  return customFetch<BirthdayConsentResponse>(getSetBirthdayConsentSelfUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(birthdayConsentRequest)
+  }
+);}
+
+
+
+
+
+export const getSetBirthdayConsentSelfMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setBirthdayConsentSelf>>, TError,{userId: string;data: BodyType<BirthdayConsentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setBirthdayConsentSelf>>, TError,{userId: string;data: BodyType<BirthdayConsentRequest>}, TContext> => {
+
+const mutationKey = ['setBirthdayConsentSelf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setBirthdayConsentSelf>>, {userId: string;data: BodyType<BirthdayConsentRequest>}> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  setBirthdayConsentSelf(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetBirthdayConsentSelfMutationResult = NonNullable<Awaited<ReturnType<typeof setBirthdayConsentSelf>>>
+    export type SetBirthdayConsentSelfMutationBody = BodyType<BirthdayConsentRequest>
+    export type SetBirthdayConsentSelfMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Self-service withdrawal of the minor birthday-visibility consent
+ */
+export const useSetBirthdayConsentSelf = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setBirthdayConsentSelf>>, TError,{userId: string;data: BodyType<BirthdayConsentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setBirthdayConsentSelf>>,
+        TError,
+        {userId: string;data: BodyType<BirthdayConsentRequest>},
+        TContext
+      > => {
+      return useMutation(getSetBirthdayConsentSelfMutationOptions(options));
     }
 
 export const getGetAdminPinStatusUrl = () => {

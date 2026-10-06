@@ -16,6 +16,8 @@ export * from './adminPinStatusResult';
 export * from './adminPinVerifyRequest';
 export * from './adminPinVerifyResult';
 export * from './adminSessionRequest';
+export * from './birthdayConsentRequest';
+export * from './birthdayConsentResponse';
 export * from './bookingActionResponse';
 export * from './bookingActionResponseStatus';
 export * from './bookingRecord';

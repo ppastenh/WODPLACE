@@ -19,4 +19,13 @@ export interface ContractAcceptance {
      * distinct from acceptedAt.
      */
   minorDataConsentAt?: string | null;
+  /**
+     * Whether this minor's first name + birthday (month/day) may be
+     * shown in the box's "Próximos cumpleaños". Always false for
+     * adults (meaningless for them). Settable true only via the
+     * guardian's checkbox at initial contract acceptance, or by a
+     * box admin — see PATCH /contracts/acceptance/{userId}/birthday-consent,
+     * which can only ever set it back to false.
+     */
+  birthdayVisibilityConsent?: boolean;
 }

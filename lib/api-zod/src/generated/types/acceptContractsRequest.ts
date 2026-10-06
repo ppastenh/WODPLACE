@@ -31,4 +31,21 @@ export interface AcceptContractsRequest {
      * records its own timestamp (minorDataConsentAt).
      */
   minorDataConsent?: boolean;
+  /**
+     * Optional, minors only: the guardian's checkbox authorizing the
+     * minor's first name + birthday to be shown in the box's
+     * "Próximos cumpleaños". Defaults to false/unchecked. Only takes
+     * effect on the FIRST acceptance — ignored on any later
+     * re-acceptance, since by then the app no longer offers this
+     * checkbox at all (it can still be withdrawn afterward via PATCH
+     * /contracts/acceptance/{userId}/birthday-consent, or granted
+     * later by a box admin).
+     */
+  birthdayVisibilityConsent?: boolean;
+  /**
+     * Which revision of the informational/consent copy was shown
+     * alongside the checkbox (e.g. "v1") — required when
+     * birthdayVisibilityConsent is true.
+     */
+  birthdayVisibilityConsentTextVersion?: string;
 }

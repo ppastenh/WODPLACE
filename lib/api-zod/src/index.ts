@@ -12,3 +12,5 @@ export * from "./generated/types";
 // ambiguous `export *` above; regenerate-safe since this file itself is
 // hand-maintained, not part of the generated output.
 export { DeletePrParams, DeletePrGoalParams } from "./generated/api";
+export * from './generated/api';
+export * from './generated/types';

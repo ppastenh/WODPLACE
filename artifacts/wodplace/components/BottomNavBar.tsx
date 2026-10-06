@@ -74,37 +74,32 @@ export function BottomNavBar() {
           if (isCenter) {
             return (
               <View key={item.key} style={styles.item}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Agendar"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => handlePress(item.route)}
-                  style={({ pressed }) => [
-                    styles.floatingRing,
-                    { backgroundColor: colors.background },
-                    pressed && styles.pressedFloating,
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.floatingButton,
-                      {
-                        backgroundColor: colors.navFloating,
-                        shadowColor: colors.navFloating,
-                      },
+                <View style={styles.iconSlot}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Agendar"
+                    accessibilityState={{ selected: active }}
+                    onPress={() => handlePress(item.route)}
+                    style={({ pressed }) => [
+                      styles.floatingRing,
+                      { backgroundColor: colors.background },
+                      pressed && styles.pressedFloating,
                     ]}
                   >
-                    <Feather name="calendar" size={23} color={colors.navFloatingForeground} />
-                  </View>
-                </Pressable>
-                <Text
-                  style={[
-                    styles.label,
-                    styles.centerLabel,
-                    { color: itemColor },
-                    active && styles.activeLabel,
-                  ]}
-                >
+                    <View
+                      style={[
+                        styles.floatingButton,
+                        {
+                          backgroundColor: colors.navFloating,
+                          shadowColor: colors.navFloating,
+                        },
+                      ]}
+                    >
+                      <Feather name="calendar" size={23} color={colors.navFloatingForeground} />
+                    </View>
+                  </Pressable>
+                </View>
+                <Text style={[styles.label, { color: itemColor }, active && styles.activeLabel]}>
                   {item.label}
                 </Text>
               </View>
@@ -120,11 +115,13 @@ export function BottomNavBar() {
               onPress={() => handlePress(item.route)}
               style={({ pressed }) => [styles.item, pressed && styles.pressedItem]}
             >
-              {item.icon === 'dumbbell' ? (
-                <MaterialCommunityIcons name="dumbbell" size={22} color={itemColor} />
-              ) : (
-                <Feather name={item.icon} size={21} color={itemColor} />
-              )}
+              <View style={styles.iconSlot}>
+                {item.icon === 'dumbbell' ? (
+                  <MaterialCommunityIcons name="dumbbell" size={22} color={itemColor} />
+                ) : (
+                  <Feather name={item.icon} size={21} color={itemColor} />
+                )}
+              </View>
               <Text style={[styles.label, { color: itemColor }, active && styles.activeLabel]}>
                 {item.label}
               </Text>
@@ -154,8 +151,23 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 44,
     alignItems: 'center',
-    justifyContent: 'center',
+    // Anchored to the bottom (not centered) with a fixed-height iconSlot
+    // above the label for every item, including the floating one: the
+    // slot's height is the same 30px whether it holds a plain 21px icon or
+    // the 64px ring (which overflows the slot via absolute positioning
+    // instead of growing it). That keeps the label's position identical
+    // across all 5 items regardless of what icon sits above it — raising
+    // these ~5px from where they'd land at dead-center of the 64px row
+    // doesn't require touching the floating item separately.
+    justifyContent: 'flex-end',
+    paddingBottom: 12,
     gap: 4,
+  },
+  iconSlot: {
+    height: 30,
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
     fontSize: 10,
@@ -165,16 +177,16 @@ const styles = StyleSheet.create({
   activeLabel: {
     fontFamily: 'Inter_700Bold',
   },
-  centerLabel: {
-    marginTop: 2,
-  },
   floatingRing: {
+    position: 'absolute',
+    bottom: 0,
+    left: '50%',
+    marginLeft: -32,
     width: 64,
     height: 64,
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -28,
   },
   floatingButton: {
     width: 52,

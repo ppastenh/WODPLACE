@@ -153,3 +153,41 @@ export function getAge(isoBirthdate: string, now: Date = new Date()): number {
   if (!hasHadBirthdayThisYear) age -= 1;
   return age;
 }
+
+/** Chile's actual calendar date (America/Santiago), independent of the
+ *  device's own timezone/clock setting — same fix as api-server's
+ *  todayDateKey() for the same reason (WODPLACE is Chile-only; a device
+ *  near Chile's ~21:00-midnight window, or simply set to a different
+ *  timezone, must still agree with everyone else on what day "today" is
+ *  for the Home birthday card). */
+export function todayInChile(): { year: number; month: number; day: number } {
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+  })
+    .format(new Date())
+    .split('-')
+    .map(Number);
+  return { year, month, day };
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/** Whether `month`/`day` (from an ISO birthdate, year ignored) falls on
+ *  `today` — Feb 29 in a non-leap `today.year` is treated as March 1,
+ *  matching the same choice made server-side for the upcoming-birthdays
+ *  list (see daysUntilNextOccurrence's doc comment in api-server's
+ *  routes/boxes.ts) rather than relying on Date's own rollover here,
+ *  since this is plain integer comparison, not Date arithmetic. */
+export function isBirthdayToday(
+  birthMonth: number,
+  birthDay: number,
+  today: { year: number; month: number; day: number },
+): boolean {
+  const normalized =
+    birthMonth === 2 && birthDay === 29 && !isLeapYear(today.year)
+      ? { month: 3, day: 1 }
+      : { month: birthMonth, day: birthDay };
+  return normalized.month === today.month && normalized.day === today.day;
+}
