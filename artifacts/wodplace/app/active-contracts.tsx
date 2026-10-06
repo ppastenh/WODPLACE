@@ -115,6 +115,32 @@ export default function ActiveContractsScreen() {
     emergencyPhone.length === CL_PHONE_DIGITS &&
     (!isMinor || (guardianName.trim().length > 0 && minorDataConsent));
 
+  // Mensaje explícito de qué falta, en vez de un botón desactivado sin
+  // explicación — missingBirthdate queda fuera porque ya tiene su propio
+  // aviso más arriba.
+  const missingReasons: string[] = [];
+  if (!acceptance) {
+    for (const doc of documents) {
+      if (!doc.read) {
+        missingReasons.push(`Falta leer: ${doc.title}`);
+      } else if (!checked[doc.slug]) {
+        missingReasons.push(`Falta marcar la casilla: ${doc.title}`);
+      }
+    }
+    if (emergencyName.trim().length === 0) {
+      missingReasons.push('Falta el nombre de contacto de emergencia');
+    }
+    if (emergencyPhone.length !== CL_PHONE_DIGITS) {
+      missingReasons.push('Falta completar el número de emergencia (9 dígitos)');
+    }
+    if (isMinor && guardianName.trim().length === 0) {
+      missingReasons.push('Falta el nombre del apoderado');
+    }
+    if (isMinor && !minorDataConsent) {
+      missingReasons.push('Falta el consentimiento de datos del menor');
+    }
+  }
+
   const handlePhoneChange = (text: string) => {
     const digitsOnly = text.replace(/\D/g, '').slice(0, CL_PHONE_DIGITS);
     setEmergencyPhone(digitsOnly);
@@ -272,7 +298,12 @@ export default function ActiveContractsScreen() {
                   {!acceptance ? (
                     (() => {
                       const isReady = doc.read || !!openedSlugs[doc.slug];
-                      const isChecked = doc.read || !!checked[doc.slug];
+                      // Deliberately NOT `doc.read || ...` — "ya lo leíste
+                      // antes" nunca debe contar como "lo marcaste ahora".
+                      // Si la pantalla se vuelve a montar, las 3 casillas
+                      // piden un toque de nuevo (no releer el documento,
+                      // isReady sigue usando doc.read para eso).
+                      const isChecked = !!checked[doc.slug];
                       return (
                         <Pressable
                           onPress={() => isReady && handleCheckboxPress(doc.slug)}
@@ -540,10 +571,20 @@ export default function ActiveContractsScreen() {
                   onPress={handleAccept}
                   style={styles.acceptButton}
                 />
-                {!allRead ? (
-                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                    Lee todos los documentos para continuar.
-                  </Text>
+                {!canAccept && missingReasons.length > 0 ? (
+                  <View style={[styles.missingBox, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.missingTitle, { color: colors.secondaryForeground }]}>
+                      Para continuar, falta:
+                    </Text>
+                    {missingReasons.map((reason) => (
+                      <Text
+                        key={reason}
+                        style={[styles.missingItem, { color: colors.secondaryForeground }]}
+                      >
+                        • {reason}
+                      </Text>
+                    ))}
+                  </View>
                 ) : null}
               </View>
             )}
@@ -719,5 +760,20 @@ const styles = StyleSheet.create({
   withdrawLink: {
     fontSize: 12,
     fontFamily: 'Inter_700Bold',
+  },
+  missingBox: {
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+    marginTop: 4,
+  },
+  missingTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+  },
+  missingItem: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    lineHeight: 17,
   },
 });
