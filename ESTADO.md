@@ -10,6 +10,10 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 - Hueco de permisos en `contract_acceptances`: un coach podía antes reescribir cualquier columna de una fila de aceptación de contrato (no solo "visto"). Corregido: solo admins del box pueden actualizar, y solo pueden cambiar `seen_by_owner_at` — cualquier otro cambio es rechazado por la base de datos. Commit `336b10c` (solo migración SQL, ya aplicada; no requiere despliegue de ningún servicio).
 - `CLAUDE.md` y `ESTADO.md` creados, integrando lo que ya existía en `replit.md` (que se mantiene, sin borrar nada).
 
+## Resuelto
+
+- **Bug: doble login en el panel de administrador tras el PIN.** Causa real: faltaban las variables `DASHBOARD_URL` y `SUPERADMIN_URL` en el Environment de Render — sin ellas, `POST /api/admin/dash-link` fallaba con 500 ("Failed to create dashboard link") antes de llegar a generar el enlace, así que la app caía al login manual del panel. Se descartaron antes, con evidencia, otras causas: el enlace mágico de Supabase (probado con una cuenta de prueba, no con una cuenta real — ver regla nueva en `CLAUDE.md`), que la decisión se tomara en el servidor de box-admin (confirmado que es client-side), y el WebView perdiendo el token en la redirección. Con las dos variables agregadas en Render, `dash-link` responde 200 y el panel entra directo, confirmado por Pía con el WebView limpio.
+
 ## En curso
 
 - Nada pendiente de esta tanda de trabajo — las 4 tareas de hoy (cumpleaños, botón de contratos, hueco de coaches, estos dos archivos) quedaron commiteadas y enviadas a `chore/expo-sdk-57`.
@@ -20,6 +24,7 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 - Modo oscuro: el hook `useColors()` ya soporta una clave `dark` en `constants/colors.ts`, pero esa clave no existe — todo cae siempre a la paleta clara.
 - Estados de carga en Home: ninguna query tiene esqueleto/skeleton; las tarjetas aparecen de golpe cuando llega cada respuesta, con salto de layout.
 - Consistencia de íconos en círculo ("iconBadge"): aplicada a las tarjetas de estadísticas y Medallas, pero no a "Aviso Importante" ni "WOD de hoy" (agregarlo ahí aumentaría el alto de esas tarjetas — quedó sin aplicar a propósito, avisado en su momento).
+- **Ciclo de llamadas repetidas tras el login.** Visto en los logs de Render al revisar el bug del doble login: justo después de entrar a Inicio, el teléfono repite decenas de veces en pocos segundos las mismas llamadas (`/api/platform-agreement`, `/api/box-memberships/my-box`, `/api/users/.../public-profile`, etc.) — todas 304, no son errores, pero no debería estar pidiendo lo mismo tantas veces de corrido. No investigado todavía; podría ser un re-render en bucle en el cliente.
 
 ## Bloqueados
 
