@@ -12,6 +12,7 @@ Reglas de trabajo y datos fijos del proyecto WODPLACEtes, para no repetirlos en 
 - Verificar en vivo, no solo con typecheck. Usar datos de prueba temporales y limpiarlos al terminar. Decir siempre qué NO se pudo verificar (por ejemplo, lo que solo se ve en un teléfono real).
 - No asumir que algo "ya funciona": verificarlo contra el código/la base real. Si algo que ella pide contradice una decisión anterior, o parece mala idea, decirlo antes de hacerlo.
 - No repetir ni pegar secretos (claves, tokens) en las respuestas.
+- Nunca generar enlaces de acceso ni tokens reales de las cuentas de Pía (`pasten.hueche@gmail.com` y cualquier otra cuenta real suya) para investigar o probar algo — usar siempre una cuenta de prueba (ej. `test-box-admin@wodplace.test`), aunque haya que crearla para la ocasión.
 - Una cosa a la vez: no mezclar arreglos distintos en un mismo commit sin avisarle.
 - Formato de informe, máximo ~15 líneas: **Hecho**, **Verificado** (cómo), **No pude verificar**, **Qué necesito de ti**. Sin repetir código ni listas largas de archivos, salvo que lo pida.
 - Al terminar cada tarea, actualizar `ESTADO.md`.
