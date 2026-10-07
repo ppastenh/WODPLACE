@@ -192,10 +192,23 @@ export default function HomeScreen() {
   // mi Box" grants the box_admin role server-side, so the drawer's admin
   // items (and the Contratos Activos filter below) never stay stuck showing
   // a stale pre-role state.
+  //
+  // refreshActivationStatus itself is NOT a stable reference (AuthContext
+  // wraps it fresh on every value recompute, and calling it is what updates
+  // the state that triggers that recompute) — depending on it directly in
+  // this effect's deps used to re-fire this effect every time it updated
+  // anything, in a tight loop (confirmed live: ~20 calls/6s to /platform-
+  // agreement, /box-memberships/my-box and /public-profile right after
+  // login). Routing the call through a ref that's kept current on every
+  // render means the effect's own useCallback has an empty, truly stable
+  // dependency array — it only re-fires on a real focus event, but still
+  // always calls the latest version of the function.
+  const refreshActivationStatusRef = useRef(refreshActivationStatus);
+  refreshActivationStatusRef.current = refreshActivationStatus;
   useFocusEffect(
     useCallback(() => {
-      refreshActivationStatus();
-    }, [refreshActivationStatus]),
+      refreshActivationStatusRef.current();
+    }, []),
   );
 
   // Real per-box birthdays (see GET /box-memberships/upcoming-birthdays).
