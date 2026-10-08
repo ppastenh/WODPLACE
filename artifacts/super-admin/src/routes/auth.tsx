@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,6 +103,10 @@ function AuthPage() {
             className="rounded-full"
           />
         </div>
+
+        <Link to="/forgot-password" className="block text-right text-xs font-semibold text-primary">
+          ¿Olvidaste tu contraseña?
+        </Link>
 
         <Button type="submit" disabled={loading} className="h-12 w-full rounded-full font-semibold">
           {loading ? "Ingresando…" : "Ingresar"}

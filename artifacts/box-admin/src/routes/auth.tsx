@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,6 +140,12 @@ function AuthPage() {
           <Label htmlFor="password">Contraseña</Label>
           <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === "signup" ? "new-password" : "current-password"} />
         </div>
+
+        {mode === "signin" && (
+          <Link to="/forgot-password" className="block text-right text-xs font-semibold text-primary">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        )}
 
         {mode === "signup" && (
           <div className="space-y-2">

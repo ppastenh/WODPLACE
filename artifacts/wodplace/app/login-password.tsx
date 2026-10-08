@@ -123,6 +123,16 @@ export default function LoginPasswordScreen() {
             <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
           ) : null}
 
+          <Pressable
+            onPress={() => router.push({ pathname: '/forgot-password', params: { email } })}
+            hitSlop={8}
+            style={styles.forgotLink}
+          >
+            <Text style={[styles.forgotText, { color: colors.primary }]}>
+              ¿Olvidaste tu contraseña?
+            </Text>
+          </Pressable>
+
           <AppButton
             label="Iniciar sesión"
             variant="primary"
@@ -223,6 +233,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
     marginTop: -6,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+  },
+  forgotText: {
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
   },
   entrarButton: {
     marginTop: 6,
