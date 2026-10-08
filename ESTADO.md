@@ -9,6 +9,7 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 - Botón "Aceptado" de Contratos Activos: el checkbox de cada documento ya no se da por marcado solo porque el documento ya se había leído antes — ahora exige el toque en esta sesión. Mensaje explícito "Para continuar, falta: ..." en vez de un botón desactivado sin explicación. Commit `84950bd`, revisado por Pía en el teléfono.
 - Hueco de permisos en `contract_acceptances`: un coach podía antes reescribir cualquier columna de una fila de aceptación de contrato (no solo "visto"). Corregido: solo admins del box pueden actualizar, y solo pueden cambiar `seen_by_owner_at` — cualquier otro cambio es rechazado por la base de datos. Commit `336b10c` (solo migración SQL, ya aplicada; no requiere despliegue de ningún servicio).
 - `CLAUDE.md` y `ESTADO.md` creados, integrando lo que ya existía en `replit.md` (que se mantiene, sin borrar nada).
+- **Recuperación de contraseña — hecha y probada en las 3 apps.** No existía ninguna (la Fase 6 eliminó el sistema viejo de la app asumiendo que Supabase Auth lo cubriría nativamente, pero ese reemplazo nunca se construyó; los paneles de administración nunca tuvieron ninguna). Implementadas las pantallas "Olvidé mi contraseña" + "Nueva contraseña" en wodplace, box-admin y super-admin, con SMTP propio (Resend, dominio `wodplace.cl` verificado, remitente `no-responder@wodplace.cl`). Commit `d081636`, desplegado. Probado de punta a punta por Pía en las 3 apps: correo recibido, contraseña cambiada, mismo mensaje con un correo inexistente (nunca revela qué correos existen).
 
 ## Resuelto
 
@@ -21,12 +22,11 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 
 ## Pendientes
 
-- Escala tipográfica y de espaciado centralizada: hoy solo existe para `home.tsx`, no para el resto de las pantallas de `wodplace`.
-- Modo oscuro: el hook `useColors()` ya soporta una clave `dark` en `constants/colors.ts`, pero esa clave no existe — todo cae siempre a la paleta clara.
-- Estados de carga en Home: ninguna query tiene esqueleto/skeleton; las tarjetas aparecen de golpe cuando llega cada respuesta, con salto de layout.
-- Consistencia de íconos en círculo ("iconBadge"): aplicada a las tarjetas de estadísticas y Medallas, pero no a "Aviso Importante" ni "WOD de hoy" (agregarlo ahí aumentaría el alto de esas tarjetas — quedó sin aplicar a propósito, avisado en su momento).
+- **Sin prioridad por ahora (estético, queda para después):** escala tipográfica/espaciado centralizada fuera de `home.tsx`, modo oscuro (falta la clave `dark` en `constants/colors.ts`), esqueleto de carga en Home (las tarjetas aparecen de golpe), consistencia de íconos en círculo en "Aviso Importante"/"WOD de hoy".
 - **Mejora opcional en `AuthContext` (no aplicada, queda para una pasada aparte):** dentro de `refreshActivationStatus`, `adminStatus` y `myBox` se actualizan con `setAdminStatus`/`setMyBox` sin ninguna guarda de "¿cambió realmente?" — a diferencia de `user` (que sí compara `rank`/`status` antes de actualizar). Como son objetos recién bajados de la red, son técnicamente "nuevos" en cada llamada aunque el contenido sea idéntico, así que el `value` del contexto se recalcula cada vez que se llama a `refreshActivationStatus`, provocando un re-render de más en cada pantalla que usa `useAuth()`. No causa el ciclo infinito (eso ya se cortó en Home), solo renders de sobra. Arreglo: comparar antes de actualizar, igual que ya se hace con `user`.
 - **Polling de notificaciones corre también dentro del panel de admin.** `NotificationsContext.tsx` pide `/api/notifications` cada 30 segundos (dependencia estable, revisado — no es un ciclo ni un bug) mientras haya una sesión, sin importar qué pantalla esté enfocada, porque vive por encima de todas las pantallas en `_layout.tsx`. No hay razón de producto para seguir pidiéndolas mientras se usa el panel de administrador (WebView). No urgente, no aplicado.
+- **Correos de Supabase Auth: SMTP propio ya funcionando.** Dominio `wodplace.cl` verificado en Resend, remitente `no-responder@wodplace.cl` — confirmado por Pía, el correo de recuperación llegó. Ya no se usa el servicio por defecto de Supabase (límite bajo, no apto para producción).
+- **Sin prioridad, para el final del proyecto:** las plantillas de correo de Supabase (confirmación de cuenta, recuperación de contraseña) siguen con el diseño por defecto de Supabase, en inglés — falta adaptarlas a español chileno neutro con la paleta y el logo de WODPLACE.
 - **Prioridad baja — aviso "Can't perform a React state update on a component that hasn't mounted yet".** Aparece al abrir la app, antes de iniciar sesión. Solo se ve en desarrollo. Causa no confirmada — revisé `_layout.tsx`, `AuthContext.tsx`, `NotificationsContext.tsx` e `index.tsx` y no encontré ninguna actualización de estado fuera de lugar; el único candidato (sin confirmar) es que `_layout.tsx` devuelve `null` mientras cargan las fuentes (`useFonts`), así que todo el árbol de providers (`AuthProvider`/`NotificationsProvider`/`BookingProvider`) se monta de una sola vez recién cuando terminan de cargar, en vez de existir desde el principio. No seguir investigando salvo que Pía pase el Component Stack completo del aviso (se obtiene tocándolo para expandirlo).
 
 ## Bloqueados
@@ -37,7 +37,9 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 
 ## Datos de prueba por limpiar
 
-Ninguno pendiente. Las 4 cuentas `revision.*@wodplace.test` y la cuenta `pasten.hueche+menor1@gmail.com` (creada por Pía para probar el flujo de contrato de un menor) ya se borraron por completo — Auth, `wodplace_users`, `box_members`, `contract_acceptances`, `contract_read_progress` y `birthday_visibility_consents` — y se confirmó que la cuenta real de Pía no se tocó.
+- **Pendiente de que Pía confirme cuáles borrar** — 3 cuentas creadas en los últimos 3 días, probablemente de la prueba de recuperación de contraseña (correos de temp-mail): `gibara7177@copytosh.com` (en `auth.users`, `wodplace_users`, `profiles`), `gemam50945@herclan.com` y `merak22546@copytosh.com` (solo en `auth.users` y `profiles`, sin fila en `wodplace_users`). Solo listadas, nada borrado todavía.
+
+Ya limpiado: las 4 cuentas `revision.*@wodplace.test`, `pasten.hueche+menor1@gmail.com` (contrato de menor) y `pasten.hueche+recup1@gmail.com` (recuperación de contraseña) — Auth, `wodplace_users`, `profiles`, `box_members`, `contract_acceptances`, `contract_read_progress` y `birthday_visibility_consents` — y se confirmó que la cuenta real de Pía no se tocó.
 
 ## Decisiones tomadas (no reabrir sin avisar)
 
