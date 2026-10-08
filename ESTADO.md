@@ -10,6 +10,7 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 - Hueco de permisos en `contract_acceptances`: un coach podía antes reescribir cualquier columna de una fila de aceptación de contrato (no solo "visto"). Corregido: solo admins del box pueden actualizar, y solo pueden cambiar `seen_by_owner_at` — cualquier otro cambio es rechazado por la base de datos. Commit `336b10c` (solo migración SQL, ya aplicada; no requiere despliegue de ningún servicio).
 - `CLAUDE.md` y `ESTADO.md` creados, integrando lo que ya existía en `replit.md` (que se mantiene, sin borrar nada).
 - **Recuperación de contraseña — hecha y probada en las 3 apps.** No existía ninguna (la Fase 6 eliminó el sistema viejo de la app asumiendo que Supabase Auth lo cubriría nativamente, pero ese reemplazo nunca se construyó; los paneles de administración nunca tuvieron ninguna). Implementadas las pantallas "Olvidé mi contraseña" + "Nueva contraseña" en wodplace, box-admin y super-admin, con SMTP propio (Resend, dominio `wodplace.cl` verificado, remitente `no-responder@wodplace.cl`). Commit `d081636`, desplegado. Probado de punta a punta por Pía en las 3 apps: correo recibido, contraseña cambiada, mismo mensaje con un correo inexistente (nunca revela qué correos existen).
+- **`info@wodplace.cl` funcionando** — Cloudflare Email Routing hacia el Gmail de Pía, solo recibe (no manda). Queda definido como el correo de contacto para el sitio web y los documentos legales.
 
 ## Resuelto
 
@@ -38,9 +39,7 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 
 ## Datos de prueba por limpiar
 
-- **Pendiente de que Pía confirme cuáles borrar** — 3 cuentas creadas en los últimos 3 días, probablemente de la prueba de recuperación de contraseña (correos de temp-mail): `gibara7177@copytosh.com` (en `auth.users`, `wodplace_users`, `profiles`), `gemam50945@herclan.com` y `merak22546@copytosh.com` (solo en `auth.users` y `profiles`, sin fila en `wodplace_users`). Solo listadas, nada borrado todavía.
-
-Ya limpiado: las 4 cuentas `revision.*@wodplace.test`, `pasten.hueche+menor1@gmail.com` (contrato de menor) y `pasten.hueche+recup1@gmail.com` (recuperación de contraseña) — Auth, `wodplace_users`, `profiles`, `box_members`, `contract_acceptances`, `contract_read_progress` y `birthday_visibility_consents` — y se confirmó que la cuenta real de Pía no se tocó.
+Ninguno pendiente. Ya limpiado: las 4 cuentas `revision.*@wodplace.test`, `pasten.hueche+menor1@gmail.com` (contrato de menor), `pasten.hueche+recup1@gmail.com` y las 3 cuentas de temp-mail (`gibara7177@copytosh.com`, `gemam50945@herclan.com`, `merak22546@copytosh.com`) de la prueba de recuperación de contraseña — Auth, `wodplace_users`, `profiles`, `box_members`, `contract_acceptances`, `contract_read_progress` y `birthday_visibility_consents` — y se confirmó que la cuenta real de Pía no se tocó.
 
 ## Decisiones tomadas (no reabrir sin avisar)
 
