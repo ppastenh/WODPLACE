@@ -1,7 +1,8 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { claimPendingInvite, storePendingInviteCode } from "@/lib/pendingInvite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,50 +51,53 @@ function AuthPage() {
   const [inviteCode, setInviteCode] = useState(invite ?? "");
   const [loading, setLoading] = useState(false);
 
+  // Persist the code the moment it arrives via the link, so it survives
+  // even if signUp needs email confirmation (session appears later, on a
+  // different page load) — see lib/pendingInvite.ts.
+  useEffect(() => {
+    if (invite) storePendingInviteCode(invite.trim());
+  }, [invite]);
+
+  async function finishLogin() {
+    const result = await claimPendingInvite();
+    if (result.claimed) {
+      toast.success("Invitación aplicada: ya tienes el nuevo acceso.");
+    } else if (result.message) {
+      toast.error(result.message);
+    }
+    if (nextPath) { window.location.href = nextPath; return; }
+    window.location.href = "/dashboard";
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
+      const trimmedInvite = inviteCode.trim();
+      if (trimmedInvite) storePendingInviteCode(trimmedInvite);
+
       if (mode === "signup") {
-        const trimmedInvite = inviteCode.trim();
-        if (trimmedInvite) {
-          // Read-only pre-flight check (never marks the invite used) so an
-          // invalid/expired/mismatched-email code fails with a clear
-          // message here, instead of silently creating a plain athlete
-          // account with no role and no explanation (the actual
-          // redemption trigger on the server always fails silently toward
-          // no privilege for exactly that reason, by design).
-          const { data: valid, error: checkError } = await supabase.rpc("check_invite_code", {
-            p_code: trimmedInvite,
-            p_email: email,
-          });
-          if (checkError) throw checkError;
-          if (!valid) {
-            throw new Error("Este código de invitación no es válido o venció.");
-          }
-        }
         const { error } = await supabase.auth.signUp({
           email, password,
           options: {
             emailRedirectTo: `${window.location.origin}${nextPath ?? "/"}`,
-            data: {
-              full_name: name,
-              ...(trimmedInvite ? { invite_code: trimmedInvite } : {}),
-            },
+            data: { full_name: name },
           },
         });
         if (error) throw error;
-        toast.success(
-          trimmedInvite
-            ? "Cuenta creada con invitación. Revisa tu correo si tu proyecto lo requiere."
-            : "Cuenta creada. Revisa tu correo si tu proyecto lo requiere.",
-        );
+        if (!(await supabase.auth.getSession()).data.session) {
+          // Email confirmation is required for this project — no session
+          // yet, so the invite can't be claimed until the user confirms
+          // and signs in; it stays stashed for that later visit.
+          toast.success("Cuenta creada. Revisa tu correo para confirmarla.");
+          setLoading(false);
+          return;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      if (nextPath) { window.location.href = nextPath; return; }
-      navigate({ to: "/dashboard" });
+      await finishLogin();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error";
       toast.error(msg);
@@ -169,7 +173,8 @@ function AuthPage() {
 
         {mode === "signup" && (
           <p className="text-center text-xs text-muted-foreground">
-            Con código de invitación válido tu cuenta será administrador. Sin código, el primer usuario del sistema se convierte en admin automáticamente.
+            Con un código de invitación válido, tu cuenta recibe el acceso que te asignaron
+            apenas inicies sesión.
           </p>
         )}
       </form>

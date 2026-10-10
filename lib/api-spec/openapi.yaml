@@ -842,6 +842,96 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /invites/new-code:
+    get:
+      tags: [Invites]
+      operationId: getNewInviteCode
+      summary: Generates a cryptographically-random staff-invite code
+      description: |
+        Does not insert anything — just returns a fresh random code for
+        the caller (box-admin's "Invitar Staff" screen) to use when
+        creating the admin_invites row itself (still a direct, RLS-gated
+        insert from the client). Requires the caller to be box_admin of
+        boxId or super_admin, and is itself rate-limited per user.
+      parameters:
+        - name: boxId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A fresh invite code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewInviteCodeResult"
+        "401":
+          description: Missing or invalid session token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Caller is not box_admin of boxId nor super_admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many codes requested recently.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /invites/claim:
+    post:
+      tags: [Invites]
+      operationId: claimInvite
+      summary: Redeems a staff-invite code for the CALLER'S OWN session
+      description: |
+        The single path for turning a staff invite into a real role grant
+        — used right after both sign-up AND sign-in (new or pre-existing
+        account), never automatically. Requires a valid session; the
+        invite's email is matched against that session's own email (never
+        a client-supplied email) AND the code, together — matching only
+        one of the two is treated the same as matching neither. Rate
+        limited by session user and by IP; failed attempts never reveal
+        which part (code vs. email) didn't match, and never reveal
+        whether a code currently exists at all.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimInviteRequest"
+      responses:
+        "200":
+          description: Role granted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimInviteResult"
+        "400":
+          description: Invalid or expired code (generic — never more specific than this).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Missing or invalid session token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many failed attempts — try again later.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /movements:
     get:
       tags: [RM]
@@ -1576,6 +1666,32 @@ components:
       properties:
         acknowledged:
           type: integer
+
+    NewInviteCodeResult:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: 14 characters, unambiguous alphabet, cryptographically random.
+
+    ClaimInviteRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 1
+
+    ClaimInviteResult:
+      type: object
+      required: [role, boxId]
+      properties:
+        role:
+          type: string
+          enum: [coach, box_admin]
+        boxId:
+          type: string
 
     AdminDashLinkResult:
       type: object

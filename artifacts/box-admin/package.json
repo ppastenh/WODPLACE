@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@workspace/api-zod": "workspace:*",
     "@workspace/supabase-types": "workspace:*",
     "@lovable.dev/mcp-js": "^0.26.1",
     "@radix-ui/react-accordion": "^1.2.12",

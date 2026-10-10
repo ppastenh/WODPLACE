@@ -336,6 +336,29 @@ export interface AckContractAcceptancesResult {
   acknowledged: number;
 }
 
+export interface NewInviteCodeResult {
+  /** 14 characters, unambiguous alphabet, cryptographically random. */
+  code: string;
+}
+
+export interface ClaimInviteRequest {
+  /** @minLength 1 */
+  code: string;
+}
+
+export type ClaimInviteResultRole = typeof ClaimInviteResultRole[keyof typeof ClaimInviteResultRole];
+
+
+export const ClaimInviteResultRole = {
+  coach: 'coach',
+  box_admin: 'box_admin',
+} as const;
+
+export interface ClaimInviteResult {
+  role: ClaimInviteResultRole;
+  boxId: string;
+}
+
 export interface AdminDashLinkResult {
   /**
      * Single-use Supabase magic link. Open it in a WebView
@@ -573,6 +596,10 @@ userId?: string;
 
 export type GetContractAcceptanceParams = {
 userId: string;
+};
+
+export type GetNewInviteCodeParams = {
+boxId: string;
 };
 
 export type ListMovementsParams = {

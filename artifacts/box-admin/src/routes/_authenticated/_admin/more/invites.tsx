@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { apiFetch } from "@/lib/apiClient";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
 import { copyToClipboard } from "@/lib/clipboard";
+import type { NewInviteCodeResult } from "@workspace/api-zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,13 +36,6 @@ type Invite = {
   role: string;
 };
 
-function genCode() {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  let out = "";
-  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
-
 function InvitesPage() {
   const qc = useQueryClient();
   const { boxId, isAdmin } = useBox();
@@ -71,7 +66,9 @@ function InvitesPage() {
       if (!trimmedEmail) {
         throw new Error("El email es obligatorio: la invitación solo la puede canjear esa dirección.");
       }
-      const code = genCode();
+      const { code } = await apiFetch<NewInviteCodeResult>(
+        `/invites/new-code?boxId=${encodeURIComponent(boxId)}`,
+      );
       const expires_at =
         days && Number(days) > 0
           ? new Date(Date.now() + Number(days) * 24 * 60 * 60 * 1000).toISOString()

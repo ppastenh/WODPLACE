@@ -18,6 +18,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
+import { Route as AuthenticatedClaimInviteRouteImport } from './routes/_authenticated/claim-invite'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedAdminClassesRouteImport } from './routes/_authenticated/_admin/classes'
@@ -83,6 +84,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/_admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClaimInviteRoute =
+  AuthenticatedClaimInviteRouteImport.update({
+    id: '/claim-invite',
+    path: '/claim-invite',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/claim-invite': typeof AuthenticatedClaimInviteRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/classes': typeof AuthenticatedAdminClassesRoute
@@ -233,6 +241,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/claim-invite': typeof AuthenticatedClaimInviteRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/classes': typeof AuthenticatedAdminClassesRoute
@@ -264,6 +273,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/claim-invite': typeof AuthenticatedClaimInviteRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/_admin/classes': typeof AuthenticatedAdminClassesRoute
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/claim-invite'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/classes'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/claim-invite'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/classes'
@@ -352,6 +364,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/_admin'
+    | '/_authenticated/claim-invite'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/_admin/classes'
@@ -449,6 +462,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/claim-invite': {
+      id: '/_authenticated/claim-invite'
+      path: '/claim-invite'
+      fullPath: '/claim-invite'
+      preLoaderRoute: typeof AuthenticatedClaimInviteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/.lovable/oauth/consent': {
@@ -634,10 +654,12 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedClaimInviteRoute: typeof AuthenticatedClaimInviteRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedClaimInviteRoute: AuthenticatedClaimInviteRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

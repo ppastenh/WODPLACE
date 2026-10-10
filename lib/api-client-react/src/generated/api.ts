@@ -35,6 +35,8 @@ import type {
   BookingActionResponse,
   BookingRecord,
   CancelBookingRequest,
+  ClaimInviteRequest,
+  ClaimInviteResult,
   ClassSessionDto,
   ContractAcceptance,
   ContractAcceptanceNotification,
@@ -48,6 +50,7 @@ import type {
   DeletePrParams,
   ErrorEnvelope,
   GetContractAcceptanceParams,
+  GetNewInviteCodeParams,
   GetTrainingSettingsParams,
   HealthStatus,
   ListBookingsParams,
@@ -59,6 +62,7 @@ import type {
   ListPrsParams,
   MarkContractReadRequest,
   Movement,
+  NewInviteCodeResult,
   Notification,
   NotificationUserRequest,
   Pr,
@@ -2110,6 +2114,175 @@ export const useCreateAdminDashLink = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getCreateAdminDashLinkMutationOptions(options));
+    }
+
+export const getGetNewInviteCodeUrl = (params: GetNewInviteCodeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/invites/new-code?${stringifiedParams}` : `/api/invites/new-code`
+}
+
+/**
+ * Does not insert anything — just returns a fresh random code for
+ * the caller (box-admin's "Invitar Staff" screen) to use when
+ * creating the admin_invites row itself (still a direct, RLS-gated
+ * insert from the client). Requires the caller to be box_admin of
+ * boxId or super_admin, and is itself rate-limited per user.
+ * @summary Generates a cryptographically-random staff-invite code
+ */
+export const getNewInviteCode = async (params: GetNewInviteCodeParams, options?: RequestInit): Promise<NewInviteCodeResult> => {
+
+  return customFetch<NewInviteCodeResult>(getGetNewInviteCodeUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNewInviteCodeQueryKey = (params?: GetNewInviteCodeParams,) => {
+    return [
+    `/api/invites/new-code`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNewInviteCodeQueryOptions = <TData = Awaited<ReturnType<typeof getNewInviteCode>>, TError = ErrorType<ErrorEnvelope>>(params: GetNewInviteCodeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNewInviteCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNewInviteCodeQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNewInviteCode>>> = ({ signal }) => getNewInviteCode(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNewInviteCode>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNewInviteCodeQueryResult = NonNullable<Awaited<ReturnType<typeof getNewInviteCode>>>
+export type GetNewInviteCodeQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Generates a cryptographically-random staff-invite code
+ */
+
+export function useGetNewInviteCode<TData = Awaited<ReturnType<typeof getNewInviteCode>>, TError = ErrorType<ErrorEnvelope>>(
+ params: GetNewInviteCodeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNewInviteCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNewInviteCodeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getClaimInviteUrl = () => {
+
+
+
+
+  return `/api/invites/claim`
+}
+
+/**
+ * The single path for turning a staff invite into a real role grant
+ * — used right after both sign-up AND sign-in (new or pre-existing
+ * account), never automatically. Requires a valid session; the
+ * invite's email is matched against that session's own email (never
+ * a client-supplied email) AND the code, together — matching only
+ * one of the two is treated the same as matching neither. Rate
+ * limited by session user and by IP; failed attempts never reveal
+ * which part (code vs. email) didn't match, and never reveal
+ * whether a code currently exists at all.
+ * @summary Redeems a staff-invite code for the CALLER'S OWN session
+ */
+export const claimInvite = async (claimInviteRequest: ClaimInviteRequest, options?: RequestInit): Promise<ClaimInviteResult> => {
+
+  return customFetch<ClaimInviteResult>(getClaimInviteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(claimInviteRequest)
+  }
+);}
+
+
+
+
+
+export const getClaimInviteMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimInvite>>, TError,{data: BodyType<ClaimInviteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof claimInvite>>, TError,{data: BodyType<ClaimInviteRequest>}, TContext> => {
+
+const mutationKey = ['claimInvite'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof claimInvite>>, {data: BodyType<ClaimInviteRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  claimInvite(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClaimInviteMutationResult = NonNullable<Awaited<ReturnType<typeof claimInvite>>>
+    export type ClaimInviteMutationBody = BodyType<ClaimInviteRequest>
+    export type ClaimInviteMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Redeems a staff-invite code for the CALLER'S OWN session
+ */
+export const useClaimInvite = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimInvite>>, TError,{data: BodyType<ClaimInviteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof claimInvite>>,
+        TError,
+        {data: BodyType<ClaimInviteRequest>},
+        TContext
+      > => {
+      return useMutation(getClaimInviteMutationOptions(options));
     }
 
 export const getListMovementsUrl = (params: ListMovementsParams,) => {

@@ -569,6 +569,48 @@ export const CreateAdminDashLinkResponse = zod.object({
 
 
 /**
+ * Does not insert anything — just returns a fresh random code for
+ * the caller (box-admin's "Invitar Staff" screen) to use when
+ * creating the admin_invites row itself (still a direct, RLS-gated
+ * insert from the client). Requires the caller to be box_admin of
+ * boxId or super_admin, and is itself rate-limited per user.
+ * @summary Generates a cryptographically-random staff-invite code
+ */
+export const GetNewInviteCodeQueryParams = zod.object({
+  "boxId": zod.coerce.string()
+})
+
+export const GetNewInviteCodeResponse = zod.object({
+  "code": zod.string().describe('14 characters, unambiguous alphabet, cryptographically random.')
+})
+
+
+/**
+ * The single path for turning a staff invite into a real role grant
+ * — used right after both sign-up AND sign-in (new or pre-existing
+ * account), never automatically. Requires a valid session; the
+ * invite's email is matched against that session's own email (never
+ * a client-supplied email) AND the code, together — matching only
+ * one of the two is treated the same as matching neither. Rate
+ * limited by session user and by IP; failed attempts never reveal
+ * which part (code vs. email) didn't match, and never reveal
+ * whether a code currently exists at all.
+ * @summary Redeems a staff-invite code for the CALLER'S OWN session
+ */
+
+
+
+export const ClaimInviteBody = zod.object({
+  "code": zod.string().min(1)
+})
+
+export const ClaimInviteResponse = zod.object({
+  "role": zod.enum(['coach', 'box_admin']),
+  "boxId": zod.string()
+})
+
+
+/**
  * @summary List movements visible to a user (seeded defaults + their custom)
  */
 export const ListMovementsQueryParams = zod.object({
