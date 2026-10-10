@@ -163,9 +163,6 @@ export default function CalendarScreen() {
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
   const adminNavItem = getAdminNavItem(adminStatus);
-  if (adminNavItem) {
-    navItems.push(adminNavItem);
-  }
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);
@@ -292,6 +289,7 @@ export default function CalendarScreen() {
         userName={user.name}
         avatarUri={user.avatarUri}
         navItems={navItems}
+        adminNavItem={adminNavItem}
         onLogout={handleLogout}
       />
       <AttendeesModal

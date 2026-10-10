@@ -81,10 +81,6 @@ export default function ProfileScreen() {
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
-  if (adminNavItem) {
-    navItems.push(adminNavItem);
-  }
-
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);
     if (route !== pathname) router.push(route as never);
@@ -308,6 +304,7 @@ export default function ProfileScreen() {
         userName={user.name}
         avatarUri={user.avatarUri}
         navItems={navItems}
+        adminNavItem={adminNavItem}
         onLogout={handleLogout}
       />
       <AttendeesModal

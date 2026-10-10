@@ -42,6 +42,12 @@ interface SideDrawerProps {
   userName: string;
   avatarUri: string | null;
   navItems: DrawerNavItem[];
+  /** Rendered as a distinct, filled button right above "Cerrar sesión" —
+   *  not mixed into the plain navItems list. The one role-dependent entry
+   *  point to a panel (Administrador/Coach/Super admin/etc, see
+   *  lib/navigation.ts's getAdminNavItem) deserves to stand out rather
+   *  than read as just another settings row. */
+  adminNavItem?: DrawerNavItem | null;
   onLogout: () => void;
   swipeToOpenEnabled?: boolean;
 }
@@ -55,18 +61,19 @@ export function SideDrawer({
   userName,
   avatarUri,
   navItems,
+  adminNavItem,
   onLogout,
   swipeToOpenEnabled = true,
 }: SideDrawerProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const translateX = useSharedValue(DRAWER_WIDTH);
+  const translateX = useSharedValue(-DRAWER_WIDTH);
   const backdropOpacity = useSharedValue(0);
   const dragStartX = useSharedValue(0);
 
   useEffect(() => {
-    translateX.value = withTiming(visible ? 0 : DRAWER_WIDTH, {
+    translateX.value = withTiming(visible ? 0 : -DRAWER_WIDTH, {
       duration: ANIM_DURATION,
       easing: Easing.out(Easing.cubic),
     });
@@ -91,13 +98,13 @@ export function SideDrawer({
     })
     .onUpdate((event) => {
       const next = dragStartX.value + event.translationX;
-      translateX.value = Math.min(DRAWER_WIDTH, Math.max(0, next));
-      backdropOpacity.value = 1 - translateX.value / DRAWER_WIDTH;
+      translateX.value = Math.max(-DRAWER_WIDTH, Math.min(0, next));
+      backdropOpacity.value = 1 + translateX.value / DRAWER_WIDTH;
     })
     .onEnd((event) => {
-      const shouldClose = translateX.value > DRAWER_WIDTH * 0.35 || event.velocityX > 800;
+      const shouldClose = translateX.value < -DRAWER_WIDTH * 0.35 || event.velocityX < -800;
       if (shouldClose) {
-        translateX.value = withTiming(DRAWER_WIDTH, {
+        translateX.value = withTiming(-DRAWER_WIDTH, {
           duration: ANIM_DURATION,
           easing: Easing.out(Easing.cubic),
         });
@@ -115,15 +122,15 @@ export function SideDrawer({
   const panOpen = Gesture.Pan()
     .enabled(!visible && swipeToOpenEnabled)
     .onStart(() => {
-      dragStartX.value = DRAWER_WIDTH;
+      dragStartX.value = -DRAWER_WIDTH;
     })
     .onUpdate((event) => {
       const next = dragStartX.value + event.translationX;
-      translateX.value = Math.min(DRAWER_WIDTH, Math.max(0, next));
-      backdropOpacity.value = 1 - translateX.value / DRAWER_WIDTH;
+      translateX.value = Math.max(-DRAWER_WIDTH, Math.min(0, next));
+      backdropOpacity.value = 1 + translateX.value / DRAWER_WIDTH;
     })
     .onEnd((event) => {
-      const shouldOpen = translateX.value < DRAWER_WIDTH * 0.65 || event.velocityX < -800;
+      const shouldOpen = translateX.value > -DRAWER_WIDTH * 0.65 || event.velocityX > 800;
       if (shouldOpen) {
         translateX.value = withTiming(0, {
           duration: ANIM_DURATION,
@@ -132,7 +139,7 @@ export function SideDrawer({
         backdropOpacity.value = withTiming(1, { duration: ANIM_DURATION });
         runOnJS(openDrawer)();
       } else {
-        translateX.value = withTiming(DRAWER_WIDTH, {
+        translateX.value = withTiming(-DRAWER_WIDTH, {
           duration: ANIM_DURATION,
           easing: Easing.out(Easing.cubic),
         });
@@ -244,6 +251,22 @@ export function SideDrawer({
 
             <View style={[styles.separator, { backgroundColor: colors.border }]} />
 
+            {adminNavItem ? (
+              <Pressable
+                onPress={() => onNavigate(adminNavItem.route)}
+                style={({ pressed }) => [
+                  styles.adminButton,
+                  { backgroundColor: colors.primary },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Feather name={adminNavItem.icon} size={19} color={colors.primaryForeground} />
+                <Text style={[styles.adminButtonLabel, { color: colors.primaryForeground }]}>
+                  {adminNavItem.label}
+                </Text>
+              </Pressable>
+            ) : null}
+
             <Pressable
               onPress={onLogout}
               style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}
@@ -261,7 +284,7 @@ export function SideDrawer({
 const styles = StyleSheet.create({
   edgeZone: {
     position: 'absolute',
-    right: 0,
+    left: 0,
     top: 0,
     bottom: 0,
     width: EDGE_ZONE_WIDTH,
@@ -279,20 +302,20 @@ const styles = StyleSheet.create({
   drawer: {
     position: 'absolute',
     top: 0,
-    right: 0,
+    left: 0,
     bottom: 0,
     zIndex: 40,
     paddingHorizontal: 20,
-    borderTopLeftRadius: 24,
-    borderBottomLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomRightRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: -4, height: 0 },
+    shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 12,
   },
   closeButton: {
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
     marginBottom: 8,
   },
   profileBlock: {
@@ -355,5 +378,19 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     marginVertical: 12,
     marginHorizontal: 4,
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  adminButtonLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
   },
 });

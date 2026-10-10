@@ -18,17 +18,20 @@ export const Route = createFileRoute("/_authenticated/_admin/more/")({
   component: MorePage,
 });
 
-const items: Array<{ to: string; label: string; icon: LucideIcon; hint?: string }> = [
-  { to: "/more/my-profile", label: "Mi perfil", icon: User },
-  { to: "/more/wod", label: "WOD del día", icon: Flame },
-  { to: "/more/invites", label: "Invitar Staff", icon: Ticket },
-  { to: "/more/coaches", label: "Coaches", icon: UserCog },
-  { to: "/more/plans", label: "Planes", icon: Layers },
-  { to: "/more/reports", label: "Soporte", icon: LifeBuoy },
-  { to: "/more/notifications", label: "Notificaciones", icon: Bell },
-  { to: "/more/files", label: "Archivos", icon: FolderOpen },
-  { to: "/more/settings", label: "Configuración", icon: Settings },
+// Agrupado solo para presentación — el orden y los grupos no cambian qué ve
+// cada rol, eso sigue decidido abajo en visibleItems exactamente como antes.
+const items: Array<{ to: string; label: string; icon: LucideIcon; group: string }> = [
+  { to: "/more/notifications", label: "Avisos", icon: Bell, group: "Comunidad" },
+  { to: "/more/wod", label: "WOD del día", icon: Flame, group: "Comunidad" },
+  { to: "/more/coaches", label: "Coaches", icon: UserCog, group: "Equipo" },
+  { to: "/more/invites", label: "Invitar Staff", icon: Ticket, group: "Equipo" },
+  { to: "/more/reports", label: "Ayuda y soporte", icon: LifeBuoy, group: "Ayuda y soporte" },
+  { to: "/more/settings", label: "Configuración", icon: Settings, group: "Configuración" },
+  { to: "/more/plans", label: "Planes", icon: Layers, group: "Configuración" },
+  { to: "/more/files", label: "Archivos", icon: FolderOpen, group: "Configuración" },
+  { to: "/more/my-profile", label: "Mi perfil", icon: User, group: "Mi cuenta" },
 ];
+const GROUP_ORDER = ["Comunidad", "Equipo", "Ayuda y soporte", "Configuración", "Mi cuenta"];
 
 function MorePage() {
   const navigate = useNavigate();
@@ -55,18 +58,29 @@ function MorePage() {
 
   return (
     <AdminShell title="Más">
-      <div className="rounded-3xl border bg-card divide-y divide-border/60">
-        {visibleItems.map((it) => {
-          const Icon = it.icon;
-          return (
-            <Link key={it.to} to={it.to} className="flex items-center gap-3 p-4 active:bg-secondary/60">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary"><Icon className="h-5 w-5" /></div>
-              <span className="flex-1 text-sm font-semibold">{it.label}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          );
-        })}
-      </div>
+      {GROUP_ORDER.map((group) => {
+        const groupItems = visibleItems.filter((it) => it.group === group);
+        if (groupItems.length === 0) return null;
+        return (
+          <div key={group} className="mb-4">
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {group}
+            </p>
+            <div className="rounded-3xl border bg-card divide-y divide-border/60">
+              {groupItems.map((it) => {
+                const Icon = it.icon;
+                return (
+                  <Link key={it.to} to={it.to} className="flex items-center gap-3 p-4 active:bg-secondary/60">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary"><Icon className="h-5 w-5" /></div>
+                    <span className="flex-1 text-sm font-semibold">{it.label}</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
 
       <button onClick={signOut}
         className="mt-4 flex w-full items-center gap-3 rounded-3xl border border-destructive/30 bg-destructive/10 p-4 text-destructive active:bg-destructive/20">

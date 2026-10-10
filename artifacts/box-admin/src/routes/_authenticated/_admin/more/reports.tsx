@@ -99,7 +99,7 @@ function SupportPage() {
   const reports = data ?? [];
 
   return (
-    <AdminShell title="Soporte" showBack>
+    <AdminShell title="¿Necesitas ayuda? Escríbenos" showBack>
       <div className="space-y-4">
         <div className="rounded-3xl border bg-card p-4">
           <div className="mb-3 flex items-center gap-2">

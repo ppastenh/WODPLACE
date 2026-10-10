@@ -350,9 +350,6 @@ export default function HomeScreen() {
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
   const adminNavItem = getAdminNavItem(adminStatus);
-  if (adminNavItem) {
-    navItems.push(adminNavItem);
-  }
 
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);
@@ -888,6 +885,7 @@ export default function HomeScreen() {
         userName={user.name}
         avatarUri={user.avatarUri}
         navItems={navItems}
+        adminNavItem={adminNavItem}
         onLogout={handleLogout}
       />
       <JoinBoxModal
