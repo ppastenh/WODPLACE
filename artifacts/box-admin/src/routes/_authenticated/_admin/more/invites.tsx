@@ -43,10 +43,14 @@ function genCode() {
 
 function InvitesPage() {
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin } = useBox();
   const [email, setEmail] = useState("");
   const [days, setDays] = useState<string>("7");
-  const [role, setRole] = useState<"box_admin" | "coach">("coach");
+  // La opción "Administrador" queda oculta mientras no exista la marca de
+  // dueño (Fase B) — invitar a un administrador por ahora solo lo puede
+  // hacer un super_admin directamente, no desde esta pantalla. El rol
+  // siempre es "coach" acá.
+  const role: "coach" = "coach";
 
   const { data: invites = [], isLoading } = useQuery({
     queryKey: ["admin_invites", boxId],
@@ -113,6 +117,20 @@ function InvitesPage() {
     else toast.error("No se pudo copiar el enlace");
   }
 
+  if (!isAdmin) {
+    return (
+      <AdminShell title="Invitar Staff" showBack>
+        <div className="rounded-3xl border bg-card p-8 text-center">
+          <p className="text-sm font-semibold">No tienes permiso para invitar staff</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Solo un administrador de este box puede crear invitaciones. Pídele a tu administrador
+            que te invite, o que te dé el acceso.
+          </p>
+        </div>
+      </AdminShell>
+    );
+  }
+
   return (
     <AdminShell title="Invitar Staff" showBack>
       <div className="rounded-3xl border bg-card p-5">
@@ -120,28 +138,19 @@ function InvitesPage() {
         <div className="mt-3 space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Tipo de acceso</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["coach", "box_admin"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRole(r)}
-                  className={`h-10 rounded-full border text-xs font-semibold transition-colors ${
-                    role === r ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
-                  }`}
-                >
-                  {r === "box_admin" ? "Administrador" : "Coach"}
-                </button>
-              ))}
+            <div className="flex h-10 items-center justify-center rounded-full border border-primary bg-primary/15 text-xs font-semibold text-primary">
+              Coach
             </div>
-            {role === "coach" && (
-              <Link
-                to="/more/coaches"
-                className="flex items-center gap-1 text-[10px] font-semibold text-primary"
-              >
-                El coach entra con los permisos que definas en Coaches <ArrowRight className="h-3 w-3" />
-              </Link>
-            )}
+            <p className="text-[10px] text-muted-foreground">
+              Invitar administradores está desactivado por ahora — solo el super admin puede
+              hacerlo.
+            </p>
+            <Link
+              to="/more/coaches"
+              className="flex items-center gap-1 text-[10px] font-semibold text-primary"
+            >
+              El coach entra con los permisos que definas en Coaches <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="inv-email" className="text-xs">Email</Label>
