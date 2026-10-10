@@ -4,14 +4,18 @@ import { apiFetch } from "@/lib/apiClient";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
 import { copyToClipboard } from "@/lib/clipboard";
-import type { NewInviteCodeResult } from "@workspace/api-zod";
+import type { InviteEmailResult, NewInviteCodeResult } from "@workspace/api-zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, Trash2, Mail, Clock, Check, ArrowRight } from "lucide-react";
+import { Copy, Trash2, Mail, Clock, Check, ArrowRight, Send } from "lucide-react";
 import { useState } from "react";
+
+const MIN_DAYS = 1;
+const MAX_DAYS = 30;
+const DEFAULT_DAYS = 7;
 
 export const Route = createFileRoute("/_authenticated/_admin/more/invites")({
   ssr: false,
@@ -40,7 +44,7 @@ function InvitesPage() {
   const qc = useQueryClient();
   const { boxId, isAdmin } = useBox();
   const [email, setEmail] = useState("");
-  const [days, setDays] = useState<string>("7");
+  const [days, setDays] = useState<string>(String(DEFAULT_DAYS));
   // La opción "Administrador" queda oculta mientras no exista la marca de
   // dueño (Fase B) — invitar a un administrador por ahora solo lo puede
   // hacer un super_admin directamente, no desde esta pantalla. El rol
@@ -66,29 +70,53 @@ function InvitesPage() {
       if (!trimmedEmail) {
         throw new Error("El email es obligatorio: la invitación solo la puede canjear esa dirección.");
       }
+      const clampedDays = Math.min(MAX_DAYS, Math.max(MIN_DAYS, Number(days) || DEFAULT_DAYS));
       const { code } = await apiFetch<NewInviteCodeResult>(
         `/invites/new-code?boxId=${encodeURIComponent(boxId)}`,
       );
-      const expires_at =
-        days && Number(days) > 0
-          ? new Date(Date.now() + Number(days) * 24 * 60 * 60 * 1000).toISOString()
-          : null;
+      const expires_at = new Date(Date.now() + clampedDays * 24 * 60 * 60 * 1000).toISOString();
       const { data: userRes } = await supabase.auth.getUser();
-      const { error } = await supabase.from("admin_invites").insert({
-        box_id: boxId,
-        code,
-        role,
-        email: trimmedEmail,
-        expires_at,
-        created_by: userRes.user?.id ?? null,
-      });
+      const { data: inserted, error } = await supabase
+        .from("admin_invites")
+        .insert({
+          box_id: boxId,
+          code,
+          role,
+          email: trimmedEmail,
+          expires_at,
+          created_by: userRes.user?.id ?? null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
-      return code;
+
+      // La invitación ya existe aunque el correo falle — nunca se pierde
+      // por un problema de envío, solo queda disponible para "Reenviar".
+      const { emailSent } = await apiFetch<InviteEmailResult>(`/invites/${inserted.id}/send`, {
+        method: "POST",
+      }).catch(() => ({ emailSent: false }));
+      return { emailSent };
     },
-    onSuccess: () => {
+    onSuccess: ({ emailSent }) => {
       setEmail("");
       qc.invalidateQueries({ queryKey: ["admin_invites"] });
-      toast.success("Invitación creada");
+      if (emailSent) {
+        toast.success("Invitación creada y correo enviado.");
+      } else {
+        toast.error("Invitación creada, pero el correo no se pudo enviar. Usa \"Reenviar\".");
+      }
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Error"),
+  });
+
+  const resend = useMutation({
+    mutationFn: async (id: string) => {
+      return apiFetch<InviteEmailResult>(`/invites/${id}/resend`, { method: "POST" });
+    },
+    onSuccess: ({ emailSent }) => {
+      qc.invalidateQueries({ queryKey: ["admin_invites"] });
+      if (emailSent) toast.success("Código renovado y correo reenviado.");
+      else toast.error("Código renovado, pero el correo no se pudo enviar.");
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Error"),
   });
@@ -168,12 +196,13 @@ function InvitesPage() {
             <Input
               id="inv-days"
               type="number"
-              min={0}
-              placeholder="7"
+              min={MIN_DAYS}
+              max={MAX_DAYS}
+              placeholder={String(DEFAULT_DAYS)}
               value={days}
               onChange={(e) => setDays(e.target.value)}
             />
-            <p className="text-[10px] text-muted-foreground">0 = sin expiración.</p>
+            <p className="text-[10px] text-muted-foreground">Entre {MIN_DAYS} y {MAX_DAYS} días.</p>
           </div>
           <Button
             onClick={() => create.mutate()}
@@ -238,6 +267,15 @@ function InvitesPage() {
                         aria-label="Copiar enlace"
                       >
                         <Copy className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => resend.mutate(inv.id)}
+                        disabled={status === "used" || resend.isPending}
+                        className="grid h-9 w-9 place-items-center rounded-lg bg-secondary text-foreground active:bg-secondary/70 disabled:opacity-40"
+                        aria-label="Reenviar invitación"
+                        title="Genera un código nuevo y reenvía el correo"
+                      >
+                        <Send className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => remove.mutate(inv.id)}

@@ -45,6 +45,7 @@ export * from './getContractAcceptanceParams';
 export * from './getNewInviteCodeParams';
 export * from './getTrainingSettingsParams';
 export * from './healthStatus';
+export * from './inviteEmailResult';
 export * from './listBookingsParams';
 export * from './listClassSessionsParams';
 export * from './listContractsParams';

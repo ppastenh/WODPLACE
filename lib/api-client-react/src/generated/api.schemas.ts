@@ -359,6 +359,11 @@ export interface ClaimInviteResult {
   boxId: string;
 }
 
+export interface InviteEmailResult {
+  /** False means the invite row is fine but Resend failed — safe to retry via resend. */
+  emailSent: boolean;
+}
+
 export interface AdminDashLinkResult {
   /**
      * Single-use Supabase magic link. Open it in a WebView

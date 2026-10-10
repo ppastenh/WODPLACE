@@ -53,6 +53,7 @@ import type {
   GetNewInviteCodeParams,
   GetTrainingSettingsParams,
   HealthStatus,
+  InviteEmailResult,
   ListBookingsParams,
   ListClassSessionsParams,
   ListContractsParams,
@@ -2283,6 +2284,158 @@ export const useClaimInvite = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getClaimInviteMutationOptions(options));
+    }
+
+export const getSendInviteEmailUrl = (id: string,) => {
+
+
+
+
+  return `/api/invites/${id}/send`
+}
+
+/**
+ * Called right after box-admin inserts the admin_invites row, to
+ * actually deliver it (the insert itself never emails anyone).
+ * Requires the caller to be box_admin of the invite's box or
+ * super_admin, and the invite to still be pending. Rate-limited per
+ * box per hour. Never fails the request if the email itself fails
+ * to send — reports it in the response so the invite row (already
+ * created) isn't lost; the admin can retry via /invites/{id}/resend.
+ * @summary Emails an existing, not-yet-claimed invite its current code
+ */
+export const sendInviteEmail = async (id: string, options?: RequestInit): Promise<InviteEmailResult> => {
+
+  return customFetch<InviteEmailResult>(getSendInviteEmailUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSendInviteEmailMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendInviteEmail>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendInviteEmail>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['sendInviteEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendInviteEmail>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sendInviteEmail(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendInviteEmailMutationResult = NonNullable<Awaited<ReturnType<typeof sendInviteEmail>>>
+
+    export type SendInviteEmailMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Emails an existing, not-yet-claimed invite its current code
+ */
+export const useSendInviteEmail = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendInviteEmail>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendInviteEmail>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getSendInviteEmailMutationOptions(options));
+    }
+
+export const getResendInviteUrl = (id: string,) => {
+
+
+
+
+  return `/api/invites/${id}/resend`
+}
+
+/**
+ * The old code stops working the moment this runs. Same
+ * authorization and rate limit as /invites/{id}/send; also rejects
+ * an already-claimed invite.
+ * @summary Regenerates the code, renews expiry, and re-emails a pending/expired invite
+ */
+export const resendInvite = async (id: string, options?: RequestInit): Promise<InviteEmailResult> => {
+
+  return customFetch<InviteEmailResult>(getResendInviteUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResendInviteMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendInvite>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendInvite>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['resendInvite'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendInvite>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  resendInvite(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendInviteMutationResult = NonNullable<Awaited<ReturnType<typeof resendInvite>>>
+
+    export type ResendInviteMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Regenerates the code, renews expiry, and re-emails a pending/expired invite
+ */
+export const useResendInvite = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendInvite>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendInvite>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getResendInviteMutationOptions(options));
     }
 
 export const getListMovementsUrl = (params: ListMovementsParams,) => {
