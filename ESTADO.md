@@ -2,6 +2,15 @@
 
 Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `CLAUDE.md` para las reglas de trabajo y los datos fijos del proyecto.
 
+## Plan de etapas (solo mejoras, sin funciones nuevas)
+
+1. **Arreglos puntuales** — en curso. Correcciones chicas y sueltas de presentación/orden detectadas al usar la app, antes de pasar a algo más sistemático.
+2. **Auditoría visual** — pendiente. Revisar toda la app y los paneles para encontrar inconsistencias de diseño antes de tocar nada.
+3. **Tokens y componentes base** — pendiente. Escala tipográfica, espaciado y componentes compartidos, de una vez para todas las pantallas (hoy solo existe para `home.tsx`).
+4. **Panel de admin** — pendiente. Orden y presentación de box-admin (y super-admin donde aplique).
+5. **Pantallas de la app, de más a menos visibles** — pendiente.
+6. **Pre-lanzamiento** — pendiente. Seguridad, pruebas completas, limpieza de datos (ver "Limpieza previa al lanzamiento" más abajo), builds finales.
+
 ## Hecho recientemente
 
 - Rediseño visual del Home de `wodplace` (varias rondas): encabezado reordenado y compacto, "Próxima clase" como tarjeta protagonista, frase motivacional como banner horizontal, grilla de estadísticas con íconos en círculo, escala tipográfica central (`constants/typography.ts`), barra inferior con el botón "Agendar" de vuelta a su círculo elevado pero con las etiquetas alineadas con los otros 4, tono de cobre más oscuro para texto chico sobre fondo claro (`colors.navActiveTextSmall`). Commit `577b04e`.
@@ -23,6 +32,7 @@ Estado de trabajo de WODPLACEtes. Se actualiza al terminar cada tarea — ver `C
 
 ## Pendientes
 
+- **Permiso `files_manage` de coach, sin aplicar en ningún lado.** Existe en el catálogo de permisos de coach (`lib/permissions.ts`, default `false`), pero hoy no lo revisa nada: ni el menú "Más" (todo coach ve "Archivos" igual que un admin) ni la pantalla `more/files.tsx` (sin ningún chequeo de rol/permiso adentro). No es una regresión de esta pasada — ya estaba así. No tocado, solo reportado.
 - **Limpieza previa al lanzamiento (justo antes de publicar la app, NO ejecutar hasta que Pía lo pida explícitamente).** Dejar la base como nueva, conservando solo la cuenta real de Pía (`pasten.hueche@gmail.com`, con sus roles de super admin y admin de box) y lo que ella indique de sus boxes. Plan en 4 pasos: (1) respaldo previo de la base de datos; (2) definir con Pía qué significa "como nuevo" exactamente — qué cuentas, qué datos relacionados en cada tabla, qué archivos del almacenamiento, y qué se conserva de sus boxes; (3) mostrarle la lista completa de todo lo que se borraría, para su revisión, antes de tocar nada; (4) borrado dentro de una transacción y verificación posterior de que quedó como se acordó. Nada de esto se ejecuta sin su pedido explícito.
 - **Sin prioridad por ahora (estético, queda para después):** escala tipográfica/espaciado centralizada fuera de `home.tsx`, modo oscuro (falta la clave `dark` en `constants/colors.ts`), esqueleto de carga en Home (las tarjetas aparecen de golpe), consistencia de íconos en círculo en "Aviso Importante"/"WOD de hoy".
 - **Mejora opcional en `AuthContext` (no aplicada, queda para una pasada aparte):** dentro de `refreshActivationStatus`, `adminStatus` y `myBox` se actualizan con `setAdminStatus`/`setMyBox` sin ninguna guarda de "¿cambió realmente?" — a diferencia de `user` (que sí compara `rank`/`status` antes de actualizar). Como son objetos recién bajados de la red, son técnicamente "nuevos" en cada llamada aunque el contenido sea idéntico, así que el `value` del contexto se recalcula cada vez que se llama a `refreshActivationStatus`, provocando un re-render de más en cada pantalla que usa `useAuth()`. No causa el ciclo infinito (eso ya se cortó en Home), solo renders de sobra. Arreglo: comparar antes de actualizar, igual que ya se hace con `user`.
