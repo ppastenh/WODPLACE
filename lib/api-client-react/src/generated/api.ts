@@ -35,6 +35,8 @@ import type {
   BookingActionResponse,
   BookingRecord,
   CancelBookingRequest,
+  CheckInviteCodeRequest,
+  CheckInviteCodeResult,
   ClaimInviteRequest,
   ClaimInviteResult,
   ClassSessionDto,
@@ -2205,6 +2207,85 @@ export function useGetNewInviteCode<TData = Awaited<ReturnType<typeof getNewInvi
 
 
 
+
+export const getCheckInviteCodeUrl = () => {
+
+
+
+
+  return `/api/invites/check`
+}
+
+/**
+ * No session required (called before signUp/signIn exist). Lets the
+ * signup/signin form reject an invalid, expired, already-used, or
+ * email-mismatched code BEFORE creating an account, instead of only
+ * finding out after confirming the email. Always a generic
+ * true/false — never reveals which part didn't match, or whether a
+ * code exists at all. Rate limited (same invite_claim_attempts
+ * table/threshold as /invites/claim) by IP, since there's no user
+ * yet to key on.
+ * @summary Pre-flight, read-only check of a code+email pair — never claims anything
+ */
+export const checkInviteCode = async (checkInviteCodeRequest: CheckInviteCodeRequest, options?: RequestInit): Promise<CheckInviteCodeResult> => {
+
+  return customFetch<CheckInviteCodeResult>(getCheckInviteCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkInviteCodeRequest)
+  }
+);}
+
+
+
+
+
+export const getCheckInviteCodeMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkInviteCode>>, TError,{data: BodyType<CheckInviteCodeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkInviteCode>>, TError,{data: BodyType<CheckInviteCodeRequest>}, TContext> => {
+
+const mutationKey = ['checkInviteCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkInviteCode>>, {data: BodyType<CheckInviteCodeRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkInviteCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckInviteCodeMutationResult = NonNullable<Awaited<ReturnType<typeof checkInviteCode>>>
+    export type CheckInviteCodeMutationBody = BodyType<CheckInviteCodeRequest>
+    export type CheckInviteCodeMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Pre-flight, read-only check of a code+email pair — never claims anything
+ */
+export const useCheckInviteCode = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkInviteCode>>, TError,{data: BodyType<CheckInviteCodeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkInviteCode>>,
+        TError,
+        {data: BodyType<CheckInviteCodeRequest>},
+        TContext
+      > => {
+      return useMutation(getCheckInviteCodeMutationOptions(options));
+    }
 
 export const getClaimInviteUrl = () => {
 

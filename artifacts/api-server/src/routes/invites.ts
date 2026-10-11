@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 
 import {
+  CheckInviteCodeBody,
+  CheckInviteCodeResponse,
   ClaimInviteBody,
   ClaimInviteResponse,
   GetNewInviteCodeQueryParams,
@@ -90,13 +92,100 @@ router.get("/invites/new-code", requireSupabaseUser, async (req: Request, res: R
 // interpolated dynamically, this constant is just the matching threshold.
 const MAX_ATTEMPTS = 5;
 
-async function recordFailedAttempt(userId: string, ip: string | null): Promise<void> {
+/**
+ * TEMP — private/internal address (RFC1918, loopback, link-local IPv6):
+ * Render's own network puts one of these in req.ip for every request
+ * right now (seen live: 10.x.x.x on every invite_claim_attempts row so
+ * far), meaning the IP side of the rate limit is currently a no-op at
+ * best or, worse, a shared bucket across every caller. Until the real
+ * trust-proxy fix lands (see the diagnostic log below and the
+ * conversation it's for), an IP in this range is never used to match
+ * attempts, so nobody can get rate-limited by a address that isn't
+ * actually theirs.
+ */
+function isPrivateIp(ip: string | null): boolean {
+  if (!ip) return true;
+  const v = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+  if (v === "::1" || v === "127.0.0.1" || v.startsWith("127.")) return true;
+  if (v.startsWith("fc") || v.startsWith("fd")) return true;
+  const m = v.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
+}
+
+async function recordFailedAttempt(userId: string | null, ip: string | null): Promise<void> {
   await db
     .execute(sql`insert into invite_claim_attempts (user_id, ip) values (${userId}, ${ip})`)
     .catch(() => {
       // Never let the audit write itself break the (already-failed) response.
     });
 }
+
+/** Shared by /check and /claim — counts recent failed attempts for this
+ *  user and/or (non-private) IP, pruning rows older than 7 days first. */
+async function countRecentAttempts(userId: string | null, ip: string | null): Promise<number> {
+  await db.execute(sql`delete from invite_claim_attempts where created_at < now() - interval '7 days'`);
+  const ipForMatch = isPrivateIp(ip) ? null : ip;
+  const recent = await db.execute<{ count: string }>(sql`
+    select count(*)::text as count from invite_claim_attempts
+    where created_at > now() - interval '15 minutes'
+      and ((${userId}::uuid is not null and user_id = ${userId}) or (${ipForMatch}::text is not null and ip = ${ipForMatch}))
+  `);
+  return Number(recent.rows[0]?.count ?? 0);
+}
+
+/**
+ * POST /invites/check  { code, email }
+ *
+ * Read-only pre-flight for the signup/signin form — no session exists
+ * yet at that point, so this is the only way to reject a bad code before
+ * creating an account instead of only after confirming the email. Always
+ * a generic true/false (never reveals which half didn't match, or
+ * whether a code exists), rate limited by IP against the same
+ * invite_claim_attempts bucket /claim uses (keyed null-user here).
+ */
+router.post("/invites/check", async (req: Request, res: Response) => {
+  const parsed = CheckInviteCodeBody.safeParse(req.body);
+  const ip = req.ip ?? null;
+
+  // TEMP diagnostic — see the conversation this is for. Remove once the
+  // real client IP is confirmed and trust-proxy is corrected accordingly.
+  // Never logs the code or email.
+  req.log.info({ reqIp: req.ip, xForwardedFor: req.headers["x-forwarded-for"] }, "TEMP invite IP diagnostic (check)");
+
+  if (!parsed.success) {
+    res.json(CheckInviteCodeResponse.parse({ valid: false }));
+    return;
+  }
+  const { code, email } = parsed.data;
+
+  try {
+    if ((await countRecentAttempts(null, ip)) >= MAX_ATTEMPTS) {
+      res.status(429).json({ error: "Demasiados intentos. Espera unos minutos e intenta de nuevo." });
+      return;
+    }
+
+    const rows = await db.execute<{ id: string }>(sql`
+      select id from admin_invites
+      where code = ${code}
+        and lower(email) = lower(${email})
+        and used_at is null
+        and (expires_at is null or expires_at > now())
+    `);
+    const valid = rows.rows.length > 0;
+    if (!valid) await recordFailedAttempt(null, ip);
+    res.json(CheckInviteCodeResponse.parse({ valid }));
+  } catch (error) {
+    req.log.error({ err: error }, "Error checking staff invite code");
+    res.json(CheckInviteCodeResponse.parse({ valid: false }));
+  }
+});
 
 /**
  * POST /invites/claim  { code }
@@ -108,14 +197,23 @@ async function recordFailedAttempt(userId: string, ip: string | null): Promise<v
  * matched against the SESSION's email (never a client-supplied one) AND
  * the code, together, in one query — missing either is indistinguishable
  * from missing both, both in the response and in what gets logged.
+ *
+ * Idempotent for the SAME caller: two near-simultaneous claims of the
+ * same invite by the same account (e.g. two tabs both reacting to the
+ * same sign-in — a real case, see the conversation) both report success
+ * and neither counts as a failed attempt. A claim by anyone else against
+ * an already-used invite is still a generic rejection.
  */
 router.post("/invites/claim", requireSupabaseUser, async (req: Request, res: Response) => {
   const parsed = ClaimInviteBody.safeParse(req.body);
   const userId = req.supabaseUser!.id;
   const email = req.supabaseUser!.email;
-  // With app.set("trust proxy", 1) (app.ts), this is the real client IP
-  // from X-Forwarded-For's first hop, not Render's own proxy address.
+  // With app.set("trust proxy", 1) (app.ts), this is meant to be the real
+  // client IP from X-Forwarded-For — TEMP diagnostic below while that's
+  // still being confirmed (see countRecentAttempts/isPrivateIp above).
   const ip = req.ip ?? null;
+
+  req.log.info({ reqIp: req.ip, xForwardedFor: req.headers["x-forwarded-for"] }, "TEMP invite IP diagnostic (claim)");
 
   if (!parsed.success) {
     res.status(400).json({ error: "Código inválido o vencido." });
@@ -124,17 +222,7 @@ router.post("/invites/claim", requireSupabaseUser, async (req: Request, res: Res
   const { code } = parsed.data;
 
   try {
-    // Opportunistic self-pruning instead of pg_cron (not used anywhere
-    // else in this project) — every real claim attempt also sweeps rows
-    // older than a week.
-    await db.execute(sql`delete from invite_claim_attempts where created_at < now() - interval '7 days'`);
-
-    const recent = await db.execute<{ count: string }>(sql`
-      select count(*)::text as count from invite_claim_attempts
-      where created_at > now() - interval '15 minutes'
-        and (user_id = ${userId} or ip = ${ip})
-    `);
-    if (Number(recent.rows[0]?.count ?? 0) >= MAX_ATTEMPTS) {
+    if ((await countRecentAttempts(userId, ip)) >= MAX_ATTEMPTS) {
       res.status(429).json({ error: "Demasiados intentos. Espera unos minutos e intenta de nuevo." });
       return;
     }
@@ -145,17 +233,34 @@ router.post("/invites/claim", requireSupabaseUser, async (req: Request, res: Res
       return;
     }
 
-    const granted = await db.transaction(async (tx) => {
-      const inviteRows = await tx.execute<{ id: string; box_id: string; role: string }>(sql`
-        select id, box_id, role from admin_invites
-        where code = ${code}
-          and lower(email) = lower(${email})
-          and used_at is null
-          and (expires_at is null or expires_at > now())
+    const outcome = await db.transaction(async (tx) => {
+      const inviteRows = await tx.execute<{
+        id: string;
+        box_id: string;
+        role: "coach" | "box_admin";
+        used_at: string | null;
+        used_by: string | null;
+        is_expired: boolean;
+      }>(sql`
+        select id, box_id, role, used_at, used_by, (expires_at is not null and expires_at <= now()) as is_expired
+        from admin_invites
+        where code = ${code} and lower(email) = lower(${email})
         for update
       `);
       const invite = inviteRows.rows[0];
       if (!invite) return null;
+
+      if (invite.used_at) {
+        // Same account re-claiming its own already-used invite (the
+        // two-tabs case) -> idempotent success, no new work needed.
+        // Anyone else (shouldn't normally happen, since email must also
+        // match) -> treated the same as not found below.
+        if (invite.used_by === userId) {
+          return { role: invite.role, boxId: invite.box_id };
+        }
+        return null;
+      }
+      if (invite.is_expired) return null;
 
       await tx.execute(sql`
         update admin_invites set used_at = now(), used_by = ${userId}, status = 'aceptado'
@@ -181,16 +286,16 @@ router.post("/invites/claim", requireSupabaseUser, async (req: Request, res: Res
         }
       }
 
-      return { role: invite.role as "coach" | "box_admin", boxId: invite.box_id };
+      return { role: invite.role, boxId: invite.box_id };
     });
 
-    if (!granted) {
+    if (!outcome) {
       await recordFailedAttempt(userId, ip);
       res.status(400).json({ error: "Código inválido o vencido." });
       return;
     }
 
-    res.json(ClaimInviteResponse.parse(granted));
+    res.json(ClaimInviteResponse.parse(outcome));
   } catch (error) {
     req.log.error({ err: error }, "Error claiming staff invite");
     res.status(500).json({ error: "No se pudo procesar la invitación." });

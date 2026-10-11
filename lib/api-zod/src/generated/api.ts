@@ -586,6 +586,31 @@ export const GetNewInviteCodeResponse = zod.object({
 
 
 /**
+ * No session required (called before signUp/signIn exist). Lets the
+ * signup/signin form reject an invalid, expired, already-used, or
+ * email-mismatched code BEFORE creating an account, instead of only
+ * finding out after confirming the email. Always a generic
+ * true/false — never reveals which part didn't match, or whether a
+ * code exists at all. Rate limited (same invite_claim_attempts
+ * table/threshold as /invites/claim) by IP, since there's no user
+ * yet to key on.
+ * @summary Pre-flight, read-only check of a code+email pair — never claims anything
+ */
+
+
+
+
+export const CheckInviteCodeBody = zod.object({
+  "code": zod.string().min(1),
+  "email": zod.string().min(1)
+})
+
+export const CheckInviteCodeResponse = zod.object({
+  "valid": zod.boolean()
+})
+
+
+/**
  * The single path for turning a staff invite into a real role grant
  * — used right after both sign-up AND sign-in (new or pre-existing
  * account), never automatically. Requires a valid session; the

@@ -23,6 +23,8 @@ export * from './bookingActionResponseStatus';
 export * from './bookingRecord';
 export * from './bookingRecordStatus';
 export * from './cancelBookingRequest';
+export * from './checkInviteCodeRequest';
+export * from './checkInviteCodeResult';
 export * from './claimInviteRequest';
 export * from './claimInviteResult';
 export * from './claimInviteResultRole';

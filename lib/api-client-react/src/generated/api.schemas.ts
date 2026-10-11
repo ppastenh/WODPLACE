@@ -341,6 +341,17 @@ export interface NewInviteCodeResult {
   code: string;
 }
 
+export interface CheckInviteCodeRequest {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  email: string;
+}
+
+export interface CheckInviteCodeResult {
+  valid: boolean;
+}
+
 export interface ClaimInviteRequest {
   /** @minLength 1 */
   code: string;
