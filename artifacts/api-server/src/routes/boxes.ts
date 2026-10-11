@@ -145,8 +145,8 @@ router.post(
  * GET /box-memberships/my-box?userId=...
  *
  * The box info shown in wodplace's "Datos Personales" screen (box-detail.tsx)
- * for an already-enrolled athlete — replaces the old hardcoded
- * constants/boxInfo.ts mock with the real data an admin fills in via
+ * for an already-enrolled athlete — replaces the old hardcoded mock
+ * (since removed) with the real data an admin fills in via
  * "Datos del Box" (POST /platform-agreement/box-details). If the athlete
  * belongs to more than one box, the most recently joined one wins — same
  * "one subscribed box" assumption the mock made.

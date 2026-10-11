@@ -47,7 +47,7 @@ type BoxContextValue = {
 };
 
 const BoxContext = createContext<BoxContextValue | null>(null);
-const STORAGE_KEY = "dlovebox.activeBoxId";
+const STORAGE_KEY = "wodplace.activeBoxId";
 
 function readStored(): string | null {
   try {
