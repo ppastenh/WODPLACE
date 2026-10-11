@@ -20,44 +20,39 @@ import { escapeHtml, sendEmail } from "../lib/resend";
 
 const router: IRouter = Router();
 
-// TEMP — remove once the real client IP is confirmed and trust-proxy (or
-// whichever header wins) is set accordingly. Never logs the code/email/
-// token, only connection metadata: req.ip (what Express currently
-// resolves, under today's `trust proxy` setting), the raw X-Forwarded-For
-// chain, Cloudflare's own CF-Connecting-IP/True-Client-IP (if Render
-// forwards them — those are set by Cloudflare's edge from the real TCP
-// connection and can't be overridden by the client), and which header
-// names are present at all.
-function logIpDiagnostic(req: Request, label: string): void {
-  req.log.info(
-    {
-      reqIp: req.ip,
-      xForwardedFor: req.headers["x-forwarded-for"],
-      cfConnectingIp: req.headers["cf-connecting-ip"],
-      trueClientIp: req.headers["true-client-ip"],
-      headerNames: Object.keys(req.headers),
-    },
-    `TEMP invite IP diagnostic (${label})`,
-  );
+/**
+ * The real client IP, confirmed live against production (see the
+ * conversation this is for): Render sits behind Cloudflare, and
+ * X-Forwarded-For turned out to be attacker-controllable — Cloudflare
+ * appends its own hop but does NOT strip whatever a client already put
+ * in that header, so a forged prefix survives all the way through
+ * (verified with curl: `X-Forwarded-For: 1.2.3.4, 5.6.7.8` arrived
+ * intact, prepended to the real chain). `trust proxy`/`req.ip` are
+ * therefore never used for this. `cf-connecting-ip` (mirrored by
+ * `true-client-ip`) is different: it's set by Cloudflare's edge from the
+ * actual TCP connection, and a client-supplied value for it is rejected
+ * outright before the request even reaches Render (confirmed: sending
+ * our own `CF-Connecting-IP` header gets Cloudflare error 1000). Falls
+ * back to req.ip only for local dev, where there's no Cloudflare in
+ * front at all and the header is simply absent.
+ */
+const IPV4_RE = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+// Deliberately loose (hex groups and colons, optionally with a trailing
+// embedded IPv4 segment) -- this only needs to reject obvious garbage
+// before it's trusted as a rate-limit key, not fully validate RFC 4291.
+const IPV6_RE = /^[0-9a-fA-F:]+(:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})?$/;
+
+function isValidIp(value: string): boolean {
+  const v4 = value.match(IPV4_RE);
+  if (v4) return v4.slice(1).every((part) => Number(part) <= 255);
+  return value.includes(":") && IPV6_RE.test(value);
 }
 
-/**
- * GET /invites/_debug-ip — TEMP, remove with the rest of the IP
- * diagnostic. No session, no auth, no input — only echoes the CALLER's
- * own connection metadata back to them (same category of information a
- * "what's my IP" service shows you about yourself), so this is safe to
- * leave reachable for the short time it takes to confirm the real fix.
- */
-router.get("/invites/_debug-ip", (req: Request, res: Response) => {
-  res.json({
-    reqIp: req.ip,
-    reqIps: req.ips,
-    xForwardedFor: req.headers["x-forwarded-for"] ?? null,
-    cfConnectingIp: req.headers["cf-connecting-ip"] ?? null,
-    trueClientIp: req.headers["true-client-ip"] ?? null,
-    headerNames: Object.keys(req.headers),
-  });
-});
+function getRealClientIp(req: Request): string | null {
+  const header = req.headers["cf-connecting-ip"] ?? req.headers["true-client-ip"];
+  if (typeof header === "string" && header && isValidIp(header)) return header;
+  return req.ip ?? null;
+}
 
 // In-memory, per-instance — this only guards against pointless spam of
 // random codes (the code is worthless without a matching admin_invites
@@ -132,15 +127,10 @@ router.get("/invites/new-code", requireSupabaseUser, async (req: Request, res: R
 const MAX_ATTEMPTS = 5;
 
 /**
- * TEMP — private/internal address (RFC1918, loopback, link-local IPv6):
- * Render's own network puts one of these in req.ip for every request
- * right now (seen live: 10.x.x.x on every invite_claim_attempts row so
- * far), meaning the IP side of the rate limit is currently a no-op at
- * best or, worse, a shared bucket across every caller. Until the real
- * trust-proxy fix lands (see the diagnostic log below and the
- * conversation it's for), an IP in this range is never used to match
- * attempts, so nobody can get rate-limited by a address that isn't
- * actually theirs.
+ * Private/internal address (RFC1918, loopback, link-local IPv6) — with
+ * getRealClientIp() this should only ever show up locally (no Cloudflare
+ * in front, req.ip is the direct dev connection). Kept as a defensive
+ * floor so a private address never becomes a shared rate-limit bucket.
  */
 function isPrivateIp(ip: string | null): boolean {
   if (!ip) return true;
@@ -191,9 +181,7 @@ async function countRecentAttempts(userId: string | null, ip: string | null): Pr
  */
 router.post("/invites/check", async (req: Request, res: Response) => {
   const parsed = CheckInviteCodeBody.safeParse(req.body);
-  const ip = req.ip ?? null;
-
-  logIpDiagnostic(req, "check");
+  const ip = getRealClientIp(req);
 
   if (!parsed.success) {
     res.json(CheckInviteCodeResponse.parse({ valid: false }));
@@ -244,12 +232,7 @@ router.post("/invites/claim", requireSupabaseUser, async (req: Request, res: Res
   const parsed = ClaimInviteBody.safeParse(req.body);
   const userId = req.supabaseUser!.id;
   const email = req.supabaseUser!.email;
-  // With app.set("trust proxy", 1) (app.ts), this is meant to be the real
-  // client IP from X-Forwarded-For — TEMP diagnostic below while that's
-  // still being confirmed (see countRecentAttempts/isPrivateIp above).
-  const ip = req.ip ?? null;
-
-  logIpDiagnostic(req, "claim");
+  const ip = getRealClientIp(req);
 
   if (!parsed.success) {
     res.status(400).json({ error: "Código inválido o vencido." });

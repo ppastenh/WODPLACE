@@ -8,14 +8,14 @@ import { corsOptions } from "./lib/cors";
 const app: Express = express();
 
 // Render sits in front of this app as a single reverse proxy — without
-// this, Express's req.ip is Render's own proxy address (the same for
-// every request), not the real client. `1` means "trust exactly one hop
-// in front of us": req.ip becomes the LAST address in X-Forwarded-For
-// (the one Render itself appended), ignoring anything earlier in the
-// header a client could have forged. Verified locally: XFF
-// "203.0.113.9, 10.0.0.1" with trust proxy=1 resolves to req.ip
-// "10.0.0.1", discarding the forged first entry. Needed for per-IP rate
-// limiting (see routes/invites.ts) to mean anything at all.
+// this, Express's req.ip is Render's own proxy address, not the real
+// client. Kept for Express's own hygiene (e.g. anything else that reads
+// req.ip later), but NOT what routes/invites.ts relies on for its real
+// client IP: in production Render itself sits behind Cloudflare, and
+// X-Forwarded-For turned out to be attacker-controllable there (verified
+// live — Cloudflare appends its own hop but doesn't strip a client's
+// forged prefix). That code reads Cloudflare's CF-Connecting-IP header
+// directly instead — see getRealClientIp() in routes/invites.ts.
 app.set("trust proxy", 1);
 
 app.use(
