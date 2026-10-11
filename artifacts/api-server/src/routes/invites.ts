@@ -20,6 +20,45 @@ import { escapeHtml, sendEmail } from "../lib/resend";
 
 const router: IRouter = Router();
 
+// TEMP — remove once the real client IP is confirmed and trust-proxy (or
+// whichever header wins) is set accordingly. Never logs the code/email/
+// token, only connection metadata: req.ip (what Express currently
+// resolves, under today's `trust proxy` setting), the raw X-Forwarded-For
+// chain, Cloudflare's own CF-Connecting-IP/True-Client-IP (if Render
+// forwards them — those are set by Cloudflare's edge from the real TCP
+// connection and can't be overridden by the client), and which header
+// names are present at all.
+function logIpDiagnostic(req: Request, label: string): void {
+  req.log.info(
+    {
+      reqIp: req.ip,
+      xForwardedFor: req.headers["x-forwarded-for"],
+      cfConnectingIp: req.headers["cf-connecting-ip"],
+      trueClientIp: req.headers["true-client-ip"],
+      headerNames: Object.keys(req.headers),
+    },
+    `TEMP invite IP diagnostic (${label})`,
+  );
+}
+
+/**
+ * GET /invites/_debug-ip — TEMP, remove with the rest of the IP
+ * diagnostic. No session, no auth, no input — only echoes the CALLER's
+ * own connection metadata back to them (same category of information a
+ * "what's my IP" service shows you about yourself), so this is safe to
+ * leave reachable for the short time it takes to confirm the real fix.
+ */
+router.get("/invites/_debug-ip", (req: Request, res: Response) => {
+  res.json({
+    reqIp: req.ip,
+    reqIps: req.ips,
+    xForwardedFor: req.headers["x-forwarded-for"] ?? null,
+    cfConnectingIp: req.headers["cf-connecting-ip"] ?? null,
+    trueClientIp: req.headers["true-client-ip"] ?? null,
+    headerNames: Object.keys(req.headers),
+  });
+});
+
 // In-memory, per-instance — this only guards against pointless spam of
 // random codes (the code is worthless without a matching admin_invites
 // row, which is separately RLS-gated on insert), so it doesn't need the
@@ -154,10 +193,7 @@ router.post("/invites/check", async (req: Request, res: Response) => {
   const parsed = CheckInviteCodeBody.safeParse(req.body);
   const ip = req.ip ?? null;
 
-  // TEMP diagnostic — see the conversation this is for. Remove once the
-  // real client IP is confirmed and trust-proxy is corrected accordingly.
-  // Never logs the code or email.
-  req.log.info({ reqIp: req.ip, xForwardedFor: req.headers["x-forwarded-for"] }, "TEMP invite IP diagnostic (check)");
+  logIpDiagnostic(req, "check");
 
   if (!parsed.success) {
     res.json(CheckInviteCodeResponse.parse({ valid: false }));
@@ -213,7 +249,7 @@ router.post("/invites/claim", requireSupabaseUser, async (req: Request, res: Res
   // still being confirmed (see countRecentAttempts/isPrivateIp above).
   const ip = req.ip ?? null;
 
-  req.log.info({ reqIp: req.ip, xForwardedFor: req.headers["x-forwarded-for"] }, "TEMP invite IP diagnostic (claim)");
+  logIpDiagnostic(req, "claim");
 
   if (!parsed.success) {
     res.status(400).json({ error: "Código inválido o vencido." });
