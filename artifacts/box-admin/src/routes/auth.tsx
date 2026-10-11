@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { apiFetch } from "@/lib/apiClient";
+import { ApiError, apiFetch } from "@/lib/apiClient";
 import { claimPendingInvite, storePendingInviteCode } from "@/lib/pendingInvite";
 import type { CheckInviteCodeResult } from "@workspace/api-zod";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Dumbbell, Mail, Ticket } from "lucide-react";
 
+type InviteCheckOutcome = "valid" | "invalid" | "rate_limited" | "error";
+
 const INVALID_CODE_MESSAGE = "El código de invitación no es válido, no corresponde a este correo o venció.";
+const RATE_LIMITED_MESSAGE = "Demasiados intentos. Espera unos minutos e intenta de nuevo.";
+const CHECK_ERROR_MESSAGE = "No pudimos validar el código. Intenta de nuevo.";
 const MAX_RESENDS = 3;
 const RESEND_COOLDOWN_MS = 30_000;
 
@@ -71,20 +75,23 @@ function AuthPage() {
   /**
    * Read-only pre-flight so a bad code is rejected HERE, before creating
    * any account — not only later when the post-confirmation reclaim runs
-   * (see _authenticated/route.tsx). Fails OPEN on a transient server
-   * error (network/429): that reclaim path is still the backup, so a
-   * flaky check shouldn't block someone from creating their account at
-   * all.
+   * (see _authenticated/route.tsx). Fails CLOSED on any failure (429,
+   * network, anything else): a fake code repeated past the point this
+   * starts failing must never fall through to creating the account
+   * anyway — that's exactly how a rate-limited check turned into a
+   * bypass before. Only an EMPTY code field skips this entirely
+   * (handled by the caller).
    */
-  async function checkInviteCodeValid(code: string, forEmail: string): Promise<boolean> {
+  async function checkInviteCodeValid(code: string, forEmail: string): Promise<InviteCheckOutcome> {
     try {
       const { valid } = await apiFetch<CheckInviteCodeResult>("/invites/check", {
         method: "POST",
         body: JSON.stringify({ code, email: forEmail }),
       });
-      return valid;
-    } catch {
-      return true;
+      return valid ? "valid" : "invalid";
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) return "rate_limited";
+      return "error";
     }
   }
 
@@ -123,9 +130,18 @@ function AuthPage() {
         // signing in — the account itself is never worse off than before
         // (an empty code still creates a normal, role-less account), but
         // a bad code now fails loudly here instead of silently later.
-        const valid = await checkInviteCodeValid(trimmedInvite, email);
-        if (!valid) {
-          setFormError(INVALID_CODE_MESSAGE);
+        // Any outcome other than "valid" blocks the submit — including
+        // rate-limited or a network error, so hammering this with fake
+        // codes can't fall through into creating the account anyway.
+        const outcome = await checkInviteCodeValid(trimmedInvite, email);
+        if (outcome !== "valid") {
+          setFormError(
+            outcome === "invalid"
+              ? INVALID_CODE_MESSAGE
+              : outcome === "rate_limited"
+                ? RATE_LIMITED_MESSAGE
+                : CHECK_ERROR_MESSAGE,
+          );
           setLoading(false);
           return;
         }
