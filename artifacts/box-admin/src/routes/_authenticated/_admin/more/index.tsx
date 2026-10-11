@@ -9,9 +9,9 @@ import { useBox } from "@/lib/box-context";
 export const Route = createFileRoute("/_authenticated/_admin/more/")({
   head: () => ({
     meta: [
-      { title: "Más — Dlovebox" },
+      { title: "Más — WODPLACE" },
       { name: "description", content: "Coaches, planes, configuración, reportes y más." },
-      { property: "og:title", content: "Más — Dlovebox" },
+      { property: "og:title", content: "Más — WODPLACE" },
       { property: "og:description", content: "Opciones adicionales del panel." },
     ],
   }),
@@ -88,7 +88,7 @@ function MorePage() {
         <span className="flex-1 text-left text-sm font-bold">Cerrar sesión</span>
       </button>
 
-      <p className="mt-6 text-center text-[10px] text-muted-foreground">Dlovebox · Admin Panel</p>
+      <p className="mt-6 text-center text-[10px] text-muted-foreground">WODPLACE · Panel de administración</p>
     </AdminShell>
   );
 }

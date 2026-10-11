@@ -22,9 +22,9 @@ import {
 export const Route = createFileRoute("/_authenticated/_admin/more/notifications")({
   head: () => ({
     meta: [
-      { title: "Avisos — Dlovebox" },
+      { title: "Avisos — WODPLACE" },
       { name: "description", content: "Envía avisos y notificaciones a los atletas del box." },
-      { property: "og:title", content: "Avisos — Dlovebox" },
+      { property: "og:title", content: "Avisos — WODPLACE" },
       { property: "og:description", content: "Crea avisos con foto, push y banner para tus atletas." },
     ],
   }),

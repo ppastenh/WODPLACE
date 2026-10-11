@@ -30,7 +30,12 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T = unknown>(path: string, init?: RequestInit): Promise<T> {
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+export async function apiFetch<T = unknown>(
+  path: string,
+  init?: RequestInit & { timeoutMs?: number },
+): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
 
@@ -38,7 +43,16 @@ export async function apiFetch<T = unknown>(path: string, init?: RequestInit): P
   headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${resolveApiOrigin()}/api${path}`, { ...init, headers });
+  // Bounds every call to at most `timeoutMs` — matters most for
+  // invites/claim's post-confirmation retry (see pendingInvite.ts): that
+  // call gates a "Activando tu acceso de staff…" screen, and without a
+  // cap a hung request would leave it spinning forever instead of
+  // settling to a transient-failure state the caller can act on.
+  const res = await fetch(`${resolveApiOrigin()}/api${path}`, {
+    ...init,
+    headers,
+    signal: AbortSignal.timeout(init?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+  });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     const message = (body && typeof body === "object" && "error" in body && String(body.error)) || `HTTP ${res.status}`;

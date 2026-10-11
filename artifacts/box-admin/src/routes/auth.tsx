@@ -34,9 +34,9 @@ export const Route = createFileRoute("/auth")({
   validateSearch: authSearchSchema,
   head: () => ({
     meta: [
-      { title: "Dlovebox — Acceso" },
-      { name: "description", content: "Inicia sesión o crea tu cuenta de administrador Dlovebox." },
-      { property: "og:title", content: "Dlovebox — Acceso" },
+      { title: "WODPLACE — Acceso" },
+      { name: "description", content: "Inicia sesión o crea tu cuenta de administrador de WODPLACE." },
+      { property: "og:title", content: "WODPLACE — Acceso" },
       { property: "og:description", content: "Acceso al panel de administración." },
     ],
   }),
@@ -198,7 +198,7 @@ function AuthPage() {
           <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
             <Mail className="h-8 w-8" />
           </div>
-          <h1 className="mt-4 text-3xl font-black tracking-tight">Dlovebox</h1>
+          <h1 className="mt-4 text-3xl font-black tracking-tight">WODPLACE</h1>
         </div>
         <div className="w-full max-w-sm space-y-4 rounded-3xl border bg-card p-6 text-center">
           <h2 className="text-lg font-bold">Tu cuenta fue creada</h2>
@@ -237,7 +237,7 @@ function AuthPage() {
         <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
           <Dumbbell className="h-8 w-8" />
         </div>
-        <h1 className="mt-4 text-3xl font-black tracking-tight">Dlovebox</h1>
+        <h1 className="mt-4 text-3xl font-black tracking-tight">WODPLACE</h1>
         <p className="text-sm text-muted-foreground">Panel de administración</p>
       </div>
 

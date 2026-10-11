@@ -10,8 +10,8 @@ export const Route = createFileRoute("/forgot-password")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Dlovebox — Recuperar contraseña" },
-      { name: "description", content: "Recupera el acceso a tu cuenta de administrador Dlovebox." },
+      { title: "WODPLACE — Recuperar contraseña" },
+      { name: "description", content: "Recupera el acceso a tu cuenta de administrador de WODPLACE." },
     ],
   }),
   component: ForgotPasswordPage,
@@ -51,7 +51,7 @@ function ForgotPasswordPage() {
         <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
           <Dumbbell className="h-8 w-8" />
         </div>
-        <h1 className="mt-4 text-3xl font-black tracking-tight">Dlovebox</h1>
+        <h1 className="mt-4 text-3xl font-black tracking-tight">WODPLACE</h1>
         <p className="text-sm text-muted-foreground">Recuperar contraseña</p>
       </div>
 

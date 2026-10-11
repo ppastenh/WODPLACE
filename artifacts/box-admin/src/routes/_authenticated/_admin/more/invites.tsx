@@ -21,9 +21,9 @@ export const Route = createFileRoute("/_authenticated/_admin/more/invites")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Invitar Staff — Dlovebox" },
+      { title: "Invitar Staff — WODPLACE" },
       { name: "description", content: "Genera enlaces de invitación para nuevos administradores y coaches." },
-      { property: "og:title", content: "Invitar Staff — Dlovebox" },
+      { property: "og:title", content: "Invitar Staff — WODPLACE" },
       { property: "og:description", content: "Otorga rol de administrador o coach a alguien de tu box." },
     ],
   }),

@@ -15,7 +15,7 @@ const RECOVERY_EVENT_TIMEOUT_MS = 4000;
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
   head: () => ({
-    meta: [{ title: "Dlovebox — Nueva contraseña" }],
+    meta: [{ title: "WODPLACE — Nueva contraseña" }],
   }),
   component: ResetPasswordPage,
 });
@@ -81,7 +81,7 @@ function ResetPasswordPage() {
         <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
           <Dumbbell className="h-8 w-8" />
         </div>
-        <h1 className="mt-4 text-3xl font-black tracking-tight">Dlovebox</h1>
+        <h1 className="mt-4 text-3xl font-black tracking-tight">WODPLACE</h1>
       </div>
 
       <div className="w-full max-w-sm space-y-4 rounded-3xl border bg-card p-6">

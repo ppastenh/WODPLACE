@@ -79,7 +79,7 @@ function Consent() {
       <div className="mt-6 w-full max-w-sm rounded-3xl border bg-card p-6 text-center">
         <h1 className="text-xl font-bold">Conectar {clientName}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {clientName} podrá usar Dlovebox en tu nombre, con tus mismos permisos.
+          {clientName} podrá usar WODPLACE en tu nombre, con tus mismos permisos.
         </p>
         {error && <p role="alert" className="mt-3 text-xs text-destructive">{error}</p>}
         <div className="mt-6 space-y-2">

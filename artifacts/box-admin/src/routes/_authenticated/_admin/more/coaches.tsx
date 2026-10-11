@@ -20,9 +20,9 @@ export const Route = createFileRoute("/_authenticated/_admin/more/coaches")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Coaches — Dlovebox" },
+      { title: "Coaches — WODPLACE" },
       { name: "description", content: "Gestión de coaches y permisos del box." },
-      { property: "og:title", content: "Coaches — Dlovebox" },
+      { property: "og:title", content: "Coaches — WODPLACE" },
       { property: "og:description", content: "Coaches y permisos del box." },
     ],
   }),

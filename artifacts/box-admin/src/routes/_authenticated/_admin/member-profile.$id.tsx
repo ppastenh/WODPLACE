@@ -22,7 +22,7 @@ import { es } from "date-fns/locale";
 export const Route = createFileRoute("/_authenticated/_admin/member-profile/$id")({
   head: ({ params }) => ({
     meta: [
-      { title: `Perfil — Dlovebox` },
+      { title: `Perfil — WODPLACE` },
       { name: "description", content: `Perfil de ${params.id}.` },
     ],
   }),

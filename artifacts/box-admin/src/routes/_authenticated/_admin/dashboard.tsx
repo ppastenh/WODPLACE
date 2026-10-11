@@ -15,9 +15,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 export const Route = createFileRoute("/_authenticated/_admin/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Dlovebox" },
+      { title: "Dashboard — WODPLACE" },
       { name: "description", content: "Resumen del box: miembros activos, clases del día, ingresos y actividad reciente." },
-      { property: "og:title", content: "Dashboard — Dlovebox" },
+      { property: "og:title", content: "Dashboard — WODPLACE" },
       { property: "og:description", content: "Panel principal de gestión del box." },
     ],
   }),

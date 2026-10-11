@@ -12,7 +12,7 @@ export default defineMcp({
   title: "CrossFit Hub",
   version: "0.1.0",
   instructions:
-    "Herramientas del panel de administración del box (Dlovebox). Consulta miembros, clases del día, inscritos y resumen financiero. Los datos se leen como el usuario autenticado, respetando sus permisos.",
+    "Herramientas del panel de administración del box (WODPLACE). Consulta miembros, clases del día, inscritos y resumen financiero. Los datos se leen como el usuario autenticado, respetando sus permisos.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

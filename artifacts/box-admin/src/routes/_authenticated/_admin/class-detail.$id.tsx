@@ -24,9 +24,9 @@ import { es } from "date-fns/locale";
 export const Route = createFileRoute("/_authenticated/_admin/class-detail/$id")({
   head: () => ({
     meta: [
-      { title: "Clase — Dlovebox" },
+      { title: "Clase — WODPLACE" },
       { name: "description", content: "Detalle de clase, asistentes y lista de espera." },
-      { property: "og:title", content: "Clase — Dlovebox" },
+      { property: "og:title", content: "Clase — WODPLACE" },
       { property: "og:description", content: "Detalle y asistentes de la clase." },
     ],
   }),

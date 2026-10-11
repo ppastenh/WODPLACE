@@ -34,9 +34,9 @@ import { Award } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/_admin/member-detail/$id")({
   head: ({ params }) => ({
     meta: [
-      { title: `Miembro — Dlovebox` },
+      { title: `Miembro — WODPLACE` },
       { name: "description", content: `Detalle del miembro ${params.id}.` },
-      { property: "og:title", content: "Miembro — Dlovebox" },
+      { property: "og:title", content: "Miembro — WODPLACE" },
       { property: "og:description", content: "Detalle de miembro." },
     ],
   }),

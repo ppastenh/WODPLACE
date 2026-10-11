@@ -16,9 +16,9 @@ import { FileText, FileImage, FileType2, Upload, RefreshCw, Trash2, Plus, Extern
 export const Route = createFileRoute("/_authenticated/_admin/more/files")({
   head: () => ({
     meta: [
-      { title: "Archivos — Dlovebox" },
+      { title: "Archivos — WODPLACE" },
       { name: "description", content: "Contratos y documentos generales para los atletas." },
-      { property: "og:title", content: "Archivos — Dlovebox" },
+      { property: "og:title", content: "Archivos — WODPLACE" },
       { property: "og:description", content: "Sube y gestiona contratos que ven los atletas." },
     ],
   }),

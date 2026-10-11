@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ActivatingStaffAccess } from "@/components/admin/ActivatingStaffAccess";
 import {
   claimPendingInviteOnce,
   consumeInviteClaimError,
@@ -58,6 +59,13 @@ export const Route = createFileRoute("/_authenticated")({
 
     return { user: data.user };
   },
+  // Shown while the beforeLoad above is still pending — covers both the
+  // ordinary auth check and, when there's a pending invite code, the
+  // claim itself settling. Without this, _admin's own beforeLoad could
+  // otherwise be the first thing visibly rendered once this route
+  // resolves, which for a brand-new claim could be a flash of "Acceso
+  // restringido" before this beforeLoad's hard navigation kicks in.
+  pendingComponent: () => (readPendingInviteCode() ? <ActivatingStaffAccess /> : null),
   component: AuthenticatedLayout,
 });
 

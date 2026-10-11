@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ShieldAlert, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BoxProvider, type BoxOption } from "@/lib/box-context";
+import { claimPendingInviteOnce } from "@/lib/pendingInvite";
 
 const STAFF_ROLES = new Set(["super_admin", "box_admin", "coach"]);
 
@@ -44,6 +45,16 @@ export const Route = createFileRoute("/_authenticated/_admin")({
   beforeLoad: async ({ context }) => {
     const user = (context as { user?: { id: string } }).user;
     if (!user) throw redirect({ to: "/auth" });
+    // Defensive, not load-bearing: _authenticated's own beforeLoad (the
+    // parent route) already awaits this same shared promise before
+    // returning, so by the time this runs it's normally already
+    // settled. Awaiting it again here is a cheap no-op in that case —
+    // it only matters if that ordering guarantee ever doesn't hold, so
+    // this role query is never the thing that reads stale data. Bounded
+    // to at most 15s (apiClient.ts's default fetch timeout), so this
+    // beforeLoad — and the pendingComponent shown while it runs — can
+    // never hang indefinitely either.
+    await claimPendingInviteOnce();
     return resolveAdminContext(user.id);
   },
   component: AdminLayout,

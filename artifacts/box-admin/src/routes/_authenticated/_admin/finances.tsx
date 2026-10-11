@@ -18,9 +18,9 @@ import { registerPayment } from "@/lib/payments";
 export const Route = createFileRoute("/_authenticated/_admin/finances")({
   head: () => ({
     meta: [
-      { title: "Finanzas — Dlovebox" },
+      { title: "Finanzas — WODPLACE" },
       { name: "description", content: "Ingresos, pagos pendientes y renovaciones próximas del box." },
-      { property: "og:title", content: "Finanzas — Dlovebox" },
+      { property: "og:title", content: "Finanzas — WODPLACE" },
       { property: "og:description", content: "Ingresos y pagos." },
     ],
   }),

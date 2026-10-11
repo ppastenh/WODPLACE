@@ -21,9 +21,9 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/_admin/more/my-profile")({
   head: () => ({
     meta: [
-      { title: "Mi perfil — Dlovebox" },
+      { title: "Mi perfil — WODPLACE" },
       { name: "description", content: "Tu foto, especialidad, bio y teléfono como coach." },
-      { property: "og:title", content: "Mi perfil — Dlovebox" },
+      { property: "og:title", content: "Mi perfil — WODPLACE" },
       { property: "og:description", content: "Perfil del coach." },
     ],
   }),

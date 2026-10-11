@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/settings")({
-  head: () => ({ meta: [{ title: "Configuración — Dlovebox" }, { name: "description", content: "Configuración del panel." }, { property: "og:title", content: "Configuración — Dlovebox" }, { property: "og:description", content: "Configuración." }] }),
+  head: () => ({ meta: [{ title: "Configuración — WODPLACE" }, { name: "description", content: "Configuración del panel." }, { property: "og:title", content: "Configuración — WODPLACE" }, { property: "og:description", content: "Configuración." }] }),
   component: SettingsPage,
 });
 

@@ -15,9 +15,9 @@ import { format } from "date-fns";
 export const Route = createFileRoute("/_authenticated/_admin/more/wod")({
   head: () => ({
     meta: [
-      { title: "WOD del día — Dlovebox" },
+      { title: "WOD del día — WODPLACE" },
       { name: "description", content: "Publica el WOD del día para los atletas del box." },
-      { property: "og:title", content: "WOD del día — Dlovebox" },
+      { property: "og:title", content: "WOD del día — WODPLACE" },
       { property: "og:description", content: "Elige un WOD del catálogo o arma uno personalizado." },
     ],
   }),

@@ -63,21 +63,29 @@ export async function claimPendingInvite(): Promise<{ claimed: boolean; message?
 
 // Module-level, not sessionStorage: resets on a full page load (a fresh
 // confirmation-link visit, a manual refresh) but NOT on client-side
-// navigation within the SPA — so _authenticated/route.tsx's beforeLoad
-// (which fires on every navigation) only actually calls the API once per
-// page load, never spamming it while the user clicks around afterward.
-let attemptedThisPageLoad = false;
+// navigation within the SPA. Keyed by the code itself (not just a
+// boolean) and holding the actual in-flight PROMISE, not just a flag —
+// so if more than one caller on this same page load asks about the same
+// pending code (e.g. _authenticated's beforeLoad and _admin's beforeLoad
+// both wanting to know "is a claim settling for this code?"), they all
+// await the exact same network call instead of each firing their own.
+// A different code (after the previous one resolved/cleared) starts a
+// fresh entry — this is NOT a cross-tab lock, each tab has its own
+// module scope; cross-tab duplication is handled server-side by
+// /invites/claim's idempotency instead.
+let inFlight: { code: string; promise: Promise<{ claimed: boolean; message?: string }> } | null = null;
 
 /**
- * Wraps claimPendingInvite() with the once-per-page-load guard above.
- * Returns null when there was nothing to do (no pending code, or already
- * attempted this page load) — callers use that to skip any side effect.
+ * Wraps claimPendingInvite() with the shared-in-flight-promise guard
+ * above. Returns null when there's nothing to do (no pending code).
  */
-export async function claimPendingInviteOnce(): Promise<{ claimed: boolean; message?: string } | null> {
-  if (attemptedThisPageLoad) return null;
-  if (!readPendingInviteCode()) return null;
-  attemptedThisPageLoad = true;
-  return claimPendingInvite();
+export function claimPendingInviteOnce(): Promise<{ claimed: boolean; message?: string } | null> {
+  const code = readPendingInviteCode();
+  if (!code) return Promise.resolve(null);
+  if (inFlight && inFlight.code === code) return inFlight.promise;
+  const promise = claimPendingInvite();
+  inFlight = { code, promise };
+  return promise;
 }
 
 const WELCOME_KEY = "wodplace_just_joined_staff";

@@ -28,9 +28,9 @@ import { format } from "date-fns";
 export const Route = createFileRoute("/_authenticated/_admin/members")({
   head: () => ({
     meta: [
-      { title: "Miembros — Dlovebox" },
+      { title: "Miembros — WODPLACE" },
       { name: "description", content: "Gestión de miembros del box: buscar, filtrar y administrar." },
-      { property: "og:title", content: "Miembros — Dlovebox" },
+      { property: "og:title", content: "Miembros — WODPLACE" },
       { property: "og:description", content: "Lista y gestión de miembros." },
     ],
   }),

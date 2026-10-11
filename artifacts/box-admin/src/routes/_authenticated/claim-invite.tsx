@@ -18,7 +18,7 @@ import type { ClaimInviteResult } from "@workspace/api-zod";
 export const Route = createFileRoute("/_authenticated/claim-invite")({
   ssr: false,
   head: () => ({
-    meta: [{ title: "Código de invitación — Dlovebox" }],
+    meta: [{ title: "Código de invitación — WODPLACE" }],
   }),
   component: ClaimInvitePage,
 });

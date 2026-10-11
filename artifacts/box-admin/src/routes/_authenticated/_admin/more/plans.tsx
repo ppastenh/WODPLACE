@@ -22,9 +22,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/_admin/more/plans")({
   head: () => ({
     meta: [
-      { title: "Planes — Dlovebox" },
+      { title: "Planes — WODPLACE" },
       { name: "description", content: "Planes de membresía." },
-      { property: "og:title", content: "Planes — Dlovebox" },
+      { property: "og:title", content: "Planes — WODPLACE" },
       { property: "og:description", content: "Planes de membresía." },
     ],
   }),

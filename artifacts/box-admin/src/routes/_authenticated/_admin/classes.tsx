@@ -78,9 +78,9 @@ function useTimeScale(list: ClassRow[]) {
 export const Route = createFileRoute("/_authenticated/_admin/classes")({
   head: () => ({
     meta: [
-      { title: "Clases — Dlovebox" },
+      { title: "Clases — WODPLACE" },
       { name: "description", content: "Calendario semanal y mensual de clases y WODs del box." },
-      { property: "og:title", content: "Clases — Dlovebox" },
+      { property: "og:title", content: "Clases — WODPLACE" },
       { property: "og:description", content: "Calendario de clases del box." },
     ],
   }),

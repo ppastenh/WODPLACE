@@ -13,9 +13,9 @@ import { randomKey } from "@/lib/ids";
 export const Route = createFileRoute("/_authenticated/_admin/more/reports")({
   head: () => ({
     meta: [
-      { title: "Soporte — Dlovebox" },
+      { title: "Soporte — WODPLACE" },
       { name: "description", content: "Reportá un problema al equipo de WODPLACE." },
-      { property: "og:title", content: "Soporte — Dlovebox" },
+      { property: "og:title", content: "Soporte — WODPLACE" },
       { property: "og:description", content: "Reportá un bug o falla de la app." },
     ],
   }),
