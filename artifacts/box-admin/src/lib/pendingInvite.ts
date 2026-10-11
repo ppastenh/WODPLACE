@@ -60,3 +60,67 @@ export async function claimPendingInvite(): Promise<{ claimed: boolean; message?
     return { claimed: false, message: err instanceof Error ? err.message : "Error" };
   }
 }
+
+// Module-level, not sessionStorage: resets on a full page load (a fresh
+// confirmation-link visit, a manual refresh) but NOT on client-side
+// navigation within the SPA — so _authenticated/route.tsx's beforeLoad
+// (which fires on every navigation) only actually calls the API once per
+// page load, never spamming it while the user clicks around afterward.
+let attemptedThisPageLoad = false;
+
+/**
+ * Wraps claimPendingInvite() with the once-per-page-load guard above.
+ * Returns null when there was nothing to do (no pending code, or already
+ * attempted this page load) — callers use that to skip any side effect.
+ */
+export async function claimPendingInviteOnce(): Promise<{ claimed: boolean; message?: string } | null> {
+  if (attemptedThisPageLoad) return null;
+  if (!readPendingInviteCode()) return null;
+  attemptedThisPageLoad = true;
+  return claimPendingInvite();
+}
+
+const WELCOME_KEY = "wodplace_just_joined_staff";
+const CLAIM_ERROR_KEY = "wodplace_invite_claim_error";
+
+/** Set right before redirecting to the dashboard after a successful
+ *  claim — the dashboard shows the "¡Bienvenido al staff!" banner once
+ *  and clears this via consumeJustJoinedStaff(). */
+export function markJustJoinedStaff() {
+  try {
+    sessionStorage.setItem(WELCOME_KEY, "1");
+  } catch {
+    // No banner if storage is unavailable — not worth failing anything over.
+  }
+}
+
+export function consumeJustJoinedStaff(): boolean {
+  try {
+    const value = sessionStorage.getItem(WELCOME_KEY);
+    if (value) sessionStorage.removeItem(WELCOME_KEY);
+    return !!value;
+  } catch {
+    return false;
+  }
+}
+
+/** Set only for a DEFINITIVE claim failure (the code is already cleared
+ *  by then) — never for a transient one, which should stay silent and
+ *  just retry later. */
+export function markInviteClaimError(message: string) {
+  try {
+    sessionStorage.setItem(CLAIM_ERROR_KEY, message);
+  } catch {
+    // Nothing shown if storage is unavailable — the account still works.
+  }
+}
+
+export function consumeInviteClaimError(): string | null {
+  try {
+    const value = sessionStorage.getItem(CLAIM_ERROR_KEY);
+    if (value) sessionStorage.removeItem(CLAIM_ERROR_KEY);
+    return value;
+  } catch {
+    return null;
+  }
+}

@@ -77,12 +77,21 @@ function AuthPage() {
       if (trimmedInvite) storePendingInviteCode(trimmedInvite);
 
       if (mode === "signup") {
+        // The invite code rides along in the confirmation link itself
+        // (not just sessionStorage) so it survives confirming from a
+        // DIFFERENT browser/device than the one that signed up — e.g.
+        // signing up on desktop, confirming from the phone's inbox. "/"
+        // (index.tsx) reads it back out and stores it the same way, right
+        // before the session (from Supabase's own redirect) lands there.
+        // No new exposure: the code already travels in plain text in the
+        // invite email itself (approved earlier), to the same inbox.
+        const base = `${window.location.origin}${nextPath ?? "/"}`;
+        const emailRedirectTo = trimmedInvite
+          ? `${base}?invite=${encodeURIComponent(trimmedInvite)}`
+          : base;
         const { error } = await supabase.auth.signUp({
           email, password,
-          options: {
-            emailRedirectTo: `${window.location.origin}${nextPath ?? "/"}`,
-            data: { full_name: name },
-          },
+          options: { emailRedirectTo, data: { full_name: name } },
         });
         if (error) throw error;
         if (!(await supabase.auth.getSession()).data.session) {

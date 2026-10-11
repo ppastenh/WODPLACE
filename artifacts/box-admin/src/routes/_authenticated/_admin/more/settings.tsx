@@ -19,13 +19,19 @@ const MAX_MB = 5;
 function SettingsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin } = useBox();
   const [email, setEmail] = useState<string>("");
+  const [fullName, setFullName] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
+    supabase.auth.getUser().then(({ data }) => {
+      setEmail(data.user?.email ?? "");
+      setFullName(typeof data.user?.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : "");
+    });
   }, []);
+
+  const roleLabel = isAdmin ? "Administrador" : "Coach";
 
   const photo = useQuery({
     queryKey: ["box-photo", boxId],
@@ -82,7 +88,10 @@ function SettingsPage() {
     <AdminShell title="Configuración" showBack>
       <div className="rounded-3xl border bg-card p-5">
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Cuenta</p>
-        <p className="mt-1 text-sm font-semibold">{email || "—"}</p>
+        <p className="mt-1 text-sm font-semibold">
+          {roleLabel} · {fullName || email || "—"}
+        </p>
+        {fullName && <p className="text-xs text-muted-foreground">{email}</p>}
       </div>
 
       <div className="mt-4 rounded-3xl border bg-card p-5">
