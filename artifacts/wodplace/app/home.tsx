@@ -315,11 +315,15 @@ export default function HomeScreen() {
   });
   useRefetchOnFocusIfStale(announcementsQuery);
 
-  // Pending-contracts aviso: GET /contracts/acceptance's pendingSlugs is the
-  // single source of truth (same one AuthContext.refreshActivationStatus
-  // uses for account status) — [] for staff, for an athlete with no box,
-  // and for a box with no contract documents of its own, so this banner
-  // only ever shows when there's something real to act on.
+  // Pending-contracts aviso: GET /contracts/acceptance's pendingSlugs is
+  // purely document-based (never [] just because the account happens to
+  // hold a staff role) — [] for an athlete with no box, or for a box with
+  // no contract documents of its own, but NOT staff-aware on its own. The
+  // render condition below adds `!adminStatus?.roles.length`, same gate
+  // shouldShowContracts() (lib/navigation.ts) uses, so a coach/box_admin/
+  // super_admin who also happens to have an athlete membership with a
+  // stale reading never sees this (they're exempt from the booking block
+  // too — see api-server's isAnyStaff).
   const contractAcceptanceQuery = useQuery({
     queryKey: ['contract-acceptance', user?.id],
     queryFn: () => getContractAcceptance({ userId: user!.id }),
@@ -578,7 +582,7 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
-        {hasBoxMembership && pendingContractSlugs.length > 0 ? (
+        {hasBoxMembership && pendingContractSlugs.length > 0 && !adminStatus?.roles.length ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ir a Contratos Activos"
