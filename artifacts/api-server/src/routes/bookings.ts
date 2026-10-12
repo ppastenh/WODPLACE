@@ -275,9 +275,15 @@ router.post("/bookings", async (req: Request, res: Response) => {
       const isStaff = await isAnyStaff(userId);
       const pendingSlugs = isStaff ? [] : await computePendingSlugs(userId);
       if (pendingSlugs.length > 0) {
+        // Generic message, no slugs — the app's own GET /contracts/acceptance
+        // call (already shown before this screen, via the Home aviso) is
+        // where the specifics belong. `code` is what BookingContext.tsx
+        // switches on to show the "Ir a contratos" action, same pattern as
+        // the other 409s this endpoint already returns (WAITLIST_FULL,
+        // DAILY_LIMIT_REACHED, PLAN_LIMIT_REACHED).
         res.status(409).json({
-          error: "Tienes contratos pendientes de aceptar antes de poder reservar.",
-          pendingSlugs,
+          error: "No puedes reservar mientras tengas contratos pendientes.",
+          code: "CONTRACTS_PENDING",
         });
         return;
       }

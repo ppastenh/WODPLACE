@@ -110,6 +110,17 @@ export default function CalendarScreen() {
         );
         return;
       }
+      if (error instanceof Error && error.message === 'CONTRACTS_PENDING') {
+        Alert.alert(
+          'Contratos pendientes',
+          'Tienes contratos pendientes por aceptar. Acéptalos para poder reservar.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Ir a contratos', onPress: () => router.push('/active-contracts' as never) },
+          ],
+        );
+        return;
+      }
       Alert.alert('No se pudo agendar', 'Intenta nuevamente en unos segundos.');
     }
   };

@@ -173,7 +173,12 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       return result.status === 'waiting' ? 'waiting' : 'confirmed';
     } catch (error) {
       const code = apiErrorCode(error);
-      if (code === 'WAITLIST_FULL' || code === 'DAILY_LIMIT_REACHED' || code === 'PLAN_LIMIT_REACHED') {
+      if (
+        code === 'WAITLIST_FULL' ||
+        code === 'DAILY_LIMIT_REACHED' ||
+        code === 'PLAN_LIMIT_REACHED' ||
+        code === 'CONTRACTS_PENDING'
+      ) {
         throw new Error(code);
       }
       throw error;
