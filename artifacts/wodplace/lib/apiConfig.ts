@@ -1,4 +1,4 @@
-import { setBaseUrl } from '@workspace/api-client-react';
+import { getContractSignedUrl, setBaseUrl } from '@workspace/api-client-react';
 
 /**
  * WODPLACE's backend lives in the shared `artifacts/api-server` service,
@@ -28,12 +28,19 @@ export function configureApiClient(): void {
 }
 
 /**
- * Resolves a contract PDF's fetchable URL. `objectPath` comes back from the
- * API as a full Supabase Storage public URL — already absolute and directly
- * usable by openBrowserAsync, so this is just a pass-through kept as a named
- * helper for call sites (and as the one place to touch if that ever
- * changes again).
+ * Resolves a contract PDF's fetchable URL. `objectPath` is used ONLY as a
+ * local shortcut: older documents (seeded before Fase B) already carry a
+ * full Supabase Storage public URL, so there's nothing to call the server
+ * for. Anything else lives in the private `contracts` bucket — the server
+ * resolves the real file from `slug`/`boxId`/`versionId` itself (never
+ * from a path this app sends) and signs a fresh ~5-minute URL, fetched
+ * right before opening.
  */
-export function getContractFileUrl(objectPath: string): string {
-  return objectPath;
+export async function getContractFileUrl(
+  objectPath: string,
+  args: { userId: string; slug: string; boxId?: string; versionId?: string },
+): Promise<string> {
+  if (/^https?:\/\//i.test(objectPath)) return objectPath;
+  const { url } = await getContractSignedUrl(args);
+  return url;
 }

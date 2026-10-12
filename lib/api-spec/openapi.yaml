@@ -470,6 +470,77 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /contracts/signed-url:
+    get:
+      tags: [Contracts]
+      operationId: getContractSignedUrl
+      summary: Get a short-lived signed URL to open a contract file, resolved server-side
+      description: |
+        Identifies the document by `slug` (+ `boxId`, + an optional
+        `versionId`) — the server looks up its own object_path from the
+        database and signs THAT, never a path the client sends. Omit
+        `boxId` only for the global platform agreement
+        (`slug=platform-agreement`). Already-absolute URLs (older
+        documents seeded into the public bucket) are returned unchanged;
+        a relative storage path is signed for ~5 minutes against the
+        private `contracts` bucket. Authorization is resource-based, not
+        just session-based: an athlete may only request their OWN box's
+        CURRENT document (no `versionId`); the box's owner or a
+        super_admin may request any version (current or archived,
+        `versionId` included) of that box's documents; any staff role may
+        open the platform agreement. Every other combination — including
+        a `boxId`/`slug`/`versionId` that doesn't match any real document
+        — gets the same generic 404, so a caller can't use this to probe
+        whether a document exists.
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: slug
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: boxId
+          in: query
+          required: false
+          description: Omit only when slug is "platform-agreement".
+          schema:
+            type: string
+        - name: versionId
+          in: query
+          required: false
+          description: Owner/super_admin only — a specific (possibly archived) version.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signed (or passed-through) URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignedContractUrlResponse"
+        "400":
+          description: Missing required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Missing or invalid Authorization token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Generic not-found — covers "doesn't exist" and "not authorized" alike.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /contracts/acceptance:
     get:
       tags: [Contracts]
@@ -1510,6 +1581,17 @@ components:
         readAt:
           type: string
           nullable: true
+
+    SignedContractUrlResponse:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+        expiresAt:
+          type: string
+          nullable: true
+          description: Null for an already-absolute URL returned unchanged (nothing to expire).
 
     MarkContractReadRequest:
       type: object

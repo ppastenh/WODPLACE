@@ -52,6 +52,7 @@ import type {
   DeletePrParams,
   ErrorEnvelope,
   GetContractAcceptanceParams,
+  GetContractSignedUrlParams,
   GetNewInviteCodeParams,
   GetTrainingSettingsParams,
   HealthStatus,
@@ -73,6 +74,7 @@ import type {
   RedeemBoxCodeRequest,
   RedeemBoxCodeResult,
   RmOkResult,
+  SignedContractUrlResponse,
   SyncUserRequest,
   TrainingSettings,
   UpdatePrRequest,
@@ -1202,6 +1204,106 @@ export const useMarkContractRead = <TError = ErrorType<ErrorEnvelope>,
       > => {
       return useMutation(getMarkContractReadMutationOptions(options));
     }
+
+export const getGetContractSignedUrlUrl = (params: GetContractSignedUrlParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/contracts/signed-url?${stringifiedParams}` : `/api/contracts/signed-url`
+}
+
+/**
+ * Identifies the document by `slug` (+ `boxId`, + an optional
+ * `versionId`) — the server looks up its own object_path from the
+ * database and signs THAT, never a path the client sends. Omit
+ * `boxId` only for the global platform agreement
+ * (`slug=platform-agreement`). Already-absolute URLs (older
+ * documents seeded into the public bucket) are returned unchanged;
+ * a relative storage path is signed for ~5 minutes against the
+ * private `contracts` bucket. Authorization is resource-based, not
+ * just session-based: an athlete may only request their OWN box's
+ * CURRENT document (no `versionId`); the box's owner or a
+ * super_admin may request any version (current or archived,
+ * `versionId` included) of that box's documents; any staff role may
+ * open the platform agreement. Every other combination — including
+ * a `boxId`/`slug`/`versionId` that doesn't match any real document
+ * — gets the same generic 404, so a caller can't use this to probe
+ * whether a document exists.
+ * @summary Get a short-lived signed URL to open a contract file, resolved server-side
+ */
+export const getContractSignedUrl = async (params: GetContractSignedUrlParams, options?: RequestInit): Promise<SignedContractUrlResponse> => {
+
+  return customFetch<SignedContractUrlResponse>(getGetContractSignedUrlUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetContractSignedUrlQueryKey = (params?: GetContractSignedUrlParams,) => {
+    return [
+    `/api/contracts/signed-url`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetContractSignedUrlQueryOptions = <TData = Awaited<ReturnType<typeof getContractSignedUrl>>, TError = ErrorType<ErrorEnvelope>>(params: GetContractSignedUrlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getContractSignedUrl>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetContractSignedUrlQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getContractSignedUrl>>> = ({ signal }) => getContractSignedUrl(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getContractSignedUrl>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetContractSignedUrlQueryResult = NonNullable<Awaited<ReturnType<typeof getContractSignedUrl>>>
+export type GetContractSignedUrlQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get a short-lived signed URL to open a contract file, resolved server-side
+ */
+
+export function useGetContractSignedUrl<TData = Awaited<ReturnType<typeof getContractSignedUrl>>, TError = ErrorType<ErrorEnvelope>>(
+ params: GetContractSignedUrlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getContractSignedUrl>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetContractSignedUrlQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetContractAcceptanceUrl = (params: GetContractAcceptanceParams,) => {
   const normalizedParams = new URLSearchParams();

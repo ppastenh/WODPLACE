@@ -12,13 +12,12 @@ import {
   classBookingsTable,
   db,
   wodplaceNotificationsTable,
-  wodplaceUsersTable,
 } from "@workspace/db";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
-import { resolveAdminRoles } from "../lib/adminRole";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
+import { isAnyStaff } from "../lib/boxOwnership";
 import { computePendingSlugs } from "./contracts";
 import { isContractAcceptanceEnforced } from "../lib/featureFlags";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
@@ -273,15 +272,7 @@ router.post("/bookings", async (req: Request, res: Response) => {
     // computePendingSlugs already resolves to [] for a box with no
     // contract documents of its own.
     if (isContractAcceptanceEnforced()) {
-      const [appUser] = await db
-        .select({ email: wodplaceUsersTable.email })
-        .from(wodplaceUsersTable)
-        .where(eq(wodplaceUsersTable.id, userId));
-      const roles = appUser ? await resolveAdminRoles(appUser.email) : [];
-      const isStaff = roles.some((role) =>
-        ["box_admin", "coach", "super_admin"].includes(role),
-      );
-
+      const isStaff = await isAnyStaff(userId);
       const pendingSlugs = isStaff ? [] : await computePendingSlugs(userId);
       if (pendingSlugs.length > 0) {
         res.status(409).json({

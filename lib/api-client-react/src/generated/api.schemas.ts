@@ -174,6 +174,12 @@ export interface ContractDocument {
   readAt?: string | null;
 }
 
+export interface SignedContractUrlResponse {
+  url: string;
+  /** Null for an already-absolute URL returned unchanged (nothing to expire). */
+  expiresAt: string | null;
+}
+
 export interface MarkContractReadRequest {
   /** @minLength 1 */
   userId: string;
@@ -609,6 +615,19 @@ userId: string;
 
 export type ListContractsParams = {
 userId?: string;
+};
+
+export type GetContractSignedUrlParams = {
+userId: string;
+slug: string;
+/**
+ * Omit only when slug is "platform-agreement".
+ */
+boxId?: string;
+/**
+ * Owner/super_admin only — a specific (possibly archived) version.
+ */
+versionId?: string;
 };
 
 export type GetContractAcceptanceParams = {

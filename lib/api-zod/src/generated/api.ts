@@ -316,6 +316,38 @@ export const MarkContractReadResponse = zod.object({
 
 
 /**
+ * Identifies the document by `slug` (+ `boxId`, + an optional
+ * `versionId`) — the server looks up its own object_path from the
+ * database and signs THAT, never a path the client sends. Omit
+ * `boxId` only for the global platform agreement
+ * (`slug=platform-agreement`). Already-absolute URLs (older
+ * documents seeded into the public bucket) are returned unchanged;
+ * a relative storage path is signed for ~5 minutes against the
+ * private `contracts` bucket. Authorization is resource-based, not
+ * just session-based: an athlete may only request their OWN box's
+ * CURRENT document (no `versionId`); the box's owner or a
+ * super_admin may request any version (current or archived,
+ * `versionId` included) of that box's documents; any staff role may
+ * open the platform agreement. Every other combination — including
+ * a `boxId`/`slug`/`versionId` that doesn't match any real document
+ * — gets the same generic 404, so a caller can't use this to probe
+ * whether a document exists.
+ * @summary Get a short-lived signed URL to open a contract file, resolved server-side
+ */
+export const GetContractSignedUrlQueryParams = zod.object({
+  "userId": zod.coerce.string(),
+  "slug": zod.coerce.string(),
+  "boxId": zod.coerce.string().optional().describe('Omit only when slug is \"platform-agreement\".'),
+  "versionId": zod.coerce.string().optional().describe('Owner\/super_admin only — a specific (possibly archived) version.')
+})
+
+export const GetContractSignedUrlResponse = zod.object({
+  "url": zod.string(),
+  "expiresAt": zod.string().nullable().describe('Null for an already-absolute URL returned unchanged (nothing to expire).')
+})
+
+
+/**
  * @summary Get a user's contract acceptance record
  */
 export const GetContractAcceptanceQueryParams = zod.object({

@@ -7,21 +7,29 @@ import {
   MarkContractReadResponse,
   SetBirthdayConsentSelfBody,
   SetBirthdayConsentSelfResponse,
+  GetContractSignedUrlResponse,
 } from "@workspace/api-zod";
 import {
   birthdayVisibilityConsentsTable,
   contractAcceptancesTable,
   contractDocumentsTable,
+  contractDocumentVersionsTable,
   contractReadProgressTable,
   db,
+  platformAgreementDocumentTable,
   wodplaceUsersTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
+import { isAnyStaff, isBoxOwnerOrSuperAdmin } from "../lib/boxOwnership";
 import { sendContractAcceptanceEmail } from "../lib/ownerNotifications";
+import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
+
+const CONTRACTS_BUCKET = "contracts";
+const SIGNED_URL_TTL_SECONDS = 5 * 60;
 
 const router: IRouter = Router();
 
@@ -197,6 +205,132 @@ router.post("/contracts/:slug/read", async (req: Request, res: Response) => {
       error:
         "Failed to mark document as read. Make sure the user has been synced first.",
     });
+  }
+});
+
+type ResolvedContractFile = { objectPath: string; authorized: boolean };
+
+/**
+ * Resolves and authorizes a document purely from identifiers (box, slug,
+ * optionally a specific version id) — the CALLER NEVER supplies a storage
+ * path; every object_path signed below comes straight out of our own DB
+ * row, found via a parameterized lookup. That's what keeps this immune to
+ * path traversal (".."), another bucket, or another box's file: there's
+ * no client-supplied path for such a thing to even appear in.
+ *
+ *   - No boxId -> the single global platform_agreement_document (slug must
+ *     be "platform-agreement"); any staff role may open it.
+ *   - boxId + slug, no versionId -> that box's CURRENT document; its own
+ *     athletes may open it, plus the box's owner or a super_admin.
+ *   - boxId + slug + versionId -> a specific (possibly archived) version;
+ *     owner/super_admin only — an athlete's own view never needs one.
+ *
+ * Returns `authorized: false` (never a thrown/missing distinction) for
+ * "doesn't exist" exactly like "exists but not yours", so the route's 404
+ * never reveals which.
+ */
+async function resolveContractFile(
+  userId: string,
+  boxId: string | undefined,
+  slug: string,
+  versionId: string | undefined,
+): Promise<ResolvedContractFile | null> {
+  if (!boxId) {
+    if (slug === "platform-agreement") {
+      const [doc] = await db
+        .select({ objectPath: platformAgreementDocumentTable.objectPath })
+        .from(platformAgreementDocumentTable);
+      if (!doc?.objectPath) return null;
+      return { objectPath: doc.objectPath, authorized: await isAnyStaff(userId) };
+    }
+    // No boxId given for a non-platform slug: resolve the CALLER's own
+    // box — an athlete opening their own Contratos Activos never needs to
+    // know/send their boxId. versionId is meaningless without an explicit
+    // boxId (an athlete never requests one anyway), so it's ignored here.
+    if (versionId) return null;
+    boxId = (await resolveBoxIdForAthlete(userId)) ?? undefined;
+    if (!boxId) return null;
+  }
+
+  if (versionId) {
+    const [version] = await db
+      .select({ objectPath: contractDocumentVersionsTable.objectPath })
+      .from(contractDocumentVersionsTable)
+      .where(
+        and(
+          eq(contractDocumentVersionsTable.id, versionId),
+          eq(contractDocumentVersionsTable.boxId, boxId),
+          eq(contractDocumentVersionsTable.slug, slug),
+        ),
+      );
+    if (!version) return null;
+    return {
+      objectPath: version.objectPath,
+      authorized: await isBoxOwnerOrSuperAdmin(userId, boxId),
+    };
+  }
+
+  const [doc] = await db
+    .select({ objectPath: contractDocumentsTable.objectPath })
+    .from(contractDocumentsTable)
+    .where(and(eq(contractDocumentsTable.boxId, boxId), eq(contractDocumentsTable.slug, slug)));
+  if (!doc?.objectPath) return null;
+
+  if (await isBoxOwnerOrSuperAdmin(userId, boxId)) {
+    return { objectPath: doc.objectPath, authorized: true };
+  }
+  const athleteBoxId = await resolveBoxIdForAthlete(userId);
+  return { objectPath: doc.objectPath, authorized: athleteBoxId === boxId };
+}
+
+/**
+ * GET /contracts/signed-url?userId=...&slug=...&boxId=...&versionId=...
+ *
+ * The `contracts` bucket is private — every relative objectPath needs a
+ * short-lived signed URL to actually open. Older documents (seeded into
+ * the public bucket before Fase B) already carry a full URL and are
+ * returned unchanged. Never logs an objectPath or the signed URL itself.
+ */
+router.get("/contracts/signed-url", async (req: Request, res: Response) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  const slug = typeof req.query.slug === "string" ? req.query.slug : undefined;
+  const boxId = typeof req.query.boxId === "string" ? req.query.boxId : undefined;
+  const versionId = typeof req.query.versionId === "string" ? req.query.versionId : undefined;
+  if (!userId || !slug) {
+    res.status(400).json({ error: "userId and slug are required" });
+    return;
+  }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
+
+  try {
+    const resolved = await resolveContractFile(userId, boxId, slug, versionId);
+    if (!resolved?.authorized) {
+      res.status(404).json({ error: "Documento no encontrado" });
+      return;
+    }
+
+    if (/^https?:\/\//i.test(resolved.objectPath)) {
+      res.json(GetContractSignedUrlResponse.parse({ url: resolved.objectPath, expiresAt: null }));
+      return;
+    }
+
+    const { data, error } = await getSupabaseAdmin()
+      .storage.from(CONTRACTS_BUCKET)
+      .createSignedUrl(resolved.objectPath, SIGNED_URL_TTL_SECONDS);
+    if (error || !data) {
+      res.status(404).json({ error: "Documento no encontrado" });
+      return;
+    }
+
+    res.json(
+      GetContractSignedUrlResponse.parse({
+        url: data.signedUrl,
+        expiresAt: new Date(Date.now() + SIGNED_URL_TTL_SECONDS * 1000).toISOString(),
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Error creating signed contract url");
+    res.status(500).json({ error: "No se pudo generar el enlace" });
   }
 });
 

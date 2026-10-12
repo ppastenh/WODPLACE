@@ -62,7 +62,9 @@ export default function PlatformAgreementScreen() {
     }
     setOpening(true);
     try {
-      await WebBrowser.openBrowserAsync(getContractFileUrl(document.objectPath));
+      await WebBrowser.openBrowserAsync(
+        await getContractFileUrl(document.objectPath, { userId, slug: 'platform-agreement' }),
+      );
       // Same pattern as Contratos Activos: opening the document is what
       // unlocks "Acepto" below.
       setOpened(true);

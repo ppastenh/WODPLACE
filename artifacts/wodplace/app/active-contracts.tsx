@@ -162,7 +162,7 @@ export default function ActiveContractsScreen() {
     }
     setOpeningSlug(slug);
     try {
-      await WebBrowser.openBrowserAsync(getContractFileUrl(objectPath));
+      await WebBrowser.openBrowserAsync(await getContractFileUrl(objectPath, { userId, slug }));
       // Opening the document is what unlocks the checkbox below — tapping
       // the checkbox itself is the "sí, lo leí" confirmation, so there's no
       // separate button/dialog to miss.
