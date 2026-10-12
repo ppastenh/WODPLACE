@@ -73,7 +73,6 @@ export * from './syncUserRequest';
 export * from './trainingSettings';
 export * from './trainingSettingsBarUnit';
 export * from './trainingSettingsPreferredUnit';
-export * from './updateAdminContractRequest';
 export * from './updatePrRequest';
 export * from './updatePrRequestUnit';
 export * from './uploadUrlRequest';

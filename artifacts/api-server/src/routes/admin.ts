@@ -7,11 +7,8 @@ import {
   GetAdminPinStatusBody,
   GetAdminPinStatusResponse,
   ListAdminContractAcceptancesResponse,
-  ListAdminContractsResponse,
   SetupAdminPinBody,
   SetupAdminPinResponse,
-  UpdateAdminContractBody,
-  UpdateAdminContractResponse,
   VerifyAdminPinBody,
   VerifyAdminPinResponse,
   type AckContractAcceptancesResult,
@@ -20,7 +17,6 @@ import {
 import {
   adminPinsTable,
   contractAcceptancesTable,
-  contractDocumentsTable,
   db,
   wodplaceUsersTable,
 } from "@workspace/db";
@@ -30,8 +26,6 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { findDistinctAdminEmails, resolveAdminRoles } from "../lib/adminRole";
 import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
 import { signAdminToken } from "../lib/adminToken";
-import { resolveBoxIdForWodplaceUserId } from "../lib/boxContext";
-import { ensureDefaultDocuments } from "../lib/contractDocuments";
 import { hashPin, verifyPin } from "../lib/pinHash";
 import { getDashboardUrl, getSuperAdminUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
@@ -262,110 +256,16 @@ router.post("/admin/pin/session", async (req: Request, res: Response) => {
 });
 
 /**
- * GET /admin/contracts
- *
- * Lists contract documents for the admin panel (current title + whether a
- * PDF has been uploaded yet).
+ * GET /admin/contracts and PUT /admin/contracts/:slug used to live here —
+ * removed in Fase B/B1 (no real caller in box-admin, wodplace, or any
+ * script: box-admin's own "Contratos"/"Archivos" screen writes directly
+ * via the Supabase client, through replace_contract_document()/
+ * delete_contract_document(), see supabase/migrations/
+ * 20261012130000_contracts_owner_only_versioned.sql). Keeping them would
+ * have meant a second, PIN-session write path with no real session to
+ * check real ownership against — simulating one just to reuse the RPC
+ * was more complexity than a genuinely dead endpoint is worth.
  */
-router.get(
-  "/admin/contracts",
-  requireAdminSession,
-  async (req: Request, res: Response) => {
-    try {
-      // Non-null: this route sits behind requireAdminSession.
-      const boxId = await resolveBoxIdForWodplaceUserId(getAdminSession(req)!.userId);
-      await ensureDefaultDocuments(boxId);
-      const documents = await db
-        .select()
-        .from(contractDocumentsTable)
-        .where(eq(contractDocumentsTable.boxId, boxId));
-      res.json(
-        ListAdminContractsResponse.parse(
-          documents.map((doc) => ({
-            slug: doc.slug,
-            title: doc.title,
-            objectPath: doc.objectPath,
-            read: false,
-            readAt: null,
-          })),
-        ),
-      );
-    } catch (error) {
-      req.log.error({ err: error }, "Error listing admin contracts");
-      res.status(500).json({ error: "Failed to list contracts" });
-    }
-  },
-);
-
-/**
- * PUT /admin/contracts/:slug
- *
- * Attaches a newly uploaded PDF (objectPath from the storage upload flow) to
- * a contract document slug, optionally updating its title.
- */
-router.put(
-  "/admin/contracts/:slug",
-  requireAdminSession,
-  async (req: Request, res: Response) => {
-    const parsed = UpdateAdminContractBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Missing or invalid required fields" });
-      return;
-    }
-
-    try {
-      const slug = String(req.params.slug);
-      const { objectPath, title } = parsed.data;
-      // Non-null: this route sits behind requireAdminSession.
-      const boxId = await resolveBoxIdForWodplaceUserId(getAdminSession(req)!.userId);
-
-      const [existing] = await db
-        .select()
-        .from(contractDocumentsTable)
-        .where(eq(contractDocumentsTable.slug, slug));
-
-      if (!existing && !title) {
-        res
-          .status(400)
-          .json({ error: "title is required when creating a new document" });
-        return;
-      }
-
-      const updatedAt = new Date();
-      const [row] = await db
-        .insert(contractDocumentsTable)
-        .values({
-          slug,
-          boxId,
-          title: title ?? existing?.title ?? slug,
-          objectPath,
-          updatedAt,
-        })
-        .onConflictDoUpdate({
-          target: contractDocumentsTable.slug,
-          set: {
-            objectPath,
-            updatedAt,
-            ...(title ? { title } : {}),
-          },
-        })
-        .returning();
-
-      res.json(
-        UpdateAdminContractResponse.parse({
-          slug: row.slug,
-          title: row.title,
-          objectPath: row.objectPath,
-          read: false,
-          readAt: null,
-        }),
-      );
-    } catch (error) {
-      req.log.error({ err: error }, "Error updating contract document");
-      res.status(500).json({ error: "Failed to update document" });
-    }
-  },
-);
 
 /**
  * GET /admin/contract-acceptances

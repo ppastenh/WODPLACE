@@ -378,6 +378,47 @@ export type Database = {
           },
         ]
       }
+      birthday_visibility_consents: {
+        Row: {
+          box_id: string
+          consent: boolean
+          granted_at: string | null
+          granted_by_email: string | null
+          revoked_at: string | null
+          source: string | null
+          text_version: string | null
+          user_id: string
+        }
+        Insert: {
+          box_id: string
+          consent?: boolean
+          granted_at?: string | null
+          granted_by_email?: string | null
+          revoked_at?: string | null
+          source?: string | null
+          text_version?: string | null
+          user_id: string
+        }
+        Update: {
+          box_id?: string
+          consent?: boolean
+          granted_at?: string | null
+          granted_by_email?: string | null
+          revoked_at?: string | null
+          source?: string | null
+          text_version?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "birthday_visibility_consents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "wodplace_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_users: {
         Row: {
           blocked_at: string
@@ -544,7 +585,7 @@ export type Database = {
           location: string | null
           name: string
           owner_name: string | null
-          owner_user_id: string | null
+          owner_user_id: string
           photo_url: string | null
           status: string
           tiktok_url: string | null
@@ -561,7 +602,7 @@ export type Database = {
           location?: string | null
           name: string
           owner_name?: string | null
-          owner_user_id?: string | null
+          owner_user_id: string
           photo_url?: string | null
           status?: string
           tiktok_url?: string | null
@@ -578,7 +619,7 @@ export type Database = {
           location?: string | null
           name?: string
           owner_name?: string | null
-          owner_user_id?: string | null
+          owner_user_id?: string
           photo_url?: string | null
           status?: string
           tiktok_url?: string | null
@@ -861,42 +902,71 @@ export type Database = {
           },
         ]
       }
-      birthday_visibility_consents: {
+      contract_acceptance_history: {
         Row: {
+          accepted_at: string
+          archived_at: string
+          archived_reason: string
           box_id: string
-          consent: boolean
-          granted_at: string | null
-          granted_by_email: string | null
-          revoked_at: string | null
-          source: string | null
-          text_version: string | null
+          document_slug: string
+          document_version_id: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          guardian_name: string | null
+          guardian_relationship: string | null
+          id: string
+          minor_data_consent_at: string | null
           user_id: string
         }
         Insert: {
+          accepted_at: string
+          archived_at?: string
+          archived_reason: string
           box_id: string
-          consent?: boolean
-          granted_at?: string | null
-          granted_by_email?: string | null
-          revoked_at?: string | null
-          source?: string | null
-          text_version?: string | null
+          document_slug: string
+          document_version_id?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          guardian_name?: string | null
+          guardian_relationship?: string | null
+          id?: string
+          minor_data_consent_at?: string | null
           user_id: string
         }
         Update: {
+          accepted_at?: string
+          archived_at?: string
+          archived_reason?: string
           box_id?: string
-          consent?: boolean
-          granted_at?: string | null
-          granted_by_email?: string | null
-          revoked_at?: string | null
-          source?: string | null
-          text_version?: string | null
+          document_slug?: string
+          document_version_id?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          guardian_name?: string | null
+          guardian_relationship?: string | null
+          id?: string
+          minor_data_consent_at?: string | null
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "birthday_visibility_consents_user_id_wodplace_users_id_fk"
+            foreignKeyName: "contract_acceptance_history_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_acceptance_history_document_version_id_fkey"
+            columns: ["document_version_id"]
+            isOneToOne: false
+            referencedRelation: "contract_document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_acceptance_history_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "wodplace_users"
             referencedColumns: ["id"]
           },
@@ -953,11 +1023,56 @@ export type Database = {
           },
         ]
       }
+      contract_document_versions: {
+        Row: {
+          box_id: string
+          created_at: string
+          file_name: string | null
+          id: string
+          mime_type: string | null
+          object_path: string
+          slug: string
+          superseded_at: string | null
+          title: string
+        }
+        Insert: {
+          box_id: string
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          object_path: string
+          slug: string
+          superseded_at?: string | null
+          title: string
+        }
+        Update: {
+          box_id?: string
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          object_path?: string
+          slug?: string
+          superseded_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_document_versions_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_documents: {
         Row: {
           audience: string
           box_id: string
           created_at: string
+          current_version_id: string | null
           doc_type: string
           file_name: string | null
           id: string
@@ -971,6 +1086,7 @@ export type Database = {
           audience?: string
           box_id: string
           created_at?: string
+          current_version_id?: string | null
           doc_type?: string
           file_name?: string | null
           id?: string
@@ -984,6 +1100,7 @@ export type Database = {
           audience?: string
           box_id?: string
           created_at?: string
+          current_version_id?: string | null
           doc_type?: string
           file_name?: string | null
           id?: string
@@ -1001,24 +1118,34 @@ export type Database = {
             referencedRelation: "boxes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contract_documents_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "contract_document_versions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contract_read_progress: {
         Row: {
           box_id: string
           document_slug: string
+          document_version_id: string | null
           read_at: string
           user_id: string
         }
         Insert: {
           box_id: string
           document_slug: string
+          document_version_id?: string | null
           read_at?: string
           user_id: string
         }
         Update: {
           box_id?: string
           document_slug?: string
+          document_version_id?: string | null
           read_at?: string
           user_id?: string
         }
@@ -1031,11 +1158,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "contract_read_progress_document_slug_contract_documents_slug_fk"
-            columns: ["document_slug"]
+            foreignKeyName: "contract_read_progress_box_slug_fkey"
+            columns: ["box_id", "document_slug"]
             isOneToOne: false
             referencedRelation: "contract_documents"
-            referencedColumns: ["slug"]
+            referencedColumns: ["box_id", "slug"]
+          },
+          {
+            foreignKeyName: "contract_read_progress_document_version_id_fkey"
+            columns: ["document_version_id"]
+            isOneToOne: false
+            referencedRelation: "contract_document_versions"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "contract_read_progress_user_id_wodplace_users_id_fk"
@@ -1045,6 +1179,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      invite_claim_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       member_requests: {
         Row: {
@@ -1265,6 +1420,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_agreement_document: {
+        Row: {
+          created_at: string
+          file_name: string | null
+          id: string
+          mime_type: string | null
+          object_path: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          object_path?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          object_path?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pr_goals: {
         Row: {
@@ -2060,6 +2245,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      contract_acceptance_immutable_snapshot: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
+      delete_contract_document: {
+        Args: { p_box_id: string; p_slug: string }
+        Returns: undefined
+      }
       is_super_admin: { Args: never; Returns: boolean }
       my_coach_id: { Args: { _box_id: string }; Returns: string }
       remove_coach_role: {
@@ -2087,6 +2280,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      replace_contract_document: {
+        Args: {
+          p_box_id: string
+          p_file_name: string
+          p_mime_type: string
+          p_object_path: string
+          p_requires_reacceptance: boolean
+          p_slug: string
+          p_title: string
+        }
+        Returns: string
       }
       session_coach_id: { Args: { _session_id: string }; Returns: string }
       storage_box_prefix: { Args: { _name: string }; Returns: string }
@@ -2125,6 +2330,10 @@ export type Database = {
         Returns: boolean
       }
       user_is_any_box_admin: { Args: never; Returns: boolean }
+      user_is_box_owner_or_super_admin: {
+        Args: { _box_id: string }
+        Returns: boolean
+      }
       user_is_box_staff: { Args: { _box_id: string }; Returns: boolean }
       user_is_super_admin: { Args: never; Returns: boolean }
     }

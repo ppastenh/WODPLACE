@@ -49,7 +49,7 @@ async function main() {
       .insert(contractDocumentsTable)
       .values({ slug: doc.slug, boxId, title: doc.title, objectPath, updatedAt: new Date() })
       .onConflictDoUpdate({
-        target: contractDocumentsTable.slug,
+        target: [contractDocumentsTable.boxId, contractDocumentsTable.slug],
         set: { objectPath, updatedAt: new Date() },
       });
 

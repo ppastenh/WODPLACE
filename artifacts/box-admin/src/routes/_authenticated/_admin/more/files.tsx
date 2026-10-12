@@ -16,10 +16,10 @@ import { FileText, FileImage, FileType2, Upload, RefreshCw, Trash2, Plus, Extern
 export const Route = createFileRoute("/_authenticated/_admin/more/files")({
   head: () => ({
     meta: [
-      { title: "Archivos — WODPLACE" },
-      { name: "description", content: "Contratos y documentos generales para los atletas." },
-      { property: "og:title", content: "Archivos — WODPLACE" },
-      { property: "og:description", content: "Sube y gestiona contratos que ven los atletas." },
+      { title: "Contratos — WODPLACE" },
+      { name: "description", content: "Contratos que ven y aceptan los atletas de este box." },
+      { property: "og:title", content: "Contratos — WODPLACE" },
+      { property: "og:description", content: "Sube y gestiona los contratos de tu box." },
     ],
   }),
   component: FilesPage,
@@ -51,7 +51,7 @@ function slugify(s: string) {
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     || `doc-${randomKey()}`;
@@ -77,9 +77,50 @@ async function fetchStats(boxId: string) {
   return { totalMembers: total ?? 0, bySlug: counts };
 }
 
+/**
+ * The only way to create/replace a contract document as of Fase B/B1 —
+ * contract_documents has no insert/update RLS policy at all, not even for
+ * the box's owner, so a direct supabase.from("contract_documents").upsert
+ * would just silently affect 0 rows. This function does its own
+ * owner/super_admin check (auth.uid()) and, when requiresReacceptance is
+ * true, archives the OLD version + every current reader's read-progress
+ * into history and clears that one document's read-progress (not the
+ * other two). Inserts a brand-new row when the slug doesn't exist yet for
+ * this box — a box with zero contracts today can create its first one
+ * here exactly the same way it replaces an existing one.
+ */
+async function replaceContractDocument(args: {
+  boxId: string;
+  slug: string;
+  title: string;
+  objectPath: string;
+  fileName: string;
+  mimeType: string;
+  requiresReacceptance: boolean;
+}) {
+  const { error } = await supabase.rpc("replace_contract_document", {
+    p_box_id: args.boxId,
+    p_slug: args.slug,
+    p_title: args.title,
+    p_object_path: args.objectPath,
+    p_file_name: args.fileName,
+    p_mime_type: args.mimeType,
+    p_requires_reacceptance: args.requiresReacceptance,
+  });
+  if (error) throw error;
+}
+
+async function deleteContractDocument(boxId: string, slug: string) {
+  const { error } = await supabase.rpc("delete_contract_document", {
+    p_box_id: boxId,
+    p_slug: slug,
+  });
+  if (error) throw error;
+}
+
 function FilesPage() {
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isOwner } = useBox();
   const { data: contracts = [], isLoading } = useQuery({ queryKey: ["contracts", boxId], queryFn: () => fetchContracts(boxId) });
   const { data: stats } = useQuery({ queryKey: ["contract-stats", boxId], queryFn: () => fetchStats(boxId) });
   const [open, setOpen] = useState(false);
@@ -89,18 +130,37 @@ function FilesPage() {
     qc.invalidateQueries({ queryKey: ["contract-stats"] });
   };
 
+  if (!isOwner) {
+    return (
+      <AdminShell title="Contratos" showBack>
+        <div className="rounded-3xl border bg-card p-8 text-center">
+          <p className="text-sm font-semibold">No tienes permiso para ver los contratos</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Solo el dueño de este box (o un super administrador) puede ver y modificar los
+            contratos que aceptan los atletas.
+          </p>
+        </div>
+      </AdminShell>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <AdminShell title="Archivos" showBack right={
+      <AdminShell title="Contratos" showBack right={
         <DialogTrigger asChild>
-          <button aria-label="Subir archivo" className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
+          <button aria-label="Subir contrato" className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
             <Plus className="h-4 w-4" />
           </button>
         </DialogTrigger>
       }>
         <div className="mb-4 rounded-2xl border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Contratos generales</p>
-          <p className="mt-1 text-sm">Los archivos aquí se muestran a todos los atletas en <span className="font-semibold">Contratos Activos</span>. Al reemplazar un archivo, se resetea la aceptación y se bloquea el agendamiento hasta que lo acepten.</p>
+          <p className="text-xs text-muted-foreground">Contratos de tu box</p>
+          <p className="mt-1 text-sm">
+            Lo que subas aquí se muestra a los atletas de <span className="font-semibold">este box</span> en
+            Contratos Activos. Puedes tener cualquier combinación de los tres documentos (membresía,
+            salud, reglamento) — mientras no subas ninguno, tus atletas no tienen nada que aceptar ni
+            quedan bloqueados.
+          </p>
         </div>
 
         <DialogTrigger asChild>
@@ -116,11 +176,14 @@ function FilesPage() {
             <div className="grid h-14 w-14 place-items-center rounded-2xl bg-secondary text-muted-foreground">
               <Upload className="h-6 w-6" />
             </div>
-            <h2 className="mt-4 text-lg font-bold">Sin archivos</h2>
-            <p className="mt-2 max-w-xs text-xs text-muted-foreground">Sube tu primer contrato para que aparezca en la app de los atletas.</p>
+            <h2 className="mt-4 text-lg font-bold">Sin contratos todavía</h2>
+            <p className="mt-2 max-w-xs text-xs text-muted-foreground">
+              Sube tu primer contrato para que aparezca en la app de tus atletas. Mientras no subas
+              nada, tus atletas no ven nada pendiente.
+            </p>
             <DialogTrigger asChild>
               <button className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground active:opacity-90">
-                <Upload className="h-4 w-4" /> Subir archivo
+                <Upload className="h-4 w-4" /> Subir contrato
               </button>
             </DialogTrigger>
           </div>
@@ -141,38 +204,48 @@ function ContractRow({ contract, accepted, total, onChange }: { contract: Contra
   const Icon = iconFor(contract.mime_type);
   const { boxId } = useBox();
   const replaceRef = useRef<HTMLInputElement>(null);
+  // Por defecto exige re-aceptar — "Corrección menor" es la excepción
+  // explícita, elegida antes de soltar el archivo.
+  const [requiresReacceptance, setRequiresReacceptance] = useState(true);
 
   const replaceMut = useMutation({
     mutationFn: async (file: File) => {
       if (file.size > MAX_MB * 1024 * 1024) throw new Error(`Máx ${MAX_MB}MB`);
       const ext = file.name.split(".").pop() ?? "bin";
+      // Ruta nueva en cada reemplazo — las versiones anteriores quedan
+      // intactas en el storage (inmutables, nunca se borran ni actualizan).
       const path = `${boxId}/${contract.slug}/${randomKey()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("contracts").upload(path, file, { contentType: file.type });
       if (upErr) throw upErr;
-      const { error: dbErr } = await supabase.from("contract_documents").update({
-        file_name: file.name,
-        mime_type: file.type || "application/octet-stream",
-        object_path: path,
-        updated_at: new Date().toISOString(),
-      }).eq("box_id", boxId).eq("slug", contract.slug);
-      if (dbErr) throw dbErr;
-      if (contract.object_path) {
-        await supabase.storage.from("contracts").remove([contract.object_path]).catch(() => {});
-      }
+      await replaceContractDocument({
+        boxId,
+        slug: contract.slug,
+        title: contract.title,
+        objectPath: path,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        requiresReacceptance,
+      });
     },
-    onSuccess: () => { toast.success("Archivo reemplazado. Los atletas deben aceptar de nuevo."); onChange(); },
+    onSuccess: () => {
+      toast.success(
+        requiresReacceptance
+          ? "Archivo reemplazado. Los atletas deben aceptar de nuevo."
+          : "Archivo reemplazado como corrección menor. Nadie queda pendiente.",
+      );
+      onChange();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteMut = useMutation({
     mutationFn: async () => {
-      if (contract.object_path) {
-        await supabase.storage.from("contracts").remove([contract.object_path]).catch(() => {});
-      }
-      const { error } = await supabase.from("contract_documents").delete().eq("box_id", boxId).eq("slug", contract.slug);
-      if (error) throw error;
+      // El archivo anterior NO se borra del storage (política inmutable) —
+      // delete_contract_document solo quita la fila y archiva su versión
+      // vigente en el historial.
+      await deleteContractDocument(boxId, contract.slug);
     },
-    onSuccess: () => { toast.success("Archivo eliminado"); onChange(); },
+    onSuccess: () => { toast.success("Contrato eliminado"); onChange(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -206,6 +279,17 @@ function ContractRow({ contract, accepted, total, onChange }: { contract: Contra
         </div>
       </div>
 
+      <div className="mt-3 space-y-1.5">
+        <Label className="text-xs">Al reemplazar este archivo</Label>
+        <Select value={requiresReacceptance ? "reaccept" : "minor"} onValueChange={(v) => setRequiresReacceptance(v === "reaccept")}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="reaccept">Los alumnos deben aceptar de nuevo</SelectItem>
+            <SelectItem value="minor">Corrección menor (no exige aceptar de nuevo)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="mt-3 grid grid-cols-3 gap-2">
         <Button variant="secondary" size="sm" className="rounded-xl" onClick={openFile}>
           <ExternalLink className="mr-1 h-3.5 w-3.5" /> Ver
@@ -213,7 +297,7 @@ function ContractRow({ contract, accepted, total, onChange }: { contract: Contra
         <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => replaceRef.current?.click()} disabled={replaceMut.isPending}>
           <RefreshCw className="mr-1 h-3.5 w-3.5" /> {replaceMut.isPending ? "…" : "Reemplazar"}
         </Button>
-        <Button variant="ghost" size="sm" className="rounded-xl text-destructive" onClick={() => { if (confirm("¿Eliminar este archivo?")) deleteMut.mutate(); }}>
+        <Button variant="ghost" size="sm" className="rounded-xl text-destructive" onClick={() => { if (confirm("¿Eliminar este contrato? El archivo sigue en el historial, pero deja de mostrarse a los atletas.")) deleteMut.mutate(); }}>
           <Trash2 className="mr-1 h-3.5 w-3.5" /> Borrar
         </Button>
       </div>
@@ -225,7 +309,6 @@ function ContractRow({ contract, accepted, total, onChange }: { contract: Contra
 function UploadDialog({ onDone }: { onDone: () => void }) {
   const { boxId } = useBox();
   const [title, setTitle] = useState("");
-  const [docType, setDocType] = useState("Contrato");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -242,22 +325,26 @@ function UploadDialog({ onDone }: { onDone: () => void }) {
       const { error: upErr } = await supabase.storage.from("contracts").upload(path, file, { contentType: file.type });
       if (upErr) throw upErr;
 
-      const { error: dbErr } = await supabase.from("contract_documents").upsert({
-        box_id: boxId,
-        slug,
-        title: title.trim(),
-        doc_type: docType,
-        file_name: file.name,
-        mime_type: file.type || "application/octet-stream",
-        object_path: path,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "box_id,slug" });
-      if (dbErr) {
+      try {
+        // Un contrato recién creado no tiene a quién pedirle que vuelva a
+        // aceptar — requiresReacceptance=true aquí no resetea nada (no hay
+        // lectores previos de este slug en este box), solo documenta la
+        // intención por si en el futuro replace_contract_document cambia.
+        await replaceContractDocument({
+          boxId,
+          slug,
+          title: title.trim(),
+          objectPath: path,
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          requiresReacceptance: true,
+        });
+      } catch (err) {
         await supabase.storage.from("contracts").remove([path]).catch(() => {});
-        throw dbErr;
+        throw err;
       }
 
-      toast.success("Archivo subido. Se notificará a los atletas.");
+      toast.success("Contrato subido. Se notificará a tus atletas.");
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al subir");
@@ -268,23 +355,11 @@ function UploadDialog({ onDone }: { onDone: () => void }) {
 
   return (
     <DialogContent className="max-w-sm rounded-3xl">
-      <DialogHeader><DialogTitle>Subir archivo</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>Subir contrato</DialogTitle></DialogHeader>
       <div className="space-y-3">
         <div className="space-y-1.5">
           <Label htmlFor="title" className="text-xs">Título visible</Label>
           <Input id="title" placeholder="Contrato de Membresía" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Tipo</Label>
-          <Select value={docType} onValueChange={setDocType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Contrato">Contrato</SelectItem>
-              <SelectItem value="Reglamento">Reglamento</SelectItem>
-              <SelectItem value="Aviso">Aviso</SelectItem>
-              <SelectItem value="Otro">Otro</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="file" className="text-xs">Archivo (PDF, Word, imagen · máx {MAX_MB}MB)</Label>

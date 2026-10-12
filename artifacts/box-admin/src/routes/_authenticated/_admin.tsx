@@ -16,6 +16,10 @@ type AdminContext = {
   /** Raw role rows — lets downstream code tell a real admin from a coach,
    *  per the currently active box (BoxProvider derives `isAdmin` from this). */
   roles: RoleRow[];
+  /** This signed-in account's own Supabase Auth id — BoxProvider compares
+   *  it against each box's owner_user_id to derive `isOwner` (Fase B/B1:
+   *  contracts are owner/super_admin-only, not just box_admin). */
+  userId: string;
 };
 
 async function resolveAdminContext(userId: string): Promise<AdminContext> {
@@ -24,20 +28,20 @@ async function resolveAdminContext(userId: string): Promise<AdminContext> {
     .select("role, box_id")
     .eq("user_id", userId);
 
-  if (error || !roleRows) return { isStaff: false, isSuperAdmin: false, boxes: [], roles: [] };
+  if (error || !roleRows) return { isStaff: false, isSuperAdmin: false, boxes: [], roles: [], userId };
 
   const isSuperAdmin = roleRows.some((r) => r.role === "super_admin");
   const isStaff = roleRows.some((r) => STAFF_ROLES.has(r.role));
-  if (!isStaff) return { isStaff: false, isSuperAdmin: false, boxes: [], roles: [] };
+  if (!isStaff) return { isStaff: false, isSuperAdmin: false, boxes: [], roles: [], userId };
 
-  let query = supabase.from("boxes").select("id, name, photo_url").order("name");
+  let query = supabase.from("boxes").select("id, name, photo_url, owner_user_id").order("name");
   if (!isSuperAdmin) {
     const boxIds = [...new Set(roleRows.map((r) => r.box_id).filter((id): id is string => !!id))];
-    if (boxIds.length === 0) return { isStaff: true, isSuperAdmin: false, boxes: [], roles: roleRows };
+    if (boxIds.length === 0) return { isStaff: true, isSuperAdmin: false, boxes: [], roles: roleRows, userId };
     query = query.in("id", boxIds);
   }
   const { data: boxes } = await query;
-  return { isStaff: true, isSuperAdmin, boxes: boxes ?? [], roles: roleRows };
+  return { isStaff: true, isSuperAdmin, boxes: boxes ?? [], roles: roleRows, userId };
 }
 
 export const Route = createFileRoute("/_authenticated/_admin")({
@@ -61,11 +65,11 @@ export const Route = createFileRoute("/_authenticated/_admin")({
 });
 
 function AdminLayout() {
-  const { isStaff, isSuperAdmin, boxes, roles } = Route.useRouteContext();
+  const { isStaff, isSuperAdmin, boxes, roles, userId } = Route.useRouteContext();
   if (!isStaff) return <NoAccess />;
   if (boxes.length === 0) return <NoBox />;
   return (
-    <BoxProvider boxes={boxes} isSuperAdmin={isSuperAdmin} roles={roles}>
+    <BoxProvider boxes={boxes} isSuperAdmin={isSuperAdmin} roles={roles} userId={userId}>
       <Outlet />
     </BoxProvider>
   );

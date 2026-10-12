@@ -1,8 +1,8 @@
 import {
   boxCreationAuthorizationsTable,
-  contractDocumentsTable,
   db,
   platformAgreementAcceptancesTable,
+  platformAgreementDocumentTable,
   wodplaceUsersTable,
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
@@ -11,7 +11,7 @@ import { z } from "zod";
 
 import { resolveAdminRoles, type AdminRole } from "../lib/adminRole";
 import { resolveBoxIdForWodplaceUserId } from "../lib/boxContext";
-import { ensureDefaultPlatformDocument, PLATFORM_AGREEMENT_DOCUMENT } from "../lib/contractDocuments";
+import { ensurePlatformAgreementDocument } from "../lib/contractDocuments";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 
@@ -137,16 +137,14 @@ async function loadStatus(userId: string): Promise<PlatformAgreementStatus> {
 
   const boxId = await resolveBoxIdForWodplaceUserId(userId);
   const box = roles.includes("box_admin") ? await loadBoxSummary(boxId) : null;
-  await ensureDefaultPlatformDocument(boxId);
+  await ensurePlatformAgreementDocument();
   const [doc] = await db
     .select({
-      slug: contractDocumentsTable.slug,
-      title: contractDocumentsTable.title,
-      objectPath: contractDocumentsTable.objectPath,
+      title: platformAgreementDocumentTable.title,
+      objectPath: platformAgreementDocumentTable.objectPath,
     })
-    .from(contractDocumentsTable)
-    .where(eq(contractDocumentsTable.slug, PLATFORM_AGREEMENT_DOCUMENT.slug));
-  const document = doc ?? null;
+    .from(platformAgreementDocumentTable);
+  const document = doc ? { slug: "platform-agreement", ...doc } : null;
 
   if (roles.includes("super_admin")) {
     return { roles, accepted: true, acceptedAt: null, document, box, boxCreationAuthorized: false };
@@ -227,7 +225,6 @@ router.post("/platform-agreement/accept", async (req: Request, res: Response) =>
     }
 
     const boxId = await resolveBoxIdForWodplaceUserId(userId);
-    await ensureDefaultPlatformDocument(boxId);
     await db
       .insert(platformAgreementAcceptancesTable)
       .values({ userId, boxId, acceptedAt: new Date() })

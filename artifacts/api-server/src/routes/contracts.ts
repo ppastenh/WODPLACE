@@ -19,26 +19,73 @@ import {
 import { eq, and } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
-import { resolveBoxId } from "../lib/boxContext";
-import { ensureDefaultDocuments } from "../lib/contractDocuments";
+import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { sendContractAcceptanceEmail } from "../lib/ownerNotifications";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
 /**
+ * Slugs of this athlete's box's own athlete-facing documents that this
+ * athlete has never read, or stopped having read after a contract
+ * replacement cleared their contract_read_progress row for that slug (see
+ * replace_contract_document(), requiresReacceptance=true). Empty for an
+ * athlete with no box, or whose box has no documents of its own.
+ */
+export async function computePendingSlugs(userId: string): Promise<string[]> {
+  const boxId = await resolveBoxIdForAthlete(userId);
+  if (!boxId) return [];
+
+  const documents = await db
+    .select({ slug: contractDocumentsTable.slug })
+    .from(contractDocumentsTable)
+    .where(
+      and(
+        eq(contractDocumentsTable.boxId, boxId),
+        eq(contractDocumentsTable.audience, "athlete"),
+      ),
+    );
+  if (documents.length === 0) return [];
+
+  const progress = await db
+    .select({ documentSlug: contractReadProgressTable.documentSlug })
+    .from(contractReadProgressTable)
+    .where(
+      and(
+        eq(contractReadProgressTable.userId, userId),
+        eq(contractReadProgressTable.boxId, boxId),
+      ),
+    );
+  const readSlugs = new Set(progress.map((row) => row.documentSlug));
+  return documents
+    .map((doc) => doc.slug)
+    .filter((slug) => !readSlugs.has(slug));
+}
+
+/**
  * GET /contracts?userId=...
  *
- * Lists the contract documents. When userId is provided, each document is
- * annotated with whether that user has read it yet.
+ * Lists the contract documents for the CALLER's OWN box (resolved via
+ * box_members, never "the oldest box in the system" — see
+ * resolveBoxIdForAthlete) annotated with whether that user has read each
+ * one. A box with no contract documents of its own (or an athlete with no
+ * box at all) simply gets an empty list — not another box's contracts.
  */
 router.get("/contracts", async (req: Request, res: Response) => {
+  const userId =
+    typeof req.query.userId === "string" ? req.query.userId : undefined;
+  if (!userId) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+  if (!(await assertOwnsAccount(req, res, userId))) return;
+
   try {
-    const boxId = await resolveBoxId();
-    await ensureDefaultDocuments(boxId);
-    const userId =
-      typeof req.query.userId === "string" ? req.query.userId : undefined;
-    if (userId && !(await assertOwnsAccount(req, res, userId))) return;
+    const boxId = await resolveBoxIdForAthlete(userId);
+    if (!boxId) {
+      res.json(ListContractsResponse.parse([]));
+      return;
+    }
 
     const documents = await db
       .select()
@@ -50,24 +97,27 @@ router.get("/contracts", async (req: Request, res: Response) => {
         ),
       );
 
-    const readSlugs = new Map<string, string>();
-    if (userId) {
-      const progress = await db
-        .select()
-        .from(contractReadProgressTable)
-        .where(eq(contractReadProgressTable.userId, userId));
-      for (const row of progress) {
-        readSlugs.set(row.documentSlug, row.readAt.toISOString());
-      }
-    }
+    const progress = await db
+      .select()
+      .from(contractReadProgressTable)
+      .where(
+        and(
+          eq(contractReadProgressTable.userId, userId),
+          eq(contractReadProgressTable.boxId, boxId),
+        ),
+      );
+    const progressBySlug = new Map(progress.map((row) => [row.documentSlug, row]));
 
-    const result = documents.map((doc) => ({
-      slug: doc.slug,
-      title: doc.title,
-      objectPath: doc.objectPath,
-      read: readSlugs.has(doc.slug),
-      readAt: readSlugs.get(doc.slug) ?? null,
-    }));
+    const result = documents.map((doc) => {
+      const read = progressBySlug.get(doc.slug);
+      return {
+        slug: doc.slug,
+        title: doc.title,
+        objectPath: doc.objectPath,
+        read: !!read,
+        readAt: read?.readAt.toISOString() ?? null,
+      };
+    });
 
     res.json(ListContractsResponse.parse(result));
   } catch (error) {
@@ -93,12 +143,21 @@ router.post("/contracts/:slug/read", async (req: Request, res: Response) => {
   if (!(await assertOwnsAccount(req, res, userId))) return;
   try {
     const slug = String(req.params.slug);
-    const boxId = await resolveBoxId();
+    const boxId = await resolveBoxIdForAthlete(userId);
+    if (!boxId) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
 
     const [document] = await db
       .select()
       .from(contractDocumentsTable)
-      .where(eq(contractDocumentsTable.slug, slug));
+      .where(
+        and(
+          eq(contractDocumentsTable.boxId, boxId),
+          eq(contractDocumentsTable.slug, slug),
+        ),
+      );
     if (!document) {
       res.status(404).json({ error: "Document not found" });
       return;
@@ -107,13 +166,20 @@ router.post("/contracts/:slug/read", async (req: Request, res: Response) => {
     const readAt = new Date();
     await db
       .insert(contractReadProgressTable)
-      .values({ userId, documentSlug: slug, readAt, boxId })
+      .values({
+        userId,
+        documentSlug: slug,
+        readAt,
+        boxId,
+        documentVersionId: document.currentVersionId,
+      })
       .onConflictDoUpdate({
         target: [
           contractReadProgressTable.userId,
+          contractReadProgressTable.boxId,
           contractReadProgressTable.documentSlug,
         ],
-        set: { readAt },
+        set: { readAt, documentVersionId: document.currentVersionId },
       });
 
     res.json(
@@ -161,6 +227,8 @@ router.get("/contracts/acceptance", async (req: Request, res: Response) => {
       birthdayVisibilityConsent = consentRow?.consent ?? false;
     }
 
+    const pendingSlugs = await computePendingSlugs(userId);
+
     res.json(
       GetContractAcceptanceResponse.parse({
         acceptance: row
@@ -175,6 +243,7 @@ router.get("/contracts/acceptance", async (req: Request, res: Response) => {
               birthdayVisibilityConsent,
             }
           : null,
+        pendingSlugs,
       }),
     );
   } catch (error) {
@@ -199,8 +268,13 @@ router.post("/contracts/acceptance", async (req: Request, res: Response) => {
 
   if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
-    const boxId = await resolveBoxId();
-    await ensureDefaultDocuments(boxId);
+    const boxId = await resolveBoxIdForAthlete(parsed.data.userId);
+    if (!boxId) {
+      res.status(409).json({
+        error: "No perteneces a ningún box todavía.",
+      });
+      return;
+    }
     const {
       userId,
       emergencyContactName,
@@ -400,7 +474,11 @@ router.patch(
     if (!(await assertOwnsAccount(req, res, userId))) return;
 
     try {
-      const boxId = await resolveBoxId();
+      const boxId = await resolveBoxIdForAthlete(userId);
+      if (!boxId) {
+        res.status(404).json({ error: "No perteneces a ningún box." });
+        return;
+      }
       await db
         .insert(birthdayVisibilityConsentsTable)
         .values({

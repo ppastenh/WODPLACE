@@ -10,7 +10,12 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type BoxOption = { id: string; name: string; photo_url: string | null };
+export type BoxOption = {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  owner_user_id?: string | null;
+};
 export type RoleRow = { role: string; box_id: string | null };
 export type Permissions = Record<string, boolean>;
 
@@ -31,6 +36,12 @@ type BoxContextValue = {
    * some features (the admin notification bell) are admin-only.
    */
   isAdmin: boolean;
+  /**
+   * True for super_admin, or for the active box's owner (boxes.owner_user_id
+   * === this account's auth id) — Fase B/B1: contracts (create/replace/
+   * delete) are restricted to owner/super_admin, NOT every box_admin.
+   */
+  isOwner: boolean;
   /**
    * The logged-in staff member's OWN `coaches.permissions` for the active
    * box — null for an admin (unrestricted by design, nothing to check) or
@@ -61,11 +72,13 @@ export function BoxProvider({
   boxes,
   isSuperAdmin,
   roles,
+  userId,
   children,
 }: {
   boxes: BoxOption[];
   isSuperAdmin: boolean;
   roles: RoleRow[];
+  userId: string;
   children: ReactNode;
 }) {
   const [boxId, setBoxIdState] = useState<string>(() => {
@@ -92,6 +105,8 @@ export function BoxProvider({
 
   const isAdmin =
     isSuperAdmin || roles.some((r) => r.role === "box_admin" && r.box_id === boxId);
+  const isOwner =
+    isSuperAdmin || boxes.find((b) => b.id === boxId)?.owner_user_id === userId;
 
   // Same query key more/settings.tsx invalidates after an upload/removal —
   // that's what makes this reactive instead of frozen at the initial
@@ -139,11 +154,12 @@ export function BoxProvider({
       boxes,
       isSuperAdmin,
       isAdmin,
+      isOwner,
       myPermissions: isAdmin ? null : (myPermissionsQuery.data?.permissions ?? null),
       myCoachId: isAdmin ? null : (myPermissionsQuery.data?.id ?? null),
       setBoxId,
     }),
-    [boxId, boxes, isSuperAdmin, isAdmin, setBoxId, photoQuery.data, myPermissionsQuery.data],
+    [boxId, boxes, isSuperAdmin, isAdmin, isOwner, setBoxId, photoQuery.data, myPermissionsQuery.data],
   );
 
   return <BoxContext.Provider value={value}>{children}</BoxContext.Provider>;

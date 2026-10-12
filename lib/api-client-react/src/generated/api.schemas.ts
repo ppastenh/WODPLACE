@@ -205,6 +205,13 @@ export interface ContractAcceptance {
 
 export interface ContractAcceptanceResponse {
   acceptance?: ContractAcceptance | null;
+  /**
+     * Slugs of this athlete's box's contract documents that have a
+     * version newer than what this athlete last read/accepted (or
+     * that this athlete has never read at all). Empty when the box
+     * has no documents of its own, or when everything is up to date.
+     */
+  pendingSlugs: string[];
 }
 
 export interface AcceptContractsRequest {
@@ -312,12 +319,6 @@ export interface AdminPinSession {
   ok: boolean;
   /** Admin session token, sent as an Authorization bearer header. */
   token: string;
-}
-
-export interface UpdateAdminContractRequest {
-  /** @minLength 1 */
-  objectPath: string;
-  title?: string;
 }
 
 export interface ContractAcceptanceNotification {

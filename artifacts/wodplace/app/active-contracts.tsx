@@ -102,12 +102,21 @@ export default function ActiveContractsScreen() {
 
   const documents = contractsQuery.data ?? [];
   const acceptance = acceptanceQuery.data?.acceptance ?? null;
+  // The single source of truth for "is there something left to do" — []
+  // both for a box with no contract documents of its own and for an
+  // athlete who already has a current acceptance for every one. A prior
+  // full acceptance (`acceptance` non-null) does NOT mean nothing is
+  // pending: a contract replacement that required re-acceptance clears
+  // this athlete's read-progress for just that one document, which is
+  // exactly what re-populates pendingSlugs without touching `acceptance`.
+  const pendingSlugs = acceptanceQuery.data?.pendingSlugs ?? [];
+  const hasPending = pendingSlugs.length > 0;
   const allRead = documents.length > 0 && documents.every((doc) => doc.read);
   const allChecked =
     documents.length > 0 && documents.every((doc) => checked[doc.slug]);
   const CL_PHONE_DIGITS = 9;
   const canAccept =
-    !acceptance &&
+    hasPending &&
     !missingBirthdate &&
     allRead &&
     allChecked &&
@@ -119,7 +128,7 @@ export default function ActiveContractsScreen() {
   // explicación — missingBirthdate queda fuera porque ya tiene su propio
   // aviso más arriba.
   const missingReasons: string[] = [];
-  if (!acceptance) {
+  if (hasPending) {
     for (const doc of documents) {
       if (!doc.read) {
         missingReasons.push(`Falta leer: ${doc.title}`);
@@ -295,7 +304,7 @@ export default function ActiveContractsScreen() {
                     style={styles.viewButton}
                   />
 
-                  {!acceptance ? (
+                  {hasPending ? (
                     (() => {
                       const isReady = doc.read || !!openedSlugs[doc.slug];
                       // Deliberately NOT `doc.read || ...` — "ya lo leíste
@@ -346,7 +355,7 @@ export default function ActiveContractsScreen() {
               ))}
             </View>
 
-            {acceptance ? (
+            {!hasPending && acceptance ? (
               <View style={[styles.acceptedBox, { backgroundColor: colors.secondary }]}>
                 <Feather name="check-circle" size={18} color={colors.secondaryForeground} />
                 <View style={{ flex: 1 }}>

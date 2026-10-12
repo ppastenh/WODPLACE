@@ -61,50 +61,95 @@ export type InsertWodplaceUser = Omit<typeof wodplaceUsersTable.$inferInsert, 'c
 export type WodplaceUserRow = typeof wodplaceUsersTable.$inferSelect;
 
 // One row per contract document (membership, health/responsibility, box
-// rules). `objectPath` points at the uploaded PDF in object storage; it is
-// null until an admin uploads a file for that slug.
-export const contractDocumentsTable = pgTable("contract_documents", {
-  slug: text("slug").primaryKey(),
-  // The Supabase project is multi-box: contract_documents (and the
-  // contract_acceptances / contract_read_progress rows) are all scoped to a
-  // box. `slug` stays the primary key for now because WODPLACE runs a single
-  // box; a real multi-box rollout would move that to (box_id, slug).
-  boxId: text("box_id").notNull(),
-  title: text("title").notNull(),
-  objectPath: text("object_path"),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  // Who this document is for — 'athlete' (the member-facing contracts shown
-  // in Contratos Activos) or 'platform' (the box-admin/super-admin platform
-  // agreement, gating the "Administrador" nav item instead). CHECK
-  // constraint enforces the two values at the DB level; see
-  // lib/contractDocuments.ts for the seeded rows of each audience.
-  audience: text("audience").notNull().default("athlete"),
-});
+// rules), per box. `objectPath` points at the current version's uploaded
+// PDF in object storage; it is null until the box's owner uploads a file
+// for that slug — a box with no uploads simply has no row for that slug.
+// PK is (boxId, slug) as of Fase B/B1a (supabase/migrations/
+// 20261012120000_contract_documents_scope_by_box.sql) — every write goes
+// through replace_contract_document()/delete_contract_document(); there is
+// no RLS write policy on this table, not even for the box's owner.
+export const contractDocumentsTable = pgTable(
+  "contract_documents",
+  {
+    boxId: text("box_id").notNull(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    objectPath: text("object_path"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // The platform agreement (box-admin/super-admin <-> WODPLACE) lives in
+    // its own table (platformAgreementDocumentTable) as of the same
+    // migration — this table is athlete-facing documents only now.
+    audience: text("audience").notNull().default("athlete"),
+    // Points at this document's current row in
+    // contractDocumentVersionsTable — null only for the (today
+    // nonexistent) case of a document row with no version history yet.
+    currentVersionId: text("current_version_id"),
+  },
+  (table) => [
+    index("contract_documents_box_id_idx").on(table.boxId),
+  ],
+);
 
 export type InsertContractDocument = typeof contractDocumentsTable.$inferInsert;
 export type ContractDocumentRow = typeof contractDocumentsTable.$inferSelect;
 
-// Per-user read progress for each contract document.
+// Every past and current version of a contract document's file — never
+// updated or deleted, only superseded (see supabase/migrations/
+// 20261012130000_contracts_owner_only_versioned.sql). The storage object
+// each row points at is immutable too (no update/delete RLS policy on
+// that path in the `contracts` bucket).
+export const contractDocumentVersionsTable = pgTable(
+  "contract_document_versions",
+  {
+    id: text("id").primaryKey(),
+    boxId: text("box_id").notNull(),
+    slug: text("slug").notNull(),
+    objectPath: text("object_path").notNull(),
+    fileName: text("file_name"),
+    mimeType: text("mime_type"),
+    title: text("title").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("contract_document_versions_box_slug_idx").on(
+      table.boxId,
+      table.slug,
+    ),
+  ],
+);
+
+export type ContractDocumentVersionRow =
+  typeof contractDocumentVersionsTable.$inferSelect;
+
+// Per-user read progress for each contract document, now tied to the exact
+// version that was marked read — a later replace_contract_document() call
+// (with requiresReacceptance=true) clears only that document's row here,
+// not the other two.
 export const contractReadProgressTable = pgTable(
   "contract_read_progress",
   {
     userId: text("user_id")
       .notNull()
       .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
-    documentSlug: text("document_slug")
-      .notNull()
-      .references(() => contractDocumentsTable.slug, { onDelete: "cascade" }),
+    documentSlug: text("document_slug").notNull(),
     readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
-    // NOT NULL in the real Supabase table (see contract_documents.boxId
-    // above for why) — resolved server-side via resolveBoxId(), never
-    // supplied by the client.
+    // NOT NULL in the real Supabase table — resolved server-side via
+    // resolveBoxIdForAthlete(userId), never supplied by the client.
     boxId: text("box_id").notNull(),
+    // Which version was current at the time this was marked read — null
+    // only for rows predating the Fase B/B1 migration's backfill gap (none
+    // in practice; the backfill fills every pre-existing row).
+    documentVersionId: text("document_version_id"),
   },
   (table) => [
-    uniqueIndex("contract_read_progress_user_doc_idx").on(
+    uniqueIndex("contract_read_progress_user_box_doc_idx").on(
       table.userId,
+      table.boxId,
       table.documentSlug,
     ),
   ],
@@ -112,6 +157,65 @@ export const contractReadProgressTable = pgTable(
 
 export type ContractReadProgressRow =
   typeof contractReadProgressTable.$inferSelect;
+
+// Archived acceptance snapshots — one row per document per time a member's
+// acceptance was invalidated by a contract replacement that required
+// re-acceptance (see replace_contract_document()). Never updated/deleted;
+// this is the legal record of exactly what a member accepted and when,
+// even after they've since re-accepted a newer version.
+export const contractAcceptanceHistoryTable = pgTable(
+  "contract_acceptance_history",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    boxId: text("box_id").notNull(),
+    documentSlug: text("document_slug").notNull(),
+    documentVersionId: text("document_version_id"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    emergencyContactName: text("emergency_contact_name"),
+    emergencyContactPhone: text("emergency_contact_phone"),
+    guardianName: text("guardian_name"),
+    guardianRelationship: text("guardian_relationship"),
+    minorDataConsentAt: timestamp("minor_data_consent_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    archivedReason: text("archived_reason").notNull(),
+  },
+  (table) => [
+    index("contract_acceptance_history_user_idx").on(table.userId),
+    index("contract_acceptance_history_box_idx").on(table.boxId),
+  ],
+);
+
+export type ContractAcceptanceHistoryRow =
+  typeof contractAcceptanceHistoryTable.$inferSelect;
+
+// The platform agreement (box-admin/super-admin <-> WODPLACE itself) is a
+// single global document, not scoped to any box — split out of
+// contract_documents in the same B1a migration that made that table's PK
+// (box_id, slug): the old global-PK bug let it work as a de-facto
+// singleton "by accident", but a real (box_id, slug) PK would have let
+// every box create its own competing "platform-agreement" row.
+export const platformAgreementDocumentTable = pgTable(
+  "platform_agreement_document",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    objectPath: text("object_path"),
+    fileName: text("file_name"),
+    mimeType: text("mime_type"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
+export type PlatformAgreementDocumentRow =
+  typeof platformAgreementDocumentTable.$inferSelect;
 
 // Final acceptance record per user — the legal record with a full timestamp
 // plus the emergency contact captured at acceptance time.

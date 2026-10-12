@@ -332,7 +332,8 @@ export const GetContractAcceptanceResponse = zod.object({
   "guardianRelationship": zod.string().nullish(),
   "minorDataConsentAt": zod.string().nullish().describe('Set only when the member accepted while under 18 — the timestamp\nof the separate consent to process the minor\'s personal data,\ndistinct from acceptedAt.\n'),
   "birthdayVisibilityConsent": zod.boolean().optional().describe('Whether this minor\'s first name + birthday (month\/day) may be\nshown in the box\'s \"Próximos cumpleaños\". Always false for\nadults (meaningless for them). Settable true only via the\nguardian\'s checkbox at initial contract acceptance, or by a\nbox admin — see PATCH \/contracts\/acceptance\/{userId}\/birthday-consent,\nwhich can only ever set it back to false.\n')
-}).nullish()
+}).nullish(),
+  "pendingSlugs": zod.array(zod.string()).describe('Slugs of this athlete\'s box\'s contract documents that have a\nversion newer than what this athlete last read\/accepted (or\nthat this athlete has never read at all). Empty when the box\nhas no documents of its own, or when everything is up to date.\n')
 })
 
 
@@ -474,43 +475,6 @@ export const CreateAdminSessionBody = zod.object({
 export const CreateAdminSessionResponse = zod.object({
   "ok": zod.boolean(),
   "token": zod.string().describe('Admin session token, sent as an Authorization bearer header.')
-})
-
-
-/**
- * @summary List contract documents for the admin panel
- */
-export const ListAdminContractsResponseItem = zod.object({
-  "slug": zod.string(),
-  "title": zod.string(),
-  "objectPath": zod.string().nullish(),
-  "read": zod.boolean(),
-  "readAt": zod.string().nullish()
-})
-export const ListAdminContractsResponse = zod.array(ListAdminContractsResponseItem)
-
-
-/**
- * @summary Attach a newly uploaded PDF to a contract document slug
- */
-export const UpdateAdminContractParams = zod.object({
-  "slug": zod.coerce.string()
-})
-
-
-
-
-export const UpdateAdminContractBody = zod.object({
-  "objectPath": zod.string().min(1),
-  "title": zod.string().optional()
-})
-
-export const UpdateAdminContractResponse = zod.object({
-  "slug": zod.string(),
-  "title": zod.string(),
-  "objectPath": zod.string().nullish(),
-  "read": zod.boolean(),
-  "readAt": zod.string().nullish()
 })
 
 

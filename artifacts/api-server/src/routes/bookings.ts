@@ -12,11 +12,15 @@ import {
   classBookingsTable,
   db,
   wodplaceNotificationsTable,
+  wodplaceUsersTable,
 } from "@workspace/db";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
+import { resolveAdminRoles } from "../lib/adminRole";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
+import { computePendingSlugs } from "./contracts";
+import { isContractAcceptanceEnforced } from "../lib/featureFlags";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
@@ -257,6 +261,35 @@ router.post("/bookings", async (req: Request, res: Response) => {
     if (!boxId) {
       res.status(403).json({ error: "Necesitás pertenecer a un box para agendar." });
       return;
+    }
+
+    // Fase B/B1: a pending contract (never read, or reset by a replacement
+    // that required re-acceptance) blocks NEW bookings only — existing
+    // ones stay valid, nothing here touches them. Staff (box_admin, coach,
+    // super_admin) are exempt even if this same identity also happens to
+    // have an athlete membership — same rule as AuthContext's account
+    // status. Kill switch: set ENFORCE_CONTRACT_ACCEPTANCE=false in Render
+    // to disable without a redeploy if this misfires.
+    // computePendingSlugs already resolves to [] for a box with no
+    // contract documents of its own.
+    if (isContractAcceptanceEnforced()) {
+      const [appUser] = await db
+        .select({ email: wodplaceUsersTable.email })
+        .from(wodplaceUsersTable)
+        .where(eq(wodplaceUsersTable.id, userId));
+      const roles = appUser ? await resolveAdminRoles(appUser.email) : [];
+      const isStaff = roles.some((role) =>
+        ["box_admin", "coach", "super_admin"].includes(role),
+      );
+
+      const pendingSlugs = isStaff ? [] : await computePendingSlugs(userId);
+      if (pendingSlugs.length > 0) {
+        res.status(409).json({
+          error: "Tienes contratos pendientes de aceptar antes de poder reservar.",
+          pendingSlugs,
+        });
+        return;
+      }
     }
 
     // Real capacity, read straight from the session this box actually

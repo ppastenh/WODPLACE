@@ -165,11 +165,14 @@ interface AuthContextValue {
   /**
    * Re-checks activation + admin status and updates both `user.status` and
    * `adminStatus` accordingly:
-   *  - Detected admins (box_admin/super_admin) are always 'active' — the
-   *    athlete membership contract is for people who train at the box, not
-   *    for whoever manages the platform, so it's never checked for them.
-   *  - Everyone else is 'active' iff a contract_acceptances row exists,
-   *    'inactive' otherwise.
+   *  - Detected staff (box_admin/coach/super_admin) are always 'active' —
+   *    the athlete membership contract is for people who train at the box,
+   *    not for whoever manages or coaches there, so it's never checked for
+   *    them (box_admin still reflects their own box's approval state).
+   *  - Everyone else is 'active' iff GET /contracts/acceptance reports no
+   *    pendingSlugs — already [] for an athlete with no box, or whose box
+   *    has no contract documents of its own, so neither needs its own
+   *    check here.
    * Called on boot, after login, right after Contratos Activos records an
    * acceptance, and after accepting the platform agreement, so both badges
    * flip without needing an app restart.
@@ -432,13 +435,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // just "admin = always active" regardless of whether the box was
       // ever approved.
       const roles = platform?.roles ?? [];
+      // pendingSlugs is the single source of truth for "does this account
+      // still need to read/accept something" — the server already resolves
+      // it to [] for a box with no contract documents of its own (nothing
+      // to accept) and for an athlete with no box at all, so neither case
+      // needs its own branch here.
       const nextStatus: AccountStatus = roles.includes('super_admin')
         ? 'active'
         : roles.includes('box_admin')
           ? (platform?.box?.status === 'activo' ? 'active' : 'inactive')
-          : (await getContractAcceptance({ userId: target.id })).acceptance
+          : roles.includes('coach')
             ? 'active'
-            : 'inactive';
+            : (await getContractAcceptance({ userId: target.id })).pendingSlugs.length === 0
+              ? 'active'
+              : 'inactive';
       if (nextStatus !== target.status) {
         await persist({ ...target, status: nextStatus });
       }

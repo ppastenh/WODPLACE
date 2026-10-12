@@ -9,4 +9,11 @@ import type { ContractAcceptance } from './contractAcceptance';
 
 export interface ContractAcceptanceResponse {
   acceptance?: ContractAcceptance | null;
+  /**
+     * Slugs of this athlete's box's contract documents that have a
+     * version newer than what this athlete last read/accepted (or
+     * that this athlete has never read at all). Empty when the box
+     * has no documents of its own, or when everything is up to date.
+     */
+  pendingSlugs: string[];
 }

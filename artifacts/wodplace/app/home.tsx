@@ -64,6 +64,7 @@ import { router, usePathname, useFocusEffect } from 'expo-router';
 import {
   getAchievements,
   getBoxAnnouncements,
+  getContractAcceptance,
   getMyPlans,
   getTodayWod,
   getUpcomingBirthdays,
@@ -313,6 +314,20 @@ export default function HomeScreen() {
     enabled: !!user?.id && !!hasBoxMembership,
   });
   useRefetchOnFocusIfStale(announcementsQuery);
+
+  // Pending-contracts aviso: GET /contracts/acceptance's pendingSlugs is the
+  // single source of truth (same one AuthContext.refreshActivationStatus
+  // uses for account status) — [] for staff, for an athlete with no box,
+  // and for a box with no contract documents of its own, so this banner
+  // only ever shows when there's something real to act on.
+  const contractAcceptanceQuery = useQuery({
+    queryKey: ['contract-acceptance', user?.id],
+    queryFn: () => getContractAcceptance({ userId: user!.id }),
+    enabled: !!user?.id && !!hasBoxMembership,
+  });
+  useRefetchOnFocusIfStale(contractAcceptanceQuery);
+  const pendingContractSlugs = contractAcceptanceQuery.data?.pendingSlugs ?? [];
+
   useEffect(() => {
     if (!hasBoxMembership || !announcementsQuery.data) {
       setPushQueue([]);
@@ -562,6 +577,31 @@ export default function HomeScreen() {
             <Feather name="chevron-right" size={20} color={colors.accentForeground} />
           </View>
         </LinearGradient>
+
+        {hasBoxMembership && pendingContractSlugs.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ir a Contratos Activos"
+            onPress={() => router.push('/active-contracts' as never)}
+            style={({ pressed }) => [
+              styles.pinnedAvisoCard,
+              { backgroundColor: colors.warningBackground },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.cardHeadingRow}>
+              <Text style={[styles.cardEyebrow, { color: colors.navInactive }]}>Aviso Importante</Text>
+              <Feather name="file-text" size={16} color={colors.warning} />
+            </View>
+            <Text style={[styles.pinnedAvisoTitle, { color: colors.foreground }]}>
+              Tienes un contrato pendiente de leer y aceptar
+            </Text>
+            <Text style={[styles.pinnedAvisoBodyBold, { color: colors.foreground }]}>
+              Toca aquí para revisarlo en Contratos Activos. Mientras esté pendiente, no podrás hacer
+              nuevas reservas.
+            </Text>
+          </Pressable>
+        ) : null}
 
         {hasBoxMembership && pinnedPush ? (
           <View style={[styles.pinnedAvisoCard, { backgroundColor: colors.warningBackground }]}>

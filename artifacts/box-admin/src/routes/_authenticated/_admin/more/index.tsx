@@ -28,7 +28,7 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; group: string 
   { to: "/more/reports", label: "Ayuda y soporte", icon: LifeBuoy, group: "Ayuda y soporte" },
   { to: "/more/settings", label: "Configuración", icon: Settings, group: "Configuración" },
   { to: "/more/plans", label: "Planes", icon: Layers, group: "Configuración" },
-  { to: "/more/files", label: "Archivos", icon: FolderOpen, group: "Configuración" },
+  { to: "/more/files", label: "Contratos", icon: FolderOpen, group: "Configuración" },
   { to: "/more/my-profile", label: "Mi perfil", icon: User, group: "Mi cuenta" },
 ];
 const GROUP_ORDER = ["Comunidad", "Equipo", "Ayuda y soporte", "Configuración", "Mi cuenta"];
@@ -36,7 +36,7 @@ const GROUP_ORDER = ["Comunidad", "Equipo", "Ayuda y soporte", "Configuración",
 function MorePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { isAdmin, myPermissions } = useBox();
+  const { isAdmin, isOwner, myPermissions } = useBox();
 
   async function signOut() {
     await qc.cancelQueries();
@@ -53,6 +53,9 @@ function MorePage() {
   const visibleItems = items.filter((it) => {
     if (it.to === "/more/notifications") return canPostAsBox;
     if (it.to === "/more/my-profile") return !isAdmin;
+    // Fase B/B1: contratos son solo del dueño del box (o super_admin) —
+    // ni un box_admin que no sea el dueño, ni un coach, los ven.
+    if (it.to === "/more/files") return isOwner;
     return true;
   });
 
