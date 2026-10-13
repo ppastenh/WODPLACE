@@ -14,7 +14,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { checkEmailExists, loginWithProvider, loginWithGoogle, getPostAuthRoute } = useAuth();
+  const { checkEmailExists, loginWithGoogle, getPostAuthRoute } = useAuth();
   const [step, setStep] = useState<'options' | 'email'>('options');
   const [email, setEmail] = useState('');
   const [touched, setTouched] = useState(false);
@@ -82,16 +82,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleApple = async () => {
-    setLoading('apple');
-    try {
-      await loginWithProvider('apple');
-      router.replace('/profile');
-    } finally {
-      setLoading(null);
-    }
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.authBackground }]}>
       <KeyboardAwareScrollViewCompat
@@ -137,15 +127,13 @@ export default function LoginScreen() {
                 onPress={handleGoogle}
                 icon={<Ionicons name="logo-google" size={18} color={colors.authText} />}
               />
-              <AppButton
-                label="Continúa con Apple"
-                variant="outlineLight"
-                fullWidth
-                loading={loading === 'apple'}
-                onPress={handleApple}
-                icon={<Ionicons name="logo-apple" size={19} color={colors.authText} />}
-                style={styles.appleButton}
-              />
+              {/* "Continúa con Apple" oculto: no hay login real con Apple
+                  todavía (necesita una cuenta de Apple Developer pagada) —
+                  el botón llamaba a un flujo completamente simulado que
+                  creaba una cuenta nueva sin ninguna sesión real. La app
+                  sale primero en Android, así que no bloquea el
+                  lanzamiento. Volver a mostrarlo recién cuando
+                  loginWithProvider('apple') sea una integración real. */}
 
               {error ? (
                 <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
@@ -282,8 +270,5 @@ const styles = StyleSheet.create({
   dividerText: {
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
-  },
-  appleButton: {
-    marginTop: 2,
   },
 });

@@ -653,6 +653,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithProvider = async (provider: 'apple') => {
+    // Fully simulated (needs a paid Apple Developer account to build the
+    // real integration) — creates a brand-new server-side account with no
+    // real Supabase session at all every time it runs. No UI calls this
+    // anymore (see login.tsx), but __DEV__ is the hard backstop so a
+    // production build can never reach it even if something else did.
+    if (!__DEV__) {
+      throw new Error('El inicio de sesión con Apple todavía no está disponible.');
+    }
     await new Promise((resolve) => setTimeout(resolve, 700));
     const next: WodplaceUser = {
       id: makeId(),
