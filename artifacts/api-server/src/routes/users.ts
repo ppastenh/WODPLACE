@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
-import { assertOwnsAccount, requireSupabaseUser, resolveSupabaseUser } from "../lib/supabaseAuth";
+import { assertOwnsAccount, requireSupabaseUser } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -47,49 +47,47 @@ router.get("/users/me", requireSupabaseUser, async (req: Request, res: Response)
 /**
  * POST /users
  *
- * Upserts the mobile app's locally-generated user id/name/email so later
- * contract read-progress and acceptance rows have a stable owner to attach
- * to. Unlike every other endpoint here, this one is ALSO how a brand-new
- * mock account (still simulated Google/Apple login, Fase 5) gets its very
- * first row — so it can't use assertOwnsAccount as-is, which 404s when the
- * row doesn't exist yet. Instead: a genuinely new id (no row yet) or an
- * existing not-yet-migrated mock row is trusted as before; an existing
- * MIGRATED row now requires a matching Supabase JWT, closing the hole where
- * this upsert could otherwise overwrite a real athlete's name/email just by
- * knowing their id.
+ * Upserts the mobile app's user id/name/email so later contract
+ * read-progress and acceptance rows have a stable owner to attach to.
+ *
+ * userId Fase 1 (auditoría de seguridad, 2026-10-13): esto YA NO crea
+ * cuentas sin sesión real. Requiere un JWT válido (`requireSupabaseUser`)
+ * y el `auth_user_id` siempre sale del JWT, nunca del body — un `id`
+ * nuevo nace ya bridgeado a esa cuenta real; un `id` existente solo se
+ * puede tocar si su `auth_user_id` coincide con la sesión actual (si
+ * pertenece a otra cuenta real, 403 — no se puede "robar" el id de otra
+ * persona ni crear un mock nuevo con un id ajeno).
  */
-router.post("/users", async (req: Request, res: Response) => {
+router.post("/users", requireSupabaseUser, async (req: Request, res: Response) => {
   const parsed = SyncUserBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+  const { id, name, email, birthdate } = parsed.data;
+  const supabaseUserId = req.supabaseUser!.id;
+
   const [existing] = await db
     .select({ authUserId: wodplaceUsersTable.authUserId })
     .from(wodplaceUsersTable)
-    .where(eq(wodplaceUsersTable.id, parsed.data.id));
-  if (existing?.authUserId) {
-    const supabaseUser = await resolveSupabaseUser(req);
-    if (!supabaseUser || supabaseUser.id !== existing.authUserId) {
-      res.status(supabaseUser ? 403 : 401).json({ error: supabaseUser ? "Forbidden" : "Missing or invalid Authorization token" });
-      return;
-    }
+    .where(eq(wodplaceUsersTable.id, id));
+  if (existing && existing.authUserId !== supabaseUserId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
   }
 
   try {
-    const { id, name, email, birthdate } = parsed.data;
-
     const [row] = await db
       .insert(wodplaceUsersTable)
-      .values({ id, name, email, birthdate })
+      .values({ id, name, email, birthdate, authUserId: supabaseUserId })
       .onConflictDoUpdate({
         target: wodplaceUsersTable.id,
         // Never overwrite an existing birthdate with null — a sync call
         // that doesn't carry it (e.g. an older cached client) shouldn't
         // erase one already on file.
         set: birthdate
-          ? { name, email, birthdate }
-          : { name, email },
+          ? { name, email, birthdate, authUserId: supabaseUserId }
+          : { name, email, authUserId: supabaseUserId },
       })
       .returning();
 

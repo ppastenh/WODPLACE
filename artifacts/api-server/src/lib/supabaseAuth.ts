@@ -54,19 +54,18 @@ export async function requireSupabaseUser(req: Request, res: Response, next: Nex
 }
 
 /**
- * Fase 4 of the migration: the enforcement guard every wodplace endpoint
- * that acts on a specific `userId` calls right after validating its own
- * request shape. Dual-mode by design, keyed off whether THIS TARGET
- * ACCOUNT has been migrated yet (wodplace_users.auth_user_id), not off
- * whether the request happens to carry a token:
+ * Fase 4 of the migration, now fully fail-closed (userId Fase 1 de la
+ * auditoría de seguridad, 2026-10-13): the enforcement guard every
+ * wodplace endpoint that acts on a specific `userId` calls right after
+ * validating its own request shape.
  *
- *   - Not migrated yet (auth_user_id is null): today's trust model,
- *     unchanged — the client-supplied userId is trusted as-is. Every
- *     still-mock account (and any that somehow isn't migrated later)
- *     keeps working exactly as before.
- *   - Migrated (auth_user_id set): a valid Supabase JWT is now REQUIRED,
- *     and it must belong to THIS SAME account — closes the hole where
- *     anyone who knows another athlete's id could read/write their data.
+ * A valid Supabase JWT is ALWAYS required, and it must belong to THIS
+ * SAME account (wodplace_users.auth_user_id) — there is no more "not
+ * migrated yet, trust the client-supplied userId" branch. POST /users
+ * (the only place a row is ever created) always sets auth_user_id from
+ * the caller's own JWT now, so every row that exists has one; a row
+ * with no auth_user_id at this point is pre-existing leftover data, not
+ * a route this function should ever trust.
  *
  * Call this manually (not as router middleware) because the userId's
  * source varies per route (query/body/params) and is already extracted
@@ -87,16 +86,13 @@ export async function assertOwnsAccount(
     res.status(404).json({ error: "User not found" });
     return false;
   }
-  if (row.authUserId === null) {
-    return true;
-  }
 
   const supabaseUser = await resolveSupabaseUser(req);
   if (!supabaseUser) {
     res.status(401).json({ error: "Missing or invalid Authorization token" });
     return false;
   }
-  if (supabaseUser.id !== row.authUserId) {
+  if (!row.authUserId || supabaseUser.id !== row.authUserId) {
     res.status(403).json({ error: "Forbidden" });
     return false;
   }
