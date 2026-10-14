@@ -1,0 +1,91 @@
+# .easignore — qué NO sube `eas build` al empaquetar el proyecto para la
+# nube. A diferencia de .gitignore, EAS CLI no combina ambos: si este
+# archivo existe, deja de leer CUALQUIER .gitignore (incluidos los de cada
+# app dentro de artifacts/*). Por eso reúne aquí TODAS las reglas de los 4
+# .gitignore del repo (raíz, api-server, box-admin, super-admin, wodplace),
+# además de .claude/ y .agents/skills/ (la causa del error de símbolos al
+# empaquetar en Windows — ver ESTADO.md). No excluye ninguna carpeta de
+# código ni de paquetes del monorepo: solo build output, cachés, logs,
+# variables de entorno/secretos y credenciales nativas.
+
+# --- raíz (.gitignore) ---
+dist
+tmp
+out-tsc
+*.tsbuildinfo
+.expo
+.expo-shared
+node_modules
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+.DS_Store
+Thumbs.db
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+.cache/
+.local/
+supabase/.temp/
+.env
+
+# --- artifacts/api-server/.gitignore ---
+.env.*.local
+
+# --- artifacts/box-admin/.gitignore y artifacts/super-admin/.gitignore (idénticos) ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+.env.*
+!.env.example
+*.local
+.wrangler/
+.dev.vars
+
+# --- artifacts/wodplace/.gitignore ---
+.expo/
+web-build/
+expo-env.d.ts
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+*.pem
+.env*.local
+.vercel
+
+# --- Claude Code: enlaces simbólicos propios, nada del proyecto ---
+.claude/
+.agents/skills/
