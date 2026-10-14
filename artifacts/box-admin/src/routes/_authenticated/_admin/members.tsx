@@ -403,7 +403,7 @@ function MemberActionsSheet({
   onOpenChange: (v: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin } = useBox();
 
   const setStatus = useMutation({
     mutationFn: async (status: MemberStatus) => {
@@ -499,7 +499,13 @@ function MemberActionsSheet({
 
           <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Cuenta</p>
           <ActionItem icon={KeyRound} title="Restablecer contraseña" subtitle="Enviar nueva contraseña al miembro" onClick={resetPassword} />
-          <ActionItem icon={Receipt} title="Ver pagos y facturas" subtitle="Historial de pagos y facturación" to="/member-detail/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
+          {/* S3.A de la auditoría de seguridad (2026-10-14): "facturas" no es
+              una función real -- este botón solo abre la misma ficha del
+              miembro (pestaña "Pagos", ya oculta para coach). Se oculta el
+              ítem en sí para no anunciar algo que un coach no puede ver. */}
+          {isAdmin && (
+            <ActionItem icon={Receipt} title="Ver pagos y facturas" subtitle="Historial de pagos y facturación" to="/member-detail/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
+          )}
           <ActionItem
             icon={Trash2}
             title="Eliminar miembro"
