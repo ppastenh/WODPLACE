@@ -9,7 +9,7 @@
  * migration is a hand-kept mirror of `defaultPermissions()` below — keep
  * the two in sync when this list changes.
  */
-export type PermissionGroup = "clases" | "miembros" | "comunidad" | "medallas" | "finanzas" | "archivos";
+export type PermissionGroup = "clases" | "miembros" | "comunidad" | "medallas" | "archivos";
 
 export interface PermissionDef {
   key: string;
@@ -58,8 +58,6 @@ export const COACH_PERMISSIONS: PermissionDef[] = [
   { key: "classes_create", label: "Crear clases", hint: "Puede programar nuevas clases y WODs", group: "clases", default: false },
   { key: "classes_edit", label: "Editar clases", hint: "Modificar o cancelar clases existentes", group: "clases", default: false },
   { key: "members_edit", label: "Editar miembros", hint: "Modificar datos y estado de los atletas", group: "miembros", default: false },
-  { key: "finances_view", label: "Ver finanzas", hint: "Acceso a ingresos y pagos", group: "finanzas", default: false },
-  { key: "payments_register", label: "Registrar pagos", hint: "Puede cobrar y registrar pagos", group: "finanzas", default: false },
   { key: "files_manage", label: "Gestionar archivos", hint: "Subir o reemplazar contratos y documentos", group: "archivos", default: false },
 ];
 

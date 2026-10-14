@@ -37,7 +37,7 @@ type PaymentRow = {
 };
 
 function FinancesPage() {
-  const { boxId } = useBox();
+  const { boxId, isAdmin } = useBox();
   const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -52,6 +52,12 @@ function FinancesPage() {
       const total = (income.data ?? []).reduce((s, r) => s + Number(r.amount ?? 0), 0);
       return { total, pending: pending.count ?? 0, upcoming: upcoming.count ?? 0 };
     },
+    // S3.A de la auditoría de seguridad (2026-10-14): finanzas son solo de
+    // administrador/dueño/super admin. BottomNav ya oculta el ítem del
+    // menú; esto es la segunda puerta si alguien entra por la URL directa
+    // (RLS ya lo bloquearía de todas formas, pero esto evita pedir datos
+    // que van a volver vacíos/filtrados y mostrar un estado raro).
+    enabled: isAdmin,
   });
 
   const recent = useQuery({
@@ -62,7 +68,18 @@ function FinancesPage() {
       .eq("box_id", boxId)
       .order("created_at", { ascending: false })
       .limit(20)).data ?? []) as unknown as PaymentRow[],
+    enabled: isAdmin,
   });
+
+  if (!isAdmin) {
+    return (
+      <AdminShell title="Finanzas">
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          Esta pantalla es solo para administradores.
+        </p>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell title="Finanzas">

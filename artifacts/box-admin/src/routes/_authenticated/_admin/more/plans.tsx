@@ -54,7 +54,7 @@ const empty = {
 
 function PlansPage() {
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin } = useBox();
   const [editing, setEditing] = useState<Plan | null>(null);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -63,6 +63,12 @@ function PlansPage() {
     queryKey: ["plans", boxId],
     queryFn: async () =>
       ((await supabase.from("plans").select("*").eq("box_id", boxId).order("price")).data ?? []) as unknown as Plan[],
+    // S3.A de la auditoría de seguridad (2026-10-14): precios son
+    // financieros, solo administrador/dueño/super admin -- este `select("*")`
+    // incluye `price`, así que ni siquiera se pide si no es admin (más/index.tsx
+    // ya oculta el ítem del menú; esto es la segunda puerta si alguien entra
+    // por la URL directa).
+    enabled: isAdmin,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["plans"] });
@@ -107,6 +113,16 @@ function PlansPage() {
     onSuccess: () => invalidate(),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
   });
+
+  if (!isAdmin) {
+    return (
+      <AdminShell title="Planes" showBack>
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          Esta pantalla es solo para administradores.
+        </p>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell

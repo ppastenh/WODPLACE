@@ -182,6 +182,9 @@ function MemberDetail() {
   const payments = useQuery({
     queryKey: ["member-payments", boxId, id],
     queryFn: async () => (await supabase.from("payments").select("*").eq("box_id", boxId).eq("user_id", id).order("paid_at", { ascending: false }).limit(20)).data ?? [],
+    // S3.A de la auditoría de seguridad (2026-10-14): historial de pagos es
+    // financiero, solo administrador/dueño/super admin.
+    enabled: isAdmin,
   });
 
   const prs = useQuery({
@@ -425,31 +428,39 @@ function MemberDetail() {
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className={`mt-3 grid gap-2 ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
         <Button variant="outline" onClick={() => setEditOpen(true)} className="rounded-2xl h-11 flex-col gap-1"><Edit2 className="h-4 w-4" /><span className="text-[10px]">Editar</span></Button>
-        <Button
-          variant="outline"
-          disabled={!m.plan_id || !m.plans || renew.isPending}
-          onClick={() => {
-            if (!m.plans) return;
-            const confirmed = confirm(
-              `¿Registrar pago de $${Number(m.plans.price ?? 0).toLocaleString()} y renovar el plan ${
-                m.plans.duration_days ? `por ${m.plans.duration_days} días` : ""
-              }?`,
-            );
-            if (confirmed) renew.mutate();
-          }}
-          className="rounded-2xl h-11 flex-col gap-1"
-        >
-          <RefreshCw className="h-4 w-4" /><span className="text-[10px]">Renovar</span>
-        </Button>
+        {/* S3.A de la auditoría de seguridad (2026-10-14): registrar pagos
+            (y el precio que muestra esta confirmación) es solo de
+            administrador/dueño/super admin. */}
+        {isAdmin && (
+          <Button
+            variant="outline"
+            disabled={!m.plan_id || !m.plans || renew.isPending}
+            onClick={() => {
+              if (!m.plans) return;
+              const confirmed = confirm(
+                `¿Registrar pago de $${Number(m.plans.price ?? 0).toLocaleString()} y renovar el plan ${
+                  m.plans.duration_days ? `por ${m.plans.duration_days} días` : ""
+                }?`,
+              );
+              if (confirmed) renew.mutate();
+            }}
+            className="rounded-2xl h-11 flex-col gap-1"
+          >
+            <RefreshCw className="h-4 w-4" /><span className="text-[10px]">Renovar</span>
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="info" className="mt-5">
-        <TabsList className="grid w-full grid-cols-5 rounded-full bg-secondary">
+        {/* S3.A de la auditoría de seguridad (2026-10-14): el historial de
+            pagos (pestaña "Pagos") es solo de administrador/dueño/super
+            admin. */}
+        <TabsList className={`grid w-full rounded-full bg-secondary ${isAdmin ? "grid-cols-5" : "grid-cols-4"}`}>
           <TabsTrigger value="info" className="rounded-full text-xs">Info</TabsTrigger>
           <TabsTrigger value="classes" className="rounded-full text-xs">Clases</TabsTrigger>
-          <TabsTrigger value="pay" className="rounded-full text-xs">Pagos</TabsTrigger>
+          {isAdmin && <TabsTrigger value="pay" className="rounded-full text-xs">Pagos</TabsTrigger>}
           <TabsTrigger value="prs" className="rounded-full text-xs">PRs</TabsTrigger>
           <TabsTrigger value="movimiento" className="rounded-full text-xs">Medallas</TabsTrigger>
         </TabsList>
@@ -547,18 +558,20 @@ function MemberDetail() {
           ))}
         </TabsContent>
 
-        <TabsContent value="pay" className="mt-4 space-y-2">
-          {payments.data?.length === 0 && <Empty text="Sin pagos registrados" />}
-          {payments.data?.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-2xl border bg-card p-3">
-              <div>
-                <p className="text-sm font-semibold">${Number(p.amount).toLocaleString()}</p>
-                <p className="text-[11px] text-muted-foreground">{p.paid_at ? format(new Date(p.paid_at), "dd MMM yyyy") : "Pendiente"} · {p.method || "—"}</p>
+        {isAdmin && (
+          <TabsContent value="pay" className="mt-4 space-y-2">
+            {payments.data?.length === 0 && <Empty text="Sin pagos registrados" />}
+            {payments.data?.map((p) => (
+              <div key={p.id} className="flex items-center justify-between rounded-2xl border bg-card p-3">
+                <div>
+                  <p className="text-sm font-semibold">${Number(p.amount).toLocaleString()}</p>
+                  <p className="text-[11px] text-muted-foreground">{p.paid_at ? format(new Date(p.paid_at), "dd MMM yyyy") : "Pendiente"} · {p.method || "—"}</p>
+                </div>
+                <StatusChip status={p.status} />
               </div>
-              <StatusChip status={p.status} />
-            </div>
-          ))}
-        </TabsContent>
+            ))}
+          </TabsContent>
+        )}
 
         <TabsContent value="prs" className="mt-4 space-y-2">
           {prs.data?.length === 0 && <Empty text="Sin PRs registrados" />}

@@ -56,6 +56,9 @@ function MorePage() {
     // Fase B/B1: contratos son solo del dueño del box (o super_admin) —
     // ni un box_admin que no sea el dueño, ni un coach, los ven.
     if (it.to === "/more/files") return isOwner;
+    // S3.A de la auditoría de seguridad (2026-10-14): Planes edita precios —
+    // es financiero, solo administrador/dueño/super admin.
+    if (it.to === "/more/plans") return isAdmin;
     return true;
   });
 

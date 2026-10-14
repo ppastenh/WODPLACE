@@ -24,8 +24,6 @@ const COACH_PERMISSION_LABELS: Array<{ key: string; label: string }> = [
   { key: "classes_create", label: "Crear clases" },
   { key: "classes_edit", label: "Editar clases" },
   { key: "members_edit", label: "Editar miembros" },
-  { key: "finances_view", label: "Ver finanzas" },
-  { key: "payments_register", label: "Registrar pagos" },
   { key: "files_manage", label: "Gestionar archivos" },
 ];
 
