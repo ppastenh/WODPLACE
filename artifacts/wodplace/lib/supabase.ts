@@ -2,6 +2,14 @@ import 'react-native-url-polyfill/auto';
 import './webcrypto-polyfill';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { devSelfCheckRoundTrip } from './secureSessionCrypto';
+
+// S2 tanda 2, paso previo al build: prueba de ida y vuelta de aes-js +
+// expo-crypto corriendo en el motor real de la app (Metro/Hermes), sin
+// tocar la sesión real todavía ni pedir ningún build nuevo de EAS. Ver el
+// resultado en la consola de Metro al abrir la app. Temporal — se retira en
+// cuanto el adaptador real de almacenamiento esté andando.
+devSelfCheckRoundTrip();
 
 /**
  * Fase 1 of the mock-auth -> real Supabase Auth migration (see the plan in

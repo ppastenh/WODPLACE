@@ -53,13 +53,13 @@ export default function LoginScreen() {
     setLoading('google');
     try {
       const result = await loginWithGoogle();
-      console.log('[login.tsx] loginWithGoogle result ->', result.status);
+      if (__DEV__) console.log('[login.tsx] loginWithGoogle result ->', result.status);
       if (result.status === 'cancelled') {
         setLoading(null);
         return;
       }
       if (result.status === 'needs-profile') {
-        console.log('[login.tsx] navigating -> /register-google');
+        if (__DEV__) console.log('[login.tsx] navigating -> /register-google');
         router.push({
           pathname: '/register-google',
           params: { name: result.prefillName, email: result.email },
@@ -72,7 +72,7 @@ export default function LoginScreen() {
         return;
       }
       const dest = getPostAuthRoute('/home');
-      console.log('[login.tsx] navigating ->', dest);
+      if (__DEV__) console.log('[login.tsx] navigating ->', dest);
       router.replace(dest as never);
       // Same reasoning as the needs-profile branch above -- no setLoading
       // after navigating away.

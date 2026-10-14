@@ -219,17 +219,17 @@ interface AuthContextValue {
   verifyPassword: (password: string) => Promise<boolean>;
 }
 
-type StoredUser = WodplaceUser & { password: string };
-
 const STORAGE_KEY = 'wodplace_user';
-const USERS_KEY = 'wodplace_users';
-// Emails this device has ever seen the server confirm as 'real' via
-// getAuthMode() — not a cache of the answer (still asked fresh every time),
-// just a safety net for when that ask fails outright. See the hardening
-// note on login()'s network-failure fallback for why this exists: once an
-// email is known-real, a network failure must never silently fall back to
-// trusting a local mock password for it again.
-const KNOWN_REAL_EMAILS_KEY = 'wodplace_known_real_emails';
+// Auditoría de seguridad (2026-10-13), S2: ya no existe ningún almacén local
+// de cuentas simuladas con contraseña en texto plano. Confirmado con
+// evidencia antes de quitarlo: tras userId Fase 1, el servidor
+// (GET /auth/mode) solo puede responder 'real' o 'none' — nunca 'mock' —
+// porque ninguna fila de wodplace_users puede existir sin auth_user_id, y
+// una cuenta sin sesión real de Supabase recibe 401 en cualquier llamada
+// protegida. La vieja clave de AsyncStorage que guardaba esas contraseñas
+// ('wodplace_users') se borra una sola vez en el primer arranque, ver más
+// abajo.
+const LEGACY_MOCK_USERS_KEY = 'wodplace_users';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -268,6 +268,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // same as a plain athlete account.
     return roles.includes('super_admin') ? '/choose-view' : fallback;
   };
+
+  // Auditoría de seguridad (2026-10-13), S2: borra de una vez la vieja clave
+  // de cuentas simuladas con contraseña en texto plano, si quedó algo de
+  // antes de esta limpieza. No bloquea nada si falla (ya no se lee en
+  // ningún otro lado) — es solo higiene, no un paso crítico del arranque.
+  useEffect(() => {
+    AsyncStorage.removeItem(LEGACY_MOCK_USERS_KEY).catch(() => {});
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -313,53 +321,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Mock account (or a profile persisted before this field existed —
         // authMode is undefined at runtime for those, which fails the
-        // check above and correctly lands here). But the server may have
-        // migrated this exact email to real auth since it was last cached
-        // on this device (Fase 3 migrated every mock account that existed
-        // at the time) — the local mock flow can never establish a
-        // Supabase session, so continuing would silently 401 on every
-        // protected call forever (Fase 4 enforcement). Check first; if the
-        // server says real, clean up instead of running half-authenticated.
-        const restoredKey = restored.email.trim().toLowerCase();
-        try {
-          const mode = await getAuthMode(restoredKey);
-          if (mode === 'real') {
-            await markEmailKnownReal(restoredKey);
-            const db = await getUsersDb();
-            delete db[restoredKey];
-            await saveUsersDb(db);
-            await AsyncStorage.removeItem(STORAGE_KEY);
-            return;
-          }
-        } catch (err) {
-          console.warn('Failed to check auth mode on boot, continuing with cached mock account', err);
+        // check above and correctly lands here). Auditoría de seguridad
+        // (2026-10-13), S2: ya no se intenta continuar con esta sesión. Una
+        // cuenta sin auth_user_id real no puede hacer nada en el servidor
+        // desde userId Fase 1 (401 en cualquier llamada protegida), así que
+        // seguir mostrando al usuario como "conectado" sería mentirle —
+        // simplemente se descarta el perfil cacheado y cae al login normal.
+        if (__DEV__) {
+          console.log('[boot] discarding stale local-only profile (authMode !== real)');
         }
-
-        setUser(restored);
-        // Accounts created before the backend existed (or that failed to
-        // sync last time) never get another chance to sync, since this
-        // boot path used to skip it — only login/register/updateProfile
-        // called persist(). Re-sync on every app open (idempotent upsert)
-        // so contract read/acceptance calls (FK on userId) don't 400.
-        syncUser({
-          id: restored.id,
-          name: restored.name,
-          email: restored.email,
-          birthdate: restored.birthdate,
-        }).catch((err) => {
-          console.warn('Failed to sync restored user to backend', err);
-        });
-        // phrase used to be AsyncStorage-only (no public profile to show
-        // it on); keep the backend copy current too. rank is NOT pushed
-        // here — it's coach-assigned from box-admin, pulled (not pushed)
-        // by refreshActivationStatus below.
-        updateProfileFields(restored.id, { phrase: restored.phrase }).catch((err) => {
-          console.warn('Failed to sync phrase to backend', err);
-        });
-        // Awaited (unlike the two syncs above): the app's very first
-        // navigation decision (see app/index.tsx) depends on adminStatus
-        // having resolved first.
-        await refreshActivationStatus(restored);
+        await AsyncStorage.removeItem(STORAGE_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -457,125 +428,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const getUsersDb = async (): Promise<Record<string, StoredUser>> => {
-    const raw = await AsyncStorage.getItem(USERS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, StoredUser>) : {};
-  };
-
-  const saveUsersDb = async (db: Record<string, StoredUser>) => {
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(db));
-  };
-
-  const markEmailKnownReal = async (key: string) => {
-    const raw = await AsyncStorage.getItem(KNOWN_REAL_EMAILS_KEY);
-    const known = new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
-    if (known.has(key)) return;
-    known.add(key);
-    await AsyncStorage.setItem(KNOWN_REAL_EMAILS_KEY, JSON.stringify([...known]));
-  };
-
-  const isEmailKnownReal = async (key: string): Promise<boolean> => {
-    const raw = await AsyncStorage.getItem(KNOWN_REAL_EMAILS_KEY);
-    if (!raw) return false;
-    return (JSON.parse(raw) as string[]).includes(key);
-  };
-
-  // Server-first (Fase 2): sees real accounts AND mock accounts registered
-  // on a different device — the local-only check never could, which is the
-  // whole reason account-recovery exists. Falls back to the local mock db
-  // only if the network check itself fails, not merely when it says "none"
-  // (the server is authoritative there — a local-only fallback in that case
-  // would just be dead code, since a mock register() always syncs its row).
+  // Auditoría de seguridad (2026-10-13), S2: ya no hay almacén local de
+  // contraseñas que consultar — el servidor (GET /auth/mode) es la única
+  // fuente, siempre. Si la consulta falla (red caída), se lo decimos al
+  // usuario en vez de adivinar con datos locales.
   const checkEmailExists = async (email: string): Promise<boolean> => {
     const key = email.trim().toLowerCase();
     try {
       const mode = await getAuthMode(key);
-      if (mode === 'real') await markEmailKnownReal(key);
       return mode !== 'none';
     } catch (err) {
-      console.warn('Failed to check auth mode, falling back to local check', err);
-      const db = await getUsersDb();
-      return !!db[key];
+      throw new Error(
+        extractApiErrorMessage(err, 'No pudimos verificar tu cuenta, revisa tu conexión e intenta de nuevo.'),
+      );
     }
   };
 
   const login = async (email: string, password: string) => {
     const key = email.trim().toLowerCase();
 
-    // Server-first, not local-first (fixed after Fase 3/4 exposed the bug
-    // in the old local-first order): every mock account that existed got
-    // migrated to real auth in Fase 3, so a local mock record surviving on
-    // some device is now NECESSARILY stale for an email the server
-    // considers real — trusting it would skip Supabase entirely (no
-    // session, no JWT) and silently 401 on every protected call from then
-    // on (Fase 4 enforcement). Only an unreachable server falls back to
-    // the local check below, same offline resilience as before.
-    let mode: 'real' | 'mock' | 'none' | null = null;
+    let mode: 'real' | 'mock' | 'none';
     try {
       mode = await getAuthMode(key);
       if (__DEV__) console.log('[login] getAuthMode ->', mode);
     } catch (err) {
-      if (__DEV__) console.warn('[login] getAuthMode failed, falling back to local mock check ->', err);
-      // Hardening: a network failure must never silently fall back to a
-      // local mock password for an email this device has ALREADY seen the
-      // server confirm as real — that's precisely the combination that let
-      // a stale mock password through undetected. Only genuinely unknown
-      // emails get the offline fallback below.
-      if (await isEmailKnownReal(key)) {
-        throw new Error('No pudimos verificar tu cuenta, revisa tu conexión e intenta de nuevo.');
-      }
-    }
-
-    if (mode === 'real') {
-      await markEmailKnownReal(key);
-      // Clear the stale local record so it can never intercept a future
-      // login for this email again.
-      const db = await getUsersDb();
-      const hadStaleMockRecord = !!db[key];
-      if (hadStaleMockRecord) {
-        delete db[key];
-        await saveUsersDb(db);
-      }
-      if (__DEV__) {
-        console.log('[login] mode=real -> signing in with Supabase. Had stale mock record:', hadStaleMockRecord);
-      }
-      const { error } = await supabase.auth.signInWithPassword({ email: key, password });
-      if (error) {
-        throw new Error('Contraseña incorrecta.');
-      }
-      const me = await getMe();
-      const profile = toWodplaceUser(me, 'inactive');
-      await persist(profile);
-      await refreshActivationStatus(profile);
-      return;
+      throw new Error(
+        extractApiErrorMessage(err, 'No pudimos verificar tu cuenta, revisa tu conexión e intenta de nuevo.'),
+      );
     }
 
     if (mode === 'none') {
-      // The server is authoritative here: a mock register() always synced
-      // its row, so "no account" from the server means there really isn't
-      // one — no point falling back to a local check that could only ever
-      // be stale in this case.
       throw new Error('No encontramos una cuenta con ese email.');
     }
 
-    // mode is 'mock', or the auth-mode check itself failed (mode still
-    // null) — the local mock flow, unchanged, no network required.
-    if (__DEV__) console.log('[login] mode=', mode, '-> trying local mock db');
-    const db = await getUsersDb();
-    const existing = db[key];
-    if (!existing) {
-      throw new Error('No encontramos una cuenta con ese email.');
+    if (mode === 'mock') {
+      // El servidor ya no puede devolver esto en producción (ninguna fila
+      // de wodplace_users existe sin auth_user_id desde userId Fase 1) —
+      // defensa en profundidad, no un camino que se espere alcanzar nunca.
+      throw new Error('No pudimos verificar tu cuenta, revisa tu conexión e intenta de nuevo.');
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    if (existing.password !== password) {
+
+    if (__DEV__) console.log('[login] mode=real -> signing in with Supabase');
+    const { error } = await supabase.auth.signInWithPassword({ email: key, password });
+    if (error) {
       throw new Error('Contraseña incorrecta.');
     }
-    const { password: _pw, ...profile } = existing;
-    const next: WodplaceUser = { ...profile, authMode: 'mock' };
-    await persist(next);
-    // Awaited so getPostAuthRoute() is correct the instant login()
-    // resolves (the caller navigates right after awaiting this).
-    await refreshActivationStatus(next);
+    const me = await getMe();
+    const profile = toWodplaceUser(me, 'inactive');
+    await persist(profile);
+    await refreshActivationStatus(profile);
   };
 
   const register = async (
@@ -649,9 +550,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       return !error;
     }
-    const db = await getUsersDb();
-    const entry = db[user.email.trim().toLowerCase()];
-    return !!entry && entry.password === password;
+    // Solo queda el perfil simulado de Apple (__DEV__, ver loginWithProvider)
+    // — no tiene contraseña real que verificar, así que nunca pasa esta
+    // puerta (coherente con que tampoco puede hacer nada en el servidor).
+    return false;
   };
 
   const loginWithProvider = async (provider: 'apple') => {
