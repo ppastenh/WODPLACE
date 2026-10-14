@@ -513,9 +513,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mode: 'real' | 'mock' | 'none' | null = null;
     try {
       mode = await getAuthMode(key);
-      console.log('[login] getAuthMode ->', mode);
+      if (__DEV__) console.log('[login] getAuthMode ->', mode);
     } catch (err) {
-      console.warn('[login] getAuthMode failed, falling back to local mock check ->', err);
+      if (__DEV__) console.warn('[login] getAuthMode failed, falling back to local mock check ->', err);
       // Hardening: a network failure must never silently fall back to a
       // local mock password for an email this device has ALREADY seen the
       // server confirm as real — that's precisely the combination that let
@@ -536,7 +536,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         delete db[key];
         await saveUsersDb(db);
       }
-      console.log('[login] mode=real -> signing in with Supabase. Had stale mock record:', hadStaleMockRecord);
+      if (__DEV__) {
+        console.log('[login] mode=real -> signing in with Supabase. Had stale mock record:', hadStaleMockRecord);
+      }
       const { error } = await supabase.auth.signInWithPassword({ email: key, password });
       if (error) {
         throw new Error('Contraseña incorrecta.');
@@ -558,7 +560,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // mode is 'mock', or the auth-mode check itself failed (mode still
     // null) — the local mock flow, unchanged, no network required.
-    console.log('[login] mode=', mode, '-> trying local mock db');
+    if (__DEV__) console.log('[login] mode=', mode, '-> trying local mock db');
     const db = await getUsersDb();
     const existing = db[key];
     if (!existing) {
@@ -689,8 +691,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // OS/device does in between, so a future failure on some other
       // device needs more than a one-line message to diagnose, same as the
       // "undefined is not a function" this helped pin down.
-      console.error('[loginWithGoogle] FULL ERROR:', err);
-      console.error('[loginWithGoogle] STACK:', (err as Error)?.stack);
+      if (__DEV__) {
+        console.error('[loginWithGoogle] FULL ERROR:', err);
+        console.error('[loginWithGoogle] STACK:', (err as Error)?.stack);
+      }
       throw err;
     }
   };
@@ -708,10 +712,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // must match one of the entries configured in Supabase's
     // Authentication -> URL Configuration -> Redirect URLs.
     const redirectTo = AuthSession.makeRedirectUri({ scheme: 'wodplace', path: 'auth-callback' });
-    // Left in on purpose (not just for local debugging): if Google/Supabase
-    // ever rejects the redirect as unrecognized, this is the exact literal
-    // string to add to Supabase's Redirect URLs allow-list.
-    console.log('[loginWithGoogle] redirectTo:', redirectTo);
+    // Dev-only: if Google/Supabase ever rejects the redirect as
+    // unrecognized, this is the exact literal string to add to Supabase's
+    // Redirect URLs allow-list.
+    if (__DEV__) console.log('[loginWithGoogle] redirectTo:', redirectTo);
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -725,7 +729,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         queryParams: { prompt: 'select_account' },
       },
     });
-    console.log('[loginWithGoogle] signInWithOAuth ->', { url: data?.url, error: error?.message });
+    if (__DEV__) {
+      console.log('[loginWithGoogle] signInWithOAuth ->', { url: data?.url, error: error?.message });
+    }
     if (error || !data.url) {
       throw new Error('No se pudo iniciar sesión con Google.');
     }
@@ -750,14 +756,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           [...browsers.browserPackages, ...browsers.servicePackages].find((pkg) => pkg === CHROME) ??
           browsers.preferredBrowserPackage ??
           browsers.browserPackages[0];
-        console.log('[loginWithGoogle] custom tabs browsers ->', browsers, '| using:', browserPackage);
+        if (__DEV__) {
+          console.log('[loginWithGoogle] custom tabs browsers ->', browsers, '| using:', browserPackage);
+        }
       } catch (err) {
-        console.warn('[loginWithGoogle] getCustomTabsSupportingBrowsersAsync failed', err);
+        if (__DEV__) console.warn('[loginWithGoogle] getCustomTabsSupportingBrowsersAsync failed', err);
       }
     }
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { browserPackage });
-    console.log('[loginWithGoogle] openAuthSessionAsync ->', result.type, 'url' in result ? result.url : undefined);
+    if (__DEV__) {
+      console.log(
+        '[loginWithGoogle] openAuthSessionAsync ->',
+        result.type,
+        'url' in result ? result.url : undefined,
+      );
+    }
     if (result.type !== 'success') {
       return { status: 'cancelled' };
     }
@@ -775,7 +789,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('No se pudo completar el inicio de sesión con Google.');
     }
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-    console.log('[loginWithGoogle] exchangeCodeForSession ->', exchangeError ? exchangeError.message : 'ok');
+    if (__DEV__) {
+      console.log('[loginWithGoogle] exchangeCodeForSession ->', exchangeError ? exchangeError.message : 'ok');
+    }
     if (exchangeError) {
       throw new Error('No se pudo completar el inicio de sesión con Google.');
     }
@@ -783,11 +799,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { user: supabaseUser },
     } = await supabase.auth.getUser();
-    console.log('[loginWithGoogle] session email ->', supabaseUser?.email);
+    if (__DEV__) console.log('[loginWithGoogle] session email ->', supabaseUser?.email);
 
     try {
       const me = await getMe();
-      console.log('[loginWithGoogle] existing wodplace_users row found -> logged-in, id:', me.id);
+      if (__DEV__) {
+        console.log('[loginWithGoogle] existing wodplace_users row found -> logged-in, id:', me.id);
+      }
       const profile = toWodplaceUser(me, 'inactive');
       await persist(profile);
       await refreshActivationStatus(profile);
@@ -797,7 +815,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // sign-in (any other error, e.g. a network hiccup, is unexpected and
       // should surface instead of silently routing to onboarding).
       if ((err as { status?: number })?.status !== 404) throw err;
-      console.log('[loginWithGoogle] no wodplace_users row (404) -> needs-profile');
+      if (__DEV__) console.log('[loginWithGoogle] no wodplace_users row (404) -> needs-profile');
       const meta = (supabaseUser?.user_metadata ?? {}) as Record<string, unknown>;
       const prefillName =
         (typeof meta.full_name === 'string' && meta.full_name) ||

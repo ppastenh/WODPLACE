@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -81,6 +81,32 @@ function safeUrl(raw: string | undefined | null): string {
   }
 }
 
+/**
+ * Only two destinations ever need to load INSIDE this WebView:
+ *   - the dashboard itself (`dashboardOrigin` — box-admin or super-admin;
+ *     already env-driven, so this also covers LAN dev URLs, not just prod)
+ *   - Supabase's own `/auth/v1/verify` hop, which is how the one-time
+ *     dash-link logs the admin in before redirecting back to the dashboard
+ * Everything else (signed contract PDFs on the SAME Supabase project at
+ * `/storage/v1/object/sign/...`, any outbound link box-admin opens) must
+ * open in the phone's own browser via `Linking`, never load here and never
+ * be silently swallowed.
+ */
+function isAllowedInWebView(rawUrl: string, dashboardOrigin: string | null): boolean {
+  if (!dashboardOrigin) return false;
+  try {
+    const url = new URL(rawUrl);
+    if (url.origin === dashboardOrigin) return true;
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    if (supabaseUrl && url.origin === new URL(supabaseUrl).origin) {
+      return url.pathname.startsWith('/auth/v1/verify');
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export default function AdminDashboardScreen() {
   const colors = useDarkColors();
   const { adminStatus } = useAuth();
@@ -135,14 +161,16 @@ export default function AdminDashboardScreen() {
         } catch {
           // ignore
         }
-        console.log(
-          '[dash-webview] got dash-link →',
-          safeUrl(res.url),
-          '| target =',
-          target,
-          '| redirect_to param =',
-          redirectTo ?? '<none>',
-        );
+        if (__DEV__) {
+          console.log(
+            '[dash-webview] got dash-link →',
+            safeUrl(res.url),
+            '| target =',
+            target,
+            '| redirect_to param =',
+            redirectTo ?? '<none>',
+          );
+        }
         setUri(res.url);
       })
       .catch((err) => {
@@ -150,11 +178,13 @@ export default function AdminDashboardScreen() {
         // that panel's normal email/password login instead of landing in
         // directly. Log why so this is diagnosable from Metro/Expo logs
         // instead of silently guessing next time it happens.
-        console.warn(
-          '[dash-webview] dash-link failed, falling back to manual login:',
-          err?.status ?? '?',
-          err?.data ?? err?.message ?? err,
-        );
+        if (__DEV__) {
+          console.warn(
+            '[dash-webview] dash-link failed, falling back to manual login:',
+            err?.status ?? '?',
+            err?.data ?? err?.message ?? err,
+          );
+        }
         setUri(`${dashboardOrigin}/`);
       });
   }, [token, dashboardOrigin, target, dashLink]);
@@ -229,45 +259,55 @@ export default function AdminDashboardScreen() {
           // only needed the first time (or after it expires).
           incognito={false}
           sharedCookiesEnabled
+          thirdPartyCookiesEnabled={false}
           domStorageEnabled
           originWhitelist={['*']}
           onMessage={handleWebViewMessage}
-          // --- Diagnostics: trace every URL the WebView touches. ---
+          // Only the dashboard itself and Supabase's /auth/v1/verify hop may
+          // load inside this WebView (see isAllowedInWebView). Everything
+          // else — signed contract PDFs, any outbound link — opens in the
+          // phone's own browser via Linking instead of being blocked in
+          // silence.
           onShouldStartLoadWithRequest={(req) => {
-            console.log('[dash-webview] start load →', safeUrl(req.url));
-            return true;
+            if (__DEV__) console.log('[dash-webview] start load →', safeUrl(req.url));
+            if (isAllowedInWebView(req.url, dashboardOrigin)) return true;
+            Linking.openURL(req.url).catch((err) => {
+              if (__DEV__) console.warn('[dash-webview] Linking.openURL failed', err);
+            });
+            return false;
           }}
           onLoadStart={(e) => {
             // A fresh navigation means box-admin hasn't posted a count yet
             // for this page — don't keep showing the previous one's.
             setAlertCount(0);
-            console.log('[dash-webview] loadStart →', safeUrl(e.nativeEvent.url));
+            if (__DEV__) console.log('[dash-webview] loadStart →', safeUrl(e.nativeEvent.url));
           }}
-          onNavigationStateChange={(nav) =>
-            console.log(
-              '[dash-webview] nav →',
-              safeUrl(nav.url),
-              '| loading:',
-              nav.loading,
-            )
-          }
-          onLoadEnd={(e) =>
-            console.log('[dash-webview] loadEnd →', safeUrl(e.nativeEvent.url))
-          }
-          onError={(e) =>
-            console.warn('[dash-webview] ERROR', {
-              url: safeUrl(e.nativeEvent.url),
-              code: e.nativeEvent.code,
-              domain: (e.nativeEvent as any).domain,
-              description: e.nativeEvent.description,
-            })
-          }
-          onHttpError={(e) =>
-            console.warn('[dash-webview] HTTP ERROR', {
-              url: safeUrl(e.nativeEvent.url),
-              status: e.nativeEvent.statusCode,
-            })
-          }
+          onNavigationStateChange={(nav: WebViewNavigation) => {
+            if (__DEV__) {
+              console.log('[dash-webview] nav →', safeUrl(nav.url), '| loading:', nav.loading);
+            }
+          }}
+          onLoadEnd={(e) => {
+            if (__DEV__) console.log('[dash-webview] loadEnd →', safeUrl(e.nativeEvent.url));
+          }}
+          onError={(e) => {
+            if (__DEV__) {
+              console.warn('[dash-webview] ERROR', {
+                url: safeUrl(e.nativeEvent.url),
+                code: e.nativeEvent.code,
+                domain: (e.nativeEvent as any).domain,
+                description: e.nativeEvent.description,
+              });
+            }
+          }}
+          onHttpError={(e) => {
+            if (__DEV__) {
+              console.warn('[dash-webview] HTTP ERROR', {
+                url: safeUrl(e.nativeEvent.url),
+                status: e.nativeEvent.statusCode,
+              });
+            }
+          }}
         />
       )}
       <CancelConfirmModal

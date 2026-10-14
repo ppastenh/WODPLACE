@@ -27,10 +27,12 @@ if (typeof globalCrypto.crypto === 'undefined') {
 }
 
 const hasRealGetRandomValues = typeof globalCrypto.crypto.getRandomValues === 'function';
-console.log('[webcrypto-polyfill] crypto.getRandomValues present before patch:', hasRealGetRandomValues);
+if (__DEV__) {
+  console.log('[webcrypto-polyfill] crypto.getRandomValues present before patch:', hasRealGetRandomValues);
+}
 if (!hasRealGetRandomValues) {
   globalCrypto.crypto.getRandomValues = Crypto.getRandomValues;
-  console.log('[webcrypto-polyfill] patched crypto.getRandomValues');
+  if (__DEV__) console.log('[webcrypto-polyfill] patched crypto.getRandomValues');
 }
 
 if (typeof globalCrypto.crypto.subtle === 'undefined') {
@@ -38,8 +40,10 @@ if (typeof globalCrypto.crypto.subtle === 'undefined') {
 }
 
 const hasRealDigest = typeof globalCrypto.crypto.subtle.digest === 'function';
-console.log('[webcrypto-polyfill] crypto.subtle.digest present before patch:', hasRealDigest);
+if (__DEV__) {
+  console.log('[webcrypto-polyfill] crypto.subtle.digest present before patch:', hasRealDigest);
+}
 if (!hasRealDigest) {
   globalCrypto.crypto.subtle.digest = Crypto.digest;
-  console.log('[webcrypto-polyfill] patched crypto.subtle.digest');
+  if (__DEV__) console.log('[webcrypto-polyfill] patched crypto.subtle.digest');
 }
