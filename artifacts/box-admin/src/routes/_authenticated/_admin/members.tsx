@@ -7,6 +7,7 @@ import { makeWodplaceUserId } from "@/lib/ids";
 import { copyToClipboard } from "@/lib/clipboard";
 import { isInsideAppWebView, postToNative } from "@/lib/rnBridge";
 import { computeNextPaymentAt } from "@/lib/payments";
+import { membershipStatusLabel } from "@/lib/membershipStatus";
 import { useState } from "react";
 import {
   Search, Plus, User, Copy, RefreshCw, MessageCircle, Check, X,
@@ -164,10 +165,12 @@ export function StatusChip({ status }: { status: string }) {
 }
 
 function MemberRow({ m }: { m: MemberListItem }) {
+  const { isAdmin } = useBox();
   const [expanded, setExpanded] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [book, setBook] = useState(false);
   const [selectPlan, setSelectPlan] = useState(false);
+  const membershipStatus = membershipStatusLabel(m.next_payment);
 
   const waHref = m.phone
     ? `https://wa.me/${m.phone.replace(/\D/g, "")}`
@@ -185,10 +188,18 @@ function MemberRow({ m }: { m: MemberListItem }) {
             <p className="truncate text-sm font-semibold">{m.full_name}</p>
             <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
               <StatusChip status={m.status} />
-              {m.plan?.name && <span className="truncate">· {m.plan.name}</span>}
+              {/* S3.A de la auditoría de seguridad (2026-10-14): para un
+                  coach, ni el nombre del plan ni la fecha exacta -- solo
+                  un estado simple. Administrador y dueño no cambian. */}
+              {isAdmin && m.plan?.name && <span className="truncate">· {m.plan.name}</span>}
+              {!isAdmin && membershipStatus && (
+                <span className={membershipStatus === "Vigente" ? "text-primary" : "text-destructive"}>
+                  · {membershipStatus}
+                </span>
+              )}
             </div>
           </div>
-          {!expanded && m.next_payment && (
+          {!expanded && isAdmin && m.next_payment && (
             <div className="text-right text-[10px] text-muted-foreground">
               <p className="font-semibold text-foreground">{format(new Date(m.next_payment), "dd MMM")}</p>
               <p>próximo pago</p>

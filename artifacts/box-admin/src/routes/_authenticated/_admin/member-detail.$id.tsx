@@ -15,6 +15,7 @@ import { Mail, Phone, Calendar, Edit2, RefreshCw, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { registerPayment } from "@/lib/payments";
+import { membershipStatusLabel } from "@/lib/membershipStatus";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useUpcomingBookings, type UpcomingClass } from "@/lib/upcomingBookings";
 import { Switch } from "@/components/ui/switch";
@@ -420,11 +421,21 @@ function MemberDetail() {
         <Avatar name={fullName} url={m.wodplace_users?.avatar_url ?? m.photo_url} size={72} />
         <h1 className="mt-3 text-xl font-black">{fullName}</h1>
         <div className="mt-2"><StatusChip status={m.status} /></div>
+        {/* S3.A de la auditoría de seguridad (2026-10-14): para un coach,
+            ni el nombre del plan ni la fecha -- solo un estado simple.
+            El botón sigue abriendo el selector (cambiar el plan de un
+            miembro no es una acción financiera), solo cambia el texto. */}
         <button
           onClick={() => setSelectPlan(true)}
           className="mt-2 rounded-full px-2 py-0.5 text-xs text-muted-foreground underline-offset-2 active:bg-secondary active:underline"
         >
-          {m.plans?.name ? `Plan ${m.plans.name}` : "Sin plan asignado — toca para elegir"}
+          {isAdmin
+            ? m.plans?.name
+              ? `Plan ${m.plans.name}`
+              : "Sin plan asignado — toca para elegir"
+            : m.plan_id
+              ? membershipStatusLabel(m.next_payment_at) ?? "Con plan"
+              : "Sin plan asignado — toca para elegir"}
         </button>
       </div>
 
@@ -474,7 +485,11 @@ function MemberDetail() {
             label="Alumno desde"
             value={(m.member_since ?? m.joined_at) ? format(new Date(m.member_since ?? m.joined_at!), "dd MMM yyyy") : "—"}
           />
-          <InfoRow icon={Calendar} label="Próximo pago" value={m.next_payment_at ? format(new Date(m.next_payment_at), "dd MMM yyyy") : "—"} />
+          {isAdmin ? (
+            <InfoRow icon={Calendar} label="Próximo pago" value={m.next_payment_at ? format(new Date(m.next_payment_at), "dd MMM yyyy") : "—"} />
+          ) : (
+            <InfoRow icon={Calendar} label="Membresía" value={membershipStatusLabel(m.next_payment_at) ?? "—"} />
+          )}
           <div className="flex items-center gap-3 rounded-2xl border bg-card p-3">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-secondary"><Award className="h-4 w-4 text-muted-foreground" /></div>
             <div className="min-w-0 flex-1">
