@@ -51,6 +51,12 @@ export function decrypt(payload: string, keyHex: string): string {
   return aesjs.utils.utf8.fromBytes(decryptedBytes);
 }
 
+/** Formato de un valor ya cifrado por este módulo: "ivHex:cipherHex". Un
+ * JSON de sesión sin cifrar (el formato viejo) nunca calza con esto. */
+export function looksEncrypted(value: string): boolean {
+  return /^[0-9a-f]+:[0-9a-f]+$/i.test(value);
+}
+
 /**
  * Chequeo de ida y vuelta, solo __DEV__: prueba que aes-js + la clave de
  * expo-crypto cifran y descifran un texto del tamaño real de una sesión de
