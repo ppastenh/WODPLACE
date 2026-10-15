@@ -112,7 +112,7 @@ async function loadInvite(id: string): Promise<MemberInviteRow | null> {
 function buildInviteEmailHtml(boxName: string, code: string): string {
   return `
     <div style="font-family: Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
-      <h2 style="margin-bottom: 4px;">Te invitaron a WODPLACE</h2>
+      <h2 style="margin-bottom: 4px;">Te invitaron a ${escapeHtml(boxName)} en WODPLACE</h2>
       <p><strong>${escapeHtml(boxName)}</strong> te pre-registró como alumno.</p>
       <p>Para activar tu lugar:</p>
       <ol style="padding-left: 20px;">
@@ -131,7 +131,7 @@ async function emailInvite(invite: MemberInviteRow): Promise<boolean> {
   const boxName = boxRows.rows[0]?.name ?? "WODPLACE";
   const { ok } = await sendEmail({
     to: invite.email,
-    subject: "Te pre-registraron en WODPLACE",
+    subject: `Tienes una invitación para unirte a ${boxName}`,
     html: buildInviteEmailHtml(boxName, invite.code!),
     replyTo: "info@wodplace.cl",
   });
