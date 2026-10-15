@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -479,7 +479,11 @@ export type Database = {
       box_members: {
         Row: {
           box_id: string
+          contract_signed_physically_at: string | null
+          contract_signed_physically_by: string | null
           created_at: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           joined_at: string
           member_since: string | null
           new_member_seen_at: string | null
@@ -494,7 +498,11 @@ export type Database = {
         }
         Insert: {
           box_id: string
+          contract_signed_physically_at?: string | null
+          contract_signed_physically_by?: string | null
           created_at?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           joined_at?: string
           member_since?: string | null
           new_member_seen_at?: string | null
@@ -509,7 +517,11 @@ export type Database = {
         }
         Update: {
           box_id?: string
+          contract_signed_physically_at?: string | null
+          contract_signed_physically_by?: string | null
           created_at?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           joined_at?: string
           member_since?: string | null
           new_member_seen_at?: string | null
@@ -1200,6 +1212,69 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      member_invites: {
+        Row: {
+          box_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          email: string
+          expires_at: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          plan_id: string | null
+          status: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          box_id: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          expires_at?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          plan_id?: string | null
+          status?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          box_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          expires_at?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          plan_id?: string | null
+          status?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_invites_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_invites_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       member_requests: {
         Row: {
@@ -2207,6 +2282,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      box_member_contract_signed_physically_at: {
+        Args: { _box_id: string; _user_id: string }
+        Returns: string
+      }
+      box_member_contract_signed_physically_by: {
+        Args: { _box_id: string; _user_id: string }
+        Returns: string
+      }
+      box_member_emergency_contact: {
+        Args: { _box_id: string; _user_id: string }
+        Returns: Json
+      }
       box_member_next_payment_at: {
         Args: { _box_id: string; _user_id: string }
         Returns: string
@@ -2215,9 +2302,15 @@ export type Database = {
         Args: { _box_id: string; _user_id: string }
         Returns: string
       }
+      box_owner_user_id: { Args: { _box_id: string }; Returns: string }
+      box_status: { Args: { _box_id: string }; Returns: string }
       check_invite_code: {
         Args: { p_code: string; p_email: string }
         Returns: boolean
+      }
+      claim_member_invite: {
+        Args: { _acting_auth_user_id: string; _code: string }
+        Returns: Json
       }
       coach_current: {
         Args: { _coach_id: string }
@@ -2249,6 +2342,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Json
       }
+      current_wodplace_user_id: { Args: never; Returns: string }
       delete_contract_document: {
         Args: { p_box_id: string; p_slug: string }
         Returns: undefined
@@ -2330,6 +2424,10 @@ export type Database = {
         Returns: boolean
       }
       user_is_any_box_admin: { Args: never; Returns: boolean }
+      user_is_box_admin_or_super_admin: {
+        Args: { _box_id: string }
+        Returns: boolean
+      }
       user_is_box_owner_or_super_admin: {
         Args: { _box_id: string }
         Returns: boolean

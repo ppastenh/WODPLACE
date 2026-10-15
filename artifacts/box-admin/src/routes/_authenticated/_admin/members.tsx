@@ -8,12 +8,13 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { isInsideAppWebView, postToNative } from "@/lib/rnBridge";
 import { computeNextPaymentAt } from "@/lib/payments";
 import { membershipStatusLabel } from "@/lib/membershipStatus";
+import { apiFetch } from "@/lib/apiClient";
 import { useState } from "react";
 import {
   Search, Plus, User, Copy, RefreshCw, MessageCircle, Check, X,
   UserRound, CalendarDays, MoreVertical, Settings, CircleCheck, Tag,
   PlayCircle, PauseCircle, AlertCircle, Lock, Clock, KeyRound, Receipt, Trash2,
-  ChevronDown,
+  ChevronDown, Mail, UserX, Send, TriangleAlert,
 } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { BookClassSheet } from "@/components/admin/BookClassSheet";
@@ -24,8 +25,19 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import type { NewInviteCodeResult, InviteEmailResult } from "@workspace/api-zod";
+
+// Un miembro "sin cuenta" (Fase 2 de invitación de alumno, 2026-10-15)
+// igual necesita un email en wodplace_users (NOT NULL + UNIQUE) -- se le
+// da uno sintético, único por fila, que nunca se muestra como si fuera
+// real (ver toItem/InfoRow de email en la ficha).
+const NO_ACCOUNT_EMAIL_DOMAIN = "@wodplace.local";
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return !!email && email.endsWith(NO_ACCOUNT_EMAIL_DOMAIN);
+}
 
 export const Route = createFileRoute("/_authenticated/_admin/members")({
   head: () => ({
@@ -65,10 +77,11 @@ type MemberRow_ = {
 };
 
 function toItem(r: MemberRow_): MemberListItem {
+  const rawEmail = r.wodplace_users?.email ?? null;
   return {
     id: r.user_id,
     full_name: r.wodplace_users?.name ?? "—",
-    email: r.wodplace_users?.email ?? null,
+    email: isPlaceholderEmail(rawEmail) ? null : rawEmail,
     status: r.status,
     next_payment: r.next_payment_at,
     // The athlete's own uploaded photo is the canonical avatar; box_members'
@@ -110,6 +123,7 @@ function MembersPage() {
     <AdminShell title="Miembros">
       <BoxInviteCard />
       <PendingRequests />
+      <PendingMemberInvites />
       <div className="sticky top-[calc(env(safe-area-inset-top)+56px)] z-20 -mx-4 mb-4 space-y-3 bg-background/95 px-4 pb-3 pt-1 backdrop-blur">
 
         <div className="flex items-center gap-2">
@@ -119,7 +133,7 @@ function MembersPage() {
           </div>
           {/* Agregar un miembro nuevo exige members_edit del coach, igual
               que editarlo (auditoría de seguridad, 2026-10-14). */}
-          {canAddMembers && <AddMemberFab plans={plans ?? []} />}
+          {canAddMembers && <AddMemberMenu plans={plans ?? []} isAdmin={isAdmin} />}
         </div>
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
           {(["todos", "activo", "pausado", "suspendido", "vencido", "bloqueado"] as Status[]).map((s) => (
@@ -575,72 +589,443 @@ function SkeletonList() {
   );
 }
 
-function AddMemberFab({ plans }: { plans: Array<{ id: string; name: string }> }) {
+// Reemplaza al antiguo "Nuevo miembro" de un solo formulario con correo
+// obligatorio (Fase 2 de invitación de alumno, 2026-10-15) -- ese flujo
+// fue la causa de miembros duplicados cuando el alumno se registraba
+// después con el mismo correo escrito a mano por el administrador (un
+// typo bastaba para que quedaran como dos personas distintas). Ahora hay
+// dos caminos separados y sin ese riesgo: invitar por correo (vinculación
+// solo por código) o agregar sin cuenta (sin correo).
+function AddMemberMenu({ plans, isAdmin }: { plans: Array<{ id: string; name: string }>; isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [noAccountOpen, setNoAccountOpen] = useState(false);
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <button
+            aria-label="Agregar miembro"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95 transition-transform"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </DialogTrigger>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader><DialogTitle>Agregar miembro</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <button
+              onClick={() => { setOpen(false); setInviteOpen(true); }}
+              className="flex w-full items-start gap-3 rounded-2xl border p-4 text-left active:bg-secondary/50"
+            >
+              <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <span>
+                <span className="block text-sm font-semibold">Invitar alumno por correo</span>
+                <span className="block text-xs text-muted-foreground">
+                  Le llega un código personal para crear su cuenta y unirse.
+                </span>
+              </span>
+            </button>
+            <button
+              onClick={() => { setOpen(false); setNoAccountOpen(true); }}
+              className="flex w-full items-start gap-3 rounded-2xl border p-4 text-left active:bg-secondary/50"
+            >
+              <UserX className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-semibold">Agregar alumno sin cuenta</span>
+                <span className="block text-xs text-muted-foreground">
+                  Para quien no tiene celular o correo propio (ej. un menor). No podrá entrar a la app.
+                </span>
+              </span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <InviteByEmailDialog open={inviteOpen} onOpenChange={setInviteOpen} plans={plans} />
+      <AddMemberWithoutAccountDialog open={noAccountOpen} onOpenChange={setNoAccountOpen} plans={plans} isAdmin={isAdmin} />
+    </>
+  );
+}
+
+function InviteByEmailDialog({
+  open,
+  onOpenChange,
+  plans,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  plans: Array<{ id: string; name: string }>;
+}) {
   const [form, setForm] = useState({ full_name: "", email: "", phone: "", plan_id: "" });
   const qc = useQueryClient();
   const { boxId } = useBox();
+
   const mut = useMutation({
     mutationFn: async () => {
-      const email = form.email.trim();
-      if (!email) throw new Error("El email es obligatorio");
+      const email = form.email.trim().toLowerCase();
+      if (!email) throw new Error("El correo es obligatorio.");
+
+      const { data: existingMember } = await supabase
+        .from("box_members")
+        .select("user_id, wodplace_users!inner(email)")
+        .eq("box_id", boxId)
+        .eq("wodplace_users.email", email)
+        .maybeSingle();
+      if (existingMember) throw new Error("Este correo ya es miembro de este box.");
+
+      const { data: pending } = await supabase
+        .from("member_invites")
+        .select("id")
+        .eq("box_id", boxId)
+        .eq("email", email)
+        .eq("status", "pendiente")
+        .maybeSingle();
+      if (pending) {
+        throw new Error("Ya existe una invitación pendiente para este correo — puedes reenviarla desde la lista de abajo.");
+      }
+
+      const { code } = await apiFetch<NewInviteCodeResult>(
+        `/member-invites/new-code?boxId=${encodeURIComponent(boxId)}`,
+      );
+      const { data: auth } = await supabase.auth.getUser();
+      const expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: inserted, error } = await supabase
+        .from("member_invites")
+        .insert({
+          box_id: boxId,
+          email,
+          full_name: form.full_name.trim() || null,
+          phone: form.phone.trim() || null,
+          plan_id: form.plan_id || null,
+          code,
+          expires_at,
+          created_by: auth.user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          throw new Error("Ya existe una invitación pendiente para este correo — puedes reenviarla desde la lista de abajo.");
+        }
+        throw error;
+      }
+
+      // La invitación ya existe aunque el correo falle -- nunca se pierde
+      // por un problema de envío, solo queda disponible para "Reenviar"
+      // (mismo criterio que la invitación de staff).
+      const { emailSent } = await apiFetch<InviteEmailResult>(`/member-invites/${inserted.id}/send`, {
+        method: "POST",
+      }).catch(() => ({ emailSent: false }));
+      return { email, emailSent };
+    },
+    onSuccess: ({ email, emailSent }) => {
+      qc.invalidateQueries({ queryKey: ["member_invites"] });
+      setForm({ full_name: "", email: "", phone: "", plan_id: "" });
+      onOpenChange(false);
+      if (emailSent) toast.success(`Invitación enviada a ${email}`);
+      else toast.error("La invitación se creó, pero el correo no pudo enviarse. Usa Reenviar.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm rounded-3xl">
+        <DialogHeader><DialogTitle>Invitar alumno por correo</DialogTitle></DialogHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mut.mutate(); }} className="space-y-3">
+          <div><Label>Nombre completo (opcional)</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+          <div><Label>Correo</Label><Input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div><Label>Teléfono (opcional)</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div>
+            <Label>Plan (opcional)</Label>
+            <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecciona un plan (opcional)" /></SelectTrigger>
+              <SelectContent side="top">
+                {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Le llega un correo con un código personal de un solo uso. Al crear su cuenta (o iniciar
+            sesión si ya tiene una) y escribir el código en la app, queda vinculado a este box con
+            el plan que elijas.
+          </p>
+          <Button type="submit" disabled={mut.isPending} className="w-full rounded-full h-11 font-semibold">
+            {mut.isPending ? "Enviando..." : "Enviar invitación"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddMemberWithoutAccountDialog({
+  open,
+  onOpenChange,
+  plans,
+  isAdmin,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  plans: Array<{ id: string; name: string }>;
+  isAdmin: boolean;
+}) {
+  const [form, setForm] = useState({
+    full_name: "",
+    phone: "",
+    plan_id: "",
+    emergency_name: "",
+    emergency_phone: "",
+    contractSigned: false,
+  });
+  const qc = useQueryClient();
+  const { boxId } = useBox();
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      const fullName = form.full_name.trim();
+      if (!fullName) throw new Error("El nombre es obligatorio.");
       const userId = makeWodplaceUserId();
       const { error: userErr } = await supabase
         .from("wodplace_users")
-        .insert({ id: userId, name: form.full_name.trim(), email });
+        .insert({ id: userId, name: fullName, email: `sin-cuenta+${userId}${NO_ACCOUNT_EMAIL_DOMAIN}` });
       if (userErr) throw userErr;
 
+      // Contacto de emergencia y "contrato firmado en papel" son solo de
+      // administrador/dueño/super admin -- un coach con members_edit
+      // puede agregar al miembro, pero no estos dos campos (ni la base
+      // los deja editar después, vía UPDATE, aunque sí los deja fijar en
+      // este INSERT puntual si se los mandara; se ocultan en la interfaz
+      // para que un coach ni los vea).
+      const { data: auth } = await supabase.auth.getUser();
       const { error } = await supabase.from("box_members").insert({
         box_id: boxId,
         user_id: userId,
         phone: form.phone.trim() || null,
         plan_id: form.plan_id || null,
+        ...(isAdmin && form.emergency_name.trim() ? { emergency_contact_name: form.emergency_name.trim() } : {}),
+        ...(isAdmin && form.emergency_phone.trim() ? { emergency_contact_phone: form.emergency_phone.trim() } : {}),
+        ...(isAdmin && form.contractSigned
+          ? { contract_signed_physically_at: new Date().toISOString(), contract_signed_physically_by: auth.user?.id ?? null }
+          : {}),
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Miembro agregado");
       qc.invalidateQueries({ queryKey: ["members"] });
-      setOpen(false);
-      setForm({ full_name: "", email: "", phone: "", plan_id: "" });
+      onOpenChange(false);
+      setForm({ full_name: "", phone: "", plan_id: "", emergency_name: "", emergency_phone: "", contractSigned: false });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button
-          aria-label="Agregar miembro"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm active:scale-95 transition-transform"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-3xl">
-        <DialogHeader><DialogTitle>Nuevo miembro</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Agregar alumno sin cuenta</DialogTitle></DialogHeader>
+        <div className="flex gap-2 rounded-2xl bg-warning/15 p-3 text-xs text-warning">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Este miembro no tendrá acceso a la app: no puede reservar clases ni ver su progreso.
+            Úsalo solo si la persona no tiene celular o correo propio (por ejemplo, un menor sin correo).
+          </p>
+        </div>
         <form onSubmit={(e) => { e.preventDefault(); mut.mutate(); }} className="space-y-3">
           <div><Label>Nombre completo</Label><Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
-          <div><Label>Email</Label><Input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-          <div><Label>Teléfono</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div><Label>Teléfono (opcional)</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
           <div>
-            <Label>Plan</Label>
+            <Label>Plan (opcional)</Label>
             <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
               <SelectTrigger><SelectValue placeholder="Selecciona un plan (opcional)" /></SelectTrigger>
-              {/* This field sits low in the form, right above the submit
-                  button — opening downward gets clipped by the on-screen
-                  keyboard/screen edge on mobile, so it opens upward instead. */}
               <SelectContent side="top">
                 {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+          {isAdmin && (
+            <>
+              <div><Label>Contacto de emergencia — nombre (opcional)</Label><Input value={form.emergency_name} onChange={(e) => setForm({ ...form, emergency_name: e.target.value })} /></div>
+              <div><Label>Contacto de emergencia — teléfono (opcional)</Label><Input value={form.emergency_phone} onChange={(e) => setForm({ ...form, emergency_phone: e.target.value })} /></div>
+              <label className="flex items-start gap-2 rounded-2xl border p-3">
+                <Checkbox
+                  checked={form.contractSigned}
+                  onCheckedChange={(v) => setForm({ ...form, contractSigned: v === true })}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-medium">Contrato firmado en papel</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Queda registrado quién lo marcó y cuándo.
+                  </span>
+                </span>
+              </label>
+            </>
+          )}
           <Button type="submit" disabled={mut.isPending} className="w-full rounded-full h-11 font-semibold">
             {mut.isPending ? "Guardando..." : "Guardar"}
           </Button>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type PendingMemberInvite = {
+  id: string;
+  email: string;
+  code: string;
+  status: "pendiente" | "usado" | "cancelado";
+  expires_at: string | null;
+  used_at: string | null;
+  plan: { name: string } | null;
+  joinedViaGenericCode: boolean;
+};
+
+function PendingMemberInvites() {
+  const { boxId, isAdmin } = useBox();
+  const qc = useQueryClient();
+
+  const invites = useQuery({
+    queryKey: ["member_invites", boxId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("member_invites")
+        .select("id, email, code, status, expires_at, used_at, plans(name)")
+        .eq("box_id", boxId)
+        .eq("status", "pendiente")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as Array<{
+        id: string; email: string; code: string; status: "pendiente";
+        expires_at: string | null; used_at: string | null; plans: { name: string } | null;
+      }>;
+      if (rows.length === 0) return [] as PendingMemberInvite[];
+
+      // Alumno invitado que ya está en el box igual (se unió con el código
+      // genérico en vez del personal) -- aviso para el administrador, caso
+      // (e) aprobado en el diseño de la Fase 2.
+      const emails = rows.map((r) => r.email);
+      const { data: alreadyMembers } = await supabase
+        .from("box_members")
+        .select("wodplace_users!inner(email)")
+        .eq("box_id", boxId)
+        .in("wodplace_users.email", emails);
+      const joinedEmails = new Set(
+        ((alreadyMembers ?? []) as unknown as Array<{ wodplace_users: { email: string } }>).map(
+          (m) => m.wodplace_users.email,
+        ),
+      );
+
+      return rows.map((r) => ({
+        id: r.id,
+        email: r.email,
+        code: r.code,
+        status: r.status,
+        expires_at: r.expires_at,
+        used_at: r.used_at,
+        plan: r.plans,
+        joinedViaGenericCode: joinedEmails.has(r.email),
+      })) satisfies PendingMemberInvite[];
+    },
+    enabled: isAdmin,
+  });
+
+  const resend = useMutation({
+    mutationFn: async (id: string) => apiFetch<InviteEmailResult>(`/member-invites/${id}/resend`, { method: "POST" }),
+    onSuccess: ({ emailSent }) => {
+      qc.invalidateQueries({ queryKey: ["member_invites"] });
+      if (emailSent) toast.success("Código renovado y correo reenviado.");
+      else toast.error("Código renovado, pero el correo no se pudo enviar.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
+  });
+
+  const cancel = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("member_invites").update({ status: "cancelado" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["member_invites"] });
+      toast.success("Invitación cancelada");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
+  });
+
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+
+  if (!isAdmin || !invites.data || invites.data.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <p className="mb-2 px-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+        Invitaciones pendientes ({invites.data.length})
+      </p>
+      <div className="space-y-2">
+        {invites.data.map((inv) => {
+          const expired = !!inv.expires_at && new Date(inv.expires_at) < new Date();
+          return (
+            <div key={inv.id} className="rounded-2xl border bg-card p-4">
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <p className="truncate text-sm font-medium">{inv.email}</p>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${expired ? "bg-destructive/15 text-destructive" : "bg-primary/20 text-primary"}`}>
+                      {expired ? "Vencida" : "Pendiente"}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {inv.expires_at ? `Vence ${format(new Date(inv.expires_at), "dd MMM yyyy")}` : "Sin vencimiento"}
+                    {inv.plan && <span>· {inv.plan.name}</span>}
+                  </div>
+                  {inv.joinedViaGenericCode && (
+                    <div className="mt-2 flex items-start gap-1.5 rounded-xl bg-warning/15 p-2 text-[11px] text-warning">
+                      <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>Se unió con el código general del box, no con el suyo.</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <button
+                    onClick={() => resend.mutate(inv.id)}
+                    disabled={resend.isPending}
+                    className="grid h-9 w-9 place-items-center rounded-lg bg-secondary text-foreground active:bg-secondary/70 disabled:opacity-40"
+                    aria-label="Reenviar invitación"
+                    title="Genera un código nuevo y reenvía el correo"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setConfirmCancelId(inv.id)}
+                    className="grid h-9 w-9 place-items-center rounded-lg bg-destructive/15 text-destructive active:bg-destructive/25"
+                    aria-label="Cancelar invitación"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <ConfirmDialog
+        open={!!confirmCancelId}
+        onOpenChange={(v) => !v && setConfirmCancelId(null)}
+        title="¿Cancelar esta invitación?"
+        description="El código deja de funcionar. Puedes invitar de nuevo a este correo más tarde."
+        confirmLabel="Cancelar invitación"
+        destructive
+        loading={cancel.isPending}
+        onConfirm={() => {
+          if (confirmCancelId) cancel.mutate(confirmCancelId);
+          setConfirmCancelId(null);
+        }}
+      />
+    </div>
   );
 }
 

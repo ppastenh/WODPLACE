@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Avatar, StatusChip, SelectPlanSheet } from "./members";
+import { Avatar, StatusChip, SelectPlanSheet, isPlaceholderEmail } from "./members";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Phone, Calendar, Edit2, RefreshCw, Trash2 } from "lucide-react";
+import { Mail, Phone, Calendar, Edit2, RefreshCw, Trash2, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { registerPayment } from "@/lib/payments";
@@ -179,6 +179,43 @@ function MemberDetail() {
       setConfirmBirthdayConsent(false);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo actualizar la autorización"),
+  });
+
+  // Contacto de emergencia (Fase 2 de invitación de alumno, 2026-10-15):
+  // puede venir de dos lugares distintos, y la ficha debe decir cuál es
+  // cada vez -- de la aceptación de contrato (alumno con cuenta, lo llena
+  // él mismo en la app) o de estas columnas de box_members (miembro sin
+  // cuenta, lo escribe el administrador a mano). El contrato tiene
+  // prioridad si existen ambos (es el dato que la propia persona dio).
+  const emergencyContact = useQuery({
+    queryKey: ["member-emergency-contact", boxId, id],
+    queryFn: async () => {
+      const [{ data: viaContract }, { data: viaAdmin, error }] = await Promise.all([
+        supabase
+          .from("contract_acceptances")
+          .select("emergency_contact_name, emergency_contact_phone")
+          .eq("box_id", boxId)
+          .eq("user_id", id)
+          .order("accepted_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase.rpc("box_member_emergency_contact", { _box_id: boxId, _user_id: id }),
+      ]);
+      if (error) throw error;
+      if (viaContract?.emergency_contact_name || viaContract?.emergency_contact_phone) {
+        return {
+          name: viaContract.emergency_contact_name,
+          phone: viaContract.emergency_contact_phone,
+          source: "contrato" as const,
+        };
+      }
+      const admin = viaAdmin as { name: string | null; phone: string | null } | null;
+      if (admin?.name || admin?.phone) {
+        return { name: admin.name, phone: admin.phone, source: "admin" as const };
+      }
+      return null;
+    },
+    enabled: isAdmin,
   });
 
   const payments = useQuery({
@@ -470,8 +507,27 @@ function MemberDetail() {
         </TabsList>
 
         <TabsContent value="info" className="mt-4 space-y-2">
-          <InfoRow icon={Mail} label="Email" value={m.wodplace_users?.email || "—"} />
+          <InfoRow
+            icon={Mail}
+            label="Email"
+            value={isPlaceholderEmail(m.wodplace_users?.email) ? "Sin cuenta en la app" : (m.wodplace_users?.email || "—")}
+          />
           <InfoRow icon={Phone} label="Teléfono" value={m.phone || "—"} />
+          {isAdmin && (
+            <InfoRow
+              icon={ShieldAlert}
+              label={
+                emergencyContact.data
+                  ? `Contacto de emergencia (${emergencyContact.data.source === "contrato" ? "del contrato aceptado en la app" : "ingresado por el administrador — sin cuenta"})`
+                  : "Contacto de emergencia"
+              }
+              value={
+                emergencyContact.data
+                  ? `${emergencyContact.data.name || "—"} · ${emergencyContact.data.phone || "—"}`
+                  : "No registrado"
+              }
+            />
+          )}
           <InfoRow icon={Calendar} label="Ingresó" value={m.joined_at ? format(new Date(m.joined_at), "dd MMM yyyy") : "—"} />
           <InfoRow
             icon={Calendar}
