@@ -100,28 +100,41 @@ type MemberInviteRow = {
   code: string | null;
   status: string;
   full_name: string | null;
+  expires_at: string | null;
 };
 
 async function loadInvite(id: string): Promise<MemberInviteRow | null> {
   const rows = await db.execute<MemberInviteRow>(sql`
-    select id, box_id, email, code, status, full_name from member_invites where id = ${id}
+    select id, box_id, email, code, status, full_name, expires_at::text as expires_at from member_invites where id = ${id}
   `);
   return rows.rows[0] ?? null;
 }
 
-function buildInviteEmailHtml(boxName: string, code: string): string {
+// Mismo criterio que todayDateKey() (lib/dateUtils.ts): la fecha se
+// expresa SIEMPRE en hora de Chile, nunca en la del servidor.
+function formatChileDate(iso: string): string {
+  return new Intl.DateTimeFormat("es-CL", {
+    timeZone: "America/Santiago",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+function buildInviteEmailHtml(boxName: string, code: string, expiresAt: string | null): string {
+  const boxNameSafe = escapeHtml(boxName);
   return `
     <div style="font-family: Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
-      <h2 style="margin-bottom: 4px;">Te invitaron a ${escapeHtml(boxName)} en WODPLACE</h2>
-      <p><strong>${escapeHtml(boxName)}</strong> te pre-registró como alumno.</p>
-      <p>Para activar tu lugar:</p>
+      <h2 style="margin-bottom: 4px;">Te invitaron a ${boxNameSafe} en WODPLACE</h2>
+      <p><strong>${boxNameSafe}</strong> te invitó a unirte como alumno.</p>
       <ol style="padding-left: 20px;">
         <li>Abre la app WODPLACE y crea tu cuenta (o inicia sesión si ya tienes una).</li>
         <li>Ve a "Unirse a un box" e ingresa el código de abajo.</li>
-        <li>Tu plan y tu estado quedan activos apenas lo ingreses.</li>
+        <li>Tu plan queda asignado apenas lo ingreses. Luego acepta los contratos del box para poder reservar clases.</li>
       </ol>
       <p style="font-family: monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; background:#F6F1E8; color:#1a1a1a; padding: 10px; border-radius: 8px; text-align: center;">${escapeHtml(code)}</p>
-      <p style="font-size: 12px; color: #888; margin-top: 24px;">Si no esperabas esta invitación, ignora este correo.</p>
+      ${expiresAt ? `<p style="font-size: 12px; color: #888;">Este código vence el ${escapeHtml(formatChileDate(expiresAt))}.</p>` : ""}
+      <p style="font-size: 12px; color: #888; margin-top: 8px;">Si no esperabas esta invitación, ignora este correo.</p>
     </div>
   `;
 }
@@ -132,7 +145,7 @@ async function emailInvite(invite: MemberInviteRow): Promise<boolean> {
   const { ok } = await sendEmail({
     to: invite.email,
     subject: `Tienes una invitación para unirte a ${boxName}`,
-    html: buildInviteEmailHtml(boxName, invite.code!),
+    html: buildInviteEmailHtml(boxName, invite.code!, invite.expires_at),
     replyTo: "info@wodplace.cl",
   });
   return ok;
@@ -197,7 +210,7 @@ router.post("/member-invites/:id/resend", requireSupabaseUser, async (req: Reque
     update member_invites set code = ${newCode}, expires_at = ${newExpiresAt} where id = ${invite.id}
   `);
 
-  const emailSent = await emailInvite({ ...invite, code: newCode }).catch(() => false);
+  const emailSent = await emailInvite({ ...invite, code: newCode, expires_at: newExpiresAt }).catch(() => false);
   res.json(ResendMemberInviteResponse.parse({ emailSent }));
 });
 
