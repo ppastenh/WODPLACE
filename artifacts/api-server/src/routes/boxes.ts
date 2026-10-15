@@ -7,8 +7,9 @@ import { z } from "zod";
 import { isAdminRequest } from "../lib/adminAuth";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { todayDateKey } from "../lib/dateUtils";
+import { countRecentAttempts, getRealClientIp, MAX_ATTEMPTS, recordFailedAttempt } from "../lib/inviteRateLimit";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
-import { assertOwnsAccount } from "../lib/supabaseAuth";
+import { assertOwnsAccount, resolveSupabaseUser } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
 
@@ -34,8 +35,9 @@ const NO_MATCH = {
  * POST /box-memberships/redeem
  *
  * Redeems a box invite code so the mobile athlete joins that box. There is
- * no session/auth here — the client sends its own locally generated user
- * id/name/email, exactly like POST /users. The endpoint:
+ * no session/auth here beyond the userId ownership check — the client
+ * sends its own locally generated user id/name/email, exactly like
+ * POST /users. The endpoint:
  *
  *   1. upserts wodplace_users (so the box_members write can't race the app's
  *      fire-and-forget syncUser call);
@@ -43,6 +45,17 @@ const NO_MATCH = {
  *      code, case-insensitively — a box with no such row is simply "no match";
  *   3. inserts a `box_members` row for (box_id, user_id) unless it already
  *      exists (an athlete may belong to several boxes).
+ *
+ * Invitación de alumno (2026-10-15): the SAME field now also accepts a
+ * personal member-invite code. If the generic box code doesn't match,
+ * this tries `code` against `member_invites` instead, via the atomic
+ * `claim_member_invite` DB function — same table/pattern as staff's
+ * /invites/claim for the brute-force guard (invite_claim_attempts), but
+ * keyed only by the caller's identity, never by email (the invite's
+ * email is never compared against the claiming session — see the
+ * migration's own comment for why). Both branches respond with the exact
+ * same generic "no match" shape on failure, so the app can't tell a
+ * wrong/expired personal code apart from a wrong box code.
  *
  * IMPORTANT — table choice: the membership is written to `box_members`, NOT
  * `user_roles`. `user_roles.user_id` is a UUID referencing auth.users (panel
@@ -95,24 +108,38 @@ router.post(
         LIMIT 1
       `);
       const box = boxLookup.rows[0];
-      if (!box) {
-        res.json(RedeemBoxCodeResponse.parse(NO_MATCH));
-        return;
-      }
 
-      const existing = await db.execute(sql`
-        SELECT 1
-        FROM box_members
-        WHERE box_id = ${box.box_id}
-          AND user_id = ${userId}
-        LIMIT 1
-      `);
+      if (box) {
+        const existing = await db.execute(sql`
+          SELECT 1
+          FROM box_members
+          WHERE box_id = ${box.box_id}
+            AND user_id = ${userId}
+          LIMIT 1
+        `);
 
-      if (existing.rows.length > 0) {
+        if (existing.rows.length > 0) {
+          res.json(
+            RedeemBoxCodeResponse.parse({
+              joined: false,
+              alreadyMember: true,
+              boxId: box.box_id,
+              boxName: box.name,
+            }),
+          );
+          return;
+        }
+
+        await db.execute(sql`
+          INSERT INTO box_members (box_id, user_id, status)
+          VALUES (${box.box_id}, ${userId}, 'activo')
+          ON CONFLICT (box_id, user_id) DO NOTHING
+        `);
+
         res.json(
           RedeemBoxCodeResponse.parse({
-            joined: false,
-            alreadyMember: true,
+            joined: true,
+            alreadyMember: false,
             boxId: box.box_id,
             boxName: box.name,
           }),
@@ -120,20 +147,49 @@ router.post(
         return;
       }
 
-      await db.execute(sql`
-        INSERT INTO box_members (box_id, user_id, status)
-        VALUES (${box.box_id}, ${userId}, 'activo')
-        ON CONFLICT (box_id, user_id) DO NOTHING
-      `);
+      // No box matched the generic code -- try it as a personal
+      // member-invite code instead, rate-limited the same way as staff's
+      // /invites/claim.
+      const supabaseUser = await resolveSupabaseUser(req);
+      const ip = getRealClientIp(req);
+      if (!supabaseUser) {
+        res.json(RedeemBoxCodeResponse.parse(NO_MATCH));
+        return;
+      }
 
-      res.json(
-        RedeemBoxCodeResponse.parse({
-          joined: true,
-          alreadyMember: false,
-          boxId: box.box_id,
-          boxName: box.name,
-        }),
-      );
+      if ((await countRecentAttempts(supabaseUser.id, ip)) >= MAX_ATTEMPTS) {
+        res.status(429).json({ error: "Demasiados intentos. Espera unos minutos e intenta de nuevo." });
+        return;
+      }
+
+      try {
+        const claimResult = await db.execute<{ claim_member_invite: { boxId: string; alreadyMember: boolean } }>(sql`
+          select claim_member_invite(${normalized}, ${supabaseUser.id}::uuid) as claim_member_invite
+        `);
+        const claimed = claimResult.rows[0]?.claim_member_invite;
+        if (!claimed) {
+          await recordFailedAttempt(supabaseUser.id, ip);
+          res.json(RedeemBoxCodeResponse.parse(NO_MATCH));
+          return;
+        }
+
+        const boxRow = await db.execute<{ name: string }>(sql`select name from boxes where id = ${claimed.boxId}`);
+        res.json(
+          RedeemBoxCodeResponse.parse({
+            joined: !claimed.alreadyMember,
+            alreadyMember: claimed.alreadyMember,
+            boxId: claimed.boxId,
+            boxName: boxRow.rows[0]?.name ?? null,
+            viaInvite: true,
+          }),
+        );
+      } catch {
+        // invalid_code / no_profile from claim_member_invite -- generic
+        // rejection, same shape as a wrong box code, counted as a failed
+        // attempt either way.
+        await recordFailedAttempt(supabaseUser.id, ip);
+        res.json(RedeemBoxCodeResponse.parse(NO_MATCH));
+      }
     } catch (error) {
       req.log.error({ err: error }, "Error redeeming box code");
       res.status(500).json({ error: "Failed to redeem code" });

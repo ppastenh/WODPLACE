@@ -65,6 +65,8 @@ export interface RedeemBoxCodeResult {
   alreadyMember: boolean;
   boxId: string | null;
   boxName: string | null;
+  /** True when `code` matched a personal member invite rather than the box's generic code. */
+  viaInvite?: boolean;
 }
 
 export interface CreateBookingRequest {
@@ -635,6 +637,10 @@ userId: string;
 };
 
 export type GetNewInviteCodeParams = {
+boxId: string;
+};
+
+export type GetNewMemberInviteCodeParams = {
 boxId: string;
 };
 

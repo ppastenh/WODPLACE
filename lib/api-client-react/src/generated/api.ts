@@ -54,6 +54,7 @@ import type {
   GetContractAcceptanceParams,
   GetContractSignedUrlParams,
   GetNewInviteCodeParams,
+  GetNewMemberInviteCodeParams,
   GetTrainingSettingsParams,
   HealthStatus,
   InviteEmailResult,
@@ -2159,6 +2160,246 @@ export function useGetNewInviteCode<TData = Awaited<ReturnType<typeof getNewInvi
 
 
 
+
+export const getGetNewMemberInviteCodeUrl = (params: GetNewMemberInviteCodeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/member-invites/new-code?${stringifiedParams}` : `/api/member-invites/new-code`
+}
+
+/**
+ * Does not insert anything — just returns a fresh random code for
+ * box-admin's "Invitar alumno por correo" screen to use when it
+ * creates the member_invites row itself (a direct, RLS-gated insert
+ * from the client). Requires the caller to be box_admin of boxId or
+ * super_admin, and is itself rate-limited per user.
+ * @summary Generates a cryptographically-random member-invite code
+ */
+export const getNewMemberInviteCode = async (params: GetNewMemberInviteCodeParams, options?: RequestInit): Promise<NewInviteCodeResult> => {
+
+  return customFetch<NewInviteCodeResult>(getGetNewMemberInviteCodeUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNewMemberInviteCodeQueryKey = (params?: GetNewMemberInviteCodeParams,) => {
+    return [
+    `/api/member-invites/new-code`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNewMemberInviteCodeQueryOptions = <TData = Awaited<ReturnType<typeof getNewMemberInviteCode>>, TError = ErrorType<ErrorEnvelope>>(params: GetNewMemberInviteCodeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNewMemberInviteCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNewMemberInviteCodeQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNewMemberInviteCode>>> = ({ signal }) => getNewMemberInviteCode(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNewMemberInviteCode>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNewMemberInviteCodeQueryResult = NonNullable<Awaited<ReturnType<typeof getNewMemberInviteCode>>>
+export type GetNewMemberInviteCodeQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Generates a cryptographically-random member-invite code
+ */
+
+export function useGetNewMemberInviteCode<TData = Awaited<ReturnType<typeof getNewMemberInviteCode>>, TError = ErrorType<ErrorEnvelope>>(
+ params: GetNewMemberInviteCodeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNewMemberInviteCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNewMemberInviteCodeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendMemberInviteEmailUrl = (id: string,) => {
+
+
+
+
+  return `/api/member-invites/${id}/send`
+}
+
+/**
+ * Called right after box-admin inserts the member_invites row, to
+ * actually deliver it. Requires the caller to be box_admin of the
+ * invite's box or super_admin, and the invite to still be pending.
+ * Rate-limited per box per hour. Never fails the request if the
+ * email itself fails to send — reports it in the response so the
+ * invite row (already created) isn't lost.
+ * @summary Emails an existing, not-yet-claimed member invite its current code
+ */
+export const sendMemberInviteEmail = async (id: string, options?: RequestInit): Promise<InviteEmailResult> => {
+
+  return customFetch<InviteEmailResult>(getSendMemberInviteEmailUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSendMemberInviteEmailMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendMemberInviteEmail>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendMemberInviteEmail>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['sendMemberInviteEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendMemberInviteEmail>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sendMemberInviteEmail(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendMemberInviteEmailMutationResult = NonNullable<Awaited<ReturnType<typeof sendMemberInviteEmail>>>
+
+    export type SendMemberInviteEmailMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Emails an existing, not-yet-claimed member invite its current code
+ */
+export const useSendMemberInviteEmail = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendMemberInviteEmail>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendMemberInviteEmail>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getSendMemberInviteEmailMutationOptions(options));
+    }
+
+export const getResendMemberInviteUrl = (id: string,) => {
+
+
+
+
+  return `/api/member-invites/${id}/resend`
+}
+
+/**
+ * The old code stops working the moment this runs. Same
+ * authorization and rate limit as /member-invites/{id}/send; also
+ * rejects an already-claimed or cancelled invite.
+ * @summary Regenerates the code, renews expiry, and re-emails a pending member invite
+ */
+export const resendMemberInvite = async (id: string, options?: RequestInit): Promise<InviteEmailResult> => {
+
+  return customFetch<InviteEmailResult>(getResendMemberInviteUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResendMemberInviteMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendMemberInvite>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendMemberInvite>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['resendMemberInvite'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendMemberInvite>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  resendMemberInvite(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendMemberInviteMutationResult = NonNullable<Awaited<ReturnType<typeof resendMemberInvite>>>
+
+    export type ResendMemberInviteMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Regenerates the code, renews expiry, and re-emails a pending member invite
+ */
+export const useResendMemberInvite = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendMemberInvite>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendMemberInvite>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getResendMemberInviteMutationOptions(options));
+    }
 
 export const getCheckInviteCodeUrl = () => {
 

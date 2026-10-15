@@ -14,6 +14,7 @@ import achievementsRouter from "./achievements";
 import wodRouter from "./wod";
 import authRouter from "./auth";
 import invitesRouter from "./invites";
+import memberInvitesRouter from "./member-invites";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(wodRouter);
 router.use(authRouter);
 router.use(adminRouter);
 router.use(invitesRouter);
+router.use(memberInvitesRouter);
 
 export default router;

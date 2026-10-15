@@ -46,6 +46,7 @@ export * from './errorEnvelope';
 export * from './getContractAcceptanceParams';
 export * from './getContractSignedUrlParams';
 export * from './getNewInviteCodeParams';
+export * from './getNewMemberInviteCodeParams';
 export * from './getTrainingSettingsParams';
 export * from './healthStatus';
 export * from './inviteEmailResult';

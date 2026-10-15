@@ -1,5 +1,5 @@
 import { db, wodplaceUsersTable } from "@workspace/db";
-import { eq, isNotNull } from "drizzle-orm";
+import { eq, isNotNull, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
@@ -59,13 +59,34 @@ router.post("/auth/register", async (req: Request, res: Response) => {
     // endpoint's job); either way this is the same friendly message the
     // mock flow already showed for a taken email, never the raw unique
     // constraint violation.
+    //
+    // Invitación de alumno (2026-10-15): la única excepción es una fila
+    // placeholder (sin auth_user_id -- "agregado a mano" o invitado por
+    // correo) que tenga una invitación PENDIENTE para este mismo correo.
+    // En ese caso se reutiliza esa misma fila (nunca se crea una segunda
+    // con el mismo email -- wodplace_users.email es UNIQUE) en vez de
+    // bloquear con 409. Esto NO otorga nada por sí solo -- el plan/box
+    // real solo se aplica después, cuando el alumno reclama el código en
+    // claim_member_invite; aquí solo se evita que el registro quede
+    // trabado por una fila que el administrador ya sabía que existía.
     const [existing] = await db
-      .select({ id: wodplaceUsersTable.id })
+      .select({ id: wodplaceUsersTable.id, authUserId: wodplaceUsersTable.authUserId })
       .from(wodplaceUsersTable)
       .where(eq(wodplaceUsersTable.email, cleanEmail));
+    let reuseRowId: string | null = null;
     if (existing) {
-      res.status(409).json({ error: "Ya existe una cuenta con ese email." });
-      return;
+      if (existing.authUserId) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese email." });
+        return;
+      }
+      const pendingInvite = await db.execute<{ id: string }>(sql`
+        select id from member_invites where email = ${cleanEmail} and status = 'pendiente' limit 1
+      `);
+      if (pendingInvite.rows.length === 0) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese email." });
+        return;
+      }
+      reuseRowId = existing.id;
     }
 
     const admin = getSupabaseAdmin();
@@ -103,36 +124,51 @@ router.post("/auth/register", async (req: Request, res: Response) => {
       return;
     }
 
-    // Idempotent: a retry of the self-heal path above could land here twice
-    // for the same auth user.
-    const [row] = await db
-      .insert(wodplaceUsersTable)
-      .values({
-        id: makeWodplaceUserId(),
-        name: name.trim(),
-        email: cleanEmail,
-        birthdate: birthdate || null,
-        phone: phone || null,
-        rank: "beginner",
-        authUserId,
-      })
-      // Matches the partial unique index (auth_user_id is unique only
-      // where not null — see the Fase 1 migration) — ON CONFLICT's target
-      // must include the same predicate for Postgres to infer it.
-      .onConflictDoNothing({
-        target: wodplaceUsersTable.authUserId,
-        where: isNotNull(wodplaceUsersTable.authUserId),
-      })
-      .returning();
+    let finalRow;
+    if (reuseRowId) {
+      // Placeholder con invitación pendiente -- se reutiliza la fila
+      // (mismo id, el mismo que verá box_members/plan al reclamar el
+      // código). El nombre lo define el alumno aquí, nunca lo que el
+      // administrador haya escrito al crear la invitación o el placeholder
+      // antiguo.
+      const [row] = await db
+        .update(wodplaceUsersTable)
+        .set({ name: name.trim(), birthdate: birthdate || null, phone: phone || null, authUserId })
+        .where(eq(wodplaceUsersTable.id, reuseRowId))
+        .returning();
+      finalRow = row;
+    } else {
+      // Idempotent: a retry of the self-heal path above could land here twice
+      // for the same auth user.
+      const [row] = await db
+        .insert(wodplaceUsersTable)
+        .values({
+          id: makeWodplaceUserId(),
+          name: name.trim(),
+          email: cleanEmail,
+          birthdate: birthdate || null,
+          phone: phone || null,
+          rank: "beginner",
+          authUserId,
+        })
+        // Matches the partial unique index (auth_user_id is unique only
+        // where not null — see the Fase 1 migration) — ON CONFLICT's target
+        // must include the same predicate for Postgres to infer it.
+        .onConflictDoNothing({
+          target: wodplaceUsersTable.authUserId,
+          where: isNotNull(wodplaceUsersTable.authUserId),
+        })
+        .returning();
 
-    const finalRow =
-      row ??
-      (
-        await db
-          .select()
-          .from(wodplaceUsersTable)
-          .where(eq(wodplaceUsersTable.authUserId, authUserId))
-      )[0];
+      finalRow =
+        row ??
+        (
+          await db
+            .select()
+            .from(wodplaceUsersTable)
+            .where(eq(wodplaceUsersTable.authUserId, authUserId))
+        )[0];
+    }
 
     res.json({
       id: finalRow.id,
@@ -205,41 +241,64 @@ router.post("/auth/complete-profile", requireSupabaseUser, async (req: Request, 
 
     // Same duplicate-email guard as /auth/register — covers the edge case
     // where this Google email already has an unrelated (mock-era or real)
-    // wodplace_users row under a different identity.
+    // wodplace_users row under a different identity. Misma excepción que
+    // /auth/register: una fila placeholder con invitación pendiente se
+    // reutiliza en vez de bloquear.
     const [existingByEmail] = await db
-      .select({ id: wodplaceUsersTable.id })
+      .select({ id: wodplaceUsersTable.id, authUserId: wodplaceUsersTable.authUserId })
       .from(wodplaceUsersTable)
       .where(eq(wodplaceUsersTable.email, cleanEmail));
+    let reuseRowId: string | null = null;
     if (existingByEmail) {
-      res.status(409).json({ error: "Ya existe una cuenta con ese email." });
-      return;
+      if (existingByEmail.authUserId) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese email." });
+        return;
+      }
+      const pendingInvite = await db.execute<{ id: string }>(sql`
+        select id from member_invites where email = ${cleanEmail} and status = 'pendiente' limit 1
+      `);
+      if (pendingInvite.rows.length === 0) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese email." });
+        return;
+      }
+      reuseRowId = existingByEmail.id;
     }
 
-    const [row] = await db
-      .insert(wodplaceUsersTable)
-      .values({
-        id: makeWodplaceUserId(),
-        name: name.trim(),
-        email: cleanEmail,
-        birthdate: birthdate || null,
-        phone: phone || null,
-        rank: "beginner",
-        authUserId: supabaseUser.id,
-      })
-      .onConflictDoNothing({
-        target: wodplaceUsersTable.authUserId,
-        where: isNotNull(wodplaceUsersTable.authUserId),
-      })
-      .returning();
+    let finalRow;
+    if (reuseRowId) {
+      const [row] = await db
+        .update(wodplaceUsersTable)
+        .set({ name: name.trim(), birthdate: birthdate || null, phone: phone || null, authUserId: supabaseUser.id })
+        .where(eq(wodplaceUsersTable.id, reuseRowId))
+        .returning();
+      finalRow = row;
+    } else {
+      const [row] = await db
+        .insert(wodplaceUsersTable)
+        .values({
+          id: makeWodplaceUserId(),
+          name: name.trim(),
+          email: cleanEmail,
+          birthdate: birthdate || null,
+          phone: phone || null,
+          rank: "beginner",
+          authUserId: supabaseUser.id,
+        })
+        .onConflictDoNothing({
+          target: wodplaceUsersTable.authUserId,
+          where: isNotNull(wodplaceUsersTable.authUserId),
+        })
+        .returning();
 
-    const finalRow =
-      row ??
-      (
-        await db
-          .select()
-          .from(wodplaceUsersTable)
-          .where(eq(wodplaceUsersTable.authUserId, supabaseUser.id))
-      )[0];
+      finalRow =
+        row ??
+        (
+          await db
+            .select()
+            .from(wodplaceUsersTable)
+            .where(eq(wodplaceUsersTable.authUserId, supabaseUser.id))
+        )[0];
+    }
 
     res.json({
       id: finalRow.id,

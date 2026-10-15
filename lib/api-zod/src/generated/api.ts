@@ -271,7 +271,8 @@ export const RedeemBoxCodeResponse = zod.object({
   "joined": zod.boolean().describe('True when a new `box_members` row was created.'),
   "alreadyMember": zod.boolean().describe('True when the athlete already belonged to this box.'),
   "boxId": zod.string().nullable(),
-  "boxName": zod.string().nullable()
+  "boxName": zod.string().nullable(),
+  "viaInvite": zod.boolean().optional().describe('True when `code` matched a personal member invite rather than the box\'s generic code.')
 })
 
 
@@ -578,6 +579,56 @@ export const GetNewInviteCodeQueryParams = zod.object({
 
 export const GetNewInviteCodeResponse = zod.object({
   "code": zod.string().describe('14 characters, unambiguous alphabet, cryptographically random.')
+})
+
+
+/**
+ * Does not insert anything — just returns a fresh random code for
+ * box-admin's "Invitar alumno por correo" screen to use when it
+ * creates the member_invites row itself (a direct, RLS-gated insert
+ * from the client). Requires the caller to be box_admin of boxId or
+ * super_admin, and is itself rate-limited per user.
+ * @summary Generates a cryptographically-random member-invite code
+ */
+export const GetNewMemberInviteCodeQueryParams = zod.object({
+  "boxId": zod.coerce.string()
+})
+
+export const GetNewMemberInviteCodeResponse = zod.object({
+  "code": zod.string().describe('14 characters, unambiguous alphabet, cryptographically random.')
+})
+
+
+/**
+ * Called right after box-admin inserts the member_invites row, to
+ * actually deliver it. Requires the caller to be box_admin of the
+ * invite's box or super_admin, and the invite to still be pending.
+ * Rate-limited per box per hour. Never fails the request if the
+ * email itself fails to send — reports it in the response so the
+ * invite row (already created) isn't lost.
+ * @summary Emails an existing, not-yet-claimed member invite its current code
+ */
+export const SendMemberInviteEmailParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const SendMemberInviteEmailResponse = zod.object({
+  "emailSent": zod.boolean().describe('False means the invite row is fine but Resend failed — safe to retry via resend.')
+})
+
+
+/**
+ * The old code stops working the moment this runs. Same
+ * authorization and rate limit as /member-invites/{id}/send; also
+ * rejects an already-claimed or cancelled invite.
+ * @summary Regenerates the code, renews expiry, and re-emails a pending member invite
+ */
+export const ResendMemberInviteParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ResendMemberInviteResponse = zod.object({
+  "emailSent": zod.boolean().describe('False means the invite row is fine but Resend failed — safe to retry via resend.')
 })
 
 
