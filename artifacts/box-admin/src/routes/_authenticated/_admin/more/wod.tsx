@@ -53,7 +53,8 @@ function todayKey() {
 
 function WodPage() {
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin, myPermissions } = useBox();
+  const canPublishWod = isAdmin || !!myPermissions?.wod_of_day_publish;
   const [mode, setMode] = useState<"catalog" | "custom">("catalog");
   const [q, setQ] = useState("");
   const [selectedWodId, setSelectedWodId] = useState<string | null>(null);
@@ -142,6 +143,16 @@ function WodPage() {
 
   const canPublish =
     !publish.isPending && (mode === "catalog" ? !!selectedWodId : customName.trim().length > 0 && customDescription.trim().length > 0);
+
+  if (!canPublishWod) {
+    return (
+      <AdminShell title="WOD del día" showBack>
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          No tienes permiso para esta acción.
+        </p>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell title="WOD del día" showBack>

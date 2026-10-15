@@ -59,6 +59,9 @@ function MorePage() {
     // S3.A de la auditoría de seguridad (2026-10-14): Planes edita precios —
     // es financiero, solo administrador/dueño/super admin.
     if (it.to === "/more/plans") return isAdmin;
+    // Barrido de presentación (2026-10-14): crear/editar un WOD exige el
+    // permiso wod_of_day_publish del coach (base de datos, Lote 2).
+    if (it.to === "/more/wod") return isAdmin || !!myPermissions?.wod_of_day_publish;
     return true;
   });
 

@@ -79,7 +79,8 @@ function toItem(r: MemberRow_): MemberListItem {
 }
 
 function MembersPage() {
-  const { boxId } = useBox();
+  const { boxId, isAdmin, myPermissions } = useBox();
+  const canAddMembers = isAdmin || !!myPermissions?.members_edit;
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<Status>("todos");
 
@@ -115,7 +116,9 @@ function MembersPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar miembro..." className="pl-9 rounded-full h-11 bg-card" />
           </div>
-          <AddMemberFab plans={plans ?? []} />
+          {/* Agregar un miembro nuevo exige members_edit del coach, igual
+              que editarlo (auditoría de seguridad, 2026-10-14). */}
+          {canAddMembers && <AddMemberFab plans={plans ?? []} />}
         </div>
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
           {(["todos", "activo", "pausado", "suspendido", "vencido", "bloqueado"] as Status[]).map((s) => (
@@ -403,7 +406,8 @@ function MemberActionsSheet({
   onOpenChange: (v: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const { boxId, isAdmin } = useBox();
+  const { boxId, isAdmin, myPermissions } = useBox();
+  const canEditMembers = isAdmin || !!myPermissions?.members_edit;
 
   const setStatus = useMutation({
     mutationFn: async (status: MemberStatus) => {
@@ -486,16 +490,23 @@ function MemberActionsSheet({
           )}
           <ActionItem icon={Settings} title="Gestionar membresía" subtitle="Estado, plan, pagos y notas" to="/member-detail/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
 
-          <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado del miembro</p>
-          <ActionItem icon={CircleCheck} title="Activar miembro" subtitle="El miembro podrá acceder normalmente" tone="primary" onClick={() => setStatus.mutate("activo")} />
-          {isPaused ? (
-            <ActionItem icon={PlayCircle} title="Reanudar membresía" subtitle="Vuelve a quedar activa desde hoy" tone="primary" onClick={() => setStatus.mutate("activo")} />
-          ) : (
-            <ActionItem icon={PauseCircle} title="Pausar membresía" subtitle="Congela la membresía temporalmente" tone="warning" onClick={() => setStatus.mutate("pausado")} />
-          )}
-          <ActionItem icon={AlertCircle} title="Suspender miembro" subtitle="Acceso temporalmente restringido" tone="warning" onClick={() => setStatus.mutate("suspendido")} />
-          <ActionItem icon={Lock} title="Bloquear miembro" subtitle="El miembro no podrá iniciar sesión" tone="destructive" onClick={() => setStatus.mutate("bloqueado")} />
-          <ActionItem icon={Clock} title="Marcar como vencido" subtitle="Membresía finalizada" tone="destructive" onClick={() => setStatus.mutate("vencido")} />
+          {/* Cambiar el estado de un miembro exige el permiso members_edit
+              del coach (igual que editarlo) — se oculta en vez de mostrar
+              un botón que va a fallar en silencio. */}
+          {canEditMembers ? (
+            <>
+              <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Estado del miembro</p>
+              <ActionItem icon={CircleCheck} title="Activar miembro" subtitle="El miembro podrá acceder normalmente" tone="primary" onClick={() => setStatus.mutate("activo")} />
+              {isPaused ? (
+                <ActionItem icon={PlayCircle} title="Reanudar membresía" subtitle="Vuelve a quedar activa desde hoy" tone="primary" onClick={() => setStatus.mutate("activo")} />
+              ) : (
+                <ActionItem icon={PauseCircle} title="Pausar membresía" subtitle="Congela la membresía temporalmente" tone="warning" onClick={() => setStatus.mutate("pausado")} />
+              )}
+              <ActionItem icon={AlertCircle} title="Suspender miembro" subtitle="Acceso temporalmente restringido" tone="warning" onClick={() => setStatus.mutate("suspendido")} />
+              <ActionItem icon={Lock} title="Bloquear miembro" subtitle="El miembro no podrá iniciar sesión" tone="destructive" onClick={() => setStatus.mutate("bloqueado")} />
+              <ActionItem icon={Clock} title="Marcar como vencido" subtitle="Membresía finalizada" tone="destructive" onClick={() => setStatus.mutate("vencido")} />
+            </>
+          ) : null}
 
           <p className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Cuenta</p>
           <ActionItem icon={KeyRound} title="Restablecer contraseña" subtitle="Enviar nueva contraseña al miembro" onClick={resetPassword} />
@@ -506,13 +517,18 @@ function MemberActionsSheet({
           {isAdmin && (
             <ActionItem icon={Receipt} title="Ver pagos y facturas" subtitle="Historial de pagos y facturación" to="/member-detail/$id" params={{ id: m.id }} onClick={() => onOpenChange(false)} />
           )}
-          <ActionItem
-            icon={Trash2}
-            title="Eliminar miembro"
-            subtitle="Eliminar miembro permanentemente"
-            tone="destructive"
-            onClick={() => { if (confirm(`¿Eliminar a ${m.full_name}?`)) remove.mutate(); }}
-          />
+          {/* Eliminar un miembro es solo de administrador/dueño/super admin
+              (auditoría de seguridad, 2026-10-14) -- ningún permiso de
+              coach lo habilita. */}
+          {isAdmin && (
+            <ActionItem
+              icon={Trash2}
+              title="Eliminar miembro"
+              subtitle="Eliminar miembro permanentemente"
+              tone="destructive"
+              onClick={() => { if (confirm(`¿Eliminar a ${m.full_name}?`)) remove.mutate(); }}
+            />
+          )}
         </div>
       </DrawerContent>
     </Drawer>

@@ -107,38 +107,46 @@ function SettingsPage() {
               <Camera className="h-6 w-6 text-muted-foreground" />
             )}
           </div>
-          <div className="flex flex-1 gap-2">
-            <Button
-              variant="outline"
-              className="rounded-full"
-              disabled={upload.isPending}
-              onClick={() => fileRef.current?.click()}
-            >
-              {photo.data ? "Cambiar foto" : "Subir foto"}
-            </Button>
-            {photo.data ? (
+          {isAdmin ? (
+            <div className="flex flex-1 gap-2">
               <Button
                 variant="outline"
-                className="rounded-full text-destructive"
-                disabled={remove.isPending}
-                onClick={() => remove.mutate()}
+                className="rounded-full"
+                disabled={upload.isPending}
+                onClick={() => fileRef.current?.click()}
               >
-                <Trash2 className="h-4 w-4" />
+                {photo.data ? "Cambiar foto" : "Subir foto"}
               </Button>
-            ) : null}
-          </div>
+              {photo.data ? (
+                <Button
+                  variant="outline"
+                  className="rounded-full text-destructive"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate()}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <p className="flex-1 text-xs text-muted-foreground">
+              Solo un administrador puede cambiar la foto del box.
+            </p>
+          )}
         </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) upload.mutate(file);
-            e.target.value = "";
-          }}
-        />
+        {isAdmin && (
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) upload.mutate(file);
+              e.target.value = "";
+            }}
+          />
+        )}
       </div>
 
       <Button variant="outline" onClick={signOut} className="mt-4 w-full rounded-full h-11 text-destructive border-destructive/30">
