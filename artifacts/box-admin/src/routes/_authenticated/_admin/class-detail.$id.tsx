@@ -44,6 +44,7 @@ function ClassDetail() {
   const { id } = Route.useParams();
   const { boxId, isAdmin, myPermissions } = useBox();
   const canMarkAttendance = isAdmin || !!myPermissions?.bookings_manage;
+  const canEditClass = isAdmin || !!myPermissions?.classes_edit;
   const qc = useQueryClient();
   const [tab, setTab] = useState<"asistentes" | "espera">("asistentes");
   const [q, setQ] = useState("");
@@ -131,14 +132,16 @@ function ClassDetail() {
               <span className={`h-2 w-2 rounded-full ${activa ? "bg-primary" : "bg-muted-foreground"}`} />
               {activa ? "Activa" : "Finalizada"}
             </span>
-            <EditClass classId={id} initial={{
-              name: c.name,
-              start_time: String(c.start_time).slice(0, 5),
-              duration_minutes: c.duration_minutes ?? 60,
-              capacity: c.capacity ?? 15,
-              session_date: c.session_date,
-              notes: c.notes ?? "",
-            }} />
+            {canEditClass && (
+              <EditClass classId={id} initial={{
+                name: c.name,
+                start_time: String(c.start_time).slice(0, 5),
+                duration_minutes: c.duration_minutes ?? 60,
+                capacity: c.capacity ?? 15,
+                session_date: c.session_date,
+                notes: c.notes ?? "",
+              }} />
+            )}
           </div>
         </div>
 
@@ -219,15 +222,17 @@ function ClassDetail() {
                   </button>
                 </div>
               )}
-              <button
-                type="button"
-                aria-label={`Quitar a ${a.wodplace_users?.name ?? "este miembro"}`}
-                disabled={removeBooking.isPending}
-                onClick={() => setToRemove(a)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-destructive active:bg-destructive/10 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {canMarkAttendance && (
+                <button
+                  type="button"
+                  aria-label={`Quitar a ${a.wodplace_users?.name ?? "este miembro"}`}
+                  disabled={removeBooking.isPending}
+                  onClick={() => setToRemove(a)}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-destructive active:bg-destructive/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -36,7 +36,11 @@ export function ClassQuickView({
   onOpenChange: (v: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const { boxId } = useBox();
+  const { boxId, isAdmin, myPermissions } = useBox();
+  // classes_edit -- la base además exige que la sesión sea del propio
+  // coach, lo que esta pantalla no verifica todavía (no conoce el
+  // coach_id real de la sesión, solo su nombre para mostrar).
+  const canEditClass = isAdmin || !!myPermissions?.classes_edit;
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -189,19 +193,21 @@ export function ClassQuickView({
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </Link>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-11 rounded-full" onClick={() => setEditing(true)}>
-                  <Pencil className="mr-2 h-4 w-4" /> Editar
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={del.isPending}
-                  onClick={() => { if (confirm("¿Eliminar esta clase?")) del.mutate(); }}
-                  className="h-11 rounded-full border-destructive/40 text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                </Button>
-              </div>
+              {canEditClass && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="h-11 rounded-full" onClick={() => setEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={del.isPending}
+                    onClick={() => { if (confirm("¿Eliminar esta clase?")) del.mutate(); }}
+                    className="h-11 rounded-full border-destructive/40 text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>

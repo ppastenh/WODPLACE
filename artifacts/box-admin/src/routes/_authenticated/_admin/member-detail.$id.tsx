@@ -421,22 +421,22 @@ function MemberDetail() {
         <Avatar name={fullName} url={m.wodplace_users?.avatar_url ?? m.photo_url} size={72} />
         <h1 className="mt-3 text-xl font-black">{fullName}</h1>
         <div className="mt-2"><StatusChip status={m.status} /></div>
-        {/* S3.A de la auditoría de seguridad (2026-10-14): para un coach,
-            ni el nombre del plan ni la fecha -- solo un estado simple.
-            El botón sigue abriendo el selector (cambiar el plan de un
-            miembro no es una acción financiera), solo cambia el texto. */}
-        <button
-          onClick={() => setSelectPlan(true)}
-          className="mt-2 rounded-full px-2 py-0.5 text-xs text-muted-foreground underline-offset-2 active:bg-secondary active:underline"
-        >
-          {isAdmin
-            ? m.plans?.name
-              ? `Plan ${m.plans.name}`
-              : "Sin plan asignado — toca para elegir"
-            : m.plan_id
-              ? membershipStatusLabel(m.next_payment_at) ?? "Con plan"
-              : "Sin plan asignado — toca para elegir"}
-        </button>
+        {/* S3.A (2026-10-14): para un coach, ni el nombre del plan ni la
+            fecha -- solo un estado simple. Barrido de presentación
+            (2026-10-14): "Cambiar plan" pasó a ser solo de administrador
+            -- para un coach esto ya no es un botón, es solo texto. */}
+        {isAdmin ? (
+          <button
+            onClick={() => setSelectPlan(true)}
+            className="mt-2 rounded-full px-2 py-0.5 text-xs text-muted-foreground underline-offset-2 active:bg-secondary active:underline"
+          >
+            {m.plans?.name ? `Plan ${m.plans.name}` : "Sin plan asignado — toca para elegir"}
+          </button>
+        ) : (
+          <p className="mt-2 rounded-full px-2 py-0.5 text-xs text-muted-foreground">
+            {m.plan_id ? membershipStatusLabel(m.next_payment_at) ?? "Con plan" : "Sin plan asignado"}
+          </p>
+        )}
       </div>
 
       <div className={`mt-3 grid gap-2 ${isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
@@ -689,13 +689,15 @@ function MemberDetail() {
         </TabsContent>
       </Tabs>
 
-      <SelectPlanSheet
-        userId={id}
-        memberName={fullName}
-        currentPlanName={m.plans?.name ?? null}
-        open={selectPlan}
-        onOpenChange={setSelectPlan}
-      />
+      {isAdmin && (
+        <SelectPlanSheet
+          userId={id}
+          memberName={fullName}
+          currentPlanName={m.plans?.name ?? null}
+          open={selectPlan}
+          onOpenChange={setSelectPlan}
+        />
+      )}
       <EditMemberDialog
         boxId={boxId}
         userId={id}

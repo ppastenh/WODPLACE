@@ -48,7 +48,7 @@ type Coach = {
 const LAST_COACH_PERMISSIONS_KEY = "last_coach_permissions";
 
 function CoachesPage() {
-  const { boxId } = useBox();
+  const { boxId, isAdmin } = useBox();
   const coaches = useQuery({
     queryKey: ["coaches", boxId],
     queryFn: async () => {
@@ -56,7 +56,20 @@ function CoachesPage() {
       if (error) throw error;
       return (data ?? []) as unknown as Coach[];
     },
+    enabled: isAdmin,
   });
+
+  // Agregar/quitar coaches y editar sus permisos es solo de
+  // administrador/dueño/super admin (la base ya lo exige).
+  if (!isAdmin) {
+    return (
+      <AdminShell title="Coaches" showBack>
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          No tienes permiso para esta acción.
+        </p>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell title="Coaches" showBack>

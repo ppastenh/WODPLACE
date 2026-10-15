@@ -168,7 +168,9 @@ export function StatusChip({ status }: { status: string }) {
 }
 
 function MemberRow({ m }: { m: MemberListItem }) {
-  const { isAdmin } = useBox();
+  const { isAdmin, myPermissions } = useBox();
+  const canBook = isAdmin || !!myPermissions?.bookings_manage;
+  const canChangePlan = isAdmin; // "Cambiar plan" es solo de administrador/dueño/super admin (la base ya lo exige).
   const [expanded, setExpanded] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [book, setBook] = useState(false);
@@ -220,14 +222,19 @@ function MemberRow({ m }: { m: MemberListItem }) {
       </div>
 
       {expanded && (
-        <div className="grid grid-cols-3 gap-1 border-t p-2">
-          <button
-            onClick={() => setBook(true)}
-            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
-          >
-            <CalendarDays className="h-5 w-5" />
-            Reservar
-          </button>
+        <div className={`grid gap-1 border-t p-2 ${[canBook, true, canChangePlan].filter(Boolean).length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+          {/* "Reservar" exige bookings_manage; "Cambiar plan" es solo de
+              administrador/dueño/super admin — la base ya rechaza ambas
+              acciones para un coach sin el permiso correspondiente. */}
+          {canBook && (
+            <button
+              onClick={() => setBook(true)}
+              className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
+            >
+              <CalendarDays className="h-5 w-5" />
+              Reservar
+            </button>
+          )}
           <a
             href={waHref}
             target="_blank"
@@ -237,25 +244,29 @@ function MemberRow({ m }: { m: MemberListItem }) {
             <MessageCircle className="h-5 w-5" />
             Chat
           </a>
-          <button
-            onClick={() => setSelectPlan(true)}
-            className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
-          >
-            <Tag className="h-5 w-5" />
-            Plan
-          </button>
+          {canChangePlan && (
+            <button
+              onClick={() => setSelectPlan(true)}
+              className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] text-primary active:bg-secondary"
+            >
+              <Tag className="h-5 w-5" />
+              Plan
+            </button>
+          )}
         </div>
       )}
 
       <MemberActionsSheet m={m} open={sheet} onOpenChange={setSheet} />
-      <BookClassSheet memberId={m.id} memberName={m.full_name} open={book} onOpenChange={setBook} />
-      <SelectPlanSheet
-        userId={m.id}
-        memberName={m.full_name}
-        currentPlanName={m.plan?.name ?? null}
-        open={selectPlan}
-        onOpenChange={setSelectPlan}
-      />
+      {canBook && <BookClassSheet memberId={m.id} memberName={m.full_name} open={book} onOpenChange={setBook} />}
+      {canChangePlan && (
+        <SelectPlanSheet
+          userId={m.id}
+          memberName={m.full_name}
+          currentPlanName={m.plan?.name ?? null}
+          open={selectPlan}
+          onOpenChange={setSelectPlan}
+        />
+      )}
     </div>
   );
 }

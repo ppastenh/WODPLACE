@@ -62,6 +62,10 @@ function MorePage() {
     // Barrido de presentación (2026-10-14): crear/editar un WOD exige el
     // permiso wod_of_day_publish del coach (base de datos, Lote 2).
     if (it.to === "/more/wod") return isAdmin || !!myPermissions?.wod_of_day_publish;
+    // Agregar/quitar coaches y editar sus permisos es solo de
+    // administrador/dueño/super admin -- la base ya lo exige para
+    // cualquier cambio real, esta pantalla no tenía ninguna guardia.
+    if (it.to === "/more/coaches") return isAdmin;
     return true;
   });
 

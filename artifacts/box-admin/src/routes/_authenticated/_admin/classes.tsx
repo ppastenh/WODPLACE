@@ -137,6 +137,10 @@ function useClassesRange(from: Date, to: Date) {
 }
 
 function ClassesPage() {
+  const { isAdmin, myPermissions } = useBox();
+  // "Crear clase" exige classes_create -- la base además exige que la
+  // sesión quede asignada al propio coach, no a cualquiera del box.
+  const canCreateClass = isAdmin || !!myPermissions?.classes_create;
   const [mode, setMode] = useState<"semana" | "mes">("semana");
   const [selected, setSelected] = useState(new Date());
   const [addOpen, setAddOpen] = useState(false);
@@ -145,14 +149,16 @@ function ClassesPage() {
     <AdminShell
       title="Clases"
       right={
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          aria-label="Nueva clase"
-          className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
+        canCreateClass ? (
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            aria-label="Nueva clase"
+            className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        ) : undefined
       }
     >
       <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1">
@@ -175,7 +181,7 @@ function ClassesPage() {
         <MonthView selected={selected} onSelect={setSelected} onViewAll={() => setMode("semana")} />
       )}
 
-      <AddClassFab defaultDate={format(selected, "yyyy-MM-dd")} open={addOpen} onOpenChange={setAddOpen} />
+      {canCreateClass && <AddClassFab defaultDate={format(selected, "yyyy-MM-dd")} open={addOpen} onOpenChange={setAddOpen} />}
     </AdminShell>
   );
 }
