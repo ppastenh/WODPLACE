@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -286,6 +287,7 @@ export function SelectPlanSheet({
 }) {
   const qc = useQueryClient();
   const { boxId } = useBox();
+  const [pendingPlan, setPendingPlan] = useState<{ id: string; name: string } | null>(null);
 
   const plans = useQuery({
     queryKey: ["plans", boxId],
@@ -327,11 +329,7 @@ export function SelectPlanSheet({
 
   function selectPlan(planName: string, planId: string) {
     if (planName === currentPlanName) return;
-    const confirmed = confirm(
-      `Vas a cambiar el plan de ${memberName} de "${currentPlanName ?? "sin plan"}" a "${planName}". ¿Confirmas?\n\n` +
-        "Esto no ajusta pagos ya hechos — los pagos se registran aparte, en Finanzas.",
-    );
-    if (confirmed) setPlan.mutate(planId);
+    setPendingPlan({ id: planId, name: planName });
   }
 
   return (
@@ -357,6 +355,15 @@ export function SelectPlanSheet({
           ))}
         </div>
       </DrawerContent>
+      <ConfirmDialog
+        open={pendingPlan != null}
+        onOpenChange={(v) => { if (!v) setPendingPlan(null); }}
+        title="Cambiar plan"
+        description={`Vas a cambiar el plan de ${memberName} de "${currentPlanName ?? "sin plan"}" a "${pendingPlan?.name ?? ""}". Esto no ajusta pagos ya hechos — los pagos se registran aparte, en Finanzas.`}
+        confirmLabel="Cambiar plan"
+        loading={setPlan.isPending}
+        onConfirm={() => { if (pendingPlan) setPlan.mutate(pendingPlan.id); setPendingPlan(null); }}
+      />
     </Drawer>
   );
 }
@@ -419,6 +426,7 @@ function MemberActionsSheet({
   const qc = useQueryClient();
   const { boxId, isAdmin, myPermissions } = useBox();
   const canEditMembers = isAdmin || !!myPermissions?.members_edit;
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const setStatus = useMutation({
     mutationFn: async (status: MemberStatus) => {
@@ -537,11 +545,21 @@ function MemberActionsSheet({
               title="Eliminar miembro"
               subtitle="Eliminar miembro permanentemente"
               tone="destructive"
-              onClick={() => { if (confirm(`¿Eliminar a ${m.full_name}?`)) remove.mutate(); }}
+              onClick={() => setConfirmRemove(true)}
             />
           )}
         </div>
       </DrawerContent>
+      <ConfirmDialog
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        title="Eliminar miembro"
+        description={`¿Eliminar a ${m.full_name}? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
+        loading={remove.isPending}
+        onConfirm={() => { remove.mutate(); setConfirmRemove(false); }}
+      />
     </Drawer>
   );
 }

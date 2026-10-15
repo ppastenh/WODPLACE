@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,7 @@ export function ClassQuickView({
   // coach_id real de la sesión, solo su nombre para mostrar).
   const canEditClass = isAdmin || !!myPermissions?.classes_edit;
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState({
     name: "",
     session_date: "",
@@ -201,7 +203,7 @@ export function ClassQuickView({
                   <Button
                     variant="outline"
                     disabled={del.isPending}
-                    onClick={() => { if (confirm("¿Eliminar esta clase?")) del.mutate(); }}
+                    onClick={() => setConfirmDelete(true)}
                     className="h-11 rounded-full border-destructive/40 text-destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" /> Eliminar
@@ -212,6 +214,16 @@ export function ClassQuickView({
           )}
         </div>
       </DrawerContent>
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Eliminar clase"
+        description={`¿Eliminar "${c?.name ?? "esta clase"}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
+        loading={del.isPending}
+        onConfirm={() => { del.mutate(); setConfirmDelete(false); }}
+      />
     </Drawer>
   );
 }

@@ -100,6 +100,7 @@ function MemberDetail() {
   const { boxId, myCoachId, isAdmin } = useBox();
   const [selectPlan, setSelectPlan] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmRenew, setConfirmRenew] = useState(false);
   const [toRemove, setToRemove] = useState<UpcomingClass | null>(null);
   const [confirmBirthdayConsent, setConfirmBirthdayConsent] = useState(false);
 
@@ -448,15 +449,7 @@ function MemberDetail() {
           <Button
             variant="outline"
             disabled={!m.plan_id || !m.plans || renew.isPending}
-            onClick={() => {
-              if (!m.plans) return;
-              const confirmed = confirm(
-                `¿Registrar pago de $${Number(m.plans.price ?? 0).toLocaleString()} y renovar el plan ${
-                  m.plans.duration_days ? `por ${m.plans.duration_days} días` : ""
-                }?`,
-              );
-              if (confirmed) renew.mutate();
-            }}
+            onClick={() => setConfirmRenew(true)}
             className="rounded-2xl h-11 flex-col gap-1"
           >
             <RefreshCw className="h-4 w-4" /><span className="text-[10px]">Renovar</span>
@@ -706,6 +699,21 @@ function MemberDetail() {
         memberSince={m.member_since ?? m.joined_at}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+      <ConfirmDialog
+        open={confirmRenew}
+        onOpenChange={setConfirmRenew}
+        title="Renovar plan"
+        description={
+          m.plans
+            ? `¿Registrar pago de $${Number(m.plans.price ?? 0).toLocaleString()} y renovar el plan${
+                m.plans.duration_days ? ` por ${m.plans.duration_days} días` : ""
+              }?`
+            : undefined
+        }
+        confirmLabel="Renovar"
+        loading={renew.isPending}
+        onConfirm={() => { renew.mutate(); setConfirmRenew(false); }}
       />
       <ConfirmDialog
         open={toRemove != null}

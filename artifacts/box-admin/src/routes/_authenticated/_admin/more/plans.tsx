@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
 import { Plus, Pencil, Trash2, Check, X, MoreVertical, Copy, Star, PauseCircle, PlayCircle, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +59,7 @@ function PlansPage() {
   const [editing, setEditing] = useState<Plan | null>(null);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<Plan | null>(null);
 
   const plans = useQuery({
     queryKey: ["plans", boxId],
@@ -206,9 +208,7 @@ function PlansPage() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
-                      onClick={() => {
-                        if (confirm(`¿Eliminar el plan "${p.name}"?`)) del.mutate(p.id);
-                      }}
+                      onClick={() => setToDelete(p)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                     </DropdownMenuItem>
@@ -265,6 +265,16 @@ function PlansPage() {
           }
         }}
       />
+      <ConfirmDialog
+        open={toDelete != null}
+        onOpenChange={(v) => { if (!v) setToDelete(null); }}
+        title="Eliminar plan"
+        description={`¿Eliminar el plan "${toDelete?.name ?? ""}"?`}
+        confirmLabel="Eliminar"
+        destructive
+        loading={del.isPending}
+        onConfirm={() => { if (toDelete) del.mutate(toDelete.id); setToDelete(null); }}
+      />
     </AdminShell>
   );
 }
@@ -285,6 +295,7 @@ function PlanDialog({
   const [f, setF] = useState(empty);
   const [benefit, setBenefit] = useState("");
   const [key, setKey] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // sync form when the target plan changes
   const currentKey = plan?.id ?? "new";
@@ -464,19 +475,27 @@ function PlanDialog({
               type="button"
               variant="outline"
               className="h-11 w-full rounded-full border-destructive/40 font-semibold text-destructive"
-              onClick={() => {
-                if (confirm(`¿Eliminar el plan "${plan.name}"?`)) {
-                  onDelete(plan.id);
-                  setKey(null);
-                  onOpenChange(false);
-                }
-              }}
+              onClick={() => setConfirmDelete(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" /> Eliminar plan
             </Button>
           )}
         </form>
       </DialogContent>
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Eliminar plan"
+        description={plan ? `¿Eliminar el plan "${plan.name}"?` : undefined}
+        confirmLabel="Eliminar"
+        destructive
+        onConfirm={() => {
+          if (plan) onDelete(plan.id);
+          setConfirmDelete(false);
+          setKey(null);
+          onOpenChange(false);
+        }}
+      />
     </Dialog>
   );
 }

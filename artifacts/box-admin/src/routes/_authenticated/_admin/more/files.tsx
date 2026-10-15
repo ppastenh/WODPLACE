@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FileText, FileImage, FileType2, Upload, RefreshCw, Trash2, Plus, ExternalLink, Users } from "lucide-react";
@@ -207,6 +208,7 @@ function ContractRow({ contract, accepted, total, onChange }: { contract: Contra
   // Por defecto exige re-aceptar — "Corrección menor" es la excepción
   // explícita, elegida antes de soltar el archivo.
   const [requiresReacceptance, setRequiresReacceptance] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const replaceMut = useMutation({
     mutationFn: async (file: File) => {
@@ -297,11 +299,21 @@ function ContractRow({ contract, accepted, total, onChange }: { contract: Contra
         <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => replaceRef.current?.click()} disabled={replaceMut.isPending}>
           <RefreshCw className="mr-1 h-3.5 w-3.5" /> {replaceMut.isPending ? "…" : "Reemplazar"}
         </Button>
-        <Button variant="ghost" size="sm" className="rounded-xl text-destructive" onClick={() => { if (confirm("¿Eliminar este contrato? El archivo sigue en el historial, pero deja de mostrarse a los atletas.")) deleteMut.mutate(); }}>
+        <Button variant="ghost" size="sm" className="rounded-xl text-destructive" onClick={() => setConfirmDelete(true)}>
           <Trash2 className="mr-1 h-3.5 w-3.5" /> Borrar
         </Button>
       </div>
       <input ref={replaceRef} type="file" accept={ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) replaceMut.mutate(f); e.target.value = ""; }} />
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Eliminar contrato"
+        description="El archivo sigue en el historial, pero deja de mostrarse a los atletas."
+        confirmLabel="Eliminar"
+        destructive
+        loading={deleteMut.isPending}
+        onConfirm={() => { deleteMut.mutate(); setConfirmDelete(false); }}
+      />
     </li>
   );
 }
