@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
-import { Avatar, StatusChip, SelectPlanSheet, isPlaceholderEmail } from "./members";
+import { Avatar, StatusChip, SelectPlanSheet, isPlaceholderEmail, ContractStatusBadge, type ContractStatus } from "./members";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -214,6 +214,20 @@ function MemberDetail() {
         return { name: admin.name, phone: admin.phone, source: "admin" as const };
       }
       return null;
+    },
+    enabled: isAdmin,
+  });
+
+  // Etiqueta de contratos (solo presentación, 2026-10-15): misma función
+  // que Miembros, filtrada a este miembro -- aquí además se muestra qué
+  // documentos faltan, no solo el estado.
+  const contractStatus = useQuery({
+    queryKey: ["member_contract_status", boxId, id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("box_members_contract_status", { _box_id: boxId });
+      if (error) throw error;
+      const row = (data ?? []).find((r) => r.user_id === id);
+      return row ? { status: row.status as ContractStatus, pendingTitles: row.pending_titles ?? [] } : null;
     },
     enabled: isAdmin,
   });
@@ -513,6 +527,19 @@ function MemberDetail() {
             value={isPlaceholderEmail(m.wodplace_users?.email) ? "Sin cuenta en la app" : (m.wodplace_users?.email || "—")}
           />
           <InfoRow icon={Phone} label="Teléfono" value={m.phone || "—"} />
+          {isAdmin && contractStatus.data?.status && (
+            <div className="rounded-2xl border bg-card p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Contratos</p>
+                <ContractStatusBadge status={contractStatus.data.status} />
+              </div>
+              {contractStatus.data.status === "pendiente" && contractStatus.data.pendingTitles.length > 0 && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Falta: {contractStatus.data.pendingTitles.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
           {isAdmin && (
             <InfoRow
               icon={ShieldAlert}

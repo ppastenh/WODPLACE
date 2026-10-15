@@ -2302,6 +2302,14 @@ export type Database = {
         Args: { _box_id: string; _user_id: string }
         Returns: string
       }
+      box_members_contract_status: {
+        Args: { _box_id: string }
+        Returns: {
+          pending_titles: string[]
+          status: string
+          user_id: string
+        }[]
+      }
       box_owner_user_id: { Args: { _box_id: string }; Returns: string }
       box_status: { Args: { _box_id: string }; Returns: string }
       check_invite_code: {

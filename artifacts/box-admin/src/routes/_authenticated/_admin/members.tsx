@@ -39,6 +39,20 @@ export function isPlaceholderEmail(email: string | null | undefined): boolean {
   return !!email && email.endsWith(NO_ACCOUNT_EMAIL_DOMAIN);
 }
 
+export type ContractStatus = "pendiente" | "al_dia" | "papel" | "falta_papel" | null;
+
+export function ContractStatusBadge({ status }: { status: ContractStatus | undefined }) {
+  if (!status) return null;
+  const map: Record<Exclude<ContractStatus, null>, { label: string; cls: string }> = {
+    pendiente: { label: "Contratos pendientes", cls: "bg-warning/20 text-warning" },
+    al_dia: { label: "Contratos al día", cls: "bg-primary/20 text-primary" },
+    papel: { label: "Contrato en papel", cls: "bg-secondary text-muted-foreground" },
+    falta_papel: { label: "Falta contrato en papel", cls: "bg-warning/20 text-warning" },
+  };
+  const info = map[status];
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${info.cls}`}>{info.label}</span>;
+}
+
 export const Route = createFileRoute("/_authenticated/_admin/members")({
   head: () => ({
     meta: [
@@ -119,6 +133,22 @@ function MembersPage() {
     },
   });
 
+  // Etiqueta de contratos (solo presentación, 2026-10-15): una sola
+  // llamada para toda la lista, nunca una por miembro. Solo
+  // administrador/dueño/super admin la ven -- un coach ni la pide (la
+  // función igual le devolvería cero filas si la llamara).
+  const contractStatus = useQuery({
+    queryKey: ["member_contract_status", boxId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("box_members_contract_status", { _box_id: boxId });
+      if (error) throw error;
+      return Object.fromEntries(
+        (data ?? []).map((r) => [r.user_id, { status: r.status as ContractStatus, pendingTitles: r.pending_titles }]),
+      );
+    },
+    enabled: isAdmin,
+  });
+
   return (
     <AdminShell title="Miembros">
       <BoxInviteCard />
@@ -153,7 +183,7 @@ function MembersPage() {
           </div>
         )}
         {members.data?.map((m) => (
-          <MemberRow key={m.id} m={m} />
+          <MemberRow key={m.id} m={m} contractStatus={contractStatus.data?.[m.id]?.status} />
         ))}
       </div>
     </AdminShell>
@@ -182,7 +212,7 @@ export function StatusChip({ status }: { status: string }) {
   return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${map[status] ?? "bg-secondary"}`}>{status}</span>;
 }
 
-function MemberRow({ m }: { m: MemberListItem }) {
+function MemberRow({ m, contractStatus }: { m: MemberListItem; contractStatus?: ContractStatus }) {
   const { isAdmin, myPermissions } = useBox();
   const canBook = isAdmin || !!myPermissions?.bookings_manage;
   const canChangePlan = isAdmin; // "Cambiar plan" es solo de administrador/dueño/super admin (la base ya lo exige).
@@ -212,6 +242,7 @@ function MemberRow({ m }: { m: MemberListItem }) {
                   coach, ni el nombre del plan ni la fecha exacta -- solo
                   un estado simple. Administrador y dueño no cambian. */}
               {isAdmin && m.plan?.name && <span className="truncate">· {m.plan.name}</span>}
+              <ContractStatusBadge status={contractStatus} />
               {!isAdmin && membershipStatus && (
                 <span className={membershipStatus === "Vigente" ? "text-primary" : "text-destructive"}>
                   · {membershipStatus}
