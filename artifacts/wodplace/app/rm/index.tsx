@@ -11,7 +11,13 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCreatePr, useGetTrainingSettings } from '@workspace/api-client-react';
+import {
+  getListPrGoalsQueryKey,
+  getListPrsQueryKey,
+  useCreatePr,
+  useGetTrainingSettings,
+} from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { RmHeader } from '@/components/rm/RmHeader';
 import { BarLoadDiagram } from '@/components/rm/BarLoadDiagram';
 import { PercentDropdown } from '@/components/rm/PercentDropdown';
@@ -44,6 +50,7 @@ export default function BarLoaderScreen() {
 
   const settings = useGetTrainingSettings({ userId }, { query: { enabled: !!userId } as never });
   const create = useCreatePr();
+  const qc = useQueryClient();
 
   const [unit, setUnit] = React.useState<Unit>('kg');
   const [barKg, setBarKg] = React.useState(20);
@@ -142,10 +149,15 @@ export default function BarLoaderScreen() {
           },
         },
         {
-          onSuccess: () =>
+          // Mismo arreglo que rm/record.tsx -- ver su comentario.
+          onSuccess: () => {
+            qc.invalidateQueries({ queryKey: getListPrsQueryKey({ userId }) });
+            qc.invalidateQueries({ queryKey: getListPrGoalsQueryKey({ userId }) });
+            qc.invalidateQueries({ queryKey: ['achievements', userId] });
             Alert.alert('Guardado', `${saveWeight} ${unit} en ${mvName}.`, [
               { text: 'OK', onPress: () => router.back() },
-            ]),
+            ]);
+          },
           onError: () => Alert.alert('Error', 'No se pudo guardar el RM.'),
         },
       );

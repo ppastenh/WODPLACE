@@ -13,6 +13,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getListMovementsQueryKey,
+  getListPrGoalsQueryKey,
+  getListPrsQueryKey,
   useCreateMovement,
   useCreatePr,
   type Movement,
@@ -138,7 +140,19 @@ export default function RecordRmScreen() {
         },
       },
       {
-        onSuccess: () => router.back(),
+        // Sin esto, Historial (rm/history.tsx) sigue mostrando la lista en
+        // caché hasta que el staleTime global (30s) expira solo -- el
+        // servidor ya tiene el RM nuevo de inmediato (confirmado en vivo:
+        // GET /prs lo devuelve en el mismo viaje), el retraso percibido es
+        // puramente este caché sin invalidar. 'achievements' también,
+        // por si este RM desbloqueó una medalla -- mismo criterio ya
+        // aprobado (invalidación inmediata tras la acción, no por tiempo).
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getListPrsQueryKey({ userId }) });
+          qc.invalidateQueries({ queryKey: getListPrGoalsQueryKey({ userId }) });
+          qc.invalidateQueries({ queryKey: ['achievements', userId] });
+          router.back();
+        },
         onError: () => Alert.alert('Error', 'No se pudo guardar el registro.'),
       },
     );
