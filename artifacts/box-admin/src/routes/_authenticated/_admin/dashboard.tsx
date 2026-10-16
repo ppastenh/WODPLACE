@@ -10,6 +10,8 @@ import { format, startOfMonth, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatTimeLabel, isClassEnded, isClassLive } from "@/lib/time";
+import { todayInChileKey } from "@/lib/membershipStatus";
 
 
 export const Route = createFileRoute("/_authenticated/_admin/dashboard")({
@@ -28,7 +30,7 @@ function useDashboardStats(boxId: string) {
   return useQuery({
     queryKey: ["dashboard-stats", boxId],
     queryFn: async () => {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = todayInChileKey();
       const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
       const in7days = format(addDays(new Date(), 7), "yyyy-MM-dd");
 
@@ -66,7 +68,7 @@ function useExpiringMembers(enabled: boolean, boxId: string) {
     enabled,
     queryKey: ["expiring-members", boxId],
     queryFn: async () => {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = todayInChileKey();
       const in7days = format(addDays(new Date(), 7), "yyyy-MM-dd");
       const { data } = await supabase
         .from("box_members")
@@ -93,34 +95,25 @@ type UpcomingClass = {
 
 type ClassTimeInfo = Pick<UpcomingClass, "session_date" | "start_time" | "duration_minutes">;
 
-function classWindow(c: ClassTimeInfo): { start: Date; end: Date } | null {
-  if (!c.start_time) return null;
-  const [h, m] = c.start_time.split(":").map(Number);
-  const start = new Date(`${c.session_date}T00:00:00`);
-  start.setHours(h, m, 0, 0);
-  const end = new Date(start.getTime() + (c.duration_minutes || 60) * 60_000);
-  return { start, end };
+// "En curso"/"terminada" se calculan con lib/time.ts (hora de Chile,
+// nunca la del navegador del administrador) -- antes esto construía un
+// `new Date(...)` sin zona, que se interpreta en la hora LOCAL de quien
+// mira el panel, no necesariamente Chile.
+function classHasEnded(c: ClassTimeInfo, reference: Date): boolean {
+  if (!c.start_time) return false;
+  return isClassEnded(c.session_date, c.start_time, c.duration_minutes || 60, reference);
 }
 
-/** Whether `now` falls inside [start_time, start_time + duration) — drives
- *  the "en curso" green dot on the dashboard's upcoming-classes cards. */
-function isClassLive(c: ClassTimeInfo, now: Date): boolean {
-  const w = classWindow(c);
-  return !!w && now >= w.start && now < w.end;
-}
-
-/** Whether the class has already finished (now past start + duration) —
- *  used to drop it from "Próximas clases" once it's over. */
-function hasClassEnded(c: ClassTimeInfo, now: Date): boolean {
-  const w = classWindow(c);
-  return !!w && now >= w.end;
+function classIsLive(c: ClassTimeInfo, reference: Date): boolean {
+  if (!c.start_time) return false;
+  return isClassLive(c.session_date, c.start_time, c.duration_minutes || 60, reference);
 }
 
 function useUpcomingClasses(boxId: string) {
   return useQuery({
     queryKey: ["upcoming-classes", boxId],
     queryFn: async () => {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = todayInChileKey();
       const { data: sessions } = await supabase
         .from("class_sessions")
         .select("id, name, session_date, start_time, duration_minutes, capacity, coach:coaches(name)")
@@ -131,7 +124,7 @@ function useUpcomingClasses(boxId: string) {
       // condition) since "ended" depends on duration_minutes too, not just
       // the start time — a session's end time isn't a column to filter on.
       const now = new Date();
-      const rows = (sessions ?? []).filter((r) => !hasClassEnded(r, now)).slice(0, 4);
+      const rows = (sessions ?? []).filter((r) => !classHasEnded(r, now)).slice(0, 4);
       if (rows.length === 0) return [] as UpcomingClass[];
       const { data: bookings } = await supabase
         .from("class_bookings")
@@ -174,7 +167,7 @@ function useMyClassesToday(boxId: string, coachId: string | null) {
     queryFn: async () => {
       // Guarded by `enabled` above — queryFn never runs with a null coachId.
       const coach = coachId!;
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = todayInChileKey();
       const { data: sessions } = await supabase
         .from("class_sessions")
         .select("id, name, session_date, start_time, duration_minutes, capacity")
@@ -225,7 +218,7 @@ function useMyActivitySummary(boxId: string, coachId: string | null) {
     enabled: !!boxId && !!coachId,
     queryFn: async () => {
       const coach = coachId!;
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = todayInChileKey();
 
       const [sessionsTaught, medals] = await Promise.all([
         supabase
@@ -329,7 +322,7 @@ function CoachHome({ boxId, coachId }: { boxId: string; coachId: string | null }
             </div>
             <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
               <CalendarDays className="h-3 w-3" />
-              {c.start_time ? format(new Date(`${c.session_date}T${c.start_time}`), "h:mm a") : "—"}
+              {c.start_time ? formatTimeLabel(c.start_time) : "—"}
               {" · "}
               {c.athletes.length}/{c.capacity} inscritos
             </p>
@@ -483,7 +476,7 @@ function AdminHome({ boxId }: { boxId: string }) {
           {(upcoming.data ?? []).map((c) => {
             const enrolled = c.bookings ?? 0;
             const pct = c.capacity ? Math.min(100, (enrolled / c.capacity) * 100) : 0;
-            const live = isClassLive(c, new Date());
+            const live = classIsLive(c, new Date());
             return (
               <Link to="/class-detail/$id" params={{ id: c.id }} key={c.id}
                 className="block rounded-2xl border bg-card p-4">
@@ -497,7 +490,7 @@ function AdminHome({ boxId }: { boxId: string }) {
                       <span className="flex items-center gap-1">
                         <CalendarDays className="h-3 w-3" />
                         {format(new Date(`${c.session_date}T00:00:00`), "EEE d MMM", { locale: es })} ·{" "}
-                        {c.start_time ? format(new Date(`${c.session_date}T${c.start_time}`), "h:mm a") : "—"}
+                        {c.start_time ? formatTimeLabel(c.start_time) : "—"}
                       </span>
                       <span className="flex items-center gap-1">
                         <UserIcon className="h-3 w-3" />

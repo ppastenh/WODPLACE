@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Search, Clock, User as UserIcon, Check, Trash2 } from "lucide-react";
 import { addDays, format } from "date-fns";
 import { toast } from "sonner";
+import { formatTimeLabel } from "@/lib/time";
 
 type Cls = {
   id: string;
@@ -156,7 +157,7 @@ export function BookClassSheet({
           <div className="min-w-0">
             <p className="truncate text-sm font-bold">{c.name}</p>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{String(c.start_time).slice(0, 5)}</span>
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatTimeLabel(c.start_time)}</span>
               {c.coach?.name && <span className="flex items-center gap-1"><UserIcon className="h-3 w-3" />{c.coach.name}</span>}
             </div>
           </div>
@@ -214,7 +215,7 @@ export function BookClassSheet({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">{c.name}</p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {format(new Date(`${c.session_date}T00:00:00`), "dd MMM")} · {c.start_time.slice(0, 5)}
+                      {format(new Date(`${c.session_date}T00:00:00`), "dd MMM")} · {formatTimeLabel(c.start_time)}
                       {c.coachName ? ` · ${c.coachName}` : ""}
                     </p>
                     {c.status === "lista_espera" && (

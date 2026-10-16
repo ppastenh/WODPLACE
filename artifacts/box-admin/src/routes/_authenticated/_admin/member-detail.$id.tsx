@@ -25,6 +25,7 @@ import { WOD_ACHIEVEMENT_NAMES } from "@/lib/wodAchievementNames";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SKILL_LEVELS, SKILL_LEVEL_LABELS, type SkillLevel } from "@/lib/skillLevel";
 import { Award } from "lucide-react";
+import { formatTimeLabel } from "@/lib/time";
 
 // Sibling route, not nested under members.tsx — members.tsx (the "Miembros"
 // tab) has no <Outlet/>, so a route file named members.$id.tsx would change
@@ -627,7 +628,7 @@ function MemberDetail() {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{c.name}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  {format(new Date(`${c.session_date}T00:00:00`), "dd MMM yyyy")} · {c.start_time.slice(0, 5)}
+                  {format(new Date(`${c.session_date}T00:00:00`), "dd MMM yyyy")} · {formatTimeLabel(c.start_time)}
                   {c.coachName ? ` · ${c.coachName}` : ""}
                 </p>
                 {c.status === "lista_espera" && (

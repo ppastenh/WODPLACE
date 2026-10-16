@@ -13,6 +13,7 @@ import { Clock, User as UserIcon, CalendarDays, Pencil, Trash2, ArrowRight, User
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
+import { formatTimeLabel, isClassEnded } from "@/lib/time";
 
 export type QuickViewClass = {
   id: string;
@@ -110,15 +111,21 @@ export function ClassQuickView({
 
   const [h, m] = String(c.start_time).split(":").map(Number);
   const endMin = h * 60 + m + (c.duration_minutes || 60);
-  const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+  const end = `${Math.floor(endMin / 60) % 24}:${endMin % 60}`;
   const enrolled = c.enrolled ?? 0;
   const pct = c.capacity ? Math.min(100, (enrolled / c.capacity) * 100) : 0;
+  const ended = isClassEnded(c.session_date, String(c.start_time), c.duration_minutes || 60);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="rounded-t-3xl">
         <DrawerHeader className="pb-2">
-          <DrawerTitle className="text-base">{editing ? "Editar clase" : c.name}</DrawerTitle>
+          <DrawerTitle className="flex items-center gap-2 text-base">
+            {editing ? "Editar clase" : c.name}
+            {!editing && ended && (
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Terminada</span>
+            )}
+          </DrawerTitle>
         </DrawerHeader>
 
         <div className="px-4 pb-[max(env(safe-area-inset-bottom),16px)]">
@@ -154,7 +161,7 @@ export function ClassQuickView({
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{String(c.start_time).slice(0, 5)} - {end}</span>
+                <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{formatTimeLabel(c.start_time)} - {formatTimeLabel(end)}</span>
                 <span className="flex items-center gap-1"><UserIcon className="h-3.5 w-3.5" />{c.coach?.name || "Sin coach"}</span>
                 <span className="flex items-center gap-1">
                   <CalendarDays className="h-3.5 w-3.5" />

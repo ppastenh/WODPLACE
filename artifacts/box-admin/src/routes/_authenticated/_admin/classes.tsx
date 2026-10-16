@@ -20,6 +20,7 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { ClassQuickView } from "@/components/admin/ClassQuickView";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { formatTimeLabel, isClassEnded } from "@/lib/time";
 
 
 const WEEK_DAYS = [
@@ -302,14 +303,14 @@ function WeekView({ selected, onSelect }: { selected: Date; onSelect: (d: Date) 
               const height = Math.max(34, scale.y(endMin) - top - 4);
               const enrolled = c.class_bookings?.length ?? 0;
               const attended = (c.class_bookings ?? []).filter((a) => a.attended === true).length;
-              const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
               const widthPct = 100 / cols;
+              const ended = isClassEnded(c.session_date, c.start_time, dur);
               return (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => setQuick(c)}
-                  className="absolute flex flex-col justify-center overflow-hidden rounded-[18px] border border-primary/30 bg-gradient-to-br from-primary/25 to-primary/5 px-3 py-1.5 text-left transition-transform active:scale-[0.99]"
+                  className={`absolute flex flex-col justify-center overflow-hidden rounded-[18px] border border-primary/30 bg-gradient-to-br from-primary/25 to-primary/5 px-3 py-1.5 text-left transition-transform active:scale-[0.99] ${ended ? "opacity-60" : ""}`}
                   style={{
                     top,
                     height,
@@ -322,7 +323,8 @@ function WeekView({ selected, onSelect }: { selected: Date; onSelect: (d: Date) 
                     <span className="shrink-0 text-[11px] font-bold text-primary">{attended}/{enrolled}</span>
                   </div>
                   <p className="truncate text-[11px] leading-tight text-muted-foreground">
-                    {c.start_time.slice(0, 5)} - {end}
+                    {formatTimeLabel(c.start_time)} - {formatTimeLabel(`${Math.floor(endMin / 60) % 24}:${endMin % 60}`)}
+                    {ended ? " · Terminada" : ""}
                   </p>
                   {c.coach?.name && height > 52 && (
                     <p className="truncate text-[11px] leading-tight text-muted-foreground/80">{c.coach.name}</p>
@@ -388,18 +390,18 @@ function MobileDayClasses({ dayClasses, onQuick }: { dayClasses: ClassRow[]; onQ
 function MobileClassCard({ c, onQuick }: { c: ClassRow; onQuick: () => void }) {
   const startMin = startMinutesOf(c);
   const endMin = startMin + (c.duration_minutes || 60);
-  const fmtMin = (min: number) =>
-    `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+  const fmtMin = (min: number) => formatTimeLabel(`${Math.floor(min / 60) % 24}:${min % 60}`);
   const enrolled = c.class_bookings?.length ?? 0;
   const capacity = c.capacity ?? 0;
+  const ended = isClassEnded(c.session_date, c.start_time, c.duration_minutes || 60);
 
   return (
     <button
       type="button"
       onClick={onQuick}
-      className="flex w-full items-stretch gap-3 text-left transition-transform active:scale-[0.99]"
+      className={`flex w-full items-stretch gap-3 text-left transition-transform active:scale-[0.99] ${ended ? "opacity-60" : ""}`}
     >
-      <div className="w-11 shrink-0 pt-3 text-right">
+      <div className="w-14 shrink-0 pt-3 text-right">
         <p className="text-xs font-bold tabular-nums">{fmtMin(startMin)}</p>
         <p className="text-[10px] tabular-nums text-muted-foreground">{fmtMin(endMin)}</p>
       </div>
@@ -410,9 +412,12 @@ function MobileClassCard({ c, onQuick }: { c: ClassRow; onQuick: () => void }) {
             {enrolled}/{capacity}
           </span>
         </div>
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <UserIcon className="h-3 w-3 shrink-0" />
-          <span className="truncate">{c.coach?.name ?? "Sin coach asignado"}</span>
+        <div className="mt-1 flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <UserIcon className="h-3 w-3 shrink-0" />
+            <span className="truncate">{c.coach?.name ?? "Sin coach asignado"}</span>
+          </div>
+          {ended && <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Terminada</span>}
         </div>
       </div>
     </button>
@@ -526,17 +531,18 @@ function ClassCard({ c, onQuick }: { c: ClassRow; onQuick: () => void }) {
   const attended = (c.class_bookings ?? []).filter((a) => a.attended === true).length;
   const [h, m] = c.start_time.split(":").map(Number);
   const endMin = h * 60 + m + (c.duration_minutes || 60);
-  const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+  const ended = isClassEnded(c.session_date, c.start_time, c.duration_minutes || 60);
   return (
     <button
       type="button"
       onClick={onQuick}
-      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-primary/10 p-3 text-left active:scale-[0.99]"
+      className={`flex w-full items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-primary/10 p-3 text-left active:scale-[0.99] ${ended ? "opacity-60" : ""}`}
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-bold">{c.name}</p>
         <p className="truncate text-[11px] text-muted-foreground">
-          {c.start_time.slice(0, 5)} - {end}
+          {formatTimeLabel(c.start_time)} - {formatTimeLabel(`${Math.floor(endMin / 60) % 24}:${endMin % 60}`)}
+          {ended ? " · Terminada" : ""}
         </p>
         {c.coach?.name && <p className="truncate text-[11px] text-muted-foreground">{c.coach.name}</p>}
       </div>

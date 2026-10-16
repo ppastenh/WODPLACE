@@ -23,11 +23,18 @@ export function ClassCard({
 }: ClassCardProps) {
   const colors = useColors();
 
+  // Atenuada y sin botón de reservar si ya terminó (hora de fin, hora de
+  // Chile -- ver isSessionEndedInChile) y el alumno no tiene nada
+  // reservado ahí; una reserva ya hecha sigue viéndose normal (el
+  // historial, ver profile.tsx, la necesita visible igual que antes).
+  const dimmed = session.hasEnded && !session.isBooked && !session.isWaitlisted;
+
   return (
     <View
       style={[
         styles.card,
         { backgroundColor: colors.card, borderColor: colors.border },
+        dimmed && styles.cardEnded,
       ]}
     >
       <View style={styles.headerRow}>
@@ -139,6 +146,16 @@ export function AgendadoBadge({
   );
 }
 
+function EndedBadge() {
+  const colors = useColors();
+  return (
+    <View style={[styles.badge, { backgroundColor: colors.secondary, opacity: 0.6 }]}>
+      <Feather name="check-circle" size={13} color={colors.secondaryForeground} />
+      <Text style={[styles.badgeText, { color: colors.secondaryForeground }]}>Terminada</Text>
+    </View>
+  );
+}
+
 export function ClassActionButton({
   session,
   onBook,
@@ -163,6 +180,11 @@ export function ClassActionButton({
       />
     );
   }
+  // Terminada (hora de fin ya pasada) y sin nada reservado ahí: ni botón
+  // de reservar ni de lista de espera, solo la etiqueta.
+  if (session.hasEnded) {
+    return <EndedBadge />;
+  }
   // A started-but-still-today class stays bookable — calendar.tsx's
   // handleBook() gates it behind a confirmation ("¿reservar igual?") instead
   // of blocking it outright here.
@@ -178,6 +200,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     gap: 8,
+  },
+  cardEnded: {
+    opacity: 0.55,
   },
   headerRow: {
     flexDirection: 'row',

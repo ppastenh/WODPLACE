@@ -7,7 +7,7 @@ import {
   listClassSessions,
   type ClassSessionDto,
 } from '@workspace/api-client-react';
-import { addDays, formatDuration, formatHM, toDateKey } from '@/lib/dateUtils';
+import { addDays, formatDuration, formatHM, isSessionEndedInChile, toDateKey } from '@/lib/dateUtils';
 
 export interface ClassSession {
   id: string;
@@ -25,6 +25,11 @@ export interface ClassSession {
   isBooked: boolean;
   remaining: number;
   hasStarted: boolean;
+  /** Hora de fin (inicio + duración) ya pasada, en hora de Chile -- ver
+   *  isSessionEndedInChile(). Independiente de hasStarted: una clase
+   *  puede estar "empezada" (se puede reservar igual, con confirmación)
+   *  sin estar "terminada" todavía. */
+  hasEnded: boolean;
   canCancel: boolean;
   isWaitlisted: boolean;
   waitlistPosition: number | null;
@@ -81,6 +86,7 @@ function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
   const isBooked = dto.myStatus === 'confirmed';
   const isWaitlisted = dto.myStatus === 'waiting';
   const hasStarted = now.getTime() >= startDate.getTime();
+  const hasEnded = isSessionEndedInChile(dto.date, endMinutes, now);
   const canCancel =
     (isBooked || isWaitlisted) && startDate.getTime() - now.getTime() > CANCEL_CUTOFF_MS;
 
@@ -100,6 +106,7 @@ function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
     isBooked,
     remaining: dto.remaining,
     hasStarted,
+    hasEnded,
     canCancel,
     isWaitlisted,
     waitlistPosition: dto.myWaitlistPosition,

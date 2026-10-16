@@ -154,6 +154,44 @@ export function getAge(isoBirthdate: string, now: Date = new Date()): number {
   return age;
 }
 
+/** "Ahora" como fecha + minuto-del-día en hora de Chile (America/Santiago),
+ *  independiente de la zona del dispositivo -- para comparar contra el
+ *  horario de una clase (dateKey + minutos-del-día, la misma forma en que
+ *  se guarda) sin construir nunca un `Date` con esos números (eso sería
+ *  interpretarlos en la hora LOCAL del dispositivo, el mismo bug ya
+ *  corregido para el WOD del día y los cumpleaños). Comparar dos tuplas
+ *  (dateKey, minutos) es exacto y no necesita resolver el huso horario de
+ *  Chile para una duración -- solo orden, nunca una diferencia en ms. */
+export function nowInChileParts(reference: Date = new Date()): { dateKey: string; minutesOfDay: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(reference);
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  return {
+    dateKey: `${map.year}-${map.month}-${map.day}`,
+    minutesOfDay: Number(map.hour) * 60 + Number(map.minute),
+  };
+}
+
+/** Si una clase (dateKey + minuto de fin) ya terminó, comparado contra
+ *  "ahora" en hora de Chile -- ver nowInChileParts(). */
+export function isSessionEndedInChile(
+  dateKey: string,
+  endMinutes: number,
+  reference: Date = new Date(),
+): boolean {
+  const chileNow = nowInChileParts(reference);
+  if (dateKey !== chileNow.dateKey) return dateKey < chileNow.dateKey;
+  return endMinutes <= chileNow.minutesOfDay;
+}
+
 /** Chile's actual calendar date (America/Santiago), independent of the
  *  device's own timezone/clock setting — same fix as api-server's
  *  todayDateKey() for the same reason (WODPLACE is Chile-only; a device

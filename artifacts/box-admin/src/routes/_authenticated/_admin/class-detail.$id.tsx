@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatTimeLabel, isClassEnded } from "@/lib/time";
 
 // Sibling route, not nested under classes.tsx — classes.tsx (the "Clases"
 // tab) has no <Outlet/>, so a route file named classes.$id.tsx would change
@@ -119,8 +120,12 @@ function ClassDetail() {
 
   const [h, m] = String(c.start_time).split(":").map(Number);
   const endMin = h * 60 + m + (c.duration_minutes || 60);
-  const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-  const activa = c.status === "programada" || c.status === "en_curso";
+  const end = `${Math.floor(endMin / 60) % 24}:${endMin % 60}`;
+  // "status" (programada/en_curso/finalizada/cancelada) nunca lo actualiza
+  // nada automáticamente -- en la práctica nunca llega a "finalizada" solo.
+  // "Terminada" se calcula de verdad con la hora de fin, en hora de Chile.
+  const terminada = c.status !== "cancelada" && isClassEnded(c.session_date, String(c.start_time), c.duration_minutes || 60);
+  const cancelada = c.status === "cancelada";
 
   return (
     <AdminShell title="Clases" showBack backTo="/classes">
@@ -129,8 +134,8 @@ function ClassDetail() {
           <h1 className="min-w-0 truncate text-2xl font-black tracking-tight">{c.name}</h1>
           <div className="flex shrink-0 items-center gap-2">
             <span className="flex items-center gap-1.5 text-xs font-semibold">
-              <span className={`h-2 w-2 rounded-full ${activa ? "bg-primary" : "bg-muted-foreground"}`} />
-              {activa ? "Activa" : "Finalizada"}
+              <span className={`h-2 w-2 rounded-full ${cancelada || terminada ? "bg-muted-foreground" : "bg-primary"}`} />
+              {cancelada ? "Cancelada" : terminada ? "Terminada" : "Activa"}
             </span>
             {canEditClass && (
               <EditClass classId={id} initial={{
@@ -146,7 +151,7 @@ function ClassDetail() {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{String(c.start_time).slice(0, 5)} - {end}</span>
+          <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{formatTimeLabel(c.start_time)} - {formatTimeLabel(end)}</span>
           <span className="flex items-center gap-1"><UserIcon className="h-3.5 w-3.5" />{c.coaches?.name || "Sin coach"}</span>
           <span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{format(parseISO(c.session_date), "dd MMM yyyy", { locale: es })}</span>
         </div>
