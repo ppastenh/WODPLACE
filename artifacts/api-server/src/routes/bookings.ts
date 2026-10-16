@@ -21,6 +21,7 @@ import { isAnyStaff } from "../lib/boxOwnership";
 import { computePendingSlugs } from "./contracts";
 import { isContractAcceptanceEnforced } from "../lib/featureFlags";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
+import { isSessionEndedInChile } from "../lib/dateUtils";
 
 const router: IRouter = Router();
 const WAITLIST_LIMIT = 5;
@@ -292,8 +293,15 @@ router.post("/bookings", async (req: Request, res: Response) => {
     // Real capacity, read straight from the session this box actually
     // scheduled — never trusted from the client (the old mock template
     // used to send its own capacity/baseAttendees guesses here).
-    const sessionRows = await db.execute<{ capacity: number; status: string; session_date: string }>(sql`
-      SELECT capacity, status, session_date::text AS session_date FROM public.class_sessions
+    const sessionRows = await db.execute<{
+      capacity: number;
+      status: string;
+      session_date: string;
+      start_time: string;
+      duration_minutes: number;
+    }>(sql`
+      SELECT capacity, status, session_date::text AS session_date, start_time::text AS start_time, duration_minutes
+      FROM public.class_sessions
       WHERE id = ${sessionId} AND box_id = ${boxId}
     `);
     const sessionRow = sessionRows.rows[0];
@@ -303,6 +311,17 @@ router.post("/bookings", async (req: Request, res: Response) => {
     }
     if (sessionRow.status === "cancelada") {
       res.status(400).json({ error: "Esta clase fue cancelada." });
+      return;
+    }
+    // Solo la ruta de autoservicio del alumno -- box-admin reserva por el
+    // staff escribe class_bookings directo (RLS), nunca pasa por aquí, así
+    // que esto nunca le bloquea nada al staff. Una clase que YA EMPEZÓ
+    // pero no ha terminado sigue permitida (con el aviso "¿reservar
+    // igual?" que ya existe en el cliente) -- sin cambios ahí.
+    const [sh, sm] = sessionRow.start_time.split(":").map(Number);
+    const endMinutes = (sh ?? 0) * 60 + (sm ?? 0) + (sessionRow.duration_minutes || 0);
+    if (isSessionEndedInChile(sessionRow.session_date, endMinutes)) {
+      res.status(409).json({ error: "Esta clase ya terminó.", code: "SESSION_ENDED" });
       return;
     }
     const capacity = sessionRow.capacity;
@@ -505,6 +524,27 @@ router.post("/bookings/cancel", async (req: Request, res: Response) => {
     // the transaction below, and describeSession's own read doesn't need
     // to run on that transaction's connection.
     const sessionDescription = await describeSession(sessionId);
+
+    // Solo la ruta de autoservicio del alumno -- igual que en POST
+    // /bookings, el staff cancela/quita reservas escribiendo class_bookings
+    // directo (RLS), nunca pasa por aquí. Cancelar una clase ya EMPEZADA
+    // pero no terminada sigue permitido hoy (sin cambios -- el corte de 1
+    // hora antes de empezar que ya existe es solo del cliente, el servidor
+    // nunca lo exigió). Solo se bloquea una clase ya TERMINADA, para no
+    // borrar una reserva real del historial del alumno.
+    const endedCheckRows = await db.execute<{ session_date: string; start_time: string; duration_minutes: number }>(sql`
+      SELECT session_date::text AS session_date, start_time::text AS start_time, duration_minutes
+      FROM public.class_sessions WHERE id = ${sessionId}
+    `);
+    const endedCheckRow = endedCheckRows.rows[0];
+    if (endedCheckRow) {
+      const [sh, sm] = endedCheckRow.start_time.split(":").map(Number);
+      const endMinutes = (sh ?? 0) * 60 + (sm ?? 0) + (endedCheckRow.duration_minutes || 0);
+      if (isSessionEndedInChile(endedCheckRow.session_date, endMinutes)) {
+        res.status(409).json({ error: "No puedes cancelar una clase que ya terminó.", code: "CANNOT_CANCEL_PAST_SESSION" });
+        return;
+      }
+    }
 
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${sessionId}))`);

@@ -20,3 +20,33 @@ export function todayDateKey(timeZone = "America/Santiago"): string {
   // ISO date-key format this app uses everywhere else.
   return new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
 }
+
+/** "Ahora" como fecha + minuto-del-día en hora de Chile -- mismo patrón que
+ *  todayDateKey(), extendido con la hora para poder comparar contra el fin
+ *  de una clase (ver isSessionEndedInChile) sin construir nunca un `Date`
+ *  con esos números (eso se interpretaría en la hora del servidor, no la
+ *  de Chile -- mismo riesgo que todayDateKey ya documenta arriba). Mismo
+ *  helper duplicado en wodplace/lib/dateUtils.ts y box-admin/src/lib/time.ts
+ *  (cliente) -- no hay un paquete compartido entre los tres hoy. */
+export function nowInChileParts(reference: Date = new Date(), timeZone = "America/Santiago"): { dateKey: string; minutesOfDay: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(reference);
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  return { dateKey: `${map.year}-${map.month}-${map.day}`, minutesOfDay: Number(map.hour) * 60 + Number(map.minute) };
+}
+
+/** Si una clase (fecha + minuto de fin) ya terminó, comparado contra
+ *  "ahora" en hora de Chile. */
+export function isSessionEndedInChile(sessionDateKey: string, endMinutes: number, reference: Date = new Date()): boolean {
+  const chileNow = nowInChileParts(reference);
+  if (sessionDateKey !== chileNow.dateKey) return sessionDateKey < chileNow.dateKey;
+  return endMinutes <= chileNow.minutesOfDay;
+}

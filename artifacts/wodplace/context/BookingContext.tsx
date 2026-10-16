@@ -184,7 +184,8 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         code === 'WAITLIST_FULL' ||
         code === 'DAILY_LIMIT_REACHED' ||
         code === 'PLAN_LIMIT_REACHED' ||
-        code === 'CONTRACTS_PENDING'
+        code === 'CONTRACTS_PENDING' ||
+        code === 'SESSION_ENDED'
       ) {
         throw new Error(code);
       }
@@ -201,8 +202,16 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
 
   const cancel = async (session: ClassSession): Promise<void> => {
     if (!user) return;
-    await cancelBooking({ sessionId: session.id, userId: user.id });
-    await sessionsQuery.refetch();
+    try {
+      await cancelBooking({ sessionId: session.id, userId: user.id });
+      await sessionsQuery.refetch();
+    } catch (error) {
+      const code = apiErrorCode(error);
+      if (code === 'CANNOT_CANCEL_PAST_SESSION') {
+        throw new Error(code);
+      }
+      throw error;
+    }
   };
 
   const getAttendeeNames = (session: ClassSession, userName: string): string[] =>

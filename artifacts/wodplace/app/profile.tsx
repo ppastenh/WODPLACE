@@ -120,9 +120,21 @@ export default function ProfileScreen() {
 
   const handleConfirmCancel = async () => {
     if (!cancelSession) return;
-    await cancel(cancelSession);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    const session = cancelSession;
     setCancelSession(null);
+    try {
+      await cancel(session);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    } catch (error) {
+      if (error instanceof Error && error.message === 'CANNOT_CANCEL_PAST_SESSION') {
+        Alert.alert(
+          'No se puede cancelar',
+          'Esta clase ya terminó, así que queda registrada en tu historial.',
+        );
+        return;
+      }
+      Alert.alert('No se pudo cancelar', 'Intenta nuevamente en unos segundos.');
+    }
   };
 
   return (
