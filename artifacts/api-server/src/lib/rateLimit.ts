@@ -32,19 +32,22 @@ function generalKey(req: Request): string {
 
 /**
  * Techo generoso a propósito, por IP (ver ESTADO.md para las cifras que
- * lo justifican): el WiFi de un box comparte una sola IP real entre todos
- * sus alumnos -- varias cuentas con sesión abierta, cada una sondeando la
- * red (~14 peticiones/minuto por cuenta, ver "Sondeo de red excesivo"),
- * más el panel de administración abierto aparte, más alguien
- * registrándose. Este límite nunca debe ser lo que bloquea a esa gente.
- * Un scanner de robots (/.env, /.git, etc.) golpeando rutas que no
+ * lo justifican, revisadas con Pía): 50 alumnos a la vez en el WiFi de un
+ * box, cada uno sondeando la red (~14 peticiones/minuto, ver "Sondeo de
+ * red excesivo") son ≈700/min solo de sondeo; sumando sus acciones reales
+ * (abrir pantallas, reservar, el panel de administración aparte) el uso
+ * real holgado de esa IP se estima en ≈1.000/min. 2.000 da margen sobre
+ * eso sin abrir la puerta a un flood real (pasado este techo hace falta
+ * más de 30 peticiones POR SEGUNDO sostenidas desde una sola IP, muy por
+ * encima de cualquier patrón humano). A revisar cuando el sondeo de red
+ * baje (ver ese pendiente) -- un número más chico volverá a tener sentido
+ * ahí. Un scanner de robots (/.env, /.git, etc.) golpeando rutas que no
  * existen igual pasa por este middleware (va ANTES del router) y cae en
- * el balde de su propia IP -- un volumen de escaneo típico supera
- * 500/min fácil y sí se frena ahí.
+ * el balde de su propia IP.
  */
 export const generalRateLimiter = rateLimit({
   windowMs: 60_000,
-  limit: 500,
+  limit: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: generalKey,
