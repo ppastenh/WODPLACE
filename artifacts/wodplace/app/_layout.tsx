@@ -39,6 +39,26 @@ const queryClient = new QueryClient({
       // anyway, but set explicitly so it's not relying on a browser-only
       // behavior that happens not to fire.
       refetchOnWindowFocus: false,
+      // S4 (auditoría de seguridad): sin esto, React Query reintenta
+      // cualquier query fallida 3 veces por defecto -- incluido un 429
+      // del límite general nuevo de api-server, que es exactamente lo
+      // contrario de lo que ese límite pide (bajar el ritmo). Nunca
+      // reintentar un 4xx (son errores del cliente, reintentar no los
+      // arregla); sí reintentar una vez más un error de red/5xx real.
+      retry: (failureCount, error) => {
+        const status = (error as { status?: number } | null)?.status;
+        if (typeof status === "number" && status >= 400 && status < 500) return false;
+        return failureCount < 2;
+      },
+      // Respeta Retry-After si el servidor lo manda (siempre en un 429
+      // de express-rate-limit); si no, el backoff exponencial de por
+      // defecto de React Query.
+      retryDelay: (attemptIndex, error) => {
+        const retryAfter = (error as { headers?: Headers } | null)?.headers?.get?.("retry-after");
+        const seconds = retryAfter ? Number(retryAfter) : NaN;
+        if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
+        return Math.min(1000 * 2 ** attemptIndex, 30_000);
+      },
     },
   },
 });

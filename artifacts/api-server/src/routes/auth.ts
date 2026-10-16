@@ -3,6 +3,7 @@ import { eq, isNotNull, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
+import { registerRateLimiter } from "../lib/rateLimit";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { requireSupabaseUser } from "../lib/supabaseAuth";
 
@@ -44,7 +45,7 @@ const RegisterBody = z.object({
  * every other table's FK stays keyed on this locally-shaped id forever,
  * only the bridge column ties it to the real account.
  */
-router.post("/auth/register", async (req: Request, res: Response) => {
+router.post("/auth/register", registerRateLimiter, async (req: Request, res: Response) => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid fields" });
