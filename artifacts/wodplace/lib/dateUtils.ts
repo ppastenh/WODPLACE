@@ -111,10 +111,22 @@ export function formatWeekdayLong(date: Date): string {
   return names[date.getDay()] ?? '';
 }
 
+/** Formatter ÚNICO de hora de clase para toda la app (Calendario, Inicio,
+ *  Perfil -- vía ClassCard/timeRangeLabel y el "Próxima clase" de Home) --
+ *  cambiar aquí cambia todas las pantallas a la vez. `totalMinutes` ya es
+ *  un número de minutos-del-día de pura aritmética (hora*60+minuto),
+ *  nunca pasa por un objeto Date, así que no hay ninguna dependencia de
+ *  la zona horaria del dispositivo que corregir acá -- la hora de clase
+ *  que guarda el box siempre se trata como hora de Chile, sea cual sea
+ *  el reloj del teléfono. 00:00 es 12:00 AM y 12:00 es 12:00 PM.
+ */
 export function formatHM(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60) % 24;
-  const m = totalMinutes % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  const h24 = Math.floor(normalized / 60);
+  const m = normalized % 60;
+  const period = h24 < 12 ? 'AM' : 'PM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
 }
 
 export function parseTimeToMinutes(time: string): number {

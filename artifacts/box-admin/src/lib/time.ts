@@ -41,10 +41,20 @@ export function isClassLive(dateKey: string, startTime: string, durationMinutes:
   return chileNow.minutesOfDay >= startMinutes && chileNow.minutesOfDay < endMinutes;
 }
 
-/** "HH:MM" o "HH:MM:SS" -> "HH:MM", sin segundos. AM/PM llega en un
- *  commit aparte (ver ESTADO.md). */
+/** Formatter ÚNICO de hora para las pantallas de clases del panel (listas,
+ *  vista rápida, detalle, ficha del miembro) -- cambiar aquí cambia todas
+ *  a la vez. `time` es el "start_time" de la base ("HH:MM" o "HH:MM:SS"),
+ *  pura aritmética de dígitos, nunca pasa por un objeto Date -- no hay
+ *  ninguna zona horaria del dispositivo que corregir acá, la hora de
+ *  clase que guarda el box ya es la hora de Chile. 00:00 es 12:00 AM y
+ *  12:00 es 12:00 PM.
+ */
 export function formatTimeLabel(time: string | null | undefined): string {
   if (!time) return "—";
   const [hStr, mStr] = time.split(":");
-  return `${String(hStr ?? "0").padStart(2, "0")}:${String(mStr ?? "0").padStart(2, "0")}`;
+  const h24 = Number(hStr ?? 0);
+  const m = Number(mStr ?? 0);
+  const period = h24 < 12 ? "AM" : "PM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
 }
