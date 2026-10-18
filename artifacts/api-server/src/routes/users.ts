@@ -76,6 +76,21 @@ router.post("/users", requireSupabaseUser, async (req: Request, res: Response) =
     return;
   }
 
+  // S3-B (2026-10-18): una cuenta super_admin nunca debe terminar con un
+  // perfil de alumno por accidente (ej. si alguna vez abre la app). Solo
+  // bloquea la CREACIÓN de una fila nueva -- el sync de una fila que ya
+  // tenía (como la cuenta diaria de Pía, dueña de un box) sigue andando
+  // igual que siempre.
+  if (!existing) {
+    const superAdminRole = await db.execute<{ role: string }>(sql`
+      select role from user_roles where user_id = ${supabaseUserId} and role = 'super_admin'
+    `);
+    if (superAdminRole.rows.length > 0) {
+      res.status(403).json({ error: "Esta cuenta es de super admin y no puede tener perfil de alumno" });
+      return;
+    }
+  }
+
   try {
     const [row] = await db
       .insert(wodplaceUsersTable)
