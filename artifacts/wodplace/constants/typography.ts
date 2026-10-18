@@ -16,3 +16,18 @@ export const FONT_SIZE = {
   display: 22,
   hero: 26,
 } as const;
+
+/**
+ * The 4 Inter weights Home actually uses (see app/home.tsx), named by what
+ * they're for rather than by weight number.
+ */
+export const FONT_WEIGHT = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+} as const;
+
+/** Display font for hero numbers/titles (RM readout, WOD name, Home's
+ *  hero stat) -- the one non-Inter family Home uses. */
+export const FONT_FAMILY_DISPLAY = 'Anton_400Regular';

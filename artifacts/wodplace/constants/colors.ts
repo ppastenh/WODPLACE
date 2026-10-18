@@ -19,14 +19,23 @@ const colors = {
     // Cards / elevated surfaces
     card: '#FFFFFF',
     cardForeground: '#191A1E',
+    // Estado presionado sólido de `card` (botones/chips con fondo blanco) --
+    // 14.58:1 contra foreground, verificado.
+    cardPressed: '#EBEBEB',
 
     // Primary action color (buttons, links, active states)
     primary: '#4B3CF5',
     primaryForeground: '#FFFFFF',
+    // Estado presionado SÓLIDO de `primary` (nunca opacidad) -- 8.07:1
+    // contra primaryForeground, verificado (WCAG AA ≥ 4.5:1).
+    primaryPressed: '#4033D0',
 
     // Secondary / less-emphasis interactive surfaces
     secondary: '#EAE6F9',
     secondaryForeground: '#4B3CF5',
+    // Estado presionado sólido de `secondary` -- 4.74:1 contra
+    // secondaryForeground, verificado.
+    secondaryPressed: '#DEDBED',
 
     // Muted / subdued elements (dividers, timestamps, placeholders)
     muted: '#EAE2CF',
@@ -39,6 +48,9 @@ const colors = {
     // Destructive / cancel actions
     destructive: '#E0524A',
     destructiveForeground: '#FFFFFF',
+    // Estado presionado sólido de `destructive` -- 5.08:1 contra
+    // destructiveForeground, verificado.
+    destructivePressed: '#BE463F',
     // Darker red for SMALL destructive text on a light background (ej.
     // "Cerrar sesión") -- destructive por sí solo da ~3.8:1 sobre blanco,
     // bajo el mínimo de 4.5:1 para texto chico; este da ~6:1. Mismo patrón
@@ -64,6 +76,10 @@ const colors = {
     // the 4.5:1 small-text minimum; this one is ~5:1. Icons/borders/buttons
     // keep using navActive.
     navActiveTextSmall: '#8B5E34',
+    // Estado presionado sólido de `navActive` como fondo de botón -- 5.37:1
+    // contra `card` (blanco), verificado. Distinto de navActiveTextSmall,
+    // que está calibrado para texto chico sobre `background`, no como fondo.
+    navActivePressed: '#8B623C',
     navInactive: '#706B63',
     navFloating: '#18191A',
     navFloatingForeground: '#F6F1E8',

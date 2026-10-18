@@ -32,10 +32,17 @@ const darkColors = {
   // Secondary / less-emphasis interactive surfaces
   secondary: "#181A1D",
   secondaryForeground: "#C79A6B",
+  // Estado presionado sólido de `secondary` -- 6.03:1 contra
+  // secondaryForeground, verificado.
+  secondaryPressed: "#242528",
 
   // Muted / subdued
   muted: "#181A1D",
   mutedForeground: "#9A968C",
+  // Estado presionado sólido de `muted` -- 5.19:1 contra mutedForeground,
+  // verificado. Mismo valor que secondaryPressed (ambos parten del mismo
+  // tono base en esta paleta).
+  mutedPressed: "#242528",
 
   // Accent highlights
   accent: "#C79A6B",
@@ -44,6 +51,9 @@ const darkColors = {
   // Destructive
   destructive: "#E0524A",
   destructiveForeground: "#F2EDE2",
+  // Estado presionado sólido de `destructive` -- 4.78:1 contra
+  // destructiveForeground, verificado.
+  destructivePressed: "#B3423B",
 
   // Borders and inputs
   border: "#2C2F34",
@@ -51,6 +61,9 @@ const darkColors = {
 
   // Bottom navigation
   navActive: "#C79A6B",
+  // Estado presionado sólido de `navActive` como fondo de botón -- 4.89:1
+  // contra `card` (#24262A), verificado.
+  navActivePressed: "#B38B60",
   navInactive: "#7C7A73",
   navFloating: "#C79A6B",
   navFloatingForeground: "#0E0F11",
