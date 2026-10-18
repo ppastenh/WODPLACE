@@ -6,6 +6,7 @@ import {
   LifeBuoy,
   ScrollText,
   Users,
+  Settings,
 } from "lucide-react";
 
 /** Grouped, not a flat list — see the "5 ajustes" reorganization proposal:
@@ -22,7 +23,10 @@ const groups = [
     { to: "/super-admin/support", label: "Soporte", icon: LifeBuoy, exact: false },
     { to: "/super-admin/audit", label: "Auditoría", icon: ScrollText, exact: false },
   ],
-  [{ to: "/super-admin/admins", label: "Super Admins", icon: Users, exact: false }],
+  [
+    { to: "/super-admin/admins", label: "Super Admins", icon: Users, exact: false },
+    { to: "/super-admin/settings", label: "Ajustes", icon: Settings, exact: false },
+  ],
 ] as const;
 
 /** Header + section tabs, same concept as box-admin's BottomNav — a

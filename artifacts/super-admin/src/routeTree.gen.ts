@@ -19,6 +19,7 @@ import { Route as SuperAdminAdminsRouteImport } from './routes/super-admin/admin
 import { Route as SuperAdminAgreementsRouteImport } from './routes/super-admin/agreements'
 import { Route as SuperAdminAuditRouteImport } from './routes/super-admin/audit'
 import { Route as SuperAdminBoxesRouteImport } from './routes/super-admin/boxes'
+import { Route as SuperAdminSettingsRouteImport } from './routes/super-admin/settings'
 import { Route as SuperAdminSupportRouteImport } from './routes/super-admin/support'
 import { Route as SuperAdminBoxesBoxIdRouteImport } from './routes/super-admin/boxes.$boxId'
 
@@ -72,6 +73,11 @@ const SuperAdminBoxesRoute = SuperAdminBoxesRouteImport.update({
   path: '/boxes',
   getParentRoute: () => SuperAdminRoute,
 } as any)
+const SuperAdminSettingsRoute = SuperAdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
 const SuperAdminSupportRoute = SuperAdminSupportRouteImport.update({
   id: '/support',
   path: '/support',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/super-admin/agreements': typeof SuperAdminAgreementsRoute
   '/super-admin/audit': typeof SuperAdminAuditRoute
   '/super-admin/boxes': typeof SuperAdminBoxesRouteWithChildren
+  '/super-admin/settings': typeof SuperAdminSettingsRoute
   '/super-admin/support': typeof SuperAdminSupportRoute
   '/super-admin/': typeof SuperAdminIndexRoute
   '/super-admin/boxes/$boxId': typeof SuperAdminBoxesBoxIdRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/super-admin/agreements': typeof SuperAdminAgreementsRoute
   '/super-admin/audit': typeof SuperAdminAuditRoute
   '/super-admin/boxes': typeof SuperAdminBoxesRouteWithChildren
+  '/super-admin/settings': typeof SuperAdminSettingsRoute
   '/super-admin/support': typeof SuperAdminSupportRoute
   '/super-admin': typeof SuperAdminIndexRoute
   '/super-admin/boxes/$boxId': typeof SuperAdminBoxesBoxIdRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/super-admin/agreements': typeof SuperAdminAgreementsRoute
   '/super-admin/audit': typeof SuperAdminAuditRoute
   '/super-admin/boxes': typeof SuperAdminBoxesRouteWithChildren
+  '/super-admin/settings': typeof SuperAdminSettingsRoute
   '/super-admin/support': typeof SuperAdminSupportRoute
   '/super-admin/': typeof SuperAdminIndexRoute
   '/super-admin/boxes/$boxId': typeof SuperAdminBoxesBoxIdRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/super-admin/agreements'
     | '/super-admin/audit'
     | '/super-admin/boxes'
+    | '/super-admin/settings'
     | '/super-admin/support'
     | '/super-admin/'
     | '/super-admin/boxes/$boxId'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/super-admin/agreements'
     | '/super-admin/audit'
     | '/super-admin/boxes'
+    | '/super-admin/settings'
     | '/super-admin/support'
     | '/super-admin'
     | '/super-admin/boxes/$boxId'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/super-admin/agreements'
     | '/super-admin/audit'
     | '/super-admin/boxes'
+    | '/super-admin/settings'
     | '/super-admin/support'
     | '/super-admin/'
     | '/super-admin/boxes/$boxId'
@@ -249,6 +261,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperAdminBoxesRouteImport
       parentRoute: typeof SuperAdminRoute
     }
+    '/super-admin/settings': {
+      id: '/super-admin/settings'
+      path: '/settings'
+      fullPath: '/super-admin/settings'
+      preLoaderRoute: typeof SuperAdminSettingsRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
     '/super-admin/support': {
       id: '/super-admin/support'
       path: '/support'
@@ -283,6 +302,7 @@ interface SuperAdminRouteChildren {
   SuperAdminAgreementsRoute: typeof SuperAdminAgreementsRoute
   SuperAdminAuditRoute: typeof SuperAdminAuditRoute
   SuperAdminBoxesRoute: typeof SuperAdminBoxesRouteWithChildren
+  SuperAdminSettingsRoute: typeof SuperAdminSettingsRoute
   SuperAdminSupportRoute: typeof SuperAdminSupportRoute
   SuperAdminIndexRoute: typeof SuperAdminIndexRoute
 }
@@ -292,6 +312,7 @@ const SuperAdminRouteChildren: SuperAdminRouteChildren = {
   SuperAdminAgreementsRoute: SuperAdminAgreementsRoute,
   SuperAdminAuditRoute: SuperAdminAuditRoute,
   SuperAdminBoxesRoute: SuperAdminBoxesRouteWithChildren,
+  SuperAdminSettingsRoute: SuperAdminSettingsRoute,
   SuperAdminSupportRoute: SuperAdminSupportRoute,
   SuperAdminIndexRoute: SuperAdminIndexRoute,
 }
