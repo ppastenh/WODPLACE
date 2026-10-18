@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { ClassSession } from '@/context/BookingContext';
-import { formatDayLabel } from '@/lib/dateUtils';
+import { formatClassDateShort, formatHM } from '@/lib/dateUtils';
 import { AppButton } from '@/components/AppButton';
 
 interface ClassCardProps {
@@ -38,10 +38,12 @@ export function ClassCard({
       ]}
     >
       <View style={styles.headerRow}>
-        <Text style={[styles.type, { color: colors.foreground }]}>{session.type}</Text>
-        <Text style={[styles.time, { color: colors.mutedForeground }]}>
-          {showDayLabel ? `${formatDayLabel(session.date, now)} · ` : ''}
-          {session.timeRangeLabel}
+        <Text style={[styles.type, { color: colors.foreground }]} numberOfLines={1}>
+          {session.type}
+        </Text>
+        <Text style={[styles.time, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {showDayLabel ? `${formatClassDateShort(session.date)} · ` : ''}
+          {formatHM(session.startMinutes)}
         </Text>
       </View>
 
@@ -208,12 +210,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
   type: {
+    flexShrink: 1,
     fontSize: 17,
     fontFamily: 'Inter_700Bold',
   },
   time: {
+    flexShrink: 0,
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
   },

@@ -203,12 +203,18 @@ export function SideDrawer({
             <Text style={[styles.userName, { color: colors.foreground }]} numberOfLines={1}>
               {userName}
             </Text>
-            <Pressable
-              onPress={() => onNavigate('/profile')}
-              hitSlop={6}
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            >
-              <Text style={[styles.viewProfile, { color: colors.primary }]}>Ver perfil</Text>
+            <Pressable onPress={() => onNavigate('/profile')} hitSlop={6}>
+              {({ pressed }) => (
+                <Text
+                  style={[
+                    styles.viewProfile,
+                    { color: colors.primary },
+                    pressed && styles.viewProfilePressed,
+                  ]}
+                >
+                  Ver perfil
+                </Text>
+              )}
             </Pressable>
           </View>
 
@@ -256,12 +262,11 @@ export function SideDrawer({
                 onPress={() => onNavigate(adminNavItem.route)}
                 style={({ pressed }) => [
                   styles.adminButton,
-                  { backgroundColor: colors.primary },
-                  pressed && { opacity: 0.85 },
+                  { backgroundColor: pressed ? colors.adminActionPressed : colors.adminAction },
                 ]}
               >
-                <Feather name={adminNavItem.icon} size={19} color={colors.primaryForeground} />
-                <Text style={[styles.adminButtonLabel, { color: colors.primaryForeground }]}>
+                <Feather name={adminNavItem.icon} size={19} color={colors.adminActionForeground} />
+                <Text style={[styles.adminButtonLabel, { color: colors.adminActionForeground }]}>
                   {adminNavItem.label}
                 </Text>
               </Pressable>
@@ -269,10 +274,12 @@ export function SideDrawer({
 
             <Pressable
               onPress={onLogout}
-              style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.navRow, pressed && { backgroundColor: colors.muted }]}
             >
-              <Feather name="log-out" size={19} color={colors.destructive} />
-              <Text style={[styles.navLabel, { color: colors.destructive }]}>Cerrar sesión</Text>
+              <Feather name="log-out" size={19} color={colors.destructiveTextSmall} />
+              <Text style={[styles.navLabel, { color: colors.destructiveTextSmall }]}>
+                Cerrar sesión
+              </Text>
             </Pressable>
           </ScrollView>
         </Animated.View>
@@ -343,6 +350,9 @@ const styles = StyleSheet.create({
   viewProfile: {
     fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
+  },
+  viewProfilePressed: {
+    textDecorationLine: 'underline',
   },
   navList: {
     flexGrow: 0,

@@ -7,7 +7,7 @@ import {
   listClassSessions,
   type ClassSessionDto,
 } from '@workspace/api-client-react';
-import { addDays, formatDuration, formatHM, isSessionEndedInChile, toDateKey } from '@/lib/dateUtils';
+import { addDays, formatDuration, isSessionEndedInChile, toDateKey } from '@/lib/dateUtils';
 
 export interface ClassSession {
   id: string;
@@ -18,7 +18,6 @@ export interface ClassSession {
   startMinutes: number;
   endMinutes: number;
   startDate: Date;
-  timeRangeLabel: string;
   durationLabel: string;
   durationMin: number;
   capacity: number;
@@ -99,7 +98,6 @@ function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
     startMinutes,
     endMinutes,
     startDate,
-    timeRangeLabel: `${formatHM(startMinutes)} a ${formatHM(endMinutes)}`,
     durationLabel: formatDuration(dto.durationMinutes),
     durationMin: dto.durationMinutes,
     capacity: dto.capacity,

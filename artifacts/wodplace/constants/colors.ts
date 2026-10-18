@@ -39,6 +39,19 @@ const colors = {
     // Destructive / cancel actions
     destructive: '#E0524A',
     destructiveForeground: '#FFFFFF',
+    // Darker red for SMALL destructive text on a light background (ej.
+    // "Cerrar sesión") -- destructive por sí solo da ~3.8:1 sobre blanco,
+    // bajo el mínimo de 4.5:1 para texto chico; este da ~6:1. Mismo patrón
+    // que navActiveTextSmall más abajo.
+    destructiveTextSmall: '#B13A33',
+
+    // Botón de acceso a un panel (Administrador/Coach/Super admin) en el
+    // menú lateral -- fondo oscuro sólido en los dos estados (nunca
+    // opacidad, que diluye el contraste contra lo que haya detrás) con
+    // texto claro, ~15:1 en ambos.
+    adminAction: '#18191A',
+    adminActionPressed: '#2E2F35',
+    adminActionForeground: '#F6F1E8',
 
     // Borders and input outlines
     border: '#E3D9C2',

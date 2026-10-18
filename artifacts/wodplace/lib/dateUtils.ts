@@ -98,6 +98,21 @@ export function formatDayLabel(date: Date, now: Date): string {
   return `${date.getDate()} de ${MONTH_NAMES[date.getMonth()]}`;
 }
 
+const WEEKDAY_SHORT_LOWER = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+const MONTH_SHORT_LOWER = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+];
+
+/** Fecha corta ÚNICA para tarjetas de clase en toda la app (Inicio,
+ *  Calendario, Perfil, reservas) -- ej. "mar 20 oct". Día de la semana
+ *  abreviado + día + mes abreviado, todo en minúsculas, siempre las 3
+ *  partes del mismo largo (3 letras cada abreviatura) para que el ancho
+ *  sea predecible y no se parta en dos líneas en pantallas chicas. */
+export function formatClassDateShort(date: Date): string {
+  return `${WEEKDAY_SHORT_LOWER[date.getDay()]} ${date.getDate()} ${MONTH_SHORT_LOWER[date.getMonth()]}`;
+}
+
 export function formatWeekdayLong(date: Date): string {
   const names = [
     'Domingo',
@@ -112,8 +127,9 @@ export function formatWeekdayLong(date: Date): string {
 }
 
 /** Formatter ÚNICO de hora de clase para toda la app (Calendario, Inicio,
- *  Perfil -- vía ClassCard/timeRangeLabel y el "Próxima clase" de Home) --
- *  cambiar aquí cambia todas las pantallas a la vez. `totalMinutes` ya es
+ *  Perfil -- vía ClassCard y el "Próxima clase" de Home), solo la hora de
+ *  INICIO con AM/PM -- cambiar aquí cambia todas las pantallas a la vez.
+ *  `totalMinutes` ya es
  *  un número de minutos-del-día de pura aritmética (hora*60+minuto),
  *  nunca pasa por un objeto Date, así que no hay ninguna dependencia de
  *  la zona horaria del dispositivo que corregir acá -- la hora de clase

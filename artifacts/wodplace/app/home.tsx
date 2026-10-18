@@ -89,7 +89,7 @@ import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import { useRefetchOnFocusIfStale } from '@/lib/useRefetchOnFocusIfStale';
 import {
   addDays,
-  formatDayLabel,
+  formatClassDateShort,
   formatHM,
   isBirthdayToday,
   MONTH_NAMES,
@@ -413,7 +413,7 @@ export default function HomeScreen() {
   };
 
   const nextClassLabel = nextSession
-    ? `${formatDayLabel(nextSession.startDate, now)} · ${formatHM(nextSession.startMinutes)}`
+    ? `${formatClassDateShort(nextSession.startDate)} · ${formatHM(nextSession.startMinutes)}`
     : 'Sin clases disponibles';
 
   const isOwnBirthdayToday = (() => {
@@ -517,7 +517,9 @@ export default function HomeScreen() {
             <View style={styles.nextClassTop}>
               <View style={[styles.timeChip, { backgroundColor: colors.navActive }]}>
                 <Feather name="calendar" size={13} color={colors.card} />
-                <Text style={[styles.timeChipText, { color: colors.card }]}>{nextClassLabel}</Text>
+                <Text style={[styles.timeChipText, { color: colors.card }]} numberOfLines={1}>
+                  {nextClassLabel}
+                </Text>
               </View>
               <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
             </View>
