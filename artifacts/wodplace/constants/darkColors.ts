@@ -25,6 +25,9 @@ const darkColors = {
   // Primary action color = copper accent
   primary: "#C79A6B",
   primaryForeground: "#0E0F11",
+  // Estado presionado de `primary` como fondo SÓLIDO -- nunca opacidad,
+  // que diluye el color contra lo que haya detrás (ver admin-login.tsx).
+  primaryPressed: "#B3885E",
 
   // Secondary / less-emphasis interactive surfaces
   secondary: "#181A1D",

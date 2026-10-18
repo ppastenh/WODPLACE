@@ -323,20 +323,36 @@ export default function AdminLoginScreen() {
             <Text style={[styles.subtitle, { color: colors.authMuted }]}>
               Tu cuenta tiene acceso a los dos paneles. ¿Cuál quieres abrir?
             </Text>
-            <AppButton
-              label="Panel de Box"
-              variant="primary"
-              fullWidth
+            {/* Botones propios en vez de AppButton: ese componente siempre
+                toma sus colores de useColors() (paleta clara), nunca de la
+                paleta oscura de este panel (useDarkColors) -- con la
+                variante "outlineDark" eso dejaba el texto casi negro sobre
+                un fondo casi negro. Fondo sólido en los dos estados,
+                nunca opacidad, para que el contraste no dependa de lo que
+                haya detrás. */}
+            <Pressable
               onPress={() => chooseTarget('box')}
-              style={styles.button}
-            />
-            <AppButton
-              label="Panel de Super Admin"
-              variant="outlineDark"
-              fullWidth
+              style={({ pressed }) => [
+                styles.panelButton,
+                { backgroundColor: pressed ? colors.primaryPressed : colors.primary },
+              ]}
+            >
+              <Text style={[styles.panelButtonLabel, { color: colors.primaryForeground }]}>
+                Panel de Box
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={() => chooseTarget('super')}
-              style={styles.button}
-            />
+              style={({ pressed }) => [
+                styles.panelButtonOutline,
+                { borderColor: colors.authBorder },
+                pressed && { backgroundColor: colors.secondary },
+              ]}
+            >
+              <Text style={[styles.panelButtonLabel, { color: colors.authText }]}>
+                Panel de Super Admin
+              </Text>
+            </Pressable>
           </>
         ) : null}
 
@@ -498,6 +514,27 @@ const styles = StyleSheet.create({
   },
   error: { fontSize: 13, fontFamily: 'Inter_500Medium', textAlign: 'center' },
   button: { marginTop: 6 },
+  panelButton: {
+    borderRadius: 999,
+    paddingVertical: 16,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  panelButtonOutline: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  panelButtonLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+  },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
