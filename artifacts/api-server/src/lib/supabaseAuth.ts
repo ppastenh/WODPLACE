@@ -20,18 +20,42 @@ import { getSupabaseAdmin } from "./supabaseAdmin";
  * wodplace_users.auth_user_id themselves; this only proves "which
  * Supabase account, if any, made this request."
  */
+export type VerifiedSupabaseUser = { id: string; email: string | null; aal: string | null };
+
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      supabaseUser?: { id: string; email: string | null };
+      supabaseUser?: VerifiedSupabaseUser;
     }
   }
 }
 
-export async function resolveSupabaseUser(
-  req: Request,
-): Promise<{ id: string; email: string | null } | null> {
+/**
+ * Lee el claim `aal` del JWT -- SOLO se llama después de que
+ * `getSupabaseAdmin().auth.getUser(token)` ya verificó ese mismo token
+ * contra Supabase. Nunca se usa este decode para autenticar por su
+ * cuenta; es leer un campo extra de un token cuya firma ya se comprobó.
+ */
+function decodeAalFromVerifiedToken(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const json = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      aal?: unknown;
+    };
+    return typeof json.aal === "string" ? json.aal : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveSupabaseUser(req: Request): Promise<VerifiedSupabaseUser | null> {
+  // Memoizado en el propio request -- varias llamadas dentro de la misma
+  // petición (ej. assertOwnsAccount y luego un chequeo de aal) no repiten
+  // el viaje de red a Supabase.
+  if (req.supabaseUser) return req.supabaseUser;
+
   const header = req.header("authorization") ?? req.header("Authorization");
   if (!header?.startsWith("Bearer ")) return null;
   const token = header.slice("Bearer ".length).trim();
@@ -39,7 +63,13 @@ export async function resolveSupabaseUser(
 
   const { data, error } = await getSupabaseAdmin().auth.getUser(token);
   if (error || !data.user) return null;
-  return { id: data.user.id, email: data.user.email ?? null };
+  const result: VerifiedSupabaseUser = {
+    id: data.user.id,
+    email: data.user.email ?? null,
+    aal: decodeAalFromVerifiedToken(token),
+  };
+  req.supabaseUser = result;
+  return result;
 }
 
 /** Rejects with 401 unless a valid Supabase JWT is present. */

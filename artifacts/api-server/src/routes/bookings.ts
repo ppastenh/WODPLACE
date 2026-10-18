@@ -20,7 +20,7 @@ import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { isAnyStaff } from "../lib/boxOwnership";
 import { computePendingSlugs } from "./contracts";
 import { isContractAcceptanceEnforced } from "../lib/featureFlags";
-import { assertOwnsAccount } from "../lib/supabaseAuth";
+import { assertOwnsAccount, resolveSupabaseUser } from "../lib/supabaseAuth";
 import { isSessionEndedInChile } from "../lib/dateUtils";
 
 const router: IRouter = Router();
@@ -273,7 +273,8 @@ router.post("/bookings", async (req: Request, res: Response) => {
     // computePendingSlugs already resolves to [] for a box with no
     // contract documents of its own.
     if (isContractAcceptanceEnforced()) {
-      const isStaff = await isAnyStaff(userId);
+      const callerAal = (await resolveSupabaseUser(req))?.aal ?? null;
+      const isStaff = await isAnyStaff(userId, callerAal);
       const pendingSlugs = isStaff ? [] : await computePendingSlugs(userId);
       if (pendingSlugs.length > 0) {
         // Generic message, no slugs — the app's own GET /contracts/acceptance

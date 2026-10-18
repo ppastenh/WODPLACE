@@ -26,7 +26,7 @@ import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { isAnyStaff, isBoxOwnerOrSuperAdmin } from "../lib/boxOwnership";
 import { sendContractAcceptanceEmail } from "../lib/ownerNotifications";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
-import { assertOwnsAccount } from "../lib/supabaseAuth";
+import { assertOwnsAccount, resolveSupabaseUser } from "../lib/supabaseAuth";
 
 const CONTRACTS_BUCKET = "contracts";
 const SIGNED_URL_TTL_SECONDS = 5 * 60;
@@ -234,6 +234,7 @@ async function resolveContractFile(
   boxId: string | undefined,
   slug: string,
   versionId: string | undefined,
+  callerAal: string | null,
 ): Promise<ResolvedContractFile | null> {
   if (!boxId) {
     if (slug === "platform-agreement") {
@@ -241,7 +242,7 @@ async function resolveContractFile(
         .select({ objectPath: platformAgreementDocumentTable.objectPath })
         .from(platformAgreementDocumentTable);
       if (!doc?.objectPath) return null;
-      return { objectPath: doc.objectPath, authorized: await isAnyStaff(userId) };
+      return { objectPath: doc.objectPath, authorized: await isAnyStaff(userId, callerAal) };
     }
     // No boxId given for a non-platform slug: resolve the CALLER's own
     // box — an athlete opening their own Contratos Activos never needs to
@@ -266,7 +267,7 @@ async function resolveContractFile(
     if (!version) return null;
     return {
       objectPath: version.objectPath,
-      authorized: await isBoxOwnerOrSuperAdmin(userId, boxId),
+      authorized: await isBoxOwnerOrSuperAdmin(userId, boxId, callerAal),
     };
   }
 
@@ -276,7 +277,7 @@ async function resolveContractFile(
     .where(and(eq(contractDocumentsTable.boxId, boxId), eq(contractDocumentsTable.slug, slug)));
   if (!doc?.objectPath) return null;
 
-  if (await isBoxOwnerOrSuperAdmin(userId, boxId)) {
+  if (await isBoxOwnerOrSuperAdmin(userId, boxId, callerAal)) {
     return { objectPath: doc.objectPath, authorized: true };
   }
   const athleteBoxId = await resolveBoxIdForAthlete(userId);
@@ -303,7 +304,8 @@ router.get("/contracts/signed-url", async (req: Request, res: Response) => {
   if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
-    const resolved = await resolveContractFile(userId, boxId, slug, versionId);
+    const callerAal = (await resolveSupabaseUser(req))?.aal ?? null;
+    const resolved = await resolveContractFile(userId, boxId, slug, versionId, callerAal);
     if (!resolved?.authorized) {
       res.status(404).json({ error: "Documento no encontrado" });
       return;

@@ -13,7 +13,8 @@ import { resolveAdminRoles, type AdminRole } from "../lib/adminRole";
 import { resolveBoxIdForWodplaceUserId } from "../lib/boxContext";
 import { ensurePlatformAgreementDocument } from "../lib/contractDocuments";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
-import { assertOwnsAccount } from "../lib/supabaseAuth";
+import { assertOwnsAccount, resolveSupabaseUser } from "../lib/supabaseAuth";
+import { isSuperAdminAuthorized } from "../lib/aal2Enforcement";
 
 const router: IRouter = Router();
 
@@ -106,7 +107,7 @@ async function loadBoxSummary(boxId: string): Promise<BoxSummary | null> {
  * outright — they're the other party to the agreement (WODPLACE itself),
  * not someone who accepts it.
  */
-async function loadStatus(userId: string): Promise<PlatformAgreementStatus> {
+async function loadStatus(userId: string, callerAal: string | null): Promise<PlatformAgreementStatus> {
   const [appUser] = await db
     .select({ email: wodplaceUsersTable.email })
     .from(wodplaceUsersTable)
@@ -146,7 +147,7 @@ async function loadStatus(userId: string): Promise<PlatformAgreementStatus> {
     .from(platformAgreementDocumentTable);
   const document = doc ? { slug: "platform-agreement", ...doc } : null;
 
-  if (roles.includes("super_admin")) {
+  if (roles.includes("super_admin") && (await isSuperAdminAuthorized(callerAal))) {
     return { roles, accepted: true, acceptedAt: null, document, box, boxCreationAuthorized: false };
   }
 
@@ -182,7 +183,8 @@ router.get("/platform-agreement", async (req: Request, res: Response) => {
   if (!(await assertOwnsAccount(req, res, userId))) return;
 
   try {
-    res.json(await loadStatus(userId));
+    const callerAal = (await resolveSupabaseUser(req))?.aal ?? null;
+    res.json(await loadStatus(userId, callerAal));
   } catch (error) {
     req.log.error({ err: error }, "Error loading platform agreement status");
     res.status(500).json({ error: "Failed to load platform agreement status" });
@@ -208,6 +210,7 @@ router.post("/platform-agreement/accept", async (req: Request, res: Response) =>
   if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
     const { userId } = parsed.data;
+    const callerAal = (await resolveSupabaseUser(req))?.aal ?? null;
     const [appUser] = await db
       .select({ email: wodplaceUsersTable.email })
       .from(wodplaceUsersTable)
@@ -219,8 +222,8 @@ router.post("/platform-agreement/accept", async (req: Request, res: Response) =>
       return;
     }
 
-    if (roles.includes("super_admin")) {
-      res.json(await loadStatus(userId));
+    if (roles.includes("super_admin") && (await isSuperAdminAuthorized(callerAal))) {
+      res.json(await loadStatus(userId, callerAal));
       return;
     }
 
@@ -233,7 +236,7 @@ router.post("/platform-agreement/accept", async (req: Request, res: Response) =>
         set: { acceptedAt: new Date(), boxId },
       });
 
-    res.json(await loadStatus(userId));
+    res.json(await loadStatus(userId, callerAal));
   } catch (error) {
     req.log.error({ err: error }, "Error accepting platform agreement");
     res.status(500).json({ error: "Failed to accept platform agreement" });
@@ -477,7 +480,7 @@ router.post("/platform-agreement/box-details", async (req: Request, res: Respons
       WHERE id = ${boxId}
     `);
 
-    res.json(await loadStatus(userId));
+    res.json(await loadStatus(userId, (await resolveSupabaseUser(req))?.aal ?? null));
   } catch (error) {
     req.log.error({ err: error }, "Error saving box details");
     res.status(500).json({ error: "Failed to save box details" });
@@ -508,7 +511,7 @@ router.post("/platform-agreement/box-welcome-shown", async (req: Request, res: R
     await db.execute(sql`
       UPDATE public.boxes SET welcome_shown_at = now() WHERE id = ${boxId}
     `);
-    res.json(await loadStatus(userId));
+    res.json(await loadStatus(userId, (await resolveSupabaseUser(req))?.aal ?? null));
   } catch (error) {
     req.log.error({ err: error }, "Error marking box welcome as shown");
     res.status(500).json({ error: "Failed to mark welcome as shown" });

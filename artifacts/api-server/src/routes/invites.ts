@@ -18,6 +18,7 @@ import { getDashboardUrl } from "../lib/supabaseAdmin";
 import { requireSupabaseUser } from "../lib/supabaseAuth";
 import { escapeHtml, sendEmail } from "../lib/resend";
 import { countRecentAttempts, getRealClientIp, MAX_ATTEMPTS, recordFailedAttempt } from "../lib/inviteRateLimit";
+import { isSuperAdminAuthorized } from "../lib/aal2Enforcement";
 
 const router: IRouter = Router();
 
@@ -38,11 +39,17 @@ function isRateLimited(userId: string): boolean {
   return hits.length > NEW_CODE_MAX_PER_WINDOW;
 }
 
-async function isBoxAdminOrSuperAdmin(userId: string, boxId: string): Promise<boolean> {
+async function isBoxAdminOrSuperAdmin(
+  userId: string,
+  boxId: string,
+  callerAal: string | null,
+): Promise<boolean> {
   const rows = await db.execute<{ role: string; box_id: string | null }>(sql`
     select role, box_id from user_roles where user_id = ${userId}
   `);
-  return rows.rows.some((r) => r.role === "super_admin" || (r.role === "box_admin" && r.box_id === boxId));
+  if (rows.rows.some((r) => r.role === "box_admin" && r.box_id === boxId)) return true;
+  if (rows.rows.some((r) => r.role === "super_admin")) return isSuperAdminAuthorized(callerAal);
+  return false;
 }
 
 // Same unambiguous alphabet the old client-side genCode() used — 32
@@ -81,7 +88,7 @@ router.get("/invites/new-code", requireSupabaseUser, async (req: Request, res: R
     res.status(429).json({ error: "Demasiados códigos generados. Espera unos minutos." });
     return;
   }
-  if (!(await isBoxAdminOrSuperAdmin(userId, parsed.data.boxId))) {
+  if (!(await isBoxAdminOrSuperAdmin(userId, parsed.data.boxId, req.supabaseUser!.aal))) {
     res.status(403).json({ error: "No tienes permiso para invitar staff en este box." });
     return;
   }
@@ -323,7 +330,7 @@ async function authorizeInviteAction(req: Request, res: Response): Promise<Invit
     return null;
   }
   const userId = req.supabaseUser!.id;
-  if (!(await isBoxAdminOrSuperAdmin(userId, invite.box_id))) {
+  if (!(await isBoxAdminOrSuperAdmin(userId, invite.box_id, req.supabaseUser!.aal))) {
     res.status(403).json({ error: "No tienes permiso para esta invitación." });
     return null;
   }
