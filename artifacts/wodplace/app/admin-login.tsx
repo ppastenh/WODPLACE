@@ -361,7 +361,7 @@ export default function AdminLoginScreen() {
             <Text style={[styles.subtitle, { color: colors.authMuted }]}>
               No se pudo cargar el estado del PIN.
             </Text>
-            <AppButton label="Reintentar" variant="primary" fullWidth onPress={loadStatus} style={styles.button} />
+            <AppButton label="Reintentar" variant="primary" palette="dark" fullWidth onPress={loadStatus} style={styles.button} />
           </>
         ) : null}
 
@@ -378,6 +378,7 @@ export default function AdminLoginScreen() {
             <AppButton
               label="Guardar PIN"
               variant="primary"
+              palette="dark"
               fullWidth
               loading={busy}
               onPress={submitSetup}
@@ -399,6 +400,7 @@ export default function AdminLoginScreen() {
             <AppButton
               label="Entrar"
               variant="primary"
+              palette="dark"
               fullWidth
               loading={busy}
               onPress={submitVerify}
@@ -428,6 +430,7 @@ export default function AdminLoginScreen() {
             <AppButton
               label="Ingresar con mi contraseña"
               variant="primary"
+              palette="dark"
               fullWidth
               onPress={() => openPassword('unlock')}
               style={styles.button}
@@ -450,6 +453,7 @@ export default function AdminLoginScreen() {
             <AppButton
               label={passwordPurpose === 'forgot' ? 'Continuar' : 'Entrar'}
               variant="primary"
+              palette="dark"
               fullWidth
               loading={busy}
               onPress={submitPassword}

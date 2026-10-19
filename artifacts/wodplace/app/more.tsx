@@ -258,6 +258,7 @@ export default function MoreScreen() {
               <AppButton
                 label="Marcar como vistas"
                 variant="outlineDark"
+                palette="dark"
                 compact
                 loading={ackMutation.isPending}
                 onPress={handleAckAcceptances}
