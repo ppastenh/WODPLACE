@@ -58,8 +58,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             styles.topButton,
             {
               top: insets.top + 16,
-              backgroundColor: colors.card,
-              opacity: pressed ? 0.8 : 1,
+              backgroundColor: pressed ? colors.cardPressed : colors.card,
             },
           ]}
         >
@@ -81,8 +80,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: colors.primary,
-              opacity: pressed ? 0.9 : 1,
+              backgroundColor: pressed ? colors.primaryPressed : colors.primary,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
@@ -124,7 +122,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                   accessibilityRole="button"
                   style={({ pressed }) => [
                     styles.closeButton,
-                    { opacity: pressed ? 0.6 : 1 },
+                    { transform: [{ scale: pressed ? 0.85 : 1 }] },
                   ]}
                 >
                   <Feather name="x" size={24} color={colors.foreground} />

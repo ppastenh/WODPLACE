@@ -76,7 +76,10 @@ export function ClassCard({
         <Pressable
           onPress={onPressAttendees}
           hitSlop={8}
-          style={({ pressed }) => [styles.attendeesLink, { opacity: pressed ? 0.6 : 1 }]}
+          style={({ pressed }) => [
+            styles.attendeesLink,
+            { transform: [{ scale: pressed ? 0.95 : 1 }] },
+          ]}
         >
           <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
             Quedan{' '}
@@ -118,34 +121,33 @@ export function AgendadoBadge({
     onRequestCancel();
   };
 
-  const badge = (
-    <View
-      style={[
-        styles.badge,
-        {
-          backgroundColor: active ? colors.destructive : colors.secondary,
-          opacity: canCancel ? 1 : 0.6,
-        },
-      ]}
-    >
-      <Feather
-        name={active ? 'x' : 'check'}
-        size={13}
-        color={active ? colors.destructiveForeground : colors.secondaryForeground}
-      />
-      <Text style={[styles.badgeText, { color: active ? colors.destructiveForeground : colors.secondaryForeground }]}>
-        {active ? 'Cancelando…' : label}
-      </Text>
-    </View>
-  );
+  function renderBadge(pressed: boolean) {
+    const bg = active
+      ? pressed
+        ? colors.destructivePressed
+        : colors.destructive
+      : pressed
+        ? colors.secondaryPressed
+        : colors.secondary;
+    return (
+      <View style={[styles.badge, { backgroundColor: bg, opacity: canCancel ? 1 : 0.6 }]}>
+        <Feather
+          name={active ? 'x' : 'check'}
+          size={13}
+          color={active ? colors.destructiveForeground : colors.secondaryForeground}
+        />
+        <Text style={[styles.badgeText, { color: active ? colors.destructiveForeground : colors.secondaryForeground }]}>
+          {active ? 'Cancelando…' : label}
+        </Text>
+      </View>
+    );
+  }
 
-  if (!onRequestCancel) return badge;
+  if (!onRequestCancel) return renderBadge(false);
 
-  return (
-    <Pressable onPress={handlePress} hitSlop={6} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
-      {badge}
-    </Pressable>
-  );
+  // Fondo SÓLIDO al presionar (destructivePressed/secondaryPressed), no
+  // opacidad -- ver AUDITORIA-VISUAL.md.
+  return <Pressable onPress={handlePress} hitSlop={6}>{({ pressed }) => renderBadge(pressed)}</Pressable>;
 }
 
 function EndedBadge() {

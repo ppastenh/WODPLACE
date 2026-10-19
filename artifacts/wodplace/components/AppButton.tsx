@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
+import { useDarkColors } from '@/hooks/useDarkColors';
 
 export type AppButtonVariant =
   | 'primary'
@@ -31,6 +32,11 @@ interface AppButtonProps {
   compact?: boolean;
   style?: ViewStyle;
   testID?: string;
+  /** Which palette to render with -- the caller's screen decides this,
+   *  never this component (this used to always call useColors() no matter
+   *  what, which is exactly what made "Panel de Super Admin" nearly
+   *  invisible on admin-login's dark screen; see AUDITORIA-VISUAL.md). */
+  palette?: 'light' | 'dark';
 }
 
 export function AppButton({
@@ -44,21 +50,39 @@ export function AppButton({
   compact,
   style,
   testID,
+  palette = 'light',
 }: AppButtonProps) {
-  const colors = useColors();
+  const light = useColors();
+  const dark = useDarkColors();
+  const colors = palette === 'dark' ? dark : light;
+  const isDark = palette === 'dark';
 
-  const palette: Record<AppButtonVariant, { bg: string; fg: string; border?: string }> = {
-    primary: { bg: colors.primary, fg: colors.primaryForeground },
-    dark: { bg: colors.authBackground, fg: colors.authText },
-    outlineLight: { bg: 'transparent', fg: colors.authText, border: colors.authBorder },
-    outlineDark: { bg: 'transparent', fg: colors.foreground, border: colors.border },
-    destructive: { bg: colors.destructive, fg: colors.destructiveForeground },
-    mutedDisabled: { bg: colors.muted, fg: colors.mutedForeground },
-    softBooked: { bg: colors.secondary, fg: colors.secondaryForeground },
-    waitlist: { bg: colors.navActive, fg: colors.card },
+  // 'dark' and 'outlineLight' are the two variants designed specifically
+  // for an auth-styled dark button sitting on an otherwise LIGHT screen
+  // (the "night box" look) -- they don't have a sensible equivalent when
+  // the whole screen is already dark, so they fall back to a plain muted
+  // chip rather than a made-up mapping. Not needed by any current caller.
+  const scheme: Record<AppButtonVariant, { bg: string; fg: string; border?: string; bgPressed: string }> = {
+    primary: { bg: colors.primary, fg: colors.primaryForeground, bgPressed: colors.primaryPressed },
+    dark: isDark
+      ? { bg: colors.secondary, fg: colors.secondaryForeground, bgPressed: colors.secondaryPressed }
+      : { bg: colors.authBackground, fg: colors.authText, bgPressed: colors.authCard },
+    outlineLight: isDark
+      ? { bg: 'transparent', fg: colors.foreground, border: colors.border, bgPressed: dark.mutedPressed }
+      : { bg: 'transparent', fg: colors.authText, border: colors.authBorder, bgPressed: colors.authCard },
+    outlineDark: {
+      bg: 'transparent',
+      fg: colors.foreground,
+      border: colors.border,
+      bgPressed: isDark ? dark.mutedPressed : colors.muted,
+    },
+    destructive: { bg: colors.destructive, fg: colors.destructiveForeground, bgPressed: colors.destructivePressed },
+    mutedDisabled: { bg: colors.muted, fg: colors.mutedForeground, bgPressed: colors.muted },
+    softBooked: { bg: colors.secondary, fg: colors.secondaryForeground, bgPressed: colors.secondaryPressed },
+    waitlist: { bg: colors.navActive, fg: colors.card, bgPressed: colors.navActivePressed },
   };
 
-  const scheme = palette[variant];
+  const active = scheme[variant];
   const isDisabled = disabled || loading;
 
   const handlePress = () => {
@@ -76,10 +100,13 @@ export function AppButton({
         styles.base,
         compact && styles.compact,
         {
-          backgroundColor: scheme.bg,
-          borderColor: scheme.border ?? 'transparent',
-          borderWidth: scheme.border ? 1 : 0,
-          opacity: isDisabled ? 0.55 : pressed ? 0.85 : 1,
+          // Estado presionado SÓLIDO (bgPressed, nunca opacidad) -- ver
+          // AUDITORIA-VISUAL.md. La única opacidad que queda es la de
+          // deshabilitado, que no es un estado de contraste al presionar.
+          backgroundColor: pressed && !isDisabled ? active.bgPressed : active.bg,
+          borderColor: active.border ?? 'transparent',
+          borderWidth: active.border ? 1 : 0,
+          opacity: isDisabled ? 0.55 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
           transform: [{ scale: pressed && !isDisabled ? 0.98 : 1 }],
         },
@@ -87,12 +114,12 @@ export function AppButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={scheme.fg} />
+        <ActivityIndicator color={active.fg} />
       ) : (
         <View style={styles.content}>
           {icon}
           <Text
-            style={[styles.label, compact && styles.labelCompact, { color: scheme.fg }]}
+            style={[styles.label, compact && styles.labelCompact, { color: active.fg }]}
             numberOfLines={1}
           >
             {label}

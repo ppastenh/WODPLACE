@@ -39,7 +39,7 @@ export function Avatar({ uri, size = 88, onChange }: AvatarProps) {
   return (
     <Pressable
       onPress={pickImage}
-      style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.95 : 1 }] }]}
     >
       <View
         style={[

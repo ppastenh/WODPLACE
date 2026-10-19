@@ -366,7 +366,10 @@ export default function BarLoaderScreen() {
           disabled={!canSave}
           style={({ pressed }) => [
             styles.save,
-            { backgroundColor: colors.primary, opacity: canSave ? (pressed ? 0.85 : 1) : 0.4 },
+            {
+              backgroundColor: pressed && canSave ? colors.primaryPressed : colors.primary,
+              opacity: canSave ? 1 : 0.4,
+            },
           ]}
         >
           <Feather name="bookmark" size={16} color={colors.primaryForeground} />

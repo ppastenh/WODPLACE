@@ -320,7 +320,11 @@ export default function RecordRmScreen() {
                 hitSlop={10}
                 style={({ pressed }) => [
                   styles.bump,
-                  { borderColor: colors.border, opacity: reps <= 1 ? 0.3 : pressed ? 0.6 : 1 },
+                  {
+                    borderColor: colors.border,
+                    opacity: reps <= 1 ? 0.3 : 1,
+                    transform: [{ scale: pressed && reps > 1 ? 0.93 : 1 }],
+                  },
                 ]}
               >
                 <Feather name="minus" size={18} color={colors.foreground} />
@@ -345,7 +349,11 @@ export default function RecordRmScreen() {
                 hitSlop={10}
                 style={({ pressed }) => [
                   styles.bump,
-                  { borderColor: colors.border, opacity: reps >= 30 ? 0.3 : pressed ? 0.6 : 1 },
+                  {
+                    borderColor: colors.border,
+                    opacity: reps >= 30 ? 0.3 : 1,
+                    transform: [{ scale: pressed && reps < 30 ? 0.93 : 1 }],
+                  },
                 ]}
               >
                 <Feather name="plus" size={18} color={colors.foreground} />
@@ -436,8 +444,8 @@ export default function RecordRmScreen() {
           disabled={create.isPending}
           style={({ pressed }) => [
             styles.save,
-            { backgroundColor: colors.primary },
-            (pressed || create.isPending) && { opacity: 0.85 },
+            { backgroundColor: pressed && !create.isPending ? colors.primaryPressed : colors.primary },
+            create.isPending && { opacity: 0.85 },
           ]}
         >
           <Text style={[styles.saveText, { color: colors.primaryForeground }]}>

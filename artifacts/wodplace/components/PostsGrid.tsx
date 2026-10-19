@@ -32,7 +32,7 @@ function PostThumb({
       onPress={onPress}
       style={({ pressed }) => [
         styles.postThumb,
-        { width: ITEM_SIZE, height: ITEM_SIZE, opacity: pressed ? 0.75 : 1 },
+        { width: ITEM_SIZE, height: ITEM_SIZE, transform: [{ scale: pressed ? 0.96 : 1 }] },
       ]}
     >
       {hasImage ? (

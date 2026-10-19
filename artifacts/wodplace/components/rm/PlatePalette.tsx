@@ -95,7 +95,12 @@ export function PlatePalette({ plates, perSide, onAdd }: Props) {
               onPress={() => onAdd(p.unit, p.weight)}
               disabled={disabled}
               style={({ pressed }) => [
-                { width: box, height: box, opacity: disabled ? 0.28 : pressed ? 0.82 : 1 },
+                {
+                  width: box,
+                  height: box,
+                  opacity: disabled ? 0.28 : 1,
+                  transform: [{ scale: pressed && !disabled ? 0.9 : 1 }],
+                },
               ]}
             >
               <Svg width={box} height={box}>

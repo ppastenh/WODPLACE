@@ -72,7 +72,7 @@ export function AppHeader({
           <Pressable
             onPress={onBack}
             hitSlop={12}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.85 : 1 }] })}
           >
             <Feather name={backIcon} size={24} color={iconColor} />
           </Pressable>
@@ -80,7 +80,7 @@ export function AppHeader({
           <Pressable
             onPress={onMenu}
             hitSlop={12}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.85 : 1 }] })}
           >
             <Feather name={menuOpen ? 'x' : 'menu'} size={24} color={iconColor} />
           </Pressable>

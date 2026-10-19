@@ -31,7 +31,7 @@ export function RmHeader({ title, onBack, right }: Props) {
           <Pressable
             onPress={onBack}
             hitSlop={12}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.85 : 1 }] })}
           >
             <Feather name="arrow-left" size={24} color={colors.foreground} />
           </Pressable>

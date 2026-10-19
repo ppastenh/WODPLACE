@@ -66,7 +66,11 @@ export function PercentSlider({
           hitSlop={10}
           style={({ pressed }) => [
             styles.bump,
-            { borderColor: colors.border, opacity: value <= min ? 0.3 : pressed ? 0.6 : 1 },
+            {
+              borderColor: colors.border,
+              opacity: value <= min ? 0.3 : 1,
+              transform: [{ scale: pressed && value > min ? 0.93 : 1 }],
+            },
           ]}
         >
           <Feather name="minus" size={18} color={colors.foreground} />
@@ -82,7 +86,11 @@ export function PercentSlider({
           hitSlop={10}
           style={({ pressed }) => [
             styles.bump,
-            { borderColor: colors.border, opacity: value >= max ? 0.3 : pressed ? 0.6 : 1 },
+            {
+              borderColor: colors.border,
+              opacity: value >= max ? 0.3 : 1,
+              transform: [{ scale: pressed && value < max ? 0.93 : 1 }],
+            },
           ]}
         >
           <Feather name="plus" size={18} color={colors.foreground} />

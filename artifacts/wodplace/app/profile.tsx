@@ -81,6 +81,12 @@ export default function ProfileScreen() {
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
+  // Solo en desarrollo -- nunca en una build de producción (__DEV__ es
+  // falso ahí). Revisa tokens/componentes base a ojo; ver ESTADO.md/
+  // AUDITORIA-VISUAL.md.
+  if (__DEV__) {
+    navItems.push({ key: 'dev-gallery', label: 'Galería (dev)', icon: 'grid', route: '/dev-gallery' });
+  }
   const handleNavigate = (route: string) => {
     setDrawerVisible(false);
     if (route !== pathname) router.push(route as never);
