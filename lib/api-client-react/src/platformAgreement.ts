@@ -18,7 +18,19 @@ export type PlatformAgreementStatus = {
   /** When this box_admin accepted it (ISO string), or null if not yet
    *  accepted / not applicable (e.g. super_admin, exempt outright). */
   acceptedAt: string | null;
-  document: { slug: string; title: string; objectPath: string | null } | null;
+  document: {
+    slug: string;
+    title: string;
+    objectPath: string | null;
+    /** La versión vigente -- hay que mandarla de vuelta al aceptar
+     *  (ver acceptPlatformAgreement). Si el documento se reemplazó
+     *  mientras la pantalla estaba abierta, el servidor la rechaza. */
+    currentVersionId: string | null;
+  } | null;
+  /** true si esta cuenta ya aceptó alguna vez una versión ANTERIOR
+   *  (archivada) -- la pantalla usa esto para decir "hay una versión
+   *  nueva" en vez de sonar a primera vez. */
+  previouslyAccepted: boolean;
   /** null for a super_admin-only account. Otherwise this box_admin's box —
    *  `detailsComplete` gates whether "Datos del Box" still needs filling in
    *  before the admin panel opens (see create-box.tsx / box-details.tsx).
@@ -54,13 +66,21 @@ export async function getPlatformAgreementStatus(
   );
 }
 
+/**
+ * `documentVersionId` debe ser el `document.currentVersionId` que la
+ * pantalla mostró -- si el servidor ya tiene una versión distinta
+ * (alguien reemplazó el Acuerdo mientras la pantalla estaba abierta),
+ * responde 409 { code: "AGREEMENT_VERSION_STALE" }, nunca registra la
+ * aceptación de un texto que no es el vigente.
+ */
 export async function acceptPlatformAgreement(
   userId: string,
+  documentVersionId: string,
 ): Promise<PlatformAgreementStatus> {
   return customFetch<PlatformAgreementStatus>("/api/platform-agreement/accept", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({ userId, documentVersionId }),
   });
 }
 

@@ -1,8 +1,12 @@
+import crypto from "node:crypto";
+
 import {
   boxCreationAuthorizationsTable,
   db,
+  platformAgreementAcceptanceHistoryTable,
   platformAgreementAcceptancesTable,
   platformAgreementDocumentTable,
+  platformAgreementDocumentVersionsTable,
   wodplaceUsersTable,
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
@@ -15,6 +19,8 @@ import { ensurePlatformAgreementDocument } from "../lib/contractDocuments";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { assertOwnsAccount, resolveSupabaseUser } from "../lib/supabaseAuth";
 import { isSuperAdminAuthorized } from "../lib/aal2Enforcement";
+
+const PLATFORM_AGREEMENT_BUCKET = "wodplace-uploads";
 
 const router: IRouter = Router();
 
@@ -46,7 +52,12 @@ interface PlatformAgreementStatus {
   roles: AdminRole[];
   accepted: boolean;
   acceptedAt: string | null;
-  document: { slug: string; title: string; objectPath: string | null } | null;
+  document: { slug: string; title: string; objectPath: string | null; currentVersionId: string | null } | null;
+  /** true si esta cuenta ya aceptó alguna vez una versión ANTERIOR del
+   *  Acuerdo (archivada en platform_agreement_acceptance_history) -- deja
+   *  que la pantalla diga "hay una versión nueva" en vez de sonar a
+   *  primera vez. */
+  previouslyAccepted: boolean;
   /** null for a super_admin-only account (no box of their own to manage
    *  here) — otherwise this box_admin's box. */
   box: BoxSummary | null;
@@ -123,6 +134,7 @@ async function loadStatus(userId: string, callerAal: string | null): Promise<Pla
       accepted: false,
       acceptedAt: null,
       document: null,
+      previouslyAccepted: false,
       box: null,
       boxCreationAuthorized,
     };
@@ -133,7 +145,15 @@ async function loadStatus(userId: string, callerAal: string | null): Promise<Pla
   // the owner hires. Checked before any of the box_admin/super_admin-only
   // data below is fetched, since none of it applies to a coach.
   if (roles.includes("coach") && !roles.includes("box_admin") && !roles.includes("super_admin")) {
-    return { roles, accepted: true, acceptedAt: null, document: null, box: null, boxCreationAuthorized: false };
+    return {
+      roles,
+      accepted: true,
+      acceptedAt: null,
+      document: null,
+      previouslyAccepted: false,
+      box: null,
+      boxCreationAuthorized: false,
+    };
   }
 
   const boxId = await resolveBoxIdForWodplaceUserId(userId);
@@ -143,12 +163,20 @@ async function loadStatus(userId: string, callerAal: string | null): Promise<Pla
     .select({
       title: platformAgreementDocumentTable.title,
       objectPath: platformAgreementDocumentTable.objectPath,
+      currentVersionId: platformAgreementDocumentTable.currentVersionId,
     })
     .from(platformAgreementDocumentTable);
   const document = doc ? { slug: "platform-agreement", ...doc } : null;
 
+  const [historyRow] = await db
+    .select({ id: platformAgreementAcceptanceHistoryTable.id })
+    .from(platformAgreementAcceptanceHistoryTable)
+    .where(eq(platformAgreementAcceptanceHistoryTable.userId, userId))
+    .limit(1);
+  const previouslyAccepted = !!historyRow;
+
   if (roles.includes("super_admin") && (await isSuperAdminAuthorized(callerAal))) {
-    return { roles, accepted: true, acceptedAt: null, document, box, boxCreationAuthorized: false };
+    return { roles, accepted: true, acceptedAt: null, document, previouslyAccepted, box, boxCreationAuthorized: false };
   }
 
   const [acceptance] = await db
@@ -161,6 +189,7 @@ async function loadStatus(userId: string, callerAal: string | null): Promise<Pla
     accepted: !!acceptance,
     acceptedAt: acceptance?.acceptedAt?.toISOString() ?? null,
     document,
+    previouslyAccepted,
     box,
     boxCreationAuthorized: false,
   };
@@ -192,13 +221,17 @@ router.get("/platform-agreement", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /platform-agreement/accept  { userId }
+ * POST /platform-agreement/accept  { userId, documentVersionId }
  *
  * Re-verifies the role server-side rather than trusting the client — only a
  * box_admin has anything to accept here (super_admin is already exempt; a
- * non-admin has no business calling this at all).
+ * non-admin has no business calling this at all). `documentVersionId` must
+ * match the CURRENT version (2026-10-19) — the client only ever sends the
+ * version it actually displayed; if the document was replaced in the
+ * meantime this 409s instead of silently recording acceptance of a text
+ * nobody actually read.
  */
-const AcceptBody = z.object({ userId: z.string().min(1) });
+const AcceptBody = z.object({ userId: z.string().min(1), documentVersionId: z.string().min(1) });
 
 router.post("/platform-agreement/accept", async (req: Request, res: Response) => {
   const parsed = AcceptBody.safeParse(req.body);
@@ -209,7 +242,7 @@ router.post("/platform-agreement/accept", async (req: Request, res: Response) =>
 
   if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
   try {
-    const { userId } = parsed.data;
+    const { userId, documentVersionId } = parsed.data;
     const callerAal = (await resolveSupabaseUser(req))?.aal ?? null;
     const [appUser] = await db
       .select({ email: wodplaceUsersTable.email })
@@ -227,19 +260,124 @@ router.post("/platform-agreement/accept", async (req: Request, res: Response) =>
       return;
     }
 
+    await ensurePlatformAgreementDocument();
+    const [doc] = await db
+      .select({ currentVersionId: platformAgreementDocumentTable.currentVersionId })
+      .from(platformAgreementDocumentTable);
+    if (!doc?.currentVersionId || doc.currentVersionId !== documentVersionId) {
+      res.status(409).json({
+        code: "AGREEMENT_VERSION_STALE",
+        error: "Esta versión del Acuerdo de Plataforma ya no está vigente. Recarga la pantalla y revisa el texto actual antes de aceptar.",
+      });
+      return;
+    }
+
+    const [version] = await db
+      .select({ sha256: platformAgreementDocumentVersionsTable.sha256 })
+      .from(platformAgreementDocumentVersionsTable)
+      .where(eq(platformAgreementDocumentVersionsTable.id, documentVersionId));
+
     const boxId = await resolveBoxIdForWodplaceUserId(userId);
     await db
       .insert(platformAgreementAcceptancesTable)
-      .values({ userId, boxId, acceptedAt: new Date() })
+      .values({
+        userId,
+        boxId,
+        acceptedAt: new Date(),
+        documentVersionId,
+        textSha256: version?.sha256 ?? null,
+      })
       .onConflictDoUpdate({
         target: platformAgreementAcceptancesTable.userId,
-        set: { acceptedAt: new Date(), boxId },
+        set: { acceptedAt: new Date(), boxId, documentVersionId, textSha256: version?.sha256 ?? null },
       });
 
     res.json(await loadStatus(userId, callerAal));
   } catch (error) {
     req.log.error({ err: error }, "Error accepting platform agreement");
     res.status(500).json({ error: "Failed to accept platform agreement" });
+  }
+});
+
+/**
+ * POST /platform-agreement/document
+ *   { objectPath, fileName, mimeType, isMinorCorrection, changeReason }
+ *
+ * Reemplaza la versión vigente del Acuerdo de Plataforma. Solo super_admin,
+ * y SIEMPRE con aal2 -- a propósito, independiente de
+ * app_settings.require_aal2_for_super_admin (ese interruptor es para la
+ * EXENCIÓN de aceptar el Acuerdo; esta ruta modifica el texto legal que
+ * todos los dueños de box aceptan, así que exige el factor real sin
+ * excepción, nunca isSuperAdminAuthorized()).
+ *
+ * El hash SHA-256 se calcula AQUÍ, descargando el archivo que el cliente ya
+ * subió a Storage con `objectPath` -- nunca un valor mandado por el
+ * navegador. `replace_platform_agreement_document` (Postgres, SECURITY
+ * DEFINER, EXECUTE solo para service_role) bloquea la fila del documento
+ * (FOR UPDATE) mientras corre, así dos reemplazos a la vez quedan en fila
+ * en vez de pisarse el número de versión.
+ */
+const ReplaceDocumentBody = z.object({
+  userId: z.string().min(1),
+  objectPath: z.string().min(1),
+  fileName: z.string().min(1),
+  mimeType: z.string().min(1),
+  isMinorCorrection: z.boolean(),
+  changeReason: z.string().min(1).max(500),
+});
+
+router.post("/platform-agreement/document", async (req: Request, res: Response) => {
+  const parsed = ReplaceDocumentBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+  if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
+
+  try {
+    const supabaseUser = await resolveSupabaseUser(req);
+    const callerAal = supabaseUser?.aal ?? null;
+    const [appUser] = await db
+      .select({ email: wodplaceUsersTable.email })
+      .from(wodplaceUsersTable)
+      .where(eq(wodplaceUsersTable.id, parsed.data.userId));
+    const roles = appUser ? await resolveAdminRoles(appUser.email) : [];
+
+    if (!roles.includes("super_admin")) {
+      res.status(403).json({ error: "Solo super_admin puede reemplazar el Acuerdo de Plataforma." });
+      return;
+    }
+    if (callerAal !== "aal2") {
+      res.status(403).json({
+        error: "Esta acción exige el segundo factor verificado (aal2), sin excepción.",
+      });
+      return;
+    }
+
+    const { objectPath, fileName, mimeType, isMinorCorrection, changeReason } = parsed.data;
+
+    const download = await getSupabaseAdmin().storage
+      .from(PLATFORM_AGREEMENT_BUCKET)
+      .download(objectPath);
+    if (download.error || !download.data) {
+      res.status(400).json({ error: "No se pudo leer el archivo recién subido para calcular su huella." });
+      return;
+    }
+    const bytes = Buffer.from(await download.data.arrayBuffer());
+    const sha256 = crypto.createHash("sha256").update(bytes).digest("hex");
+
+    const execResult = await db.execute<{ id: string }>(sql`
+      select replace_platform_agreement_document(
+        ${objectPath}, ${fileName}, ${mimeType}, ${sha256},
+        ${isMinorCorrection}, ${changeReason}, ${appUser!.email}
+      ) as id
+    `);
+    const newVersionId = execResult.rows[0]?.id;
+
+    res.json({ versionId: newVersionId, sha256 });
+  } catch (error) {
+    req.log.error({ err: error }, "Error replacing platform agreement document");
+    res.status(500).json({ error: "Failed to replace platform agreement document" });
   }
 });
 

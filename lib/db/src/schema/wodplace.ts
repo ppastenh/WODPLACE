@@ -205,6 +205,10 @@ export const platformAgreementDocumentTable = pgTable(
     objectPath: text("object_path"),
     fileName: text("file_name"),
     mimeType: text("mime_type"),
+    // Versionado (2026-10-19): apunta a la versión vigente en
+    // platform_agreement_document_versions -- nunca se sobrescribe un
+    // objectPath en el lugar, cada reemplazo crea una versión nueva.
+    currentVersionId: text("current_version_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -216,6 +220,59 @@ export const platformAgreementDocumentTable = pgTable(
 
 export type PlatformAgreementDocumentRow =
   typeof platformAgreementDocumentTable.$inferSelect;
+
+// Historial inmutable de versiones del Acuerdo de Plataforma (2026-10-19) --
+// mismo patrón que contract_document_versions, pero para el documento
+// global. Cada fila es una versión que alguna vez fue la vigente. Nunca se
+// actualiza ni se borra una fila ya creada (objectPath nunca se reutiliza);
+// escrita solo por replace_platform_agreement_document() (SECURITY
+// DEFINER, EXECUTE solo para service_role).
+export const platformAgreementDocumentVersionsTable = pgTable(
+  "platform_agreement_document_versions",
+  {
+    id: text("id").primaryKey(),
+    objectPath: text("object_path").notNull(),
+    fileName: text("file_name"),
+    mimeType: text("mime_type"),
+    // Calculada en el servidor leyendo el archivo real recién subido --
+    // nunca un valor mandado por el cliente.
+    sha256: text("sha256").notNull(),
+    versionNumber: integer("version_number").notNull(),
+    isMinorCorrection: boolean("is_minor_correction").notNull().default(false),
+    changeReason: text("change_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdByEmail: text("created_by_email").notNull(),
+  },
+);
+
+export type PlatformAgreementDocumentVersionRow =
+  typeof platformAgreementDocumentVersionsTable.$inferSelect;
+
+// Archivo inmutable de aceptaciones superadas por un reemplazo real del
+// Acuerdo de Plataforma (2026-10-19) -- mismo patrón que
+// contract_acceptance_history. RLS activada, sin ninguna política (ni
+// siquiera SELECT): solo la conexión de servicio la lee, y solo
+// replace_platform_agreement_document() (SECURITY DEFINER) la escribe.
+export const platformAgreementAcceptanceHistoryTable = pgTable(
+  "platform_agreement_acceptance_history",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    boxId: text("box_id").notNull(),
+    documentVersionId: text("document_version_id"),
+    textSha256: text("text_sha256"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    archivedReason: text("archived_reason").notNull(),
+  },
+);
+
+export type PlatformAgreementAcceptanceHistoryRow =
+  typeof platformAgreementAcceptanceHistoryTable.$inferSelect;
 
 // Final acceptance record per user — the legal record with a full timestamp
 // plus the emergency contact captured at acceptance time.
@@ -303,6 +360,12 @@ export const platformAgreementAcceptancesTable = pgTable(
       .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
     boxId: text("box_id").notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    // Versionado (2026-10-19): qué versión y qué huella se aceptó --
+    // nullable solo por las filas de antes de esa fecha (backfill a la v1
+    // real, nunca quedan null en la práctica). Ver
+    // platform_agreement_document_versions.
+    documentVersionId: text("document_version_id"),
+    textSha256: text("text_sha256"),
   },
 );
 

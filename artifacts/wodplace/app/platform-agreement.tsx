@@ -3,7 +3,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { acceptPlatformAgreement } from '@workspace/api-client-react';
+import { acceptPlatformAgreement, ApiError } from '@workspace/api-client-react';
 import { AppButton } from '@/components/AppButton';
 import { AppHeader } from '@/components/AppHeader';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
@@ -76,17 +76,25 @@ export default function PlatformAgreementScreen() {
   };
 
   const handleAccept = async () => {
-    if (!userId) return;
+    if (!userId || !document?.currentVersionId) return;
     setAccepting(true);
     try {
-      await acceptPlatformAgreement(userId);
+      await acceptPlatformAgreement(userId, document.currentVersionId);
       await refreshActivationStatus();
       Alert.alert(
         'Acuerdo aceptado',
         'Ya puedes ingresar al panel de administración desde el menú.',
         [{ text: 'OK', onPress: () => router.back() }],
       );
-    } catch {
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        Alert.alert(
+          'El Acuerdo cambió',
+          'Esta versión del Acuerdo de Plataforma ya no está vigente. Vamos a mostrarte el texto actual — ábrelo de nuevo antes de aceptar.',
+          [{ text: 'OK', onPress: () => { setOpened(false); refreshActivationStatus(); } }],
+        );
+        return;
+      }
       Alert.alert('Error', 'No se pudo registrar la aceptación. Intenta de nuevo.');
     } finally {
       setAccepting(false);
@@ -102,8 +110,9 @@ export default function PlatformAgreementScreen() {
       >
         <Text style={[styles.title, { color: colors.foreground }]}>Acuerdo de Plataforma</Text>
         <Text style={[styles.hint, { color: colors.mutedForeground, textAlign: 'left' }]}>
-          Para administrar tu box desde la app necesitas aceptar el acuerdo de uso de la
-          plataforma WODPLACE.
+          {!adminStatus?.accepted && adminStatus?.previouslyAccepted
+            ? 'Hay una versión actualizada del acuerdo de uso de la plataforma WODPLACE. Para seguir administrando tu box desde la app, debes leerla y aceptarla de nuevo.'
+            : 'Para administrar tu box desde la app necesitas aceptar el acuerdo de uso de la plataforma WODPLACE.'}
         </Text>
 
         <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -137,7 +146,7 @@ export default function PlatformAgreementScreen() {
             <AppButton
               label="Acepto"
               variant={opened ? 'primary' : 'mutedDisabled'}
-              disabled={!opened}
+              disabled={!opened || !document?.currentVersionId}
               loading={accepting}
               fullWidth
               onPress={handleAccept}
