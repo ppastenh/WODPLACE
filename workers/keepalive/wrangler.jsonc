@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wodplace-keepalive",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-19",
+  // Cada 12 horas (00:00 y 12:00 UTC). Sin ningún "routes"/"fetch" público
+  // a propósito -- este Worker solo existe para que el cron lo despierte;
+  // no debe ser alcanzable por nadie desde afuera.
+  "triggers": {
+    "crons": ["0 0,12 * * *"]
+  }
+}
