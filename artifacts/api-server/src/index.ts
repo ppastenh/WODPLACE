@@ -21,5 +21,14 @@ app.listen(port, (err) => {
     process.exit(1);
   }
 
+  // Solo en el log de arranque, nunca expuesto en /healthz ni en ninguna
+  // ruta pública: sirve para verificar qué commit corre realmente,
+  // porque el aviso "live" de Render no siempre coincide con el momento
+  // real del corte de tráfico (ver ESTADO.md, 2026-10-19).
+  logger.info(
+    { renderGitCommit: process.env["RENDER_GIT_COMMIT"] ?? "desconocido" },
+    "Deployed commit",
+  );
+
   logger.info({ port }, "Server listening");
 });
