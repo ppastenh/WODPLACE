@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
+import { FONT_SIZE } from '@/constants/typography';
 
 interface AvatarProps {
   uri: string | null;
@@ -77,7 +78,10 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 13,
+    // Fase 1 (tokens): fontSize calza exacto (FONT_SIZE.base). El
+    // borderRadius:13 de abajo no calza con ningún token -- ver la
+    // propuesta de Fase 2 antes de moverlo.
+    fontSize: FONT_SIZE.base,
   },
   badge: {
     position: 'absolute',
