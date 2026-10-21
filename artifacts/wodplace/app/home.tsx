@@ -98,6 +98,8 @@ import {
 } from '@/lib/dateUtils';
 import { hashString } from '@/constants/classSchedule';
 import { FONT_SIZE } from '@/constants/typography';
+import { SPACING } from '@/constants/spacing';
+import { RADIUS } from '@/constants/radius';
 
 // scrollContent has 20px horizontal padding each side; the pinned aviso
 // card itself has 16px padding each side (see pinnedAvisoCard).
@@ -960,12 +962,22 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32, gap: 11 },
+  // Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/RADIUS.
+  // 11, 14, 1, 13, 15, 18, 170, 1, 3, 5, 8, 104, 32, 45, etc. no calzan con
+  // ningún token de la escala y quedan sin tocar a propósito -- ver la
+  // propuesta de Fase 2 (alineación) en AUDITORIA-VISUAL.md antes de
+  // mover cualquiera de esos.
+  scrollContent: {
+    paddingHorizontal: SPACING.xxl,
+    paddingTop: SPACING.xxl,
+    paddingBottom: SPACING.xxxl,
+    gap: 11,
+  },
   homeHeaderWrap: {
     position: 'relative',
     overflow: 'hidden',
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: 14,
   },
   homeHeaderGroup: {
@@ -975,7 +987,7 @@ const styles = StyleSheet.create({
   },
   homeHeaderTextCol: {
     flex: 1,
-    gap: 2,
+    gap: SPACING.xs,
   },
   greeting: {
     fontSize: FONT_SIZE.md,
@@ -984,7 +996,7 @@ const styles = StyleSheet.create({
   boxLogoFallback: {
     width: 48,
     height: 48,
-    borderRadius: 10,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1002,12 +1014,12 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   pinnedAvisoCard: {
-    borderRadius: 20,
-    padding: 12,
-    gap: 6,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    gap: SPACING.sm,
   },
   pinnedAvisoImageWrap: {
-    marginTop: 2,
+    marginTop: SPACING.xs,
   },
   pinnedAvisoTitle: {
     fontSize: FONT_SIZE.md,
@@ -1029,26 +1041,26 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 7,
-    borderRadius: 4,
+    borderRadius: RADIUS.sm,
     overflow: 'hidden',
-    marginTop: 2,
+    marginTop: SPACING.xs,
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: RADIUS.sm,
   },
   noticeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderRadius: 16,
+    gap: SPACING.md,
+    borderRadius: RADIUS.lg,
     padding: 13,
   },
   ownBirthdayCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderRadius: 16,
+    gap: SPACING.md,
+    borderRadius: RADIUS.lg,
     padding: 13,
   },
   ownBirthdayTextCol: {
@@ -1077,7 +1089,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   nextClassCard: {
-    borderRadius: 20,
+    borderRadius: RADIUS.xl,
     padding: 18,
     minHeight: 170,
     justifyContent: 'space-between',
@@ -1090,8 +1102,8 @@ const styles = StyleSheet.create({
   timeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
+    gap: SPACING.sm,
+    borderRadius: RADIUS.full,
     paddingHorizontal: 11,
     paddingVertical: 7,
   },
@@ -1102,7 +1114,7 @@ const styles = StyleSheet.create({
   nextClassLabel: {
     fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_500Medium',
-    marginTop: 12,
+    marginTop: SPACING.lg,
   },
   nextClassName: {
     fontSize: FONT_SIZE.hero,
@@ -1116,8 +1128,8 @@ const styles = StyleSheet.create({
   },
   nextClassMetaRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
+    gap: SPACING.md,
+    marginTop: SPACING.lg,
   },
   nextClassMetaChip: {
     flexDirection: 'row',
@@ -1129,11 +1141,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   wodCard: {
-    borderRadius: 20,
-    padding: 12,
-    marginTop: 10,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
   },
-  wodTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  wodTitleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   wodName: { fontSize: FONT_SIZE.lg, fontFamily: 'Anton_400Regular', marginTop: 8 },
   wodDescription: {
     fontSize: FONT_SIZE.xs,
@@ -1143,13 +1155,13 @@ const styles = StyleSheet.create({
   },
   twoColumnRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.lg,
   },
   statsCard: {
     flex: 1,
     minHeight: 112,
-    borderRadius: 20,
-    padding: 12,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
   },
   statsValue: {
     fontSize: FONT_SIZE.display,
@@ -1176,9 +1188,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 104,
-    borderRadius: 20,
-    padding: 16,
-    gap: 12,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
+    gap: SPACING.lg,
   },
   quoteIconLeft: {
     opacity: 0.8,
@@ -1200,15 +1212,15 @@ const styles = StyleSheet.create({
   medalsWideCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 20,
-    padding: 12,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
   },
   medalsWideLeft: {
     flex: 1,
   },
   medalsWideRight: {
     alignItems: 'center',
-    gap: 6,
+    gap: SPACING.sm,
     width: 72,
   },
   medalsRecentName: {
@@ -1225,23 +1237,23 @@ const styles = StyleSheet.create({
   iconBadge: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   smallCardLabel: {
     fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_600SemiBold',
-    marginTop: 12,
+    marginTop: SPACING.lg,
   },
   birthdaySection: {
-    marginTop: 2,
+    marginTop: SPACING.xs,
   },
   sectionHeadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: SPACING.md,
   },
   sectionTitle: {
     fontSize: FONT_SIZE.xl,
@@ -1253,7 +1265,7 @@ const styles = StyleSheet.create({
   birthdayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: SPACING.md,
     minHeight: 45,
   },
   avatar: {
