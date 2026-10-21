@@ -6,8 +6,43 @@ import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { AppHeader } from '@/components/AppHeader';
+import { Avatar } from '@/components/Avatar';
+import { BottomNavBar } from '@/components/BottomNavBar';
+import { ClassCard, AgendadoBadge } from '@/components/ClassCard';
+import type { ClassSession } from '@/context/BookingContext';
 import { useColors } from '@/hooks/useColors';
 import { SPACING } from '@/constants/spacing';
+
+function mockSession(overrides: Partial<ClassSession>): ClassSession {
+  return {
+    id: 'mock',
+    date: new Date(),
+    dateKey: '2026-10-21',
+    type: 'CrossFit',
+    coach: 'Coach de ejemplo',
+    startMinutes: 9 * 60,
+    endMinutes: 10 * 60,
+    startDate: new Date(),
+    durationLabel: '60 min',
+    durationMin: 60,
+    capacity: 15,
+    isBooked: false,
+    remaining: 5,
+    hasStarted: false,
+    hasEnded: false,
+    canCancel: true,
+    isWaitlisted: false,
+    waitlistPosition: null,
+    attendeeNames: [],
+    notes: null,
+    level: 'todos',
+    ...overrides,
+  };
+}
+
+const SESSION_AGENDADA = mockSession({ isBooked: true });
+const SESSION_TERMINADA = mockSession({ hasEnded: true });
+const SESSION_CANCELANDO = mockSession({ isBooked: true });
 
 const VARIANTS: AppButtonVariant[] = [
   'primary',
@@ -86,6 +121,53 @@ export default function DevGalleryScreen() {
         <Section title="Skeleton -- paleta oscura">
           <Skeleton width="100%" height={16} palette="dark" />
           <Skeleton width="60%" height={16} palette="dark" />
+        </Section>
+
+        <Section title="ClassCard -- agendada">
+          <ClassCard
+            session={SESSION_AGENDADA}
+            now={new Date()}
+            onPressAttendees={() => {}}
+            actionSlot={<AgendadoBadge canCancel onRequestCancel={() => {}} />}
+          />
+        </Section>
+
+        <Section title="ClassCard -- terminada">
+          <ClassCard
+            session={SESSION_TERMINADA}
+            now={new Date()}
+            onPressAttendees={() => {}}
+            actionSlot={<Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Terminada</Text>}
+          />
+        </Section>
+
+        <Section title="ClassCard -- cancelando">
+          <ClassCard
+            session={SESSION_CANCELANDO}
+            now={new Date()}
+            onPressAttendees={() => {}}
+            actionSlot={<AgendadoBadge active canCancel onRequestCancel={() => {}} />}
+          />
+        </Section>
+
+        <Section title="Avatar -- con y sin foto">
+          <View style={styles.row}>
+            <Avatar uri="https://picsum.photos/200" onChange={() => {}} />
+            <Avatar uri={null} onChange={() => {}} />
+          </View>
+        </Section>
+
+        <Section title="AppHeader -- con y sin campana">
+          <View style={{ gap: SPACING.sm }}>
+            <AppHeader onBack={() => {}} showBell />
+            <AppHeader onBack={() => {}} />
+          </View>
+        </Section>
+
+        <Section title="BottomNavBar (real -- siempre se ve 'inactiva' aquí, ninguna pestaña coincide con /dev-gallery; compara el estado activo con cualquier pestaña real abierta)">
+          <View style={{ height: 90 }}>
+            <BottomNavBar />
+          </View>
         </Section>
       </ScrollView>
     </View>
