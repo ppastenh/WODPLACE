@@ -5,6 +5,9 @@ import { useColors } from '@/hooks/useColors';
 import { ClassSession } from '@/context/BookingContext';
 import { formatClassDateShort, formatHM } from '@/lib/dateUtils';
 import { AppButton } from '@/components/AppButton';
+import { SPACING } from '@/constants/spacing';
+import { RADIUS } from '@/constants/radius';
+import { FONT_SIZE } from '@/constants/typography';
 
 interface ClassCardProps {
   session: ClassSession;
@@ -198,11 +201,15 @@ export function ClassActionButton({
   return <AppButton label="Agendar" variant="primary" onPress={onBook} compact />;
 }
 
+// Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/RADIUS/
+// FONT_SIZE. 8, 17, 3, 4 no calzan con ningún token y quedan sin tocar a
+// propósito -- ver la propuesta de Fase 2 (alineación) antes de mover
+// cualquiera de esos.
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
-    padding: 16,
+    padding: SPACING.xl,
     gap: 8,
   },
   cardEnded: {
@@ -221,26 +228,26 @@ const styles = StyleSheet.create({
   },
   time: {
     flexShrink: 0,
-    fontSize: 13,
+    fontSize: FONT_SIZE.base,
     fontFamily: 'Inter_500Medium',
   },
   coach: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.base,
     fontFamily: 'Inter_400Regular',
   },
   notes: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.base,
     fontFamily: 'Inter_400Regular',
     fontStyle: 'italic',
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: SPACING.xl,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: SPACING.sm,
   },
   dot: {
     width: 6,
@@ -248,7 +255,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statText: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.sm,
     fontFamily: 'Inter_500Medium',
   },
   footerRow: {
@@ -260,22 +267,22 @@ const styles = StyleSheet.create({
   attendeesLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: SPACING.sm,
   },
   footerText: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.base,
     fontFamily: 'Inter_500Medium',
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    gap: SPACING.sm,
+    borderRadius: RADIUS.full,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
   },
   badgeText: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.base,
     fontFamily: 'Inter_600SemiBold',
   },
 });
