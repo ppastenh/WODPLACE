@@ -5,6 +5,7 @@ import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
+import { SPACING } from '@/constants/spacing';
 
 type NavRoute = '/home' | '/community' | '/calendar' | '/rm' | '/profile';
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
@@ -160,7 +161,10 @@ const styles = StyleSheet.create({
     // these ~5px from where they'd land at dead-center of the 64px row
     // doesn't require touching the floating item separately.
     justifyContent: 'flex-end',
-    paddingBottom: 12,
+    // Fase 1 (tokens): solo paddingBottom calza exacto (SPACING.lg); gap:4
+    // y el resto de esta pantalla no calzan con ningún token -- ver la
+    // propuesta de Fase 2 antes de moverlos.
+    paddingBottom: SPACING.lg,
     gap: 4,
   },
   iconSlot: {
