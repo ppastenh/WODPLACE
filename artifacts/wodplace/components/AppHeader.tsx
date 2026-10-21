@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import darkColors from '@/constants/darkColors';
 import { useColors } from '@/hooks/useColors';
 import { useNotifications } from '@/context/NotificationsContext';
+import { SPACING } from '@/constants/spacing';
+import { RADIUS } from '@/constants/radius';
 
 interface AppHeaderProps {
   onBack?: () => void;
@@ -125,12 +127,15 @@ export function AppHeader({
   );
 }
 
+// Fase 1 (tokens): solo paddingHorizontal y borderRadius calzan exacto.
+// paddingBottom:14, gap:4 y fontSize:20 no calzan con ningún token -- ver
+// la propuesta de Fase 2 antes de moverlos.
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xxl,
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
@@ -162,7 +167,7 @@ const styles = StyleSheet.create({
     right: 5,
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: RADIUS.sm,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
