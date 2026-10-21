@@ -202,15 +202,16 @@ export function ClassActionButton({
 }
 
 // Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/RADIUS/
-// FONT_SIZE. 8, 17, 3, 4 no calzan con ningún token y quedan sin tocar a
-// propósito -- ver la propuesta de Fase 2 (alineación) antes de mover
-// cualquiera de esos.
+// FONT_SIZE. Fase 2, paso 1 (2026-10-21): los 8/4 que eran gap/marginTop
+// reales ya se migraron a SPACING.sm2/xs2. 17, 3 no calzan con ningún
+// token y quedan sin tocar a propósito -- ver la propuesta de Fase 2
+// (alineación) antes de mover cualquiera de esos.
 const styles = StyleSheet.create({
   card: {
     borderRadius: RADIUS.xl,
     borderWidth: 1,
     padding: SPACING.xl,
-    gap: 8,
+    gap: SPACING.sm2,
   },
   cardEnded: {
     opacity: 0.55,
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: SPACING.sm2,
   },
   type: {
     flexShrink: 1,
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 4,
+    marginTop: SPACING.xs2,
   },
   attendeesLink: {
     flexDirection: 'row',

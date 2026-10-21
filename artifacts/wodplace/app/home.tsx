@@ -963,7 +963,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   // Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/RADIUS.
-  // 11, 14, 1, 13, 15, 18, 170, 1, 3, 5, 8, 104, 32, 45, etc. no calzan con
+  // Fase 2, paso 1 (2026-10-21): los 8/4 que eran gap/marginTop reales ya
+  // se migraron a SPACING.sm2/xs2. El borderRadius:8 de BoxLogoImage (más
+  // arriba, estilo inline) NO se tocó: es un radio, no un espaciado, y no
+  // hay un escalón RADIUS de valor 8.
+  // 11, 14, 1, 13, 15, 18, 170, 1, 3, 5, 104, 32, 45, etc. no calzan con
   // ningún token de la escala y quedan sin tocar a propósito -- ver la
   // propuesta de Fase 2 (alineación) en AUDITORIA-VISUAL.md antes de
   // mover cualquiera de esos.
@@ -1146,11 +1150,11 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   wodTitleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  wodName: { fontSize: FONT_SIZE.lg, fontFamily: 'Anton_400Regular', marginTop: 8 },
+  wodName: { fontSize: FONT_SIZE.lg, fontFamily: 'Anton_400Regular', marginTop: SPACING.sm2 },
   wodDescription: {
     fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_400Regular',
-    marginTop: 4,
+    marginTop: SPACING.xs2,
     lineHeight: 16,
   },
   twoColumnRow: {
@@ -1167,7 +1171,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.display,
     lineHeight: 26,
     fontFamily: 'Anton_400Regular',
-    marginTop: 8,
+    marginTop: SPACING.sm2,
   },
   statsDetail: {
     fontSize: FONT_SIZE.xs,
@@ -1182,7 +1186,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     lineHeight: 16,
     fontFamily: 'Inter_700Bold',
-    marginTop: 8,
+    marginTop: SPACING.sm2,
   },
   quoteRow: {
     flexDirection: 'row',
@@ -1207,7 +1211,7 @@ const styles = StyleSheet.create({
   },
   quoteRowActions: {
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm2,
   },
   medalsWideCard: {
     flexDirection: 'row',
@@ -1260,7 +1264,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Anton_400Regular',
   },
   birthdayList: {
-    gap: 8,
+    gap: SPACING.sm2,
   },
   birthdayRow: {
     flexDirection: 'row',

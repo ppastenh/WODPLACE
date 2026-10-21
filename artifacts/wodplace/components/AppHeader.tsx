@@ -128,8 +128,11 @@ export function AppHeader({
 }
 
 // Fase 1 (tokens): solo paddingHorizontal y borderRadius calzan exacto.
-// paddingBottom:14, gap:4 y fontSize:20 no calzan con ningún token -- ver
-// la propuesta de Fase 2 antes de moverlos.
+// Fase 2, paso 1 (2026-10-21): gap:4 (sideEnd) ya se migró a SPACING.xs2.
+// El width/height:8 de bellDot (más abajo) NO se tocó: es el tamaño del
+// punto, no un espaciado. paddingBottom:14 y fontSize:20 siguen sin
+// calzar con ningún token -- ver la propuesta de Fase 2 antes de
+// moverlos.
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -148,7 +151,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 4,
+    gap: SPACING.xs2,
   },
   title: {
     fontSize: 20,

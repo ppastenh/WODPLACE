@@ -161,11 +161,13 @@ const styles = StyleSheet.create({
     // these ~5px from where they'd land at dead-center of the 64px row
     // doesn't require touching the floating item separately.
     justifyContent: 'flex-end',
-    // Fase 1 (tokens): solo paddingBottom calza exacto (SPACING.lg); gap:4
-    // y el resto de esta pantalla no calzan con ningún token -- ver la
-    // propuesta de Fase 2 antes de moverlos.
+    // Fase 1 (tokens): solo paddingBottom calza exacto (SPACING.lg). Fase 2,
+    // paso 1 (2026-10-21): gap:4 ya se migró a SPACING.xs2. El shadowOffset
+    // height:4 de floatingButton (más abajo) NO se tocó: es geometría de
+    // sombra, no espaciado. El resto de esta pantalla no calza con ningún
+    // token -- ver la propuesta de Fase 2 antes de moverlo.
     paddingBottom: SPACING.lg,
-    gap: 4,
+    gap: SPACING.xs2,
   },
   iconSlot: {
     height: 30,
