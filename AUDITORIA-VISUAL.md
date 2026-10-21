@@ -120,3 +120,21 @@ No hay separación sistemática en hooks/`*.logic.ts` en ninguna de las tres app
 6. `box-admin/components/admin/BottomNav.tsx` / `MobileHeader.tsx` / `AdminShell.tsx` (shell repetido en todas las rutas admin)
 7. `super-admin/super-admin/boxes.tsx` (la más grande y de más uso en ese panel) — sin tocar `super-admin.tsx` más allá de ajustes puramente visuales que no muevan la máquina de estados.
 8. Dejar para el final (o no tocar) cualquier archivo con lógica RLS/aal2 inline (`super-admin.tsx`, los 4 helpers de `api-server` citados en `ESTADO.md`) — frontera de seguridad recién validada en producción, no superficie de este trabajo visual.
+
+---
+
+## Fase 2 (alineación) — tabla de literales que no calzan con ningún token
+
+Surgida de la Tanda A de la segunda ronda visual (migración Home + ClassCard + BottomNavBar + AppHeader + Avatar, Fase 1 = solo swaps exactos). Cada fila es un literal numérico real del código que NO coincidía con ningún valor de `SPACING`/`RADIUS`/`FONT_SIZE` al momento del swap exacto. Ninguna de estas filas se aplica sin que Pía mande sus capturas anotadas — esto es solo la propuesta.
+
+| Valor | Dónde aparece | Token propuesto | Impacto visual si se aplica |
+|---|---|---|---|
+| 8 (gap/marginTop) | home.tsx, ClassCard.tsx, BottomNavBar.tsx, AppHeader.tsx | `SPACING.sm2` | **RESUELTO (commit 1f45c80, 2026-10-21):** promovido a la escala; cero cambio visual, el token resuelve al mismo valor. |
+| 4 (gap/marginTop) | home.tsx, ClassCard.tsx, BottomNavBar.tsx, AppHeader.tsx | `SPACING.xs2` | **RESUELTO (commit 1f45c80, 2026-10-21):** idem. |
+| 13 | ClassCard.tsx (fontSize en 5 lugares, ya migrado a FONT_SIZE.base en Fase 1), Avatar.tsx (`borderRadius:13` del badge de cámara) | Para el `borderRadius:13` de Avatar: no hay escalón `RADIUS` de valor 13 hoy (`RADIUS` = sm:4, md:10, lg:16, xl:20, full:999) — habría que sumar uno o redondear a `RADIUS.md` (10) o `RADIUS.lg` (16, acercaría el badge a un círculo más grande). | Si se usa `RADIUS.md`/`lg` en vez de 13: el badge de cámara del avatar se ve 3-6px más chico/grande — cambio visual real, pendiente de la captura. |
+| 14 | AppHeader.tsx (`paddingBottom:14` del header) | Más cerca de `SPACING.lg` (12) que de `SPACING.xl` (16); ninguno calza exacto. | Si se usa `SPACING.lg` (12): el header queda 2px más bajo (menos aire antes del borde). Si se usa `SPACING.xl` (16): 2px más alto. Cambio sutil pero real, pendiente de la captura. |
+| 17 | ClassCard.tsx (`fontSize:17` del tipo de clase) | Entre `FONT_SIZE.base` y el siguiente escalón de la tipografía — depende de qué rungs existan en `typography.ts` al momento de revisar. | Cambiaría el tamaño del título de cada clase en la tarjeta — visible en toda lista de clases. Pendiente de la captura. |
+| 18 | home.tsx (varios usos, p. ej. radios/paddings sueltos documentados en el comentario "no calzan" del archivo) | A evaluar caso por caso: puede ser candidato a un nuevo escalón `RADIUS`/`SPACING`, o quedar como valor único si aparece solo una vez. | Depende del caso puntual — pendiente de revisar junto con la captura. |
+| 20 (fontSize) | AppHeader.tsx (`fontSize:20` del título) | Posible candidato a un escalón `FONT_SIZE.xxl` si se repite en más pantallas; hoy es un valor único en este archivo. | Cambiaría el tamaño del título del header — visible en toda la app. Pendiente de la captura. |
+
+**Regla vigente:** nada de esta tabla se toca sin las capturas anotadas de Pía, salvo las dos filas ya marcadas RESUELTO (aprobadas explícitamente el 2026-10-21 como excepción, por ser valores recurrentes evidentes y de cero riesgo visual).
