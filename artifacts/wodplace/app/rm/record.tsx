@@ -204,8 +204,8 @@ export default function RecordRmScreen() {
               disabled={!mvName.trim() || createMovement.isPending}
               style={({ pressed }) => [
                 styles.addBtn,
-                { backgroundColor: colors.primary },
-                (pressed || !mvName.trim()) && { opacity: 0.7 },
+                { backgroundColor: pressed ? colors.primaryPressed : colors.primary },
+                !mvName.trim() && { opacity: 0.7 },
               ]}
             >
               <Text style={[styles.addBtnText, { color: colors.primaryForeground }]}>

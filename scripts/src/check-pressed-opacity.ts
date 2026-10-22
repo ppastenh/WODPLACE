@@ -45,7 +45,6 @@ const KNOWN: Known[] = [
   { file: "artifacts/wodplace/app/personal-data.tsx", text: "style={({ pressed }) => [styles.row, pressed && !user.birthdate && { opacity: 0.6 }]}", count: 1, group: "despues" },
   { file: "artifacts/wodplace/app/rm/history.tsx", text: "pressed && { opacity: 0.8 },", count: 1, group: "despues" },
   { file: "artifacts/wodplace/app/rm/record.tsx", text: "pressed && { opacity: 0.8 },", count: 1, group: "despues" },
-  { file: "artifacts/wodplace/app/rm/record.tsx", text: "(pressed || !mvName.trim()) && { opacity: 0.7 },", count: 1, group: "critico" },
   { file: "artifacts/wodplace/app/rm/record.tsx", text: "style={({ pressed }) => [styles.addLink, pressed && { opacity: 0.6 }]}", count: 1, group: "despues" },
   { file: "artifacts/wodplace/app/wod/index.tsx", text: "(pressed || submit.isPending) && { opacity: 0.85 },", count: 1, group: "critico" },
   { file: "artifacts/wodplace/components/rm/MovementSheet.tsx", text: "pressed && { opacity: 0.75 },", count: 1, group: "critico" },
