@@ -1222,7 +1222,7 @@ export default function CommunityScreen() {
         {hasBoxMembership ? (
           <Pressable
             onPress={() => (isActive ? setComposerVisible(true) : warnInactive())}
-            style={({ pressed }) => [styles.addButton, { backgroundColor: colors.navFloating }, pressed && styles.addButtonPressed]}
+            style={({ pressed }) => [styles.addButton, { backgroundColor: pressed ? colors.adminActionPressed : colors.navFloating }, pressed && styles.addButtonPressed]}
           >
             <Feather name="plus" size={23} color={colors.navFloatingForeground} />
           </Pressable>
@@ -1388,8 +1388,11 @@ export default function CommunityScreen() {
               onPress={handlePublish}
               style={({ pressed }) => [
                 styles.publishBtn,
-                { backgroundColor: (draft.trim() || selectedImages.length > 0) && !publishing ? colors.navActive : colors.navBorder },
-                pressed && styles.publishPressed,
+                {
+                  backgroundColor: (draft.trim() || selectedImages.length > 0) && !publishing
+                    ? (pressed ? colors.navActivePressed : colors.navActive)
+                    : colors.navBorder,
+                },
               ]}
             >
               <Text style={[styles.publishText, { color: (draft.trim() || selectedImages.length > 0) && !publishing ? colors.card : colors.navInactive }]}>
@@ -1465,10 +1468,8 @@ export default function CommunityScreen() {
 // Fase 2 (alineación) en AUDITORIA-VISUAL.md antes de mover cualquiera de esos.
 // Los estilos en línea (dentro del JSX, no en este bloque) tampoco se tocan en
 // esta ronda -- mismo criterio que la Tanda A.
-// Hallazgo aparte, SIN aplicar (cambiaría lo visible, fuera del alcance de
-// "cero cambio visual" de esta ronda): addButtonPressed y publishPressed usan
-// opacity para el estado presionado, no un color sólido -- la misma categoría
-// de bug ya corregida en la primera ronda visual en otros 11 archivos.
+// Estado presionado de addButton y publishBtn: color SÓLIDO (adminActionPressed
+// y navActivePressed), nunca opacity -- misma regla de la primera ronda visual.
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 18, paddingTop: SPACING.xl },
@@ -1480,7 +1481,7 @@ const styles = StyleSheet.create({
   headerKicker: { fontSize: 9, letterSpacing: 1.5, fontFamily: 'Inter_700Bold' },
   title: { fontSize: 24, lineHeight: 28, letterSpacing: 0.4, fontFamily: 'Anton_400Regular', maxWidth: 210 },
   addButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  addButtonPressed: { transform: [{ scale: 0.94 }], opacity: 0.88 },
+  addButtonPressed: { transform: [{ scale: 0.94 }] },
   feedIntro: { paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: 14 },
   feedIntroTitle: { fontSize: FONT_SIZE.xl, fontFamily: 'Anton_400Regular' },
   feedIntroText: { fontSize: FONT_SIZE.sm, lineHeight: 18, marginTop: SPACING.xs, fontFamily: 'Inter_500Medium' },
@@ -1588,7 +1589,6 @@ const styles = StyleSheet.create({
   charCount: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_500Medium' },
   publishBtn: { height: 50, borderRadius: RADIUS.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18 },
   publishText: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_700Bold' },
-  publishPressed: { opacity: 0.85 },
   // Feed states
   endText: { textAlign: 'center', fontSize: FONT_SIZE.sm, fontFamily: 'Inter_500Medium', paddingVertical: SPACING.xxl },
   emptyState: { alignItems: 'center', gap: SPACING.md, paddingVertical: 48 },
