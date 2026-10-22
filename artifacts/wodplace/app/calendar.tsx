@@ -25,6 +25,8 @@ import {
   MONTH_NAMES,
   startOfDay,
 } from '@/lib/dateUtils';
+import { SPACING } from '@/constants/spacing';
+import { FONT_SIZE } from '@/constants/typography';
 
 type ViewMode = 'month' | 'week';
 
@@ -347,12 +349,16 @@ export default function CalendarScreen() {
   );
 }
 
+// Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/FONT_SIZE.
+// 48, 18 (gap), 24 (radio), 14 (padding) no calzan con ningún token y
+// quedan sin tocar a propósito -- ver la propuesta de Fase 2 (alineación)
+// en AUDITORIA-VISUAL.md antes de mover cualquiera de esos.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: SPACING.xxl,
     paddingBottom: 48,
     gap: 18,
   },
@@ -364,10 +370,10 @@ const styles = StyleSheet.create({
   monthLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm2,
   },
   monthLabel: {
-    fontSize: 18,
+    fontSize: FONT_SIZE.xl,
     fontFamily: 'Anton_400Regular',
   },
   calendarCard: {
@@ -375,19 +381,19 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   selectedDateLabel: {
-    fontSize: 18,
+    fontSize: FONT_SIZE.xl,
     fontFamily: 'Anton_400Regular',
   },
   list: {
-    gap: 12,
+    gap: SPACING.lg,
   },
   emptyState: {
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 32,
+    gap: SPACING.md,
+    paddingVertical: SPACING.xxxl,
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.base,
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
     lineHeight: 18,
