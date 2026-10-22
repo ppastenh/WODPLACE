@@ -72,8 +72,7 @@ export default function RmHistoryScreen() {
             onPress={() => router.push('/rm/record' as never)}
             style={({ pressed }) => [
               styles.cta,
-              { backgroundColor: colors.primary },
-              pressed && { opacity: 0.85 },
+              { backgroundColor: pressed ? colors.primaryPressed : colors.primary },
             ]}
           >
             <Feather name="plus" size={18} color={colors.primaryForeground} />
