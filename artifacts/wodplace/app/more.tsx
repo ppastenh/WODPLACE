@@ -160,7 +160,7 @@ export default function MoreScreen() {
               <Pressable
                 onPress={handleSaveBoxName}
                 disabled={!boxNameDraft.trim() || boxNameSaving}
-                style={({ pressed }) => [styles.saveNameBtn, { backgroundColor: colors.navActive }, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [styles.saveNameBtn, { backgroundColor: pressed ? colors.navActivePressed : colors.navActive }]}
               >
                 <Text style={styles.saveNameText}>{boxNameSaving ? '...' : 'Guardar'}</Text>
               </Pressable>
@@ -221,7 +221,7 @@ export default function MoreScreen() {
                     <Pressable
                       onPress={() => handleResolveReport(report.id, true)}
                       disabled={resolvingId === report.id}
-                      style={({ pressed }) => [styles.reportBtn, { backgroundColor: colors.destructive }, pressed && { opacity: 0.7 }]}
+                      style={({ pressed }) => [styles.reportBtn, { backgroundColor: pressed ? colors.destructivePressed : colors.destructive }]}
                     >
                       <Feather name="trash-2" size={14} color="#fff" />
                       <Text style={styles.reportBtnText}>Eliminar post</Text>
@@ -229,7 +229,7 @@ export default function MoreScreen() {
                     <Pressable
                       onPress={() => handleResolveReport(report.id, false)}
                       disabled={resolvingId === report.id}
-                      style={({ pressed }) => [styles.reportBtn, { backgroundColor: colors.secondary }, pressed && { opacity: 0.7 }]}
+                      style={({ pressed }) => [styles.reportBtn, { backgroundColor: pressed ? colors.secondaryPressed : colors.secondary }]}
                     >
                       <Feather name="check" size={14} color={colors.secondaryForeground} />
                       <Text style={[styles.reportBtnText, { color: colors.secondaryForeground }]}>Desestimar</Text>
