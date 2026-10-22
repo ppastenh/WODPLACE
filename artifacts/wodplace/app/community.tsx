@@ -354,8 +354,7 @@ function CommentsModal({
               disabled={!draft.trim() || submitting}
               style={({ pressed }) => [
                 styles.commentSend,
-                { backgroundColor: draft.trim() ? colors.navActive : colors.navBorder },
-                pressed && { opacity: 0.7 },
+                { backgroundColor: draft.trim() ? (pressed ? colors.navActivePressed : colors.navActive) : colors.navBorder },
               ]}
             >
               <Feather name="arrow-up" size={15} color="#fff" />
@@ -517,8 +516,7 @@ function AnnouncementCommentsModal({
               disabled={!draft.trim() || submitting}
               style={({ pressed }) => [
                 styles.commentSend,
-                { backgroundColor: draft.trim() ? colors.navActive : colors.navBorder },
-                pressed && { opacity: 0.7 },
+                { backgroundColor: draft.trim() ? (pressed ? colors.navActivePressed : colors.navActive) : colors.navBorder },
               ]}
             >
               <Feather name="arrow-up" size={15} color="#fff" />
@@ -656,8 +654,7 @@ function ReportModal({
             disabled={!selected || submitting}
             style={({ pressed }) => [
               styles.reportSubmit,
-              { backgroundColor: selected ? colors.navActive : colors.navBorder },
-              pressed && { opacity: 0.7 },
+              { backgroundColor: selected ? (pressed ? colors.navActivePressed : colors.navActive) : colors.navBorder },
             ]}
           >
             <Text style={[styles.reportSubmitText, { color: selected ? '#fff' : colors.navInactive }]}>
