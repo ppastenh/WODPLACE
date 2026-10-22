@@ -51,3 +51,7 @@ Thumbs.db
 # Supabase CLI local cache (from `supabase gen types`)
 supabase/.temp/
 .env
+
+# Skills de terceros puestas en cuarentena (2026-10-21) -- ver ESTADO.md.
+# Se quedan en disco para poder revertir, pero nunca se suben al repo.
+.agents/skills-cuarentena/

@@ -89,3 +89,4 @@ yarn-debug.*
 # --- Claude Code: enlaces simbólicos propios, nada del proyecto ---
 .claude/
 .agents/skills/
+.agents/skills-cuarentena/
