@@ -41,6 +41,9 @@ import {
   type SocialComment,
 } from '@workspace/api-client-react';
 import { AutoFitImage } from '@/components/AutoFitImage';
+import { SPACING } from '@/constants/spacing';
+import { RADIUS } from '@/constants/radius';
+import { FONT_SIZE } from '@/constants/typography';
 
 const LOGO = require('../assets/images/wodplace-logo.png');
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -1455,82 +1458,93 @@ export default function CommunityScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
+// Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/RADIUS/
+// FONT_SIZE. 18, 9, 24, 0.4, 22 (radio), 44/46 (dimensiones), 7, 14 (padding/margin),
+// 17, 15, 26, 120, 13 (margin/padding), 1.5/1/2 (borderWidth), 9 (margin), 48, etc.
+// no calzan con ningún token y quedan sin tocar a propósito -- ver la propuesta de
+// Fase 2 (alineación) en AUDITORIA-VISUAL.md antes de mover cualquiera de esos.
+// Los estilos en línea (dentro del JSX, no en este bloque) tampoco se tocan en
+// esta ronda -- mismo criterio que la Tanda A.
+// Hallazgo aparte, SIN aplicar (cambiaría lo visible, fuera del alcance de
+// "cero cambio visual" de esta ronda): addButtonPressed y publishPressed usan
+// opacity para el estado presionado, no un color sólido -- la misma categoría
+// de bug ya corregida en la primera ronda visual en otros 11 archivos.
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 18, paddingTop: 16 },
-  stickyHeader: { paddingHorizontal: 18, paddingTop: 16 },
+  content: { paddingHorizontal: 18, paddingTop: SPACING.xl },
+  stickyHeader: { paddingHorizontal: 18, paddingTop: SPACING.xl },
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   logo: { width: 46, height: 46 },
   headerKicker: { fontSize: 9, letterSpacing: 1.5, fontFamily: 'Inter_700Bold' },
   title: { fontSize: 24, lineHeight: 28, letterSpacing: 0.4, fontFamily: 'Anton_400Regular', maxWidth: 210 },
   addButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   addButtonPressed: { transform: [{ scale: 0.94 }], opacity: 0.88 },
   feedIntro: { paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: 14 },
-  feedIntroTitle: { fontSize: 18, fontFamily: 'Anton_400Regular' },
-  feedIntroText: { fontSize: 12, lineHeight: 18, marginTop: 2, fontFamily: 'Inter_500Medium' },
+  feedIntroTitle: { fontSize: FONT_SIZE.xl, fontFamily: 'Anton_400Regular' },
+  feedIntroText: { fontSize: FONT_SIZE.sm, lineHeight: 18, marginTop: SPACING.xs, fontFamily: 'Inter_500Medium' },
   // Aviso-as-post title (sits where a post's body would, above the body text)
-  announcementTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', marginTop: 8 },
+  announcementTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', marginTop: SPACING.sm2 },
   // Post card
-  postCard: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 16 },
+  postCard: { borderRadius: RADIUS.xl, borderWidth: StyleSheet.hairlineWidth, padding: SPACING.xl },
   postHeader: { flexDirection: 'row', alignItems: 'center' },
   postAuthorTouchable: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  postAuthorBlock: { flex: 1, marginLeft: 10 },
+  postAuthorBlock: { flex: 1, marginLeft: SPACING.md },
   postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  postAuthor: { fontSize: 13, fontFamily: 'Inter_700Bold', flexShrink: 1 },
-  postTime: { fontSize: 11, marginTop: 2, fontFamily: 'Inter_500Medium' },
-  menuDotBtn: { padding: 4 },
-  boxTag: { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4 },
+  postAuthor: { fontSize: FONT_SIZE.base, fontFamily: 'Inter_700Bold', flexShrink: 1 },
+  postTime: { fontSize: FONT_SIZE.xs, marginTop: SPACING.xs, fontFamily: 'Inter_500Medium' },
+  menuDotBtn: { padding: SPACING.xs2 },
+  boxTag: { borderRadius: 7, paddingHorizontal: 7, paddingVertical: SPACING.xs2 },
   boxTagText: { fontSize: 9, letterSpacing: 1, fontFamily: 'Inter_700Bold' },
-  postBody: { fontSize: 14, lineHeight: 21, marginTop: 8, fontFamily: 'Inter_500Medium' },
+  postBody: { fontSize: FONT_SIZE.md, lineHeight: 21, marginTop: SPACING.sm2, fontFamily: 'Inter_500Medium' },
   // Avatar
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   initials: { fontFamily: 'Inter_700Bold' },
   // Images
-  postImageWrap: { marginTop: 12 },
+  postImageWrap: { marginTop: SPACING.lg },
   // Carousel dots
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 8 },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: SPACING.xs2, marginTop: SPACING.sm2 },
   dot: { height: 6, borderRadius: 3 },
   // Actions row (❤️ + 💬)
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 14 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionCount: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  actionCount: { fontSize: FONT_SIZE.base, fontFamily: 'Inter_600SemiBold' },
   // Sheets / Modals
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xxl, paddingTop: SPACING.lg, paddingBottom: SPACING.xxxl },
   handle: { width: 38, height: 4, borderRadius: 2 },
   sheetItem: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 15 },
   sheetItemText: { fontSize: 15, fontFamily: 'Inter_500Medium' },
-  sheetCancel: { paddingTop: 15, borderTopWidth: StyleSheet.hairlineWidth, alignItems: 'center', marginTop: 4 },
-  sheetCancelText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  sheetCancel: { paddingTop: 15, borderTopWidth: StyleSheet.hairlineWidth, alignItems: 'center', marginTop: SPACING.xs2 },
+  sheetCancelText: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_600SemiBold' },
   // Comments modal
   commentsBackdrop: { flex: 1, justifyContent: 'flex-end' },
   commentsSheet: { maxHeight: '85%', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   commentsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   commentsTitle: { fontSize: 17, fontFamily: 'Anton_400Regular' },
-  emptyComments: { padding: 32, alignItems: 'center' },
-  emptyCommentsText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
-  commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  emptyComments: { padding: SPACING.xxxl, alignItems: 'center' },
+  emptyCommentsText: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_500Medium' },
+  commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md, paddingVertical: SPACING.md, borderBottomWidth: StyleSheet.hairlineWidth },
   commentBody: { flex: 1 },
-  commentAuthor: { fontSize: 12, fontFamily: 'Inter_700Bold', marginBottom: 2 },
-  commentText: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19 },
-  commentTime: { fontSize: 11, fontFamily: 'Inter_500Medium', marginTop: 3 },
+  commentAuthor: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_700Bold', marginBottom: SPACING.xs },
+  commentText: { fontSize: FONT_SIZE.base, fontFamily: 'Inter_400Regular', lineHeight: 19 },
+  commentTime: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_500Medium', marginTop: 3 },
   // Comment input — pill, not reaching edges
   commentInputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   commentDraft: {
     flex: 1,
     borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    fontSize: FONT_SIZE.md,
     fontFamily: 'Inter_400Regular',
     maxHeight: 80,
   },
@@ -1543,41 +1557,41 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   // Report modal
-  reportTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', marginVertical: 12 },
-  reportOption: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 12, padding: 13, marginBottom: 9 },
+  reportTitle: { fontSize: FONT_SIZE.lg, fontFamily: 'Inter_700Bold', marginVertical: SPACING.lg },
+  reportOption: { flexDirection: 'row', alignItems: 'center', gap: SPACING.lg, borderWidth: 1.5, borderRadius: 12, padding: 13, marginBottom: 9 },
   reportDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
-  reportLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
-  reportSubmit: { height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  reportSubmitText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  reportLabel: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_500Medium' },
+  reportSubmit: { height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: SPACING.xs2 },
+  reportSubmitText: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_700Bold' },
   reportAttachBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 9,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm2,
+    borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, paddingVertical: SPACING.lg, marginBottom: 9,
   },
-  reportAttachText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  reportAttachText: { fontSize: FONT_SIZE.base, fontFamily: 'Inter_500Medium' },
   reportEvidenceRow: { marginBottom: 9 },
   reportEvidenceThumb: { width: '100%', height: 140, borderRadius: 12 },
   reportEvidenceRemove: { position: 'absolute', top: 6, right: 6 },
   // Composer
   composerBackdrop: { flex: 1, justifyContent: 'flex-end' },
-  composerSheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, paddingBottom: 30, minHeight: 420 },
+  composerSheet: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: SPACING.xxl, paddingBottom: 30, minHeight: 420 },
   sheetTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sheetKicker: { fontSize: 9, letterSpacing: 1.4, fontFamily: 'Inter_700Bold' },
-  sheetTitle: { fontSize: 24, marginTop: 2, fontFamily: 'Anton_400Regular' },
-  draftInput: { minHeight: 120, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 15, fontSize: 15, lineHeight: 21, fontFamily: 'Inter_400Regular', marginTop: 18 },
-  composerImageRow: { marginTop: 10 },
-  composerThumbWrap: { position: 'relative', marginRight: 8 },
-  composerThumb: { width: 80, height: 80, borderRadius: 10 },
-  composerRemove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  sheetTitle: { fontSize: 24, marginTop: SPACING.xs, fontFamily: 'Anton_400Regular' },
+  draftInput: { minHeight: 120, borderRadius: RADIUS.lg, borderWidth: StyleSheet.hairlineWidth, padding: 15, fontSize: 15, lineHeight: 21, fontFamily: 'Inter_400Regular', marginTop: 18 },
+  composerImageRow: { marginTop: SPACING.md },
+  composerThumbWrap: { position: 'relative', marginRight: SPACING.sm2 },
+  composerThumb: { width: 80, height: 80, borderRadius: RADIUS.md },
+  composerRemove: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   composerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 13 },
-  attachButton: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 },
-  attachText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  charCount: { fontSize: 11, fontFamily: 'Inter_500Medium' },
-  publishBtn: { height: 50, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18 },
-  publishText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  attachButton: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, paddingHorizontal: SPACING.lg, paddingVertical: 9 },
+  attachText: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_600SemiBold' },
+  charCount: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_500Medium' },
+  publishBtn: { height: 50, borderRadius: RADIUS.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 18 },
+  publishText: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_700Bold' },
   publishPressed: { opacity: 0.85 },
   // Feed states
-  endText: { textAlign: 'center', fontSize: 12, fontFamily: 'Inter_500Medium', paddingVertical: 20 },
-  emptyState: { alignItems: 'center', gap: 10, paddingVertical: 48 },
-  emptyTitle: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-  emptyText: { fontSize: 13, fontFamily: 'Inter_500Medium', textAlign: 'center', paddingHorizontal: 24 },
+  endText: { textAlign: 'center', fontSize: FONT_SIZE.sm, fontFamily: 'Inter_500Medium', paddingVertical: SPACING.xxl },
+  emptyState: { alignItems: 'center', gap: SPACING.md, paddingVertical: 48 },
+  emptyTitle: { fontSize: FONT_SIZE.lg, fontFamily: 'Inter_700Bold' },
+  emptyText: { fontSize: FONT_SIZE.base, fontFamily: 'Inter_500Medium', textAlign: 'center', paddingHorizontal: 24 },
 });
