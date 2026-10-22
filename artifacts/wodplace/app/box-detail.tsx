@@ -177,8 +177,7 @@ export default function BoxDetailScreen() {
                   hitSlop={4}
                   style={({ pressed }) => [
                     styles.socialButton,
-                    { backgroundColor: colors.secondary },
-                    pressed && { opacity: 0.7 },
+                    { backgroundColor: pressed ? colors.secondaryPressed : colors.secondary },
                   ]}
                 >
                   <FontAwesome5

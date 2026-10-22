@@ -27,7 +27,6 @@ type Known = { file: string; text: string; count: number; group: "critico" | "de
 
 const KNOWN: Known[] = [
   { file: "artifacts/wodplace/app/admin-dashboard.tsx", text: "viewTogglePressed: { opacity: 0.6 },", count: 1, group: "despues" },
-  { file: "artifacts/wodplace/app/box-detail.tsx", text: "pressed && { opacity: 0.7 },", count: 1, group: "critico" },
   { file: "artifacts/wodplace/app/community.tsx", text: "style={({ pressed }) => [styles.sheetItem, pressed && { opacity: 0.6 }]}", count: 1, group: "despues" },
   { file: "artifacts/wodplace/app/community.tsx", text: "style={({ pressed }) => [styles.sheetCancel, { borderTopColor: colors.navBorder }, pressed && { opacity: 0.6 }]}", count: 2, group: "despues" },
   { file: "artifacts/wodplace/app/community.tsx", text: "pressed && { opacity: 0.7 },", count: 1, group: "despues" },
