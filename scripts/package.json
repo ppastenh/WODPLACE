@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "check:super-admin-inlining": "tsx ./src/check-super-admin-inlining.ts",
     "check:security-definer-grants": "tsx ./src/check-security-definer-grants.ts",
+    "check:pressed-opacity": "tsx ./src/check-pressed-opacity.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
