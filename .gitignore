@@ -55,3 +55,6 @@ supabase/.temp/
 # Skills de terceros puestas en cuarentena (2026-10-21) -- ver ESTADO.md.
 # Se quedan en disco para poder revertir, pero nunca se suben al repo.
 .agents/skills-cuarentena/
+
+# Skills de terceros en .agents/skills/ (material de lectura, no se suben; la versión queda en skills-lock.json). OJO: .agents/memory/ SÍ va en git.
+.agents/skills/
