@@ -160,8 +160,8 @@ export default function WodScreen() {
                 disabled={submit.isPending}
                 style={({ pressed }) => [
                   styles.submitBtn,
-                  { backgroundColor: colors.primary },
-                  (pressed || submit.isPending) && { opacity: 0.85 },
+                  { backgroundColor: pressed ? colors.primaryPressed : colors.primary },
+                  submit.isPending && { opacity: 0.85 },
                 ]}
               >
                 <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>
