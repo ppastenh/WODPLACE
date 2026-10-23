@@ -20,13 +20,14 @@ import {
   db,
   wodplaceUsersTable,
 } from "@workspace/db";
-import { desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { findDistinctAdminEmails, resolveAdminRoles } from "../lib/adminRole";
 import {
   adminAccessOf,
   boxForNewToken,
+  manageScope,
   requireAdminAccess,
   resolvePanelAccess,
   type PanelAccess,
@@ -311,6 +312,12 @@ router.get(
   "/admin/contract-acceptances",
   requireAdminAccess("manage"),
   async (req: Request, res: Response) => {
+    // Cada administrador ve SOLO los contratos de su box (null = super admin, todos).
+    const scope = manageScope(adminAccessOf(res));
+    if (scope && scope.length === 0) {
+      res.json(ListAdminContractAcceptancesResponse.parse([]));
+      return;
+    }
     try {
       const rows = await db
         .select({
@@ -330,6 +337,7 @@ router.get(
           wodplaceUsersTable,
           eq(contractAcceptancesTable.userId, wodplaceUsersTable.id),
         )
+        .where(scope ? inArray(contractAcceptancesTable.boxId, scope) : undefined)
         .orderBy(desc(contractAcceptancesTable.acceptedAt));
 
       const result: ContractAcceptanceNotification[] = rows.map((row) => ({
@@ -362,11 +370,21 @@ router.post(
   "/admin/contract-acceptances/ack",
   requireAdminAccess("manage"),
   async (req: Request, res: Response) => {
+    const scope = manageScope(adminAccessOf(res));
+    if (scope && scope.length === 0) {
+      res.json(AckContractAcceptancesResponse.parse({ acknowledged: 0 }));
+      return;
+    }
     try {
       const rows = await db
         .update(contractAcceptancesTable)
         .set({ seenByOwnerAt: new Date() })
-        .where(isNull(contractAcceptancesTable.seenByOwnerAt))
+        .where(
+          and(
+            isNull(contractAcceptancesTable.seenByOwnerAt),
+            scope ? inArray(contractAcceptancesTable.boxId, scope) : undefined,
+          ),
+        )
         .returning({ userId: contractAcceptancesTable.userId });
 
       const result: AckContractAcceptancesResult = {
