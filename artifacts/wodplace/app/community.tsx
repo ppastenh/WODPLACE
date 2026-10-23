@@ -901,7 +901,11 @@ export default function CommunityScreen() {
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const adminCode = getAdminToken(); // admin session token (PIN flow), passed as Bearer
-  const isAdmin = !!adminCode;
+  // Solo muestra las opciones de moderar a quien de verdad es administrador de
+  // box o super admin (incidente 2026-10-22): un token de administrador que
+  // quedó en memoria de otra sesión ya no basta. El servidor decide igual.
+  const isAdmin =
+    !!adminCode && !!adminStatus?.roles.some((r) => r === 'box_admin' || r === 'super_admin');
 
   // No box yet -> the generic "WODPLACE SOCIAL" header and no feed content
   // at all (see Option A of the Comunidad box-scoping change: the backend

@@ -22,6 +22,7 @@ import {
   type RedeemBoxCodeResult,
   type SkillLevel,
 } from '@workspace/api-client-react';
+import { clearAdminToken } from '@/lib/adminSession';
 import { supabase } from '@/lib/supabase';
 
 // No-op on native; on web this closes the OAuth popup and hands control
@@ -758,6 +759,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('Failed to sign out of Supabase', err);
       });
     }
+    // Token de administrador en memoria: nunca debe sobrevivir al cierre de
+    // sesión (incidente 2026-10-22: pasó a la sesión de otra cuenta).
+    clearAdminToken();
     await persist(null);
     setAdminStatus(null);
     adminStatusRef.current = null;
