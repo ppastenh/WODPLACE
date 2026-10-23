@@ -565,7 +565,7 @@ router.post("/admin/users/:userId/block", requireAdminAccess("manage"), async (r
     const inBox = await db.execute<{ ok: number }>(sql`
       select 1 as ok from wodplace_users wu
       where wu.id = ${targetId} and (
-        exists (select 1 from box_members bm where bm.user_id::text = wu.auth_user_id::text and bm.box_id::text = ${boxId})
+        exists (select 1 from box_members bm where bm.user_id = wu.id and bm.box_id::text = ${boxId})
         or exists (select 1 from social_posts sp where sp.user_id = wu.id and sp.box_id::text = ${boxId})
         or exists (select 1 from social_comments sc where sc.user_id = wu.id and sc.box_id::text = ${boxId})
       ) limit 1
