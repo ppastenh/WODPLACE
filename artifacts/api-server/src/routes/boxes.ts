@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
-import { isAdminRequest } from "../lib/adminAuth";
+import { getAdminSession } from "../lib/adminAuth";
+import { canModerateBoxContent } from "../lib/moderation";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { todayDateKey } from "../lib/dateUtils";
 import { countRecentAttempts, getRealClientIp, MAX_ATTEMPTS, recordFailedAttempt } from "../lib/inviteRateLimit";
@@ -800,24 +801,27 @@ router.delete(
   "/box-memberships/announcements/:id/comments/:commentId",
   async (req: Request, res: Response) => {
     const commentId = typeof req.params.commentId === "string" ? req.params.commentId : undefined;
-    const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-    const isAdmin = isAdminRequest(req);
+    const queryUserId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+    // Con token de administrador el llamador es quien firmó el token, no el
+    // userId de la URL (incidente 2026-10-22, ver lib/moderation.ts).
+    const adminSession = getAdminSession(req);
+    const userId = adminSession ? adminSession.userId : queryUserId;
     if (!commentId || !userId) {
       res.status(400).json({ error: "Missing fields" });
       return;
     }
-    if (!isAdmin && !(await assertOwnsAccount(req, res, userId))) return;
+    if (!adminSession && !(await assertOwnsAccount(req, res, userId))) return;
 
     try {
-      const rows = await db.execute<{ user_id: string | null }>(sql`
-        SELECT user_id FROM announcement_comments WHERE id = ${commentId} AND deleted_at IS NULL
+      const rows = await db.execute<{ user_id: string | null; box_id: string }>(sql`
+        SELECT user_id, box_id FROM announcement_comments WHERE id = ${commentId} AND deleted_at IS NULL
       `);
       const comment = rows.rows[0];
       if (!comment) {
         res.status(404).json({ error: "No encontrado." });
         return;
       }
-      if (!isAdmin && comment.user_id !== userId) {
+      if (comment.user_id !== userId && !(adminSession && (await canModerateBoxContent(adminSession.userId, comment.box_id, null)))) {
         res.status(403).json({ error: "No podés eliminar este comentario." });
         return;
       }

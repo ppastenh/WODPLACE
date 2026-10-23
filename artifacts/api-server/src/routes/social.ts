@@ -25,7 +25,8 @@ import {
 import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
-import { isAdminRequest, requireAdminSession } from "../lib/adminAuth";
+import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
+import { canModerateBoxContent } from "../lib/moderation";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 
@@ -288,16 +289,22 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/social/posts/:id", async (req: Request, res: Response) => {
-  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  const isAdmin = isAdminRequest(req);
-  if (!isAdmin) {
+  const queryUserId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  // Con token de administrador el llamador es quien firmó el token (nunca el
+  // userId de la URL); sin él, es la cuenta dueña de la sesión de Supabase.
+  const adminSession = getAdminSession(req);
+  const userId = adminSession ? adminSession.userId : queryUserId;
+  if (!adminSession) {
     if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
     if (!(await assertOwnsAccount(req, res, userId))) return;
   }
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
-    if (!isAdmin && post.userId !== userId) { res.status(403).json({ error: "No puedes eliminar esta publicación." }); return; }
+    // Autor, o administrador/dueño del MISMO box (o super admin autorizado).
+    if (post.userId !== userId && !(adminSession && (await canModerateBoxContent(adminSession.userId, post.boxId, null)))) {
+      res.status(403).json({ error: "No puedes eliminar esta publicación." }); return;
+    }
     await db.update(socialPostsTable).set({ deletedAt: new Date() }).where(eq(socialPostsTable.id, paramString(req.params.id)));
     res.status(204).end();
   } catch (error) {
@@ -372,16 +379,19 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
 });
 
 router.delete("/social/posts/:id/comments/:commentId", async (req: Request, res: Response) => {
-  const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  const isAdmin = isAdminRequest(req);
-  if (!isAdmin) {
+  const queryUserId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  const adminSession = getAdminSession(req);
+  const userId = adminSession ? adminSession.userId : queryUserId;
+  if (!adminSession) {
     if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
     if (!(await assertOwnsAccount(req, res, userId))) return;
   }
   try {
     const [comment] = await db.select().from(socialCommentsTable).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
     if (!comment || comment.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
-    if (!isAdmin && comment.userId !== userId) { res.status(403).json({ error: "No puedes eliminar este comentario." }); return; }
+    if (comment.userId !== userId && !(adminSession && (await canModerateBoxContent(adminSession.userId, comment.boxId, null)))) {
+      res.status(403).json({ error: "No puedes eliminar este comentario." }); return;
+    }
     await db.update(socialCommentsTable).set({ deletedAt: new Date() }).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
     res.status(204).end();
   } catch (error) {
