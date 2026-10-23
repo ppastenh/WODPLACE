@@ -8,6 +8,20 @@ Consolidado priorizado de todo lo que falta para publicar WODPLACE en Android. H
 
 ---
 
+## REACTIVAR EL SEGUNDO FACTOR (bloquea el primer usuario real)
+
+**Estado (decisión de Pía, 2026-10-23):** el segundo factor del super admin (`require_aal2_for_super_admin`) se apaga por ahora para trabajar sin ingresar códigos todo el rato. No hay boxes ni cuentas de otras personas. Se apaga SOLO después de que Pía confirme que el arreglo del incidente quedó verificado en producción con el interruptor encendido. El apagado se hace con su registro en `app_settings_audit`, sin borrar ni tocar los factores ni el rol de ninguna cuenta, y se comprueba que la cuenta diaria entra al panel de super admin sin código y que la cuenta `+super` conserva sus 2 factores.
+
+**Regla: NO se invita ni se registra a ninguna persona real mientras el interruptor esté apagado.**
+
+Antes de invitar al primer usuario real, en este orden:
+1. Encender el interruptor (`require_aal2_for_super_admin = true`), con su registro en `app_settings_audit`.
+2. Comprobar que `+super` entra con CADA uno de los 2 factores.
+3. Comprobar el aviso de la cuenta diaria (debe avisar que necesita segundo factor).
+4. Anotar en el gestor de contraseñas de Pía qué entrada de 2FAS corresponde a cada factor.
+5. Decidir si se quita el rol `super_admin` de la cuenta diaria (queda como dueña/box_admin normal).
+6. Correr la regresión completa con el interruptor encendido: la matriz de rol y box del incidente (`incidente-*@wodplace.test`) y los checks `check:super-admin-inlining` y `check:security-definer-grants`.
+
 ## Ahora, sin costo
 
 Todo lo de aquí se puede preparar o terminar sin gastar dinero y sin depender de que alguien externo responda.
