@@ -193,7 +193,7 @@ export function useAnnouncementMutations(userId: string, authorName: string) {
   const deleteComment = useCallback(
     async (announcementId: string, commentId: string, adminCode?: string): Promise<void> => {
       const headers: Record<string, string> = {};
-      if (adminCode) headers.Authorization = `Bearer ${adminCode}`;
+      if (adminCode) headers["X-Admin-Session"] = adminCode;
       await customFetch(
         `/api/box-memberships/announcements/${announcementId}/comments/${commentId}?userId=${encodeURIComponent(userId)}`,
         { method: "DELETE", headers },

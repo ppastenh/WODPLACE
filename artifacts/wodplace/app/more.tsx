@@ -53,7 +53,7 @@ export default function MoreScreen() {
     setToken(stored);
   }, []);
 
-  const adminHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+  const adminHeaders = token ? { "X-Admin-Session": token } : undefined;
 
   const acceptancesQuery = useListAdminContractAcceptances({
     // See note in active-contracts.tsx re: `as never`.

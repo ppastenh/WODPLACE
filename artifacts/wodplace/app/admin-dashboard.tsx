@@ -136,7 +136,7 @@ export default function AdminDashboardScreen() {
   const handleWebViewMessage = useRef(createWebViewMessageHandler(setAlertCount)).current;
 
   const dashLink = useCreateAdminDashLink({
-    request: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    request: { headers: token ? { "X-Admin-Session": token } : {} },
   });
 
   useEffect(() => {
