@@ -123,13 +123,18 @@ export default function LoginPasswordScreen() {
             <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
           ) : null}
 
+          {/* Ayuda fija: siempre se muestra, sin revelar si la cuenta existe. */}
+          <Text style={[styles.helpText, { color: colors.authMuted }]}>
+            Si creaste tu cuenta con Google, entra con Google. También puedes crear una contraseña con «Olvidé mi contraseña».
+          </Text>
+
           <Pressable
             onPress={() => router.push({ pathname: '/forgot-password', params: { email } })}
             hitSlop={8}
             style={styles.forgotLink}
           >
             <Text style={[styles.forgotText, { color: colors.primary }]}>
-              ¿Olvidaste tu contraseña?
+              Olvidé mi contraseña
             </Text>
           </Pressable>
 
@@ -233,6 +238,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
     marginTop: -6,
+  },
+  helpText: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 17,
   },
   forgotLink: {
     alignSelf: 'flex-end',

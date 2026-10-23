@@ -459,7 +459,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (mode === 'none') {
-      throw new Error('No encontramos una cuenta con ese email.');
+      throw new Error('Correo o contraseña incorrectos.');
     }
 
     if (mode === 'mock') {
@@ -472,7 +472,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (__DEV__) console.log('[login] mode=real -> signing in with Supabase');
     const { error } = await supabase.auth.signInWithPassword({ email: key, password });
     if (error) {
-      throw new Error('Contraseña incorrecta.');
+      throw new Error('Correo o contraseña incorrectos.');
     }
     const me = await getMe();
     const profile = toWodplaceUser(me, 'inactive');
