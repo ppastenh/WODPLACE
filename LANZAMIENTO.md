@@ -10,7 +10,9 @@ Consolidado priorizado de todo lo que falta para publicar WODPLACE en Android. H
 
 ## REACTIVAR EL SEGUNDO FACTOR (bloquea el primer usuario real)
 
-**Estado (decisión de Pía, 2026-10-23):** el segundo factor del super admin (`require_aal2_for_super_admin`) se apaga por ahora para trabajar sin ingresar códigos todo el rato. No hay boxes ni cuentas de otras personas. Se apaga SOLO después de que Pía confirme que el arreglo del incidente quedó verificado en producción con el interruptor encendido. El apagado se hace con su registro en `app_settings_audit`, sin borrar ni tocar los factores ni el rol de ninguna cuenta, y se comprueba que la cuenta diaria entra al panel de super admin sin código y que la cuenta `+super` conserva sus 2 factores.
+**ESTADO ACTUAL: APAGADO** desde el 2026-10-23 a las 00:27:53 hora de Chile (03:27:53 UTC) por decisión de Pía, con registro `app_settings_audit` id 2 (`true` → `false`). Verificado: con el interruptor apagado una cuenta super admin desechable con sesión SIN segundo factor ahora pasa `is_super_admin()` y el servidor le entrega token de panel (con el interruptor encendido ambas cosas eran `false`/403); los factores y roles quedaron IDÉNTICOS antes y después (`pasten.hueche+super` conserva sus 2 factores TOTP verificados; `pasten.hueche@gmail.com` tiene 1 factor TOTP **sin verificar**, creado el 2026-10-23 01:35, que no se tocó). La cuenta diaria real no se probó con su sesión (regla: nunca generar accesos de cuentas reales de Pía); la prueba se hizo con una cuenta desechable equivalente.
+
+**Decisión de Pía (2026-10-23):** el segundo factor del super admin (`require_aal2_for_super_admin`) se apaga por ahora para trabajar sin ingresar códigos todo el rato. No hay boxes ni cuentas de otras personas. Se apaga SOLO después de que Pía confirme que el arreglo del incidente quedó verificado en producción con el interruptor encendido. El apagado se hace con su registro en `app_settings_audit`, sin borrar ni tocar los factores ni el rol de ninguna cuenta, y se comprueba que la cuenta diaria entra al panel de super admin sin código y que la cuenta `+super` conserva sus 2 factores.
 
 **Regla: NO se invita ni se registra a ninguna persona real mientras el interruptor esté apagado.**
 
@@ -21,6 +23,53 @@ Antes de invitar al primer usuario real, en este orden:
 4. Anotar en el gestor de contraseñas de Pía qué entrada de 2FAS corresponde a cada factor.
 5. Decidir si se quita el rol `super_admin` de la cuenta diaria (queda como dueña/box_admin normal).
 6. Correr la regresión completa con el interruptor encendido: la matriz de rol y box del incidente (`incidente-*@wodplace.test`) y los checks `check:super-admin-inlining` y `check:security-definer-grants`.
+
+## OBLIGATORIO antes de usuarios reales — seguridad de cuentas y registro de accesos
+
+Ambos ítems nacen del incidente de seguridad del 2026-10-22/23. Ninguno está implementado; se decide y se aprueba cada uno antes de tocar nada. **Mientras no estén resueltos, no se invita ni se registra a ninguna persona real.**
+
+| # | Ítem | Severidad | Esfuerzo | Estado |
+|---|---|---|---|---|
+| L1 | **Toma previa de cuenta (pre-account takeover): `/auth/register` crea cuentas ya confirmadas sin verificar el correo.** | **ALTA** (acceso persistente a la cuenta y a los datos personales de la víctima, incluidos contacto de emergencia y datos de menores) | **Medio**: 1 a 2 sesiones, más configurar un envío de correo propio (SMTP/Resend) | Sin aplicar |
+| L2 | **Registro de seguridad propio (inicios de sesión, cambios de rol, emisión de tokens de panel).** `auth.audit_log_entries` está vacía y los Auth Logs del panel duran 1 hora en Free. | **MEDIA-ALTA** (sin esto no se puede investigar el próximo incidente) | **Medio**: 1 sesión (tabla + 3 disparadores + escritura desde el servidor), más aprobación de la migración | Sin aplicar |
+
+### L1 — Toma previa de cuenta
+
+**Qué pasa hoy (probado en producción con una cuenta `@wodplace.test` desechable):** `POST /auth/register` no pide sesión ni verificación de correo. Crea la cuenta con `email_confirm: true`, queda confirmada al instante (`email_confirmed_at` = hora de creación) y se puede entrar con correo y contraseña sin haber verificado nada. Un segundo registro con el mismo correo responde 409 "Ya existe una cuenta con ese email.".
+
+**Escenario:** una persona registra el correo de otra (`victima@gmail.com`) con una contraseña propia. Más tarde la víctima entra con Google (correo verificado por Google).
+
+**Qué dice la documentación vigente de Supabase** ([Identity Linking](https://supabase.com/docs/guides/auth/auth-identity-linking)): "Supabase Auth automatically links identities with the same email address to a single user" y exige correos únicos. Advierte que vincular a un correo sin verificar "could lead to pre-account takeover attacks", y que al vincular una identidad nueva Supabase "will remove any other unconfirmed identities linked to an existing user". La página no dice qué pasa con la contraseña. Además no existe un interruptor de proyecto para apagar la vinculación automática (es el comportamiento de la plataforma; sí hay uno para la vinculación manual).
+
+**Conclusión:** como nuestro registro marca el correo como confirmado sin verificarlo, la cuenta del atacante cuenta como "confirmada" y **la identidad de Google de la víctima se vincularía a esa misma cuenta; la contraseña del atacante seguiría valiendo** (no hay nada en la plataforma ni en nuestro código que la borre). **No pude probar este último paso** porque requiere iniciar sesión con una cuenta real de Google de otra persona; lo anterior es análisis de la documentación más lo que sí probé (cuenta confirmada sin verificar, y que una cuenta creada con Google queda con una sola identidad `google` aunque después tenga contraseña, como la de keiravie). Antes de aplicar la mitigación conviene repetir la prueba completa con dos cuentas de Google propias de Pía.
+
+**Mitigaciones (en orden de recomendación; sin aplicar):**
+1. **Verificar el correo antes de confirmar** (recomendada): crear la cuenta sin confirmar (`email_confirm: false`), enviar un código o enlace, y no dejar usar la cuenta hasta verificarlo. Por la regla de la documentación, una cuenta sin confirmar pierde su identidad de correo si luego se vincula Google. Requiere pantalla de "revisa tu correo", reenvío con límite y un envío de correo propio (el de Supabase por defecto es muy limitado).
+2. **Impedir la vinculación a una cuenta cuyo correo nunca se verificó:** guardar en `wodplace_users` la fecha de verificación del correo; si una cuenta con `email_verified_at` vacío aparece con una segunda identidad (Google), el servidor la trata como sospechosa.
+3. **Obligar a cambiar la contraseña al vincular:** en ese mismo caso (y en `/auth/whoami`), el servidor pone una contraseña aleatoria con la API de administración y cierra todas las sesiones, de modo que la contraseña del atacante deja de servir.
+4. **Opción de producto:** registro solo con Google (sin contraseña), lo que elimina el problema de raíz pero cambia la experiencia.
+5. Complemento: mensaje de error genérico en el ingreso y en el registro, para no revelar si un correo existe (hoy "No encontramos una cuenta con ese email." y "Ya existe una cuenta con ese email.").
+
+### L2 — Registro de seguridad
+
+**Qué hay hoy y qué dice la documentación:**
+- `auth.audit_log_entries`: **vacía** (0 filas) en este proyecto. La documentación vigente no la menciona; los registros de Auth ahora se consultan en el panel de Supabase (Logs, tipo Auth).
+- **Retención de los Auth Logs del panel** ([Pricing](https://supabase.com/pricing)): **Free, 1 hora**; **Pro, 7 días**; Team, 28 días; Enterprise, incluido. Los demás registros (API y base de datos): Free 1 día, Pro 7, Team 28, Enterprise 90. La página de [logs](https://supabase.com/docs/guides/telemetry/logs) solo dice que "retention depends on your pricing plan".
+- **Exportar:** [Log Drains](https://supabase.com/docs/guides/telemetry/log-drains) está disponible solo en Pro, Team y Enterprise (no en Free); incluye los logs de Auth y envía a Datadog, Loki, Amazon S3, Sentry, Axiom, Syslog, OpenTelemetry o un endpoint propio. Precio de lista: US$60 por drain al mes más uso. En Free solo se puede consultar y descargar a mano desde el panel, dentro de esa hora.
+- **¿Se puede activar la tabla?** No encontré en la documentación una opción de proyecto para volver a llenar `auth.audit_log_entries`; hay que asumir que no está disponible a nivel de plataforma. Confirmarlo con el soporte de Supabase si se quisiera.
+- Logs de Render (API): 7 días en Hobby, 14 en Professional, 30 en Scale.
+
+**Registro de seguridad mínimo propuesto (propio, no depende del plan):** una tabla `security_events` de solo agregar (RLS: solo super admin lee; sin UPDATE ni DELETE; el servidor y los disparadores insertan) con fecha, tipo, usuario, box, IP parcial, agente y detalle sin datos sensibles. Eventos:
+1. **Inicios de sesión:** disparador sobre `auth.sessions` (usuario, IP, agente, aal) — hay que comprobar que el proyecto permita ese disparador, como ya existe sobre `auth.users`.
+2. **Cambios de rol:** disparador sobre `user_roles` (alta, baja, cambio; quién lo hizo si se puede saber) y sobre `admin_invites` (crear, usar, borrar).
+3. **Tokens de panel:** el servidor registra cada emisión (`/admin/pin/*`) y cada denegación 401/403 en rutas de administración, con la cuenta y el box.
+4. **Cambios del interruptor aal2:** ya existe `app_settings_audit`; se incluye en la vista.
+- Retención 24 meses; exportación mensual a un archivo fuera de la base; vista de lectura en super-admin. Pasar a Pro (7 días de Auth Logs y posibilidad de Log Drains) complementa pero no reemplaza este registro propio.
+
+### L3 (menor, junto con L1) — Cuentas de Google que intentan entrar con correo y contraseña
+- **Qué ve hoy el usuario** (código de `login-password` y `AuthContext.login`): si el correo no existe, "No encontramos una cuenta con ese email."; si existe pero se creó con Google y nunca tuvo contraseña, Supabase responde "credenciales inválidas" y la app muestra "Contraseña incorrecta." (engañoso, y los dos mensajes distintos revelan si la cuenta existe).
+- **Texto de ayuda propuesto** (fijo, siempre visible bajo el campo de contraseña, sin revelar si la cuenta existe): "Si creaste tu cuenta con Google, entra con Google. También puedes crear una contraseña con «Olvidé mi contraseña»." Y un solo mensaje de error para ambos casos: "Correo o contraseña incorrectos."
+- **Qué pasa con las identidades al recuperar la contraseña** (comprobado en la cuenta `keiravie`): la cuenta sigue con **una sola identidad (`google`)** y simplemente pasa a tener también contraseña. Ambos métodos de ingreso funcionan sobre la misma cuenta y no se crea una segunda cuenta.
 
 ## Ahora, sin costo
 
