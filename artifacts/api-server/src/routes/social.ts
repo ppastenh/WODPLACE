@@ -125,9 +125,13 @@ async function enrichPosts(rows: PostRow[], viewerUserId?: string): Promise<Enri
 
 // ─── Box settings ─────────────────────────────────────────────────────────────
 
-router.get("/settings/box-name", async (_req: Request, res: Response) => {
+// El nombre es POR BOX (box_settings tiene PRIMARY KEY (box_id, key)): sin ?boxId= no hay nombre.
+router.get("/settings/box-name", async (req: Request, res: Response) => {
+  const boxId = typeof req.query.boxId === "string" ? req.query.boxId : null;
+  if (!boxId) { res.json({ name: "" }); return; }
   try {
-    const [row] = await db.select().from(boxSettingsTable).where(eq(boxSettingsTable.key, "box_name")).limit(1);
+    const [row] = await db.select().from(boxSettingsTable)
+      .where(and(eq(boxSettingsTable.boxId, boxId), eq(boxSettingsTable.key, "box_name"))).limit(1);
     res.json({ name: row?.value ?? "" });
   } catch { res.json({ name: "" }); }
 });
@@ -135,9 +139,13 @@ router.get("/settings/box-name", async (_req: Request, res: Response) => {
 router.put("/admin/settings/box-name", requireAdminAccess("manage"), async (req: Request, res: Response) => {
   const parsed = z.object({ name: z.string().trim().min(1).max(60) }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Nombre inválido" }); return; }
+  const access = adminAccessOf(res);
+  const boxId = access.claims.boxId ?? (typeof req.query.boxId === "string" ? req.query.boxId : null);
+  if (!boxId) { res.status(400).json({ error: "boxId es requerido" }); return; }
+  if (!canManageBox(access, boxId)) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    await db.insert(boxSettingsTable).values({ key: "box_name", value: parsed.data.name })
-      .onConflictDoUpdate({ target: boxSettingsTable.key, set: { value: parsed.data.name, updatedAt: new Date() } });
+    await db.insert(boxSettingsTable).values({ boxId, key: "box_name", value: parsed.data.name })
+      .onConflictDoUpdate({ target: [boxSettingsTable.boxId, boxSettingsTable.key], set: { value: parsed.data.name, updatedAt: new Date() } });
     res.json({ name: parsed.data.name });
   } catch (error) {
     req.log.error({ err: error }, "Error updating box name");

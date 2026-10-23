@@ -7,6 +7,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -512,13 +513,20 @@ export type WodplaceNotificationRow =
   typeof wodplaceNotificationsTable.$inferSelect;
 
 // Admin-configurable key/value settings (e.g. box display name).
-export const boxSettingsTable = pgTable("box_settings", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// La tabla real tiene PRIMARY KEY (box_id, key): los ajustes son POR BOX
+// (incidente 2026-10-22: el schema decía key solo y la ruta nunca enviaba box_id).
+export const boxSettingsTable = pgTable(
+  "box_settings",
+  {
+    boxId: text("box_id").notNull(),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.boxId, table.key] })],
+);
 export type BoxSettingRow = typeof boxSettingsTable.$inferSelect;
 
 // Social feed posts. imageUris is a JSON-serialised string[].
