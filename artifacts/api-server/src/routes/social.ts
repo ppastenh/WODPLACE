@@ -30,6 +30,8 @@ import {
   canManageBox,
   requireAdminAccess,
   resolveAdminAccess,
+  adminAccessOf,
+  manageScope,
   type AdminAccess,
 } from "../lib/adminAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
@@ -496,12 +498,15 @@ router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
 });
 
 router.get("/admin/social/reports", requireAdminAccess("manage"), async (req: Request, res: Response) => {
+  // Cada administrador ve SOLO los reportes de su box (null = super admin autorizado, todos).
+  const scope = manageScope(adminAccessOf(res));
+  if (scope && scope.length === 0) { res.json([]); return; }
   try {
     const reports = await db
       .select({ report: socialReportsTable, post: socialPostsTable })
       .from(socialReportsTable)
       .leftJoin(socialPostsTable, eq(socialReportsTable.postId, socialPostsTable.id))
-      .where(isNull(socialReportsTable.resolvedAt))
+      .where(and(isNull(socialReportsTable.resolvedAt), scope ? inArray(socialReportsTable.boxId, scope) : undefined))
       .orderBy(desc(socialReportsTable.createdAt));
     res.json(reports.map((r) => ({
       id: r.report.id, postId: r.report.postId,
@@ -520,8 +525,14 @@ router.get("/admin/social/reports", requireAdminAccess("manage"), async (req: Re
 });
 
 router.patch("/admin/social/reports/:id/resolve", requireAdminAccess("manage"), async (req: Request, res: Response) => {
+  const scope = manageScope(adminAccessOf(res));
+  if (scope && scope.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    await db.update(socialReportsTable).set({ resolvedAt: new Date() }).where(eq(socialReportsTable.id, paramString(req.params.id)));
+    // Solo un reporte de SU box; si es de otro box responde igual que si no existiera.
+    const done = await db.update(socialReportsTable).set({ resolvedAt: new Date() })
+      .where(and(eq(socialReportsTable.id, paramString(req.params.id)), scope ? inArray(socialReportsTable.boxId, scope) : undefined))
+      .returning({ id: socialReportsTable.id });
+    if (done.length === 0) { res.status(404).json({ error: "No encontrado." }); return; }
     res.json({ ok: true });
   } catch (error) {
     req.log.error({ err: error }, "Error resolving report");
