@@ -4,8 +4,12 @@ import { sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
-import { getAdminSession } from "../lib/adminAuth";
-import { canModerateBoxContent } from "../lib/moderation";
+import {
+  ADMIN_SESSION_HEADER,
+  canManageBox,
+  resolveAdminAccess,
+  type AdminAccess,
+} from "../lib/adminAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { todayDateKey } from "../lib/dateUtils";
 import { countRecentAttempts, getRealClientIp, MAX_ATTEMPTS, recordFailedAttempt } from "../lib/inviteRateLimit";
@@ -801,16 +805,21 @@ router.delete(
   "/box-memberships/announcements/:id/comments/:commentId",
   async (req: Request, res: Response) => {
     const commentId = typeof req.params.commentId === "string" ? req.params.commentId : undefined;
-    const queryUserId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-    // Con token de administrador el llamador es quien firmó el token, no el
-    // userId de la URL (incidente 2026-10-22, ver lib/moderation.ts).
-    const adminSession = getAdminSession(req);
-    const userId = adminSession ? adminSession.userId : queryUserId;
+    // Con token de administrador (X-Admin-Session) el llamador es quien firmó
+    // el token Y dueño de la sesión de Supabase (incidente 2026-10-22, ver
+    // lib/adminAccess.ts); sin él, la cuenta dueña de la sesión.
+    let admin: AdminAccess | null = null;
+    let userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+    if (req.header(ADMIN_SESSION_HEADER)) {
+      admin = await resolveAdminAccess(req, res, "staff");
+      if (!admin) return;
+      userId = admin.userId;
+    }
     if (!commentId || !userId) {
       res.status(400).json({ error: "Missing fields" });
       return;
     }
-    if (!adminSession && !(await assertOwnsAccount(req, res, userId))) return;
+    if (!admin && !(await assertOwnsAccount(req, res, userId))) return;
 
     try {
       const rows = await db.execute<{ user_id: string | null; box_id: string }>(sql`
@@ -821,7 +830,7 @@ router.delete(
         res.status(404).json({ error: "No encontrado." });
         return;
       }
-      if (comment.user_id !== userId && !(adminSession && (await canModerateBoxContent(adminSession.userId, comment.box_id, null)))) {
+      if (comment.user_id !== userId && !(admin && canManageBox(admin, comment.box_id))) {
         res.status(403).json({ error: "No podés eliminar este comentario." });
         return;
       }

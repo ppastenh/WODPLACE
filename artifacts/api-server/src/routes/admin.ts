@@ -24,13 +24,40 @@ import { desc, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
 import { findDistinctAdminEmails, resolveAdminRoles } from "../lib/adminRole";
-import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
+import {
+  adminAccessOf,
+  boxForNewToken,
+  requireAdminAccess,
+  resolvePanelAccess,
+  type PanelAccess,
+} from "../lib/adminAccess";
 import { signAdminToken } from "../lib/adminToken";
 import { hashPin, verifyPin } from "../lib/pinHash";
 import { getDashboardUrl, getSuperAdminUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
-import { assertOwnsAccount } from "../lib/supabaseAuth";
+import { assertOwnsAccount, resolveSupabaseUser } from "../lib/supabaseAuth";
 
 const router: IRouter = Router();
+
+/**
+ * Incidente 2026-10-22: setup/verify/session entregaban un token de
+ * administrador a CUALQUIER cuenta con sesión. Ahora, después de comprobar que
+ * la cuenta es la dueña de la sesión (assertOwnsAccount), exigen que tenga un
+ * rol que dé acceso a un panel (box_admin, coach, dueño de un box, o super
+ * admin autorizado por aal2). Quien no lo tiene recibe 403 sin tocar el PIN.
+ */
+async function requirePanelRole(req: Request, res: Response): Promise<PanelAccess | null> {
+  const sb = await resolveSupabaseUser(req);
+  if (!sb) {
+    res.status(401).json({ error: "Missing or invalid Authorization token" });
+    return null;
+  }
+  const panel = await resolvePanelAccess(sb.id, sb.aal);
+  if (!panel.allowed) {
+    res.status(403).json({ error: "Esta cuenta no tiene acceso a un panel de administración." });
+    return null;
+  }
+  return panel;
+}
 
 const MAX_PIN_ATTEMPTS = 5;
 const PIN_LOCK_MS = 15 * 60 * 1000;
@@ -94,6 +121,8 @@ router.post("/admin/pin/setup", async (req: Request, res: Response) => {
     return;
   }
   if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
+  const panel = await requirePanelRole(req, res);
+  if (!panel) return;
 
   const { userId, pin } = parsed.data;
   try {
@@ -112,7 +141,7 @@ router.post("/admin/pin/setup", async (req: Request, res: Response) => {
       });
 
     res.json(
-      SetupAdminPinResponse.parse({ ok: true, token: signAdminToken(userId) }),
+      SetupAdminPinResponse.parse({ ok: true, token: signAdminToken(userId, boxForNewToken(panel)) }),
     );
   } catch (error) {
     req.log.error({ err: error }, "Error setting up admin PIN");
@@ -134,6 +163,8 @@ router.post("/admin/pin/verify", async (req: Request, res: Response) => {
   }
 
   if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
+  const panel = await requirePanelRole(req, res);
+  if (!panel) return;
 
   const { userId, pin } = parsed.data;
   try {
@@ -175,7 +206,7 @@ router.post("/admin/pin/verify", async (req: Request, res: Response) => {
       res.json(
         VerifyAdminPinResponse.parse({
           ok: true,
-          token: signAdminToken(userId),
+          token: signAdminToken(userId, boxForNewToken(panel)),
           remainingAttempts: MAX_PIN_ATTEMPTS,
           lockedUntil: null,
         }),
@@ -225,6 +256,8 @@ router.post("/admin/pin/session", async (req: Request, res: Response) => {
     return;
   }
   if (!(await assertOwnsAccount(req, res, parsed.data.userId))) return;
+  const panel = await requirePanelRole(req, res);
+  if (!panel) return;
 
   const { userId } = parsed.data;
   try {
@@ -246,7 +279,7 @@ router.post("/admin/pin/session", async (req: Request, res: Response) => {
     res.json(
       CreateAdminSessionResponse.parse({
         ok: true,
-        token: signAdminToken(userId),
+        token: signAdminToken(userId, boxForNewToken(panel)),
       }),
     );
   } catch (error) {
@@ -276,7 +309,7 @@ router.post("/admin/pin/session", async (req: Request, res: Response) => {
  */
 router.get(
   "/admin/contract-acceptances",
-  requireAdminSession,
+  requireAdminAccess("manage"),
   async (req: Request, res: Response) => {
     try {
       const rows = await db
@@ -327,7 +360,7 @@ router.get(
  */
 router.post(
   "/admin/contract-acceptances/ack",
-  requireAdminSession,
+  requireAdminAccess("manage"),
   async (req: Request, res: Response) => {
     try {
       const rows = await db
@@ -406,7 +439,7 @@ async function resolveDashLoginEmail(
  */
 router.post(
   "/admin/dash-link",
-  requireAdminSession,
+  requireAdminAccess("staff"),
   async (req: Request, res: Response) => {
     const parsed = CreateAdminDashLinkBody.safeParse(req.body ?? {});
     if (!parsed.success) {
@@ -416,7 +449,7 @@ router.post(
     const { target } = parsed.data;
 
     try {
-      const pinUserId = getAdminSession(req)?.userId;
+      const pinUserId = adminAccessOf(res).userId;
       if (!pinUserId) {
         res.status(401).json({ error: "Invalid or expired admin session" });
         return;

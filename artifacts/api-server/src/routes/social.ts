@@ -25,8 +25,13 @@ import {
 import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
-import { getAdminSession, requireAdminSession } from "../lib/adminAuth";
-import { canModerateBoxContent } from "../lib/moderation";
+import {
+  ADMIN_SESSION_HEADER,
+  canManageBox,
+  requireAdminAccess,
+  resolveAdminAccess,
+  type AdminAccess,
+} from "../lib/adminAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 
@@ -124,7 +129,7 @@ router.get("/settings/box-name", async (_req: Request, res: Response) => {
   } catch { res.json({ name: "" }); }
 });
 
-router.put("/admin/settings/box-name", requireAdminSession, async (req: Request, res: Response) => {
+router.put("/admin/settings/box-name", requireAdminAccess("manage"), async (req: Request, res: Response) => {
   const parsed = z.object({ name: z.string().trim().min(1).max(60) }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Nombre inválido" }); return; }
   try {
@@ -289,12 +294,16 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/social/posts/:id", async (req: Request, res: Response) => {
-  const queryUserId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  // Con token de administrador el llamador es quien firmó el token (nunca el
-  // userId de la URL); sin él, es la cuenta dueña de la sesión de Supabase.
-  const adminSession = getAdminSession(req);
-  const userId = adminSession ? adminSession.userId : queryUserId;
-  if (!adminSession) {
+  // Con token de administrador (X-Admin-Session) el llamador es quien firmó
+  // el token Y es la cuenta dueña de la sesión de Supabase (se exigen las dos);
+  // sin él, es la cuenta dueña de la sesión, como siempre.
+  let admin: AdminAccess | null = null;
+  let userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  if (req.header(ADMIN_SESSION_HEADER)) {
+    admin = await resolveAdminAccess(req, res, "staff");
+    if (!admin) return;
+    userId = admin.userId;
+  } else {
     if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
     if (!(await assertOwnsAccount(req, res, userId))) return;
   }
@@ -302,7 +311,7 @@ router.delete("/social/posts/:id", async (req: Request, res: Response) => {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     // Autor, o administrador/dueño del MISMO box (o super admin autorizado).
-    if (post.userId !== userId && !(adminSession && (await canModerateBoxContent(adminSession.userId, post.boxId, null)))) {
+    if (post.userId !== userId && !(admin && canManageBox(admin, post.boxId))) {
       res.status(403).json({ error: "No puedes eliminar esta publicación." }); return;
     }
     await db.update(socialPostsTable).set({ deletedAt: new Date() }).where(eq(socialPostsTable.id, paramString(req.params.id)));
@@ -379,17 +388,20 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
 });
 
 router.delete("/social/posts/:id/comments/:commentId", async (req: Request, res: Response) => {
-  const queryUserId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  const adminSession = getAdminSession(req);
-  const userId = adminSession ? adminSession.userId : queryUserId;
-  if (!adminSession) {
+  let admin: AdminAccess | null = null;
+  let userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  if (req.header(ADMIN_SESSION_HEADER)) {
+    admin = await resolveAdminAccess(req, res, "staff");
+    if (!admin) return;
+    userId = admin.userId;
+  } else {
     if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
     if (!(await assertOwnsAccount(req, res, userId))) return;
   }
   try {
     const [comment] = await db.select().from(socialCommentsTable).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
     if (!comment || comment.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
-    if (comment.userId !== userId && !(adminSession && (await canModerateBoxContent(adminSession.userId, comment.boxId, null)))) {
+    if (comment.userId !== userId && !(admin && canManageBox(admin, comment.boxId))) {
       res.status(403).json({ error: "No puedes eliminar este comentario." }); return;
     }
     await db.update(socialCommentsTable).set({ deletedAt: new Date() }).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
@@ -483,7 +495,7 @@ router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/admin/social/reports", requireAdminSession, async (req: Request, res: Response) => {
+router.get("/admin/social/reports", requireAdminAccess("manage"), async (req: Request, res: Response) => {
   try {
     const reports = await db
       .select({ report: socialReportsTable, post: socialPostsTable })
@@ -507,7 +519,7 @@ router.get("/admin/social/reports", requireAdminSession, async (req: Request, re
   }
 });
 
-router.patch("/admin/social/reports/:id/resolve", requireAdminSession, async (req: Request, res: Response) => {
+router.patch("/admin/social/reports/:id/resolve", requireAdminAccess("manage"), async (req: Request, res: Response) => {
   try {
     await db.update(socialReportsTable).set({ resolvedAt: new Date() }).where(eq(socialReportsTable.id, paramString(req.params.id)));
     res.json({ ok: true });
@@ -519,7 +531,7 @@ router.patch("/admin/social/reports/:id/resolve", requireAdminSession, async (re
 
 // ─── Block ────────────────────────────────────────────────────────────────────
 
-router.post("/admin/users/:userId/block", requireAdminSession, async (req: Request, res: Response) => {
+router.post("/admin/users/:userId/block", requireAdminAccess("manage"), async (req: Request, res: Response) => {
   try {
     await db.insert(blockedUsersTable).values({ userId: paramString(req.params.userId) }).onConflictDoNothing();
     res.status(201).json({ ok: true });
@@ -529,7 +541,7 @@ router.post("/admin/users/:userId/block", requireAdminSession, async (req: Reque
   }
 });
 
-router.delete("/admin/users/:userId/block", requireAdminSession, async (req: Request, res: Response) => {
+router.delete("/admin/users/:userId/block", requireAdminAccess("manage"), async (req: Request, res: Response) => {
   try {
     await db.delete(blockedUsersTable).where(eq(blockedUsersTable.userId, paramString(req.params.userId)));
     res.status(204).end();
