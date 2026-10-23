@@ -21,16 +21,17 @@ import {
   lt,
   not,
   or,
+  sql,
 } from "drizzle-orm";
 import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
 import {
   ADMIN_SESSION_HEADER,
-  canManageBox,
   requireAdminAccess,
   resolveAdminAccess,
   adminAccessOf,
+  canManageBox,
   manageScope,
   type AdminAccess,
 } from "../lib/adminAccess";
@@ -167,7 +168,8 @@ router.get("/social/feed", async (req: Request, res: Response) => {
       return;
     }
 
-    const blocked = await db.select({ userId: blockedUsersTable.userId }).from(blockedUsersTable);
+    // El bloqueo es por box: solo se ocultan los autores bloqueados por el box de quien mira.
+    const blocked = await db.select({ userId: blockedUsersTable.userId }).from(blockedUsersTable).where(eq(blockedUsersTable.boxId, boxId));
     const blockedIds = blocked.map((r) => r.userId);
     const conditions = [
       eq(socialPostsTable.boxId, boxId),
@@ -543,8 +545,25 @@ router.patch("/admin/social/reports/:id/resolve", requireAdminAccess("manage"), 
 // ─── Block ────────────────────────────────────────────────────────────────────
 
 router.post("/admin/users/:userId/block", requireAdminAccess("manage"), async (req: Request, res: Response) => {
+  const access = adminAccessOf(res);
+  const targetId = paramString(req.params.userId);
+  // Box donde se bloquea: el del token; un super admin sin box atado indica ?boxId=.
+  const boxId = access.claims.boxId ?? (typeof req.query.boxId === "string" ? req.query.boxId : null);
+  if (!boxId) { res.status(400).json({ error: "boxId es requerido" }); return; }
+  if (!canManageBox(access, boxId)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (targetId === access.userId) { res.status(400).json({ error: "No puedes bloquearte a ti mismo." }); return; }
   try {
-    await db.insert(blockedUsersTable).values({ userId: paramString(req.params.userId) }).onConflictDoNothing();
+    // Solo se puede bloquear a alguien de SU box: miembro, o autor de una publicación/comentario del box.
+    const inBox = await db.execute<{ ok: number }>(sql`
+      select 1 as ok from wodplace_users wu
+      where wu.id = ${targetId} and (
+        exists (select 1 from box_members bm where bm.user_id::text = wu.auth_user_id::text and bm.box_id::text = ${boxId})
+        or exists (select 1 from social_posts sp where sp.user_id = wu.id and sp.box_id::text = ${boxId})
+        or exists (select 1 from social_comments sc where sc.user_id = wu.id and sc.box_id::text = ${boxId})
+      ) limit 1
+    `);
+    if (inBox.rows.length === 0) { res.status(404).json({ error: "No encontrado." }); return; }
+    await db.insert(blockedUsersTable).values({ userId: targetId, boxId }).onConflictDoNothing();
     res.status(201).json({ ok: true });
   } catch (error) {
     req.log.error({ err: error }, "Error blocking user");
@@ -553,8 +572,14 @@ router.post("/admin/users/:userId/block", requireAdminAccess("manage"), async (r
 });
 
 router.delete("/admin/users/:userId/block", requireAdminAccess("manage"), async (req: Request, res: Response) => {
+  const scope = manageScope(adminAccessOf(res));
+  if (scope && scope.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    await db.delete(blockedUsersTable).where(eq(blockedUsersTable.userId, paramString(req.params.userId)));
+    // Solo se levanta un bloqueo hecho por SU box.
+    await db.delete(blockedUsersTable).where(and(
+      eq(blockedUsersTable.userId, paramString(req.params.userId)),
+      scope ? inArray(blockedUsersTable.boxId, scope) : undefined,
+    ));
     res.status(204).end();
   } catch (error) {
     req.log.error({ err: error }, "Error unblocking user");

@@ -670,6 +670,9 @@ export const blockedUsersTable = pgTable("blocked_users", {
   blockedAt: timestamp("blocked_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // NOT NULL (FK a boxes) en la tabla real de Supabase; la ruta de bloqueo no lo
+  // enviaba y por eso siempre daba 500 (incidente 2026-10-22).
+  boxId: text("box_id").notNull(),
 });
 export type BlockedUserRow = typeof blockedUsersTable.$inferSelect;
 
