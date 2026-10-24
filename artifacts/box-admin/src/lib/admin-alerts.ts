@@ -69,12 +69,15 @@ export function reportReasonLabel(reason: string) {
   return REASON_LABEL[reason] ?? reason;
 }
 
-// social_reports has no box_id (the community feed is a single shared space
-// today) — this is every pending report, not just this box's.
-export async function fetchPendingReports(): Promise<PendingReport[]> {
+// Reportes de Comunidad pendientes DEL BOX seleccionado (social_reports tiene box_id y la base
+// solo se los deja leer a administradores/dueño/super admin; un super admin vería los de todos los
+// boxes si no se filtra, por eso el filtro). Resolverlos se hace en la pantalla "Reportes de
+// Comunidad" (con la publicación a la vista), no desde la campana.
+export async function fetchPendingReports(boxId: string): Promise<PendingReport[]> {
   const { data, error } = await supabase
     .from("social_reports")
     .select("id, post_id, reporter_name, reason, created_at")
+    .eq("box_id", boxId)
     .is("resolved_at", null)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -86,14 +89,6 @@ export async function fetchPendingReports(): Promise<PendingReport[]> {
     reason: r.reason,
     createdAt: r.created_at,
   }));
-}
-
-export async function resolveReport(id: string) {
-  const { error } = await supabase
-    .from("social_reports")
-    .update({ resolved_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
 }
 
 export type MemberAlert = { userId: string; name: string; date: string | null };

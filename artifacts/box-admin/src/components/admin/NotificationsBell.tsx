@@ -20,7 +20,6 @@ import {
   markMemberSeen,
   rejectRequest,
   reportReasonLabel,
-  resolveReport,
   type MemberAlert,
   type PendingReport,
   type PendingRequest,
@@ -52,7 +51,7 @@ export function NotificationsBell() {
   const enabled = isAdmin && !!boxId;
 
   const requests = useQuery({ queryKey: ["alert-requests", boxId], queryFn: () => fetchPendingRequests(boxId), enabled });
-  const reports = useQuery({ queryKey: ["alert-reports"], queryFn: fetchPendingReports, enabled: isAdmin });
+  const reports = useQuery({ queryKey: ["alert-reports", boxId], queryFn: () => fetchPendingReports(boxId), enabled });
   const overdue = useQuery({ queryKey: ["alert-overdue", boxId], queryFn: () => fetchOverdueMembers(boxId), enabled });
   const upcoming = useQuery({ queryKey: ["alert-upcoming", boxId], queryFn: () => fetchUpcomingRenewals(boxId), enabled });
   const unconfirmed = useQuery({ queryKey: ["alert-unconfirmed", boxId], queryFn: () => fetchUnconfirmedPayments(boxId), enabled });
@@ -95,10 +94,6 @@ export function NotificationsBell() {
   const reject = useMutation({
     mutationFn: (id: string) => rejectRequest(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-requests"] }),
-  });
-  const resolve = useMutation({
-    mutationFn: (id: string) => resolveReport(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-reports"] }),
   });
   const seeContract = useMutation({
     mutationFn: (userId: string) => markContractSeen(userId),
@@ -156,7 +151,7 @@ export function NotificationsBell() {
 
                 <Section icon={Flag} title="Reportes de comunidad" count={counts.reports}>
                   {reports.data?.map((r) => (
-                    <ReportRow key={r.id} r={r} busy={resolve.isPending} onResolve={() => resolve.mutate(r.id)} />
+                    <ReportRow key={r.id} r={r} onClick={close} />
                   ))}
                 </Section>
 
@@ -247,17 +242,20 @@ function RequestRow({ r, onApprove, onReject, busy }: { r: PendingRequest; onApp
   );
 }
 
-function ReportRow({ r, onResolve, busy }: { r: PendingReport; onResolve: () => void; busy: boolean }) {
+/** Cada reporte abre la pantalla "Reportes de Comunidad" (dentro del mismo panel): se decide con la publicación a la vista. */
+function ReportRow({ r, onClick }: { r: PendingReport; onClick: () => void }) {
   return (
-    <div className="flex items-center gap-2 rounded-2xl border bg-card p-3">
+    <Link
+      to="/more/reportes-comunidad"
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-2xl border bg-card p-3 active:bg-secondary/60"
+    >
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{reportReasonLabel(r.reason)}</p>
         <p className="truncate text-[11px] text-muted-foreground">Reportado por {r.reporterName} · {fmtDate(r.createdAt)}</p>
       </div>
-      <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full px-3" disabled={busy} onClick={onResolve}>
-        Marcar resuelto
-      </Button>
-    </div>
+      <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">Ver</span>
+    </Link>
   );
 }
 
