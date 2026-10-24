@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminMoreInvitesRouteImport } from './routes/_aut
 import { Route as AuthenticatedAdminMoreMyProfileRouteImport } from './routes/_authenticated/_admin/more/my-profile'
 import { Route as AuthenticatedAdminMoreNotificationsRouteImport } from './routes/_authenticated/_admin/more/notifications'
 import { Route as AuthenticatedAdminMorePlansRouteImport } from './routes/_authenticated/_admin/more/plans'
+import { Route as AuthenticatedAdminMoreReportesComunidadRouteImport } from './routes/_authenticated/_admin/more/reportes-comunidad'
 import { Route as AuthenticatedAdminMoreReportsRouteImport } from './routes/_authenticated/_admin/more/reports'
 import { Route as AuthenticatedAdminMoreSettingsRouteImport } from './routes/_authenticated/_admin/more/settings'
 import { Route as AuthenticatedAdminMoreWodRouteImport } from './routes/_authenticated/_admin/more/wod'
@@ -152,6 +153,12 @@ const AuthenticatedAdminMorePlansRoute =
     path: '/more/plans',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminMoreReportesComunidadRoute =
+  AuthenticatedAdminMoreReportesComunidadRouteImport.update({
+    id: '/more/reportes-comunidad',
+    path: '/more/reportes-comunidad',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminMoreReportsRoute =
   AuthenticatedAdminMoreReportsRouteImport.update({
     id: '/more/reports',
@@ -190,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/more/my-profile': typeof AuthenticatedAdminMoreMyProfileRoute
   '/more/notifications': typeof AuthenticatedAdminMoreNotificationsRoute
   '/more/plans': typeof AuthenticatedAdminMorePlansRoute
+  '/more/reportes-comunidad': typeof AuthenticatedAdminMoreReportesComunidadRoute
   '/more/reports': typeof AuthenticatedAdminMoreReportsRoute
   '/more/settings': typeof AuthenticatedAdminMoreSettingsRoute
   '/more/wod': typeof AuthenticatedAdminMoreWodRoute
@@ -214,6 +222,7 @@ export interface FileRoutesByTo {
   '/more/my-profile': typeof AuthenticatedAdminMoreMyProfileRoute
   '/more/notifications': typeof AuthenticatedAdminMoreNotificationsRoute
   '/more/plans': typeof AuthenticatedAdminMorePlansRoute
+  '/more/reportes-comunidad': typeof AuthenticatedAdminMoreReportesComunidadRoute
   '/more/reports': typeof AuthenticatedAdminMoreReportsRoute
   '/more/settings': typeof AuthenticatedAdminMoreSettingsRoute
   '/more/wod': typeof AuthenticatedAdminMoreWodRoute
@@ -241,6 +250,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/more/my-profile': typeof AuthenticatedAdminMoreMyProfileRoute
   '/_authenticated/_admin/more/notifications': typeof AuthenticatedAdminMoreNotificationsRoute
   '/_authenticated/_admin/more/plans': typeof AuthenticatedAdminMorePlansRoute
+  '/_authenticated/_admin/more/reportes-comunidad': typeof AuthenticatedAdminMoreReportesComunidadRoute
   '/_authenticated/_admin/more/reports': typeof AuthenticatedAdminMoreReportsRoute
   '/_authenticated/_admin/more/settings': typeof AuthenticatedAdminMoreSettingsRoute
   '/_authenticated/_admin/more/wod': typeof AuthenticatedAdminMoreWodRoute
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/more/my-profile'
     | '/more/notifications'
     | '/more/plans'
+    | '/more/reportes-comunidad'
     | '/more/reports'
     | '/more/settings'
     | '/more/wod'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '/more/my-profile'
     | '/more/notifications'
     | '/more/plans'
+    | '/more/reportes-comunidad'
     | '/more/reports'
     | '/more/settings'
     | '/more/wod'
@@ -317,6 +329,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/more/my-profile'
     | '/_authenticated/_admin/more/notifications'
     | '/_authenticated/_admin/more/plans'
+    | '/_authenticated/_admin/more/reportes-comunidad'
     | '/_authenticated/_admin/more/reports'
     | '/_authenticated/_admin/more/settings'
     | '/_authenticated/_admin/more/wod'
@@ -480,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMorePlansRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/more/reportes-comunidad': {
+      id: '/_authenticated/_admin/more/reportes-comunidad'
+      path: '/more/reportes-comunidad'
+      fullPath: '/more/reportes-comunidad'
+      preLoaderRoute: typeof AuthenticatedAdminMoreReportesComunidadRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/_admin/more/reports': {
       id: '/_authenticated/_admin/more/reports'
       path: '/more/reports'
@@ -518,6 +538,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminMoreMyProfileRoute: typeof AuthenticatedAdminMoreMyProfileRoute
   AuthenticatedAdminMoreNotificationsRoute: typeof AuthenticatedAdminMoreNotificationsRoute
   AuthenticatedAdminMorePlansRoute: typeof AuthenticatedAdminMorePlansRoute
+  AuthenticatedAdminMoreReportesComunidadRoute: typeof AuthenticatedAdminMoreReportesComunidadRoute
   AuthenticatedAdminMoreReportsRoute: typeof AuthenticatedAdminMoreReportsRoute
   AuthenticatedAdminMoreSettingsRoute: typeof AuthenticatedAdminMoreSettingsRoute
   AuthenticatedAdminMoreWodRoute: typeof AuthenticatedAdminMoreWodRoute
@@ -540,6 +561,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminMoreNotificationsRoute:
     AuthenticatedAdminMoreNotificationsRoute,
   AuthenticatedAdminMorePlansRoute: AuthenticatedAdminMorePlansRoute,
+  AuthenticatedAdminMoreReportesComunidadRoute:
+    AuthenticatedAdminMoreReportesComunidadRoute,
   AuthenticatedAdminMoreReportsRoute: AuthenticatedAdminMoreReportsRoute,
   AuthenticatedAdminMoreSettingsRoute: AuthenticatedAdminMoreSettingsRoute,
   AuthenticatedAdminMoreWodRoute: AuthenticatedAdminMoreWodRoute,

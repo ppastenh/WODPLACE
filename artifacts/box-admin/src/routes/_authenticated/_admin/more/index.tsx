@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
-import { UserCog, Layers, Settings, LifeBuoy, Bell, FolderOpen, LogOut, ChevronRight, Ticket, Flame, User } from "lucide-react";
+import { UserCog, Layers, Settings, LifeBuoy, Bell, FolderOpen, LogOut, ChevronRight, Ticket, Flame, User, Flag } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { countPendingReports } from "@/lib/community-reports";
 import { useBox } from "@/lib/box-context";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/")({
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/_authenticated/_admin/more/")({
 const items: Array<{ to: string; label: string; icon: LucideIcon; group: string }> = [
   { to: "/more/notifications", label: "Avisos", icon: Bell, group: "Comunidad" },
   { to: "/more/wod", label: "WOD del día", icon: Flame, group: "Comunidad" },
+  { to: "/more/reportes-comunidad", label: "Reportes de Comunidad", icon: Flag, group: "Comunidad" },
   { to: "/more/coaches", label: "Coaches", icon: UserCog, group: "Equipo" },
   { to: "/more/invites", label: "Invitar Staff", icon: Ticket, group: "Equipo" },
   { to: "/more/reports", label: "Ayuda y soporte", icon: LifeBuoy, group: "Ayuda y soporte" },
@@ -36,7 +38,13 @@ const GROUP_ORDER = ["Comunidad", "Equipo", "Ayuda y soporte", "Configuración",
 function MorePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { isAdmin, isOwner, myPermissions } = useBox();
+  const { boxId, isAdmin, isOwner, myPermissions } = useBox();
+  // Contador de reportes pendientes del box (solo administradores; un coach no hace esta consulta).
+  const pendingReports = useQuery({
+    queryKey: ["community-reports-count", boxId],
+    queryFn: () => countPendingReports(boxId),
+    enabled: isAdmin && !!boxId,
+  });
 
   async function signOut() {
     await qc.cancelQueries();
@@ -53,6 +61,8 @@ function MorePage() {
   const visibleItems = items.filter((it) => {
     if (it.to === "/more/notifications") return canPostAsBox;
     if (it.to === "/more/my-profile") return !isAdmin;
+    // F1: los reportes de Comunidad son solo de administradores del box (la base también lo exige).
+    if (it.to === "/more/reportes-comunidad") return isAdmin;
     // Fase B/B1: contratos son solo del dueño del box (o super_admin) —
     // ni un box_admin que no sea el dueño, ni un coach, los ven.
     if (it.to === "/more/files") return isOwner;
@@ -86,6 +96,9 @@ function MorePage() {
                   <Link key={it.to} to={it.to} className="flex items-center gap-3 p-4 active:bg-secondary/60">
                     <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary"><Icon className="h-5 w-5" /></div>
                     <span className="flex-1 text-sm font-semibold">{it.label}</span>
+                    {it.to === "/more/reportes-comunidad" && (pendingReports.data ?? 0) > 0 ? (
+                      <span className="rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-destructive-foreground">{pendingReports.data}</span>
+                    ) : null}
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </Link>
                 );
