@@ -1,5 +1,38 @@
 # LANZAMIENTO.md
 
+## Mapa de pendientes (ordenado; actualizado 2026-10-24)
+
+Esfuerzo en "sesiones" (tuyas y mías juntas), estimado. **Nada de lo que está "sin aplicar" se aplica sin tu orden.** Los detalles de cada ítem están en las secciones de abajo y en `ESTADO.md`; los diseños en `DISENO-SEGURIDAD-CUENTAS.md`, `COMPARATIVA-L1-VERIFICACION-CORREO.md`, `PLAN-REUBICACION-ADMIN.md` y `DESIGN.md`.
+
+### 1. BLOQUEANTES antes del primer usuario real
+**Regla:** no se invita ni se registra a ninguna persona real mientras el segundo factor esté apagado, ni antes de cerrar este bloque. El primer usuario real dispara además Supabase Pro y el simulacro de restauración (ver "Etapa final").
+
+| # | Pendiente | Estado | Esfuerzo |
+|---|---|---|---|
+| 1.1 | **L1 — verificar el correo** (toma previa de cuenta). Opción B elegida: verificación nativa de Supabase + SMTP de Resend, código de 6 dígitos | Decidido, **sin implementar**. Antes: Pía comprueba en el panel de Supabase "Confirm email", "Email OTP expiration" y el SMTP | 1 a 2 sesiones + 10 min de Pía |
+| 1.2 | **L2 — registro de seguridad** (`security_events`, de solo agregar, lo lee solo super admin; eventos: cambios de rol, invitaciones, tokens de panel, acciones de super admin; **sin** inicios de sesión por ahora) | Diseño aprobado; **migración sin preparar ni aplicar** (la preparo cuando la pidas) | 1 sesión |
+| 1.3 | **Endurecimiento de soporte** ("Contactar a WODPLACE"): bucket de capturas privado con URLs firmadas, límites de envíos por administrador/box/día, largo máximo, tipo y tamaño validados en el servidor, `box_id` puesto por el servidor, tuteo (el tuteo ya está) | Diseñado (fase F8); sin aplicar; requiere migración con tu aprobación | 1 a 2 sesiones |
+| 1.4 | **Reactivar el segundo factor** (hoy APAGADO desde el 2026-10-23): encender el interruptor, comprobar `+super` con sus 2 factores, anotar qué entrada de 2FAS es cada uno, decidir si se quita el rol super_admin de la cuenta diaria, correr la regresión con el interruptor encendido | Pasos escritos (sección siguiente); pendiente de ejecutar | 0,5 sesión |
+| 1.5 | **Supabase Pro + respaldos + simulacro de restauración** (US$25/mes; trae respaldos automáticos, bloqueo de contraseñas filtradas y 7 días de Auth Logs) | Pendiente; se dispara con el primer usuario real. Mientras tanto, rutina de respaldo manual | 0,5 sesión (simulacro) + trámite de pago de Pía |
+| 1.6 | **Limpieza de cuentas y boxes de prueba** (A9): `keiravie@gmail.com` (rol, membresía, PIN), `test-box-admin@wodplace.test`, las 5 cuentas `diag-ct-*` y sus 2 boxes, `s4test`, `s4reg`, y decidir sobre `piak.pastenh`; más los 9 archivos sueltos de Storage | Lista hecha en `ESTADO.md`; **no se borra nada sin tu orden** (con el cruce de Storage de CLAUDE.md) | 0,5 sesión |
+| 1.7 | **Retención de logs**: decidir plan (Render guarda 7/14/30 días según plan; Supabase Auth Logs 1 hora en Free y 7 días en Pro). Lo cubre 1.2 y 1.5 | Pendiente de tu decisión de plan; sin código | decisión de Pía |
+
+### 2. REUBICACIÓN del área de administración (`PLAN-REUBICACION-ADMIN.md`)
+Todo **sin empezar**; cada fase espera tu orden (F1 tiene su plan en `PLAN-F1-REPORTES-COMUNIDAD.md`, sin código). **Orden decidido por Pía (2026-10-24):** **F1** Comunidad → "Reportes de Comunidad" en el panel (sin migración, 1 sesión) → **F3** Contratos → Aceptaciones (1) → **F4** nombre del box por Ajustes (0,5) → **F2** moderación en la publicación con sesión + rol + box, sin token, y endurecer `dash-link` (1) → **F6** app: quitar las funciones de administración de "Más" (1) → **F7** servidor: eliminar rutas `/admin/*` y el token de administrador (1) → después las dos que necesitan migración: **F5** Contratos del dueño + Acuerdo de Plataforma con guardia en el servidor del panel (1 a 2) y **F9** "Buzón de alumnos" (2). **F8** (endurecimiento de soporte) va con los bloqueantes (1.3).
+- **Dependencia:** F6 saca el área de administración de "Más", así que **"Más" no se rediseña ni se pule antes de F6** (tampoco su tanda C visual).
+**Pendiente de tu decisión: el PIN** — candado local sin autorización (con SecureStore y biometría que ya existen, sin librerías nuevas) o retirarlo del todo; mientras tanto no se toca. Nombres decididos: "Buzón de alumnos" y "Contactar a WODPLACE".
+
+### 3. VISUAL (va por el chat de diseño)
+- **Tanda C de la Fase 1** (`more.tsx` y `profile.tsx`): `more.tsx` sale de la app con F6, así que no conviene pulirla; queda `profile.tsx`.
+- **Fase 2 de alineación** (valores sueltos 13, 14, 17, 18, 20…): esperando tus capturas anotadas.
+- **Ronda de color** (resuelve juntos: destino del índigo y del cobre, 18+5 pares de contraste que no cumplen, texto sobre botones cobre, botón deshabilitado en gris sólido, los 26 presionados con opacidad que quedan, MovementSheet y la tarjeta de próxima clase de `home`, modo oscuro general). `DESIGN.md` sigue sin commit hasta decidir la paleta.
+
+### 4. ETAPA FINAL (ver "Etapa final" más abajo)
+**Fecha a vigilar:** la **Ley 21.719** (protección de datos personales) entra en vigor el **1 de diciembre de 2026**. No es bloqueante hoy y no se mueve al bloque 1; se vigila porque afecta a los documentos legales (política de privacidad, ARCO, autorización de cumpleaños de menores) y a lo que ya hace la app con datos de menores y contactos de emergencia.
+Pagos; temas legales (autorización de cumpleaños de menores, privacidad y ARCO, contratos por rol B2, pantalla de versión del Acuerdo B9; los trae Pía); tienda (Google Play Console US$25 y su ficha A10, Apple Developer C7 sin prioridad); build de producción (A4 EAS, A5 `expo-updates`, A6 Sentry, A11 igualar `main`, Render pagado); sondeo de red de la app (A7, diseño aprobado y sin aplicar; es de costo cero y puede hacerse antes).
+
+---
+
 Consolidado priorizado de todo lo que falta para publicar WODPLACE en Android. Hecho leyendo `ESTADO.md` completo y el código real — nada de esto está aplicado, es solo el plan. Se actualiza junto con `ESTADO.md` a medida que se avanza.
 
 **Esfuerzo:** en "sesiones de trabajo" tuyas y mías juntos (no horas de reloj) — una sesión típica de este proyecto. Es una estimación, no una promesa.
