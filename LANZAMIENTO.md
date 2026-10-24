@@ -243,6 +243,8 @@ Mientras ese primer usuario real no exista, se sigue con la rutina de respaldo m
 
 ## C — Mejoras futuras, sin apuro
 
+
+- **Idea futura (después del lanzamiento): reportar comentarios**, no solo publicaciones. Hoy solo se reportan publicaciones (decisión de Pía, 2026-10-24: no entra en F1 ni en F2). Requeriría una columna nueva en `social_reports`, un botón en la app y una versión nueva.
 | # | Qué es | Esfuerzo | Depende de ti | Depende de mí |
 |---|---|---|---|---|
 | C1 | **RM en Historial: unidad original + conversión, y con/sin barra.** Mostrar "225 lb · 102,1 kg" es solo presentación (el dato ya existe). "Con/sin barra" necesita una columna nueva (nullable) — los RM ya guardados no tendrían ese dato retroactivamente. | 1 sesión | Nada | Agregar la columna + la presentación |
