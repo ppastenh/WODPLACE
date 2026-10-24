@@ -14,9 +14,9 @@ export const Route = createFileRoute("/_authenticated/_admin/more/reports")({
   head: () => ({
     meta: [
       { title: "Soporte — WODPLACE" },
-      { name: "description", content: "Reportá un problema al equipo de WODPLACE." },
+      { name: "description", content: "Reporta un problema al equipo de WODPLACE." },
       { property: "og:title", content: "Soporte — WODPLACE" },
-      { property: "og:description", content: "Reportá un bug o falla de la app." },
+      { property: "og:description", content: "Reporta un bug o falla de la app." },
     ],
   }),
   component: SupportPage,
@@ -115,7 +115,7 @@ function SupportPage() {
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Contanos qué pasó, qué esperabas que pase, y en qué pantalla estabas..."
+            placeholder="Cuéntanos qué pasó, qué esperabas que pasara y en qué pantalla estabas..."
             rows={5}
             className="resize-none"
           />

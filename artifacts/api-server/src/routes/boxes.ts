@@ -831,7 +831,7 @@ router.delete(
         return;
       }
       if (comment.user_id !== userId && !(admin && canManageBox(admin, comment.box_id))) {
-        res.status(403).json({ error: "No podés eliminar este comentario." });
+        res.status(403).json({ error: "No puedes eliminar este comentario." });
         return;
       }
       await db.execute(sql`

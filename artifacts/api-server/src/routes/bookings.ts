@@ -492,7 +492,7 @@ router.post("/bookings", async (req: Request, res: Response) => {
     if (error instanceof Error && error.message === "DAILY_LIMIT_REACHED") {
       res.status(409).json({
         code: "DAILY_LIMIT_REACHED",
-        error: "Ya tenés algo agendado hoy. Para una segunda clase el mismo día, pedíselo al administrador de tu box.",
+        error: "Ya tienes algo agendado hoy. Para una segunda clase el mismo día, pídeselo al administrador de tu box.",
       });
       return;
     }
