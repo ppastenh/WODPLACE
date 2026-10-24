@@ -86,6 +86,8 @@ El log ya no escribe el token del enlace.
 4. Opcional y más fuerte, más adelante: una función de base `has_accepted_current_platform_agreement()` usada en las políticas de las tablas sensibles.
 
 ## 7. Fases (cada una con commits revertibles y pruebas por rol y box)
+
+**Orden decidido por Pía (2026-10-24): F1, F3, F4, F2, F6, F7, y después F5 y F9 (las que necesitan migración); F8 (soporte) va con los bloqueantes de `LANZAMIENTO.md`. Dependencia: F6 saca el área de administración de "Más", así que "Más" no se rediseña antes. Los números de fase no cambian; solo el orden de ejecución. F1 tiene su plan detallado en `PLAN-F1-REPORTES-COMUNIDAD.md`. Comentarios reportables: NO (Pía, 2026-10-24): idea futura posterior al lanzamiento, fuera de F1 y de F2.**
 Pruebas de cada fase: cuentas desechables en dos boxes (dueño, administrador del box, administrador de otro box, coach, alumno, y super admin sin y con segundo factor), resultado esperado escrito antes, y repetidas en producción. Reversa: revertir los commits de la fase (cada fase se despliega por separado).
 
 | Fase | Contenido | Depende de | Migración de base |
