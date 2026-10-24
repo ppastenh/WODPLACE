@@ -1,0 +1,31 @@
+# PROPUESTA — NO APLICADA. Cambio en artifacts/super-admin/src/lib/audit-log.ts
+# Solo es necesario DESPUÉS de aplicar la migración. Con la migración aplicada, el
+# código actual sigue funcionando (el disparador ignora lo que mande el navegador);
+# este cambio solo deja claro que el actor ya no sale del navegador.
+--- a/artifacts/super-admin/src/lib/audit-log.ts
++++ b/artifacts/super-admin/src/lib/audit-log.ts
+@@
+- * Caveat (documented on the table too): this is a client-attested log, not
+- * server-enforced. RLS only grants INSERT + SELECT (to super_admin), never
+- * UPDATE/DELETE, so at least existing rows can't be rewritten — but nothing
+- * stops a session from skipping the call outright.
++ * Desde la migración 20261024: solo super admin puede insertar, y el actor, el
++ * id y la fecha los pone la base desde la sesión (disparador
++ * z_super_admin_audit_log_set_actor); lo que mande el navegador se ignora.
++ * Sigue siendo un registro "atestiguado por el cliente" en el sentido de que
++ * nada obliga a una sesión a llamarlo, pero ya no se puede falsificar el actor
++ * ni escribir desde una cuenta que no sea super admin.
+@@
+-    const { error } = await supabase.from("super_admin_audit_log").insert({
+-      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+-      actor_email: actorEmail,
++    const { error } = await supabase.from("super_admin_audit_log").insert({
++      // Valores de relleno: el tipo generado exige estas columnas, pero el
++      // disparador de la base las reemplaza (probado: insertar sin ellas también funciona).
++      id: "lo-pone-la-base",
++      actor_email: "lo-pone-la-base",
+       action,
+       target_type: targetType,
+       target_id: targetId,
+# Los 8 llamadores (admins.tsx, boxes.tsx, support.tsx) no cambian: siguen pasando
+# el correo, que ahora se ignora (se puede quitar el parámetro en una limpieza posterior).

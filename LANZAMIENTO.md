@@ -50,6 +50,43 @@ Ambos ítems nacen del incidente de seguridad del 2026-10-22/23. Ninguno está i
 4. **Opción de producto:** registro solo con Google (sin contraseña), lo que elimina el problema de raíz pero cambia la experiencia.
 5. Complemento: mensaje de error genérico en el ingreso y en el registro, para no revelar si un correo existe (hoy "No encontramos una cuenta con ese email." y "Ya existe una cuenta con ese email.").
 
+### L1 — DECISIÓN (Pía, 2026-10-24): opción B, verificación nativa de Supabase con SMTP de Resend. NO implementar todavía; es BLOQUEANTE antes del primer usuario real
+
+**Confirmado en la documentación y el código oficiales (2026-10-24) — fuentes:** [Passwordless / OTP](https://supabase.com/docs/guides/auth/auth-email-passwordless), [límites](https://supabase.com/docs/guides/auth/rate-limits), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp), [plantillas](https://supabase.com/docs/guides/auth/auth-email-templates), [Resend + Supabase](https://resend.com/docs/send-with-supabase-smtp), [verify.go](https://github.com/supabase/auth/blob/master/internal/api/verify.go).
+- **Longitud del código:** 6 dígitos.
+- **Duración:** 1 hora por defecto; se cambia en Authentication → Sign In / Providers → Email → "Email OTP expiration" (más de 86.400 segundos está desaconsejado). **El mismo valor vale para el código de confirmación, la recuperación de contraseña y las invitaciones**; recomiendo **30 minutos (1.800 s)**.
+- **Un solo uso: NO está confirmado.** La documentación lo afirma solo para los enlaces mágicos, no para los códigos; el código fuente consultado (`signupVerify`) no muestra que el código se invalide al usarlo. **Se resuelve con la prueba de aceptación A2** (reutilizar un código ya usado).
+- **Límites de intentos:** la documentación fija 30 verificaciones cada 5 minutos por IP (ajustable) y **no documenta un tope de intentos fallidos por código**. Con 6 dígitos (1.000.000 de combinaciones) y 30 intentos cada 5 minutos por IP, un atacante desde una sola IP prueba unos 360 códigos por hora (0,036 %); desde muchas IPs, más. Mitigación: vencimiento de 30 minutos y bajar el límite de verificaciones a 10 cada 5 minutos; si se quisiera más, verificar a través de nuestro servidor con un tope por correo.
+- **Límites de envíos:** 1 correo por usuario cada 60 segundos; 30 solicitudes cada 5 minutos por IP en registro y reenvío; con SMTP propio, 30 correos por hora en el proyecto (ajustable en Auth → Rate Limits).
+- **SMTP de Resend:** ya está configurado y funcionando (dominio `wodplace.cl`, remitente `no-responder@wodplace.cl`). Parámetros de Resend: host `smtp.resend.com`, puerto 465, usuario `resend`, contraseña = la clave de API de Resend; en Authentication → Notifications → Email → SMTP Settings. Solo hay que comprobar que sigue activo.
+- **Confirmación de correo del proyecto:** debe estar activa (en Authentication → Sign In / Providers → Email); el panel del box ya depende de ello.
+- **Lo que NO pude ver:** el panel de Supabase (no tengo acceso). Pía debe comprobar en el panel: "Confirm email" activo, "Email OTP expiration" y el estado del SMTP.
+
+**Plantilla "Confirm signup"** (Authentication → Notifications → Email → Templates), en español chileno neutro, tuteo:
+- Asunto: `Tu código de verificación de WODPLACE`
+- Cuerpo: "Hola, usa este código para terminar de crear tu cuenta en WODPLACE:" / **{{ .Token }}** (en grande) / "El código vence en 30 minutos. Si no creaste una cuenta, ignora este correo." / "Equipo WODPLACE".
+
+**Plan de implementación (sin aplicar):**
+1. **`/auth/register` y la app de registro.** El registro con correo deja de crear la cuenta confirmada. La app llama `supabase.auth.signUp` (con la confirmación de correo activa no devuelve sesión) y muestra una pantalla "Revisa tu correo: escribe el código de 6 dígitos" con "Reenviar" (60 s de espera, tope 3) y "Usar otro correo"; al verificar con `verifyOtp` se obtiene la sesión y se sigue con `/auth/complete-profile` (la misma ruta que ya usa Google) para nombre, fecha de nacimiento y celular. La ruta `/auth/register` actual deja de crear cuentas confirmadas: se retira o queda solo para el camino de invitación. Pasos de compatibilidad: una app antigua que llame `/auth/register` recibe un mensaje claro de actualizar.
+2. **Respuesta que no revela si el correo existe.** Se comprueba que `signUp` con un correo ya confirmado responde igual y no crea nada; si no, se resuelve en la prueba A5.
+3. **App de ingreso.** Los textos ya aprobados (error único y ayuda para Google). La pantalla de ingreso por correo primero (`checkEmailExists`) sigue revelando existencia: decisión aparte (pantalla única).
+4. **Correos.** Plantilla "Confirm signup" con el código; vencimiento de 30 minutos; límite de verificación a 10 cada 5 minutos; límite horario de correos del proyecto subido a lo necesario; revisar spam y reputación del dominio.
+5. **Invitaciones de alumno.** Ruta nueva en el servidor para el registro CON código personal: valida que el código existe, está vigente y que **el correo del registro es el mismo de la invitación**; solo entonces crea la cuenta ya confirmada (`email_confirm: true`) y reutiliza la fila de la invitación; en cualquier otro caso no hay excepción y la cuenta queda sin confirmar. Es la única excepción y vive en el servidor.
+6. **Limpieza.** Borrar a diario las cuentas de Supabase sin confirmar con más de 24 horas (tarea programada); no tienen datos de WODPLACE porque la fila de `wodplace_users` se crea después de verificar.
+7. **Google.** Sin cambios; la protección nativa de Supabase se activa sola con cuentas sin confirmar.
+
+**Prueba de aceptación (con tu cuenta de Google y otra tuya; yo reviso la base entre pasos):**
+- **A1** Registro con el correo de la cuenta B: llega el código; sin código no entra; código incorrecto da error; el correcto entra y pide el perfil.
+- **A2** Reutilizar el mismo código ya usado: no debe dar acceso (resuelve lo no confirmado del "un solo uso").
+- **A3** Código vencido (30 minutos): se rechaza.
+- **A4** Reenvío antes de 60 s: bloqueado; después, llega un código nuevo y el anterior deja de servir.
+- **A5** Registrar un correo que ya tiene cuenta confirmada: misma respuesta en pantalla, no se crea otra cuenta ni sesión.
+- **A6** Toma previa: se registra el correo de tu cuenta de Google A con una contraseña distinta y NO se verifica; después entras con Google con A; la contraseña distinta ya no entra y la cuenta queda con la identidad de Google.
+- **A7** La cuenta de Google A ya existe y alguien intenta registrar su correo: no se crea nada ni se entrega sesión.
+- **A8** Invitación de alumno: con el correo de la invitación y el código personal, la cuenta nace verificada sin segundo código; con un código de OTRO correo, vencido o inexistente, no.
+- **A9** La matriz de rol y box del incidente y los chequeos `check:super-admin-inlining` y `check:security-definer-grants` siguen pasando.
+- **A10** Entrega real: el correo llega a la bandeja principal en menos de un minuto (no a spam) y el límite horario no bloquea un día normal.
+
 ### L2 — Registro de seguridad
 
 **Qué hay hoy y qué dice la documentación:**

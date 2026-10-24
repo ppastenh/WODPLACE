@@ -26,7 +26,7 @@
 
 ### Inicio de sesión con Google
 - Google entrega el correo ya verificado. Si ya existe una cuenta **confirmada** con ese correo, Supabase vincula la identidad (comportamiento de la plataforma, sin interruptor): es seguro porque ese correo sí se verificó.
-- El caso peligroso desaparece porque ya no existen cuentas confirmadas sin verificar. Una cuenta pendiente (sin verificar) cuyo dueño real entra con Google: la documentación dice que Supabase **elimina las identidades sin confirmar** de esa cuenta al vincular; como defensa adicional, `/auth/whoami` detecta "cuenta con identidad de correo sin `email_verified_at` y con identidad de Google" y entonces pone una **contraseña aleatoria con la API de administración y cierra todas las sesiones** (la contraseña del atacante deja de servir). Hay que probarlo con cuentas reales de Pía antes de confiar (ver el plan de prueba).
+- Una cuenta **sin confirmar** con ese correo: según el código de Supabase, al llegar el login de Google se borran sus identidades sin confirmar y **se pone su contraseña en nulo**, y la cuenta queda confirmada. Esa protección ya existe y se activa sola cuando las cuentas nacen sin confirmar. **Por eso se RETIRA la "defensa extra" a medida** que figuraba en la versión anterior de este diseño (cambiar la contraseña y cerrar sesiones desde `/auth/whoami`): no se construye nada propio salvo que la prueba lo demuestre necesario. Detalle, fuentes y prueba en `COMPARATIVA-L1-VERIFICACION-CORREO.md`.
 
 ### SMTP propio con Resend: límites, costo, ajustes
 - **Resend** ([precios](https://resend.com/pricing)): Free = 3.000 correos al mes y **100 por día**, 3 dominios; Pro US$20 al mes = 50.000 al mes, sin límite diario; excedente US$0,90 por 1.000 (solo en planes pagados con "pago por uso" activado).
@@ -58,32 +58,35 @@ Registro sin sesión hasta verificar; código incorrecto, vencido y reutilizado;
 
 ---
 
-## L2 — Diseño del registro de seguridad (`security_events`)
+## L2 — Registro de seguridad MÍNIMO (versión simplificada, 2026-10-24)
 
-### Qué se registra
-| Evento | Cómo se captura | Datos |
+Una sola tabla donde **nadie pueda actualizar ni borrar filas**, escrita **solo por el servidor y por disparadores**, **legible solo por super admin**, con **retención simple**. Sin hashes encadenados ni particiones por ahora (quedan como mejora futura). No se aplica nada hasta que Pía apruebe el diseño y la migración.
+
+### La tabla `security_events`
+`id`, `created_at` (la pone la base), `event_type`, `actor_user_id` (quién), `target_user_id` (a quién, si aplica), `box_id`, `ip_parcial`, `detail` (JSON corto, con tope de tamaño). RLS activado; política de lectura solo `is_super_admin()`; **sin** política de INSERT/UPDATE/DELETE para `authenticated`; se quitan a `anon` y `authenticated` todos los privilegios salvo SELECT (que RLS limita). Escriben únicamente los disparadores (`SECURITY DEFINER`) y el servidor con su conexión. El navegador nunca escribe. **No se guardan** contraseñas, tokens, códigos de invitación, textos de mensajes, fechas de nacimiento ni edades.
+
+### Eventos y de dónde salen
+| Evento | De dónde sale | Costo / comentario |
 |---|---|---|
-| Inicio de sesión (y cierre) | Disparador sobre `auth.sessions` (hay que comprobar que el proyecto permita disparadores en el esquema `auth`; ya existen sobre `auth.users`) | usuario, IP parcial, agente, aal, método (correo/Google) |
-| Alta, cambio y baja de **roles** | Disparador sobre `user_roles` | quién (usuario de la sesión), a quién, rol, box |
-| Alta, **canje y borrado de invitaciones** (staff y alumnos) | Disparadores sobre `admin_invites` y `member_invites` (INSERT, UPDATE de `used_at`, DELETE) | quién, invitación (sin el código), rol, box, correo destinatario parcial |
-| **Emisión y uso de tokens de panel**, y denegaciones 401/403 en rutas de administración | El servidor, en `/admin/pin/*` y en el control de acceso de administración | cuenta, box, resultado, ruta |
-| Cambios del interruptor aal2 y otros ajustes | Ya existe `app_settings_audit`; se une en la vista | clave, valor anterior y nuevo |
-| Cambios de factores MFA | Disparador sobre `auth.mfa_factors` | usuario, tipo, estado |
-| Acciones de super admin | Hoy `super_admin_audit_log` (ver abajo) | actor, acción, objetivo |
-| Borrados de moderación (publicaciones/comentarios), bloqueos | El servidor, en las rutas que ya protegen por box | quién, qué, box |
+| **Cambios de rol** (alta, cambio, baja) | Disparador sobre `user_roles` | Bajo: tabla casi estática (8 filas hoy) |
+| **Invitaciones: alta, canje, borrado** (staff y alumnos) | Disparadores sobre `admin_invites` y `member_invites` (INSERT, UPDATE de `used_at`, DELETE) | Bajo. Cubre el hueco de hoy: **borrar o cancelar una invitación no deja registro** |
+| **Emisión de tokens de panel** y denegaciones (401/403) en rutas de administración | El servidor (`/admin/pin/*` y `adminAccess`) | Bajo; se agrupan denegaciones repetidas para que no llenen la tabla |
+| **Acciones de super admin** | Hoy `super_admin_audit_log` (ver su propuesta de endurecimiento aparte); en `security_events` se enlazan o se migran | Ninguno si se mantiene la tabla actual |
+| **Cambios de factores de segundo factor** | Disparador sobre `auth.mfa_factors` | Bajo |
+| **Cambios del interruptor aal2** | Ya existe `app_settings_audit` | Ninguno |
+| ~~Inicios de sesión~~ | **FUERA de esta versión (decisión de Pía, 2026-10-24).** No se crea ningún disparador sobre `auth.sessions` por ahora | Queda como **pendiente a evaluar**: la opción sería un disparador `AFTER INSERT` sobre `auth.sessions` (comprobado que se puede crear), con el riesgo de que Supabase cambie columnas de esa tabla en una actualización. Alternativas: la columna `last_sign_in_at` (solo el último inicio) o Supabase Pro con Log Drains |
 
-### Dónde y cómo se evita que se manipule o se llene
-- **Tabla nueva `security_events`**, de **solo agregar**: RLS activado; **sin** políticas de UPDATE ni DELETE; se quitan esos privilegios (y TRUNCATE) a `anon` y `authenticated`; solo escriben disparadores `SECURITY DEFINER` y el servidor con la conexión de servicio. **Nadie escribe directo desde el navegador.**
-- **Hallazgo sobre la tabla que ya existe:** `super_admin_audit_log` (13 filas) deja insertar a **cualquier administrador de box** (política `user_is_any_box_admin()`) y el `actor_email` lo manda el navegador, o sea **se puede falsificar**; además registra solo algunas acciones (por ejemplo sí registró el 23-oct a las 01:44:04 que `+super` otorgó el rol a keiravie, pero **no** registra borrar o cancelar invitaciones). Propuesta: el nuevo registro la reemplaza para lo crítico, y las acciones de super admin pasan a escribirse con disparadores (no desde el navegador).
-- **Cadena de hashes:** cada fila guarda el hash de la anterior; un exportado mensual permite detectar borrados o ediciones (la manipulación con la conexión de servicio no se puede impedir, sí detectar).
-- **Que no se llene:** un tope de tamaño por campo (los detalles son JSON de pocos campos, sin cuerpos de mensajes ni datos personales), agrupar eventos repetidos idénticos (por ejemplo, 200 denegaciones iguales en un minuto = 1 fila con contador), límite por tipo y por hora con alerta si se supera (señal de ataque), y particionado por mes para borrar por retención sin recorrer la tabla.
-- **No se guardan:** contraseñas, tokens, códigos de invitación completos, textos de mensajes, fechas de nacimiento ni edades de menores; IP solo parcial (o con hash con sal rotativa).
+### Que no se llene ni se manipule (versión mínima)
+Tope de tamaño del JSON, agrupar eventos repetidos idénticos (denegaciones), y que **nadie con sesión pueda escribir ni modificar** (privilegios y RLS). La manipulación con la conexión de servicio (el dueño de la base) no se puede impedir, solo detectar; eso es la mejora futura de hashes encadenados.
 
 ### Quién lo lee
-Solo **super admin** (política de lectura con `is_super_admin()`, con aal2 cuando el interruptor esté encendido), mediante una pantalla de solo lectura en super-admin con filtros por cuenta, tipo y fecha. El dueño de un box podría ver más adelante solo los eventos de su box (cambios de roles e invitaciones), sin IP.
+Solo super admin, con una pantalla de solo lectura en super-admin (filtros por cuenta, tipo y fecha).
 
-### Retención
-24 meses en la base; exportación mensual a un archivo fuera de la base (por ejemplo, almacenamiento privado) con su hash; borrado por partición vencida. Complementos que NO reemplazan este registro: pasar a Supabase Pro (7 días de Auth Logs frente a 1 hora en Free) y, si se quiere, Log Drains (Pro, US$60 por drain al mes).
+### Retención simple
+24 meses; un borrado programado mensual de lo más antiguo (con la conexión de servicio, nunca desde un usuario). Exportación a un archivo fuera de la base queda como mejora futura.
 
 ### Pruebas y migración
-Migración revisable con reversa, chequeos `check:super-admin-inlining` y `check:security-definer-grants`; pruebas con transacciones con rollback de que `anon`/`authenticated` no pueden insertar, editar ni borrar; prueba de que cada evento de la tabla se genera (crear/cambiar/borrar un rol, una invitación, un factor, iniciar sesión); prueba de carga del agrupamiento. **No se aplica nada hasta que Pía apruebe el diseño y la migración.**
+Migración revisable con reversa; `check:super-admin-inlining` y `check:security-definer-grants`; pruebas con transacciones con ROLLBACK de que `anon`/`authenticated` no pueden insertar, actualizar ni borrar y de que solo super admin lee; prueba de que cada evento de la tabla se genera. **No se aplica nada hasta que Pía apruebe el diseño y la migración.**
+
+### Endurecimiento aparte de `super_admin_audit_log` (propuesta lista, no aplicada)
+SQL, reversa y pruebas en `supabase/propuestas/` (`20261024_super_admin_audit_log_solo_super_admin.sql` y su `.reversa.sql`): INSERT solo con `is_super_admin()`, actor/id/fecha tomados de la sesión por un disparador, y solo SELECT/INSERT para `authenticated`. Probada en una transacción con ROLLBACK (21 casos, incluida la reversa idéntica al original).
