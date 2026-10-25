@@ -16,7 +16,6 @@ import {
   fetchUnconfirmedPayments,
   fetchUnseenContracts,
   fetchUpcomingRenewals,
-  markContractSeen,
   markMemberSeen,
   rejectRequest,
   reportReasonLabel,
@@ -55,7 +54,7 @@ export function NotificationsBell() {
   const overdue = useQuery({ queryKey: ["alert-overdue", boxId], queryFn: () => fetchOverdueMembers(boxId), enabled });
   const upcoming = useQuery({ queryKey: ["alert-upcoming", boxId], queryFn: () => fetchUpcomingRenewals(boxId), enabled });
   const unconfirmed = useQuery({ queryKey: ["alert-unconfirmed", boxId], queryFn: () => fetchUnconfirmedPayments(boxId), enabled });
-  const contracts = useQuery({ queryKey: ["alert-contracts"], queryFn: fetchUnseenContracts, enabled: isAdmin });
+  const contracts = useQuery({ queryKey: ["alert-contracts", boxId], queryFn: () => fetchUnseenContracts(boxId), enabled });
   const newMembers = useQuery({ queryKey: ["alert-new-members", boxId], queryFn: () => fetchNewMembers(boxId), enabled });
 
   const counts = {
@@ -94,10 +93,6 @@ export function NotificationsBell() {
   const reject = useMutation({
     mutationFn: (id: string) => rejectRequest(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-requests"] }),
-  });
-  const seeContract = useMutation({
-    mutationFn: (userId: string) => markContractSeen(userId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["alert-contracts"] }),
   });
   const seeNewMember = useMutation({
     mutationFn: (userId: string) => markMemberSeen(boxId, userId),
@@ -175,7 +170,7 @@ export function NotificationsBell() {
 
                 <Section icon={FileCheck} title="Contratos aceptados" count={counts.contracts}>
                   {contracts.data?.map((c) => (
-                    <ContractRow key={c.userId} c={c} busy={seeContract.isPending} onSeen={() => seeContract.mutate(c.userId)} onClick={close} />
+                    <ContractRow key={c.userId} c={c} onClick={close} />
                   ))}
                 </Section>
 
@@ -292,17 +287,20 @@ function PaymentRow({ p, onClick }: { p: UnconfirmedPayment; onClick: () => void
   );
 }
 
-function ContractRow({ c, onSeen, busy, onClick }: { c: UnseenContract; onSeen: () => void; busy: boolean; onClick: () => void }) {
+/** Cada aceptación abre la pantalla "Aceptaciones de contratos" (dentro del mismo panel). */
+function ContractRow({ c, onClick }: { c: UnseenContract; onClick: () => void }) {
   return (
-    <div className="flex items-center gap-2 rounded-2xl border bg-card p-3">
-      <Link to="/member-detail/$id" params={{ id: c.userId }} onClick={onClick} className="min-w-0 flex-1">
+    <Link
+      to="/more/aceptaciones-contratos"
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-2xl border bg-card p-3 active:bg-secondary/60"
+    >
+      <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{c.name}</p>
         <p className="text-[11px] text-muted-foreground">Aceptó el {fmtDate(c.acceptedAt)}</p>
-      </Link>
-      <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full px-3" disabled={busy} onClick={onSeen}>
-        Visto
-      </Button>
-    </div>
+      </div>
+      <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">Ver</span>
+    </Link>
   );
 }
 

@@ -142,24 +142,19 @@ export async function fetchUnconfirmedPayments(boxId: string): Promise<Unconfirm
 
 export type UnseenContract = { userId: string; name: string; acceptedAt: string };
 
-// Also single-box (no box_id column, see contract_acceptances' own comment).
-export async function fetchUnseenContracts(): Promise<UnseenContract[]> {
+// Aceptaciones de contratos SIN VER del box seleccionado (contract_acceptances tiene box_id y la base solo
+// se las deja leer a administradores/dueño/super admin; sin el filtro un super admin vería las de todos los
+// boxes mezcladas). Marcarlas como vistas se hace en la pantalla "Aceptaciones de contratos", no desde la campana.
+export async function fetchUnseenContracts(boxId: string): Promise<UnseenContract[]> {
   const { data, error } = await supabase
     .from("contract_acceptances")
     .select("user_id, accepted_at, wodplace_users(name)")
+    .eq("box_id", boxId)
     .is("seen_by_owner_at", null)
     .order("accepted_at", { ascending: false })
     .limit(20);
   if (error) throw error;
   return (data ?? []).map((r: any) => ({ userId: r.user_id, acceptedAt: r.accepted_at, name: nameOf(r.wodplace_users) }));
-}
-
-export async function markContractSeen(userId: string) {
-  const { error } = await supabase
-    .from("contract_acceptances")
-    .update({ seen_by_owner_at: new Date().toISOString() })
-    .eq("user_id", userId);
-  if (error) throw error;
 }
 
 // New rows in box_members, whichever way they were added (invite code or an
