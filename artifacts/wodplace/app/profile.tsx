@@ -35,7 +35,6 @@ const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'medallas', label: 'Medallas', icon: 'star', route: '/medallas' },
   { key: 'plan', label: 'Plan', icon: 'award', route: '/plan' },
   { key: 'contracts', label: 'Contratos Activos', icon: 'file-text', route: '/active-contracts' },
-  { key: 'more', label: 'Más', icon: 'grid', route: '/more' },
 ];
 
 // ─── ProfileScreen ─────────────────────────────────────────────────────────────
@@ -75,8 +74,7 @@ export default function ProfileScreen() {
   const showContracts = shouldShowContracts(adminStatus, hasBoxMembership);
   const navItems: DrawerNavItem[] = NAV_ITEMS.filter(
     (item) =>
-      (item.key !== 'more' || adminNavItem?.key === 'admin') &&
-      ((item.key !== 'contracts' && item.key !== 'plan') || showContracts),
+      (item.key !== 'contracts' && item.key !== 'plan') || showContracts,
   ).map((item) => ({
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,

@@ -21,9 +21,6 @@ import { resolveDashboardUrl, resolveSuperAdminUrl } from '@/lib/dashboardUrl';
  * network error) it falls back to the plain dashboard URL, which just shows
  * box-admin's normal email/password login — the same screen a desktop user
  * sees.
- *
- * The reduced native tools that used to live here (box name, contract
- * acceptances, moderation reports) moved to `/more`.
  */
 
 /**
