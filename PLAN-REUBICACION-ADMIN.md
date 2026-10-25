@@ -34,7 +34,13 @@
 
 **Nombres decididos por Pía (2026-10-23):** **"Buzón de alumnos"** (de los alumnos al administrador o dueño) y **"Contactar a WODPLACE"** (del administrador al equipo; en super admin su bandeja se puede llamar **"Bandeja de soporte"**). Aparte: la ruta actual del panel se llama `reports`, lo que se confunde con "Reportes de Comunidad"; al reordenar conviene renombrarla (`soporte`).
 
-## 3. El PIN: opciones (sin decidir)
+## 3. El PIN: DECIDIDO el 2026-10-25 (opción A, candado local)
+
+> **Decisión de Pía (2026-10-25):** se mantiene un candado LOCAL con PIN, guardado cifrado solo en el teléfono (SecureStore), sin servidor y sin autorizar nada. Se pide cada vez que se abre el panel desde el menú y tras un tiempo en segundo plano; tras 5 errores, espera creciente (nunca bloqueo permanente); "Olvidé mi PIN" = cerrar sesión y volver a entrar y crear uno nuevo (se elimina la pantalla de contraseña de respaldo); la huella queda como atajo opcional; el PIN del servidor (`admin_pins`) no se reutiliza y se retira después, con su OK. Detalle y afinación de las reglas en `PLAN-F2-F7.md`.
+
+(Las opciones evaluadas quedan abajo como referencia.)
+
+### Opciones evaluadas
 
 Hoy el PIN (6 dígitos, 5 intentos y 15 minutos de bloqueo) es el paso que **emite el token de administrador**: es una autorización, y el incidente mostró que no debe serlo (la sesión y el rol ya la dan).
 
@@ -98,11 +104,11 @@ Pruebas de cada fase: cuentas desechables en dos boxes (dueño, administrador de
 | **F2** | **Moderación en la publicación sin token**: borrar y bloquear protegidos por sesión + rol + box (reemplaza `X-Admin-Session` en esas rutas); incluye endurecer `dash-link` (sección 4, puntos 1 a 4) | F0b | No |
 | **F3** | Panel: **Contratos → Aceptaciones** (lista y marcar vistas) | F0b | No |
 | **F4** | Panel: **Ajustes → nombre del box** con un solo origen | F0b | No (solo cambio de uso) |
-| **F5** | Panel: **Contratos del dueño** con Acuerdo de Plataforma y guardia en el servidor del panel | F0b | **Sí**: política de lectura propia (con tu aprobación aparte) |
+| **F5** | Panel: **Contratos del dueño** con Acuerdo de Plataforma y guardia en el servidor del panel; **pantalla "Autores bloqueados"** (lista y desbloqueo, con políticas por box en `blocked_users`; ver F2); migración "dueño siempre box_admin" | F0b | **Sí**: política de lectura propia y políticas de `blocked_users` por box (con tu aprobación aparte) |
 | **F6** | App: quitar de "Más" las funciones de administración (queda el acceso al panel dentro de la app); quitar el token de la app | F1, F3, F4, F5 | No |
 | **F7** | Servidor: eliminar `/admin/social/reports*`, `/admin/contract-acceptances*`, `/admin/settings/box-name`, y el token de administrador; aplicar la decisión del PIN | F6 | No |
 | **F8 — Endurecimiento de soporte (ANTES de usuarios reales)** | Ver sección 7b. Incluye dividir Ayuda y soporte en "Contactar a WODPLACE" (lo que existe, renombrado) y "Buzón de alumnos" (vacío hasta F9), y contador/aviso de pendientes en la bandeja de super admin | F1 | **Sí**: límites, políticas y bucket (con tu aprobación aparte) |
-| **F9** | **Mensajes de alumnos** (sección 8) | F8 | **Sí**: tabla nueva con RLS (con tu aprobación aparte) |
+| **F9** | **Mensajes de alumnos** (sección 8); si F5 no la dejó hecha, la pantalla "Autores bloqueados" con desbloqueo y políticas por box | F8 | **Sí**: tabla nueva con RLS y, si corresponde, políticas de `blocked_users` por box (con tu aprobación aparte) |
 
 **¿Cuándo podría empezar F1?** Apenas el incidente esté cerrado (F0b), porque F1 no necesita cambios de base de datos: las reglas de lectura y de resolución por box ya existen. Estimación: 1 sesión de trabajo más 1 de pruebas por rol y box. F2 y F3 pueden ir en paralelo a F1 si lo prefieres.
 
