@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
-import { UserCog, Layers, Settings, LifeBuoy, Bell, FolderOpen, LogOut, ChevronRight, Ticket, Flame, User, Flag } from "lucide-react";
+import { UserCog, Layers, Settings, LifeBuoy, Bell, FolderOpen, LogOut, ChevronRight, Ticket, Flame, User, Flag, FileCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { countPendingReports } from "@/lib/community-reports";
+import { countUnseenAcceptances } from "@/lib/contract-acceptances";
 import { useBox } from "@/lib/box-context";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/")({
@@ -31,6 +32,7 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; group: string 
   { to: "/more/settings", label: "Configuración", icon: Settings, group: "Configuración" },
   { to: "/more/plans", label: "Planes", icon: Layers, group: "Configuración" },
   { to: "/more/files", label: "Contratos", icon: FolderOpen, group: "Configuración" },
+  { to: "/more/aceptaciones-contratos", label: "Aceptaciones de contratos", icon: FileCheck, group: "Configuración" },
   { to: "/more/my-profile", label: "Mi perfil", icon: User, group: "Mi cuenta" },
 ];
 const GROUP_ORDER = ["Comunidad", "Equipo", "Ayuda y soporte", "Configuración", "Mi cuenta"];
@@ -40,6 +42,11 @@ function MorePage() {
   const qc = useQueryClient();
   const { boxId, isAdmin, isOwner, myPermissions } = useBox();
   // Contador de reportes pendientes del box (solo administradores; un coach no hace esta consulta).
+  const unseenAcceptances = useQuery({
+    queryKey: ["contract-acceptances-count", boxId],
+    queryFn: () => countUnseenAcceptances(boxId),
+    enabled: isAdmin && !!boxId,
+  });
   const pendingReports = useQuery({
     queryKey: ["community-reports-count", boxId],
     queryFn: () => countPendingReports(boxId),
@@ -63,6 +70,8 @@ function MorePage() {
     if (it.to === "/more/my-profile") return !isAdmin;
     // F1: los reportes de Comunidad son solo de administradores del box (la base también lo exige).
     if (it.to === "/more/reportes-comunidad") return isAdmin;
+    // F3: las aceptaciones de contratos las ven dueño, administrador del box y super admin (la base también lo exige).
+    if (it.to === "/more/aceptaciones-contratos") return isAdmin;
     // Fase B/B1: contratos son solo del dueño del box (o super_admin) —
     // ni un box_admin que no sea el dueño, ni un coach, los ven.
     if (it.to === "/more/files") return isOwner;
@@ -96,6 +105,9 @@ function MorePage() {
                   <Link key={it.to} to={it.to} className="flex items-center gap-3 p-4 active:bg-secondary/60">
                     <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary"><Icon className="h-5 w-5" /></div>
                     <span className="flex-1 text-sm font-semibold">{it.label}</span>
+                    {it.to === "/more/aceptaciones-contratos" && (unseenAcceptances.data ?? 0) > 0 ? (
+                      <span className="rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-destructive-foreground">{unseenAcceptances.data}</span>
+                    ) : null}
                     {it.to === "/more/reportes-comunidad" && (pendingReports.data ?? 0) > 0 ? (
                       <span className="rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-destructive-foreground">{pendingReports.data}</span>
                     ) : null}
