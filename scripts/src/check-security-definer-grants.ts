@@ -45,6 +45,8 @@ const ALLOWED_ANON: Record<string, string> = {
  * pueda invocarla.
  */
 const ALLOWED_AUTHENTICATED: Record<string, string> = {
+  box_contract_acceptances_list:
+    "chequea internamente user_is_box_admin_or_super_admin(_box_id) y devuelve 0 filas si no -- es la lista de la pantalla \"Aceptaciones de contratos\" del panel (quién aceptó, qué documento y versión, cuándo; sin contacto de emergencia ni datos del apoderado). Migración 20261025.",
   box_member_contract_signed_physically_at:
     "chequea internamente user_is_box_staff(_box_id) o que _user_id sea el propio llamador -- nunca filtra el dato de otra cuenta.",
   box_member_contract_signed_physically_by: "mismo chequeo interno que la anterior.",
