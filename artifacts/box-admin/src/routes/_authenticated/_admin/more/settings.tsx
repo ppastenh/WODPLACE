@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useBox } from "@/lib/box-context";
@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Camera, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/settings")({
@@ -15,11 +16,15 @@ export const Route = createFileRoute("/_authenticated/_admin/more/settings")({
 });
 
 const MAX_MB = 5;
+const NAME_MIN = 2;
+const NAME_MAX = 60;
 
 function SettingsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { boxId, isAdmin } = useBox();
+  const router = useRouter();
+  const { boxId, boxName, isAdmin } = useBox();
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
   const [fullName, setFullName] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -77,6 +82,27 @@ function SettingsPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo eliminar"),
   });
 
+  // El nombre del box vive en boxes.name (de ahí lo lee también la app del alumno). La base solo deja editarlo a
+  // administradores/dueño/super admin del box; coach y alumnos reciben 0 filas.
+  const rename = useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase.from("boxes").update({ name }).eq("id", boxId).select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("No tienes permiso para cambiar el nombre del box");
+    },
+    onSuccess: () => {
+      toast.success("Nombre del box actualizado");
+      setNameDraft(null);
+      router.invalidate();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo cambiar el nombre"),
+  });
+
+  const nameValue = nameDraft ?? boxName;
+  const nameTrim = nameValue.trim();
+  const nameValid = nameTrim.length >= NAME_MIN && nameTrim.length <= NAME_MAX;
+  const nameChanged = nameTrim !== boxName.trim();
+
   async function signOut() {
     await qc.cancelQueries();
     qc.clear();
@@ -92,6 +118,39 @@ function SettingsPage() {
           {roleLabel} · {fullName || email || "—"}
         </p>
         {fullName && <p className="text-xs text-muted-foreground">{email}</p>}
+      </div>
+
+      <div className="mt-4 rounded-3xl border bg-card p-5">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Nombre del box</p>
+        <p className="mt-1 text-xs text-muted-foreground">Es el nombre que ven tus alumnos en la app.</p>
+        {isAdmin ? (
+          <form
+            className="mt-3 space-y-2"
+            onSubmit={(ev) => {
+              ev.preventDefault();
+              if (nameValid && nameChanged) rename.mutate(nameTrim);
+            }}
+          >
+            <Input
+              value={nameValue}
+              maxLength={NAME_MAX}
+              onChange={(ev) => setNameDraft(ev.target.value)}
+              aria-label="Nombre del box"
+              className="rounded-2xl"
+            />
+            {nameDraft !== null && !nameValid ? (
+              <p className="text-xs text-destructive">El nombre debe tener entre {NAME_MIN} y {NAME_MAX} caracteres.</p>
+            ) : null}
+            <Button type="submit" className="w-full rounded-full" disabled={!nameValid || !nameChanged || rename.isPending}>
+              Guardar nombre
+            </Button>
+          </form>
+        ) : (
+          <>
+            <p className="mt-2 text-sm font-semibold">{boxName || "—"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Solo un administrador puede cambiar el nombre del box.</p>
+          </>
+        )}
       </div>
 
       <div className="mt-4 rounded-3xl border bg-card p-5">
