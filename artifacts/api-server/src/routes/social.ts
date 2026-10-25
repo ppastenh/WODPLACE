@@ -27,13 +27,12 @@ import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
 import {
-  ADMIN_SESSION_HEADER,
   requireAdminAccess,
-  resolveAdminAccess,
   adminAccessOf,
   canManageBox,
+  canModerateBox,
   manageScope,
-  type AdminAccess,
+  resolveSessionCaller,
 } from "../lib/adminAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
@@ -306,24 +305,14 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/social/posts/:id", async (req: Request, res: Response) => {
-  // Con token de administrador (X-Admin-Session) el llamador es quien firmó
-  // el token Y es la cuenta dueña de la sesión de Supabase (se exigen las dos);
-  // sin él, es la cuenta dueña de la sesión, como siempre.
-  let admin: AdminAccess | null = null;
-  let userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  if (req.header(ADMIN_SESSION_HEADER)) {
-    admin = await resolveAdminAccess(req, res, "staff");
-    if (!admin) return;
-    userId = admin.userId;
-  } else {
-    if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
-    if (!(await assertOwnsAccount(req, res, userId))) return;
-  }
+  // Quien llama sale de la sesión verificada (F2: sin token de administrador; X-Admin-Session se ignora).
+  const caller = await resolveSessionCaller(req, res, typeof req.query.userId === "string" ? req.query.userId : undefined);
+  if (!caller) return;
   try {
     const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
     if (!post || post.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
     // Autor, o administrador/dueño del MISMO box (o super admin autorizado).
-    if (post.userId !== userId && !(admin && canManageBox(admin, post.boxId))) {
+    if (post.userId !== caller.userId && !(await canModerateBox(caller, post.boxId))) {
       res.status(403).json({ error: "No puedes eliminar esta publicación." }); return;
     }
     await db.update(socialPostsTable).set({ deletedAt: new Date() }).where(eq(socialPostsTable.id, paramString(req.params.id)));
@@ -400,20 +389,12 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
 });
 
 router.delete("/social/posts/:id/comments/:commentId", async (req: Request, res: Response) => {
-  let admin: AdminAccess | null = null;
-  let userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  if (req.header(ADMIN_SESSION_HEADER)) {
-    admin = await resolveAdminAccess(req, res, "staff");
-    if (!admin) return;
-    userId = admin.userId;
-  } else {
-    if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
-    if (!(await assertOwnsAccount(req, res, userId))) return;
-  }
+  const caller = await resolveSessionCaller(req, res, typeof req.query.userId === "string" ? req.query.userId : undefined);
+  if (!caller) return;
   try {
     const [comment] = await db.select().from(socialCommentsTable).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
     if (!comment || comment.deletedAt) { res.status(404).json({ error: "No encontrado." }); return; }
-    if (comment.userId !== userId && !(admin && canManageBox(admin, comment.boxId))) {
+    if (comment.userId !== caller.userId && !(await canModerateBox(caller, comment.boxId))) {
       res.status(403).json({ error: "No puedes eliminar este comentario." }); return;
     }
     await db.update(socialCommentsTable).set({ deletedAt: new Date() }).where(eq(socialCommentsTable.id, paramString(req.params.commentId)));
@@ -587,6 +568,47 @@ router.delete("/admin/users/:userId/block", requireAdminAccess("manage"), async 
     await db.delete(blockedUsersTable).where(and(
       eq(blockedUsersTable.userId, paramString(req.params.userId)),
       scope ? inArray(blockedUsersTable.boxId, scope) : undefined,
+    ));
+    res.status(204).end();
+  } catch (error) {
+    req.log.error({ err: error }, "Error unblocking user");
+    res.status(500).json({ error: "No se pudo desbloquear." });
+  }
+});
+
+// F2: bloqueo desde la publicación, con sesión + rol + box (sin token). El autor y el box salen de la publicación,
+// no de lo que mande el cliente. Las rutas /admin/users/:userId/block de arriba siguen (con token) hasta F7.
+// Semántica de hoy: bloquear solo oculta al autor del feed del box. blocked_users tiene llave primaria solo por
+// user_id (una persona, un box): si ya está bloqueada por OTRO box, no se guarda y se avisa en vez de responder "ok".
+router.post("/social/posts/:id/block-author", async (req: Request, res: Response) => {
+  const caller = await resolveSessionCaller(req, res);
+  if (!caller) return;
+  try {
+    const [post] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, paramString(req.params.id)));
+    if (!post || !post.userId || !post.boxId) { res.status(404).json({ error: "No encontrado." }); return; }
+    if (!(await canModerateBox(caller, post.boxId))) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (post.userId === caller.userId) { res.status(400).json({ error: "No puedes bloquearte a ti mismo." }); return; }
+    await db.insert(blockedUsersTable).values({ userId: post.userId, boxId: post.boxId }).onConflictDoNothing();
+    const [row] = await db.select({ boxId: blockedUsersTable.boxId }).from(blockedUsersTable).where(eq(blockedUsersTable.userId, post.userId));
+    if (!row || row.boxId !== post.boxId) { res.status(409).json({ error: "No se pudo bloquear." }); return; }
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    req.log.error({ err: error }, "Error blocking author");
+    res.status(500).json({ error: "No se pudo bloquear." });
+  }
+});
+
+router.delete("/social/users/:userId/block", async (req: Request, res: Response) => {
+  const boxId = typeof req.query.boxId === "string" ? req.query.boxId : null;
+  if (!boxId) { res.status(400).json({ error: "boxId es requerido" }); return; }
+  const caller = await resolveSessionCaller(req, res);
+  if (!caller) return;
+  try {
+    if (!(await canModerateBox(caller, boxId))) { res.status(403).json({ error: "Forbidden" }); return; }
+    // Solo se levanta un bloqueo hecho por ESE box.
+    await db.delete(blockedUsersTable).where(and(
+      eq(blockedUsersTable.userId, paramString(req.params.userId)),
+      eq(blockedUsersTable.boxId, boxId),
     ));
     res.status(204).end();
   } catch (error) {

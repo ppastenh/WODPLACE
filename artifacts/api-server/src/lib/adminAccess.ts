@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 
 import { isSuperAdminAuthorized } from "./aal2Enforcement";
 import { verifyAdminToken, type AdminTokenClaims } from "./adminToken";
-import { resolveSupabaseUser } from "./supabaseAuth";
+import { assertOwnsAccount, resolveSupabaseUser } from "./supabaseAuth";
 
 /**
  * Incidente 2026-10-22: el token de administrador se entregaba a cualquier
@@ -97,6 +97,54 @@ export type AdminAccess = {
 export function canManageBox(a: AdminAccess, boxId: string): boolean {
   if (a.panel.isSuper) return !a.claims.boxId || a.claims.boxId === boxId;
   return a.panel.manageBoxIds.includes(boxId) && a.claims.boxId === boxId;
+}
+
+/**
+ * F2 (2026-10-25): moderación SIN token ni PIN. Quién llama sale SOLO de la sesión de Supabase verificada;
+ * el rol y el box se deciden en cada petición con resolvePanelAccess (rol vigente de la base, aal de ESTA
+ * sesión). La cabecera X-Admin-Session ya no se mira aquí: no concede nada.
+ */
+export type SessionCaller = { userId: string; authUserId: string; aal: string | null };
+
+/**
+ * La cuenta que llama, o responde 401/403/404 y devuelve null. Si el cliente declara un `userId` (rutas
+ * antiguas lo mandan en la query), se exige que sea la cuenta dueña de la sesión (assertOwnsAccount); si no lo
+ * declara, se resuelve desde la sesión.
+ */
+export async function resolveSessionCaller(
+  req: Request,
+  res: Response,
+  claimedUserId?: string,
+): Promise<SessionCaller | null> {
+  if (claimedUserId) {
+    if (!(await assertOwnsAccount(req, res, claimedUserId))) return null;
+  }
+  const sb = await resolveSupabaseUser(req);
+  if (!sb) {
+    res.status(401).json({ error: "Missing or invalid Authorization token" });
+    return null;
+  }
+  if (claimedUserId) return { userId: claimedUserId, authUserId: sb.id, aal: sb.aal };
+  const [row] = await db
+    .select({ id: wodplaceUsersTable.id })
+    .from(wodplaceUsersTable)
+    .where(eq(wodplaceUsersTable.authUserId, sb.id));
+  if (!row) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+  return { userId: row.id, authUserId: sb.id, aal: sb.aal };
+}
+
+/**
+ * ¿Puede esta cuenta moderar contenido de `boxId`? Administrador o dueño de ESE box, o super admin autorizado
+ * (aal2 si el interruptor está encendido). Un coach no modera. El box es el del contenido, nunca uno que mande
+ * el cliente.
+ */
+export async function canModerateBox(caller: SessionCaller, boxId: string | null | undefined): Promise<boolean> {
+  if (!boxId) return false;
+  const panel = await resolvePanelAccess(caller.authUserId, caller.aal);
+  return panel.isSuper || panel.manageBoxIds.includes(boxId);
 }
 
 /** Boxes que puede administrar (null = todos, solo super admin). */

@@ -4,12 +4,7 @@ import { sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
-import {
-  ADMIN_SESSION_HEADER,
-  canManageBox,
-  resolveAdminAccess,
-  type AdminAccess,
-} from "../lib/adminAccess";
+import { canModerateBox, resolveSessionCaller } from "../lib/adminAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { todayDateKey } from "../lib/dateUtils";
 import { countRecentAttempts, getRealClientIp, MAX_ATTEMPTS, recordFailedAttempt } from "../lib/inviteRateLimit";
@@ -805,21 +800,13 @@ router.delete(
   "/box-memberships/announcements/:id/comments/:commentId",
   async (req: Request, res: Response) => {
     const commentId = typeof req.params.commentId === "string" ? req.params.commentId : undefined;
-    // Con token de administrador (X-Admin-Session) el llamador es quien firmó
-    // el token Y dueño de la sesión de Supabase (incidente 2026-10-22, ver
-    // lib/adminAccess.ts); sin él, la cuenta dueña de la sesión.
-    let admin: AdminAccess | null = null;
-    let userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-    if (req.header(ADMIN_SESSION_HEADER)) {
-      admin = await resolveAdminAccess(req, res, "staff");
-      if (!admin) return;
-      userId = admin.userId;
-    }
-    if (!commentId || !userId) {
+    // F2: quien llama sale de la sesión verificada (sin token de administrador; X-Admin-Session se ignora).
+    const caller = await resolveSessionCaller(req, res, typeof req.query.userId === "string" ? req.query.userId : undefined);
+    if (!caller) return;
+    if (!commentId) {
       res.status(400).json({ error: "Missing fields" });
       return;
     }
-    if (!admin && !(await assertOwnsAccount(req, res, userId))) return;
 
     try {
       const rows = await db.execute<{ user_id: string | null; box_id: string }>(sql`
@@ -830,7 +817,7 @@ router.delete(
         res.status(404).json({ error: "No encontrado." });
         return;
       }
-      if (comment.user_id !== userId && !(admin && canManageBox(admin, comment.box_id))) {
+      if (comment.user_id !== caller.userId && !(await canModerateBox(caller, comment.box_id))) {
         res.status(403).json({ error: "No puedes eliminar este comentario." });
         return;
       }
