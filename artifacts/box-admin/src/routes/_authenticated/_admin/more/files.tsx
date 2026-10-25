@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, FileImage, FileType2, Upload, RefreshCw, Trash2, Plus, ExternalLink, Users } from "lucide-react";
+import { fetchPlatformAgreement, fetchPlatformAgreementUrl } from "@/lib/platform-agreement";
+import { FileText, FileImage, FileType2, Upload, RefreshCw, Trash2, Plus, ExternalLink, Users, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/_admin/more/files")({
   head: () => ({
@@ -164,6 +165,8 @@ function FilesPage() {
           </p>
         </div>
 
+        <PlatformAgreementCard />
+
         <DialogTrigger asChild>
           <button className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground active:opacity-90">
             <Upload className="h-4 w-4" /> Subir contrato
@@ -198,6 +201,62 @@ function FilesPage() {
       </AdminShell>
       <UploadDialog onDone={() => { setOpen(false); invalidate(); }} />
     </Dialog>
+  );
+}
+
+/** Acuerdo de Plataforma: solo lectura (estado + ver el documento). Aceptarlo se hace en la app. */
+function PlatformAgreementCard() {
+  const q = useQuery({ queryKey: ["platform-agreement"], queryFn: fetchPlatformAgreement, retry: false });
+  const [opening, setOpening] = useState(false);
+
+  async function open() {
+    if (!q.data) return;
+    setOpening(true);
+    try {
+      const url = await fetchPlatformAgreementUrl(q.data.userId);
+      window.open(url, "_blank", "noopener");
+    } catch {
+      toast.error("No se pudo abrir el Acuerdo");
+    } finally {
+      setOpening(false);
+    }
+  }
+
+  const d = q.data;
+  return (
+    <section className="mb-4 rounded-2xl border bg-card p-4">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-muted-foreground">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">Acuerdo de Plataforma</p>
+          {q.isLoading ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">Cargando…</p>
+          ) : q.isError || !d ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              No se pudo cargar el estado.{" "}
+              <button className="font-semibold underline" onClick={() => q.refetch()}>
+                Reintentar
+              </button>
+            </p>
+          ) : d.notApplicable ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">No aplica a tu cuenta.</p>
+          ) : d.accepted ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Aceptado{d.acceptedAt ? ` el ${new Date(d.acceptedAt).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" })}` : ""}.
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-muted-foreground">Pendiente de aceptar. Se acepta desde la app.</p>
+          )}
+        </div>
+      </div>
+      {d?.hasDocument ? (
+        <Button variant="secondary" size="sm" className="mt-3 w-full rounded-xl" onClick={open} disabled={opening}>
+          <ExternalLink className="mr-1 h-3.5 w-3.5" /> {opening ? "Abriendo…" : "Ver el Acuerdo"}
+        </Button>
+      ) : null}
+    </section>
   );
 }
 
