@@ -304,7 +304,7 @@ function CommentsModal({
             <FlatList
               data={comments}
               keyExtractor={(c) => c.id}
-              style={{ flex: 1 }}
+              style={styles.commentsList}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10 }}
               onEndReached={hasMore ? fetchNextPage : undefined}
@@ -465,7 +465,7 @@ function AnnouncementCommentsModal({
             <FlatList
               data={comments}
               keyExtractor={(c) => c.id}
-              style={{ flex: 1 }}
+              style={styles.commentsList}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10 }}
               onEndReached={hasMore ? fetchNextPage : undefined}
@@ -1509,7 +1509,11 @@ const styles = StyleSheet.create({
   sheetCancelText: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_600SemiBold' },
   // Comments modal
   commentsBackdrop: { flex: 1, justifyContent: 'flex-end' },
-  commentsSheet: { maxHeight: '85%', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  // La hoja no tiene altura propia (solo maxHeight): la lista NO puede usar flex: 1 (su alto base es 0 y quedaba
+  // invisible). Crece hasta su contenido y se encoge/scrollea al llegar al tope; la hoja se encoge si el teclado
+  // le quita espacio, y el recuadro para escribir sigue fijo abajo.
+  commentsSheet: { maxHeight: '85%', flexShrink: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  commentsList: { flexGrow: 0, flexShrink: 1 },
   commentsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   commentsTitle: { fontSize: 17, fontFamily: 'Anton_400Regular' },
   emptyComments: { padding: SPACING.xxxl, alignItems: 'center' },
