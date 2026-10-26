@@ -205,6 +205,24 @@ function PostMenuSheet({
   );
 }
 
+// ─── CommentsLoadError ────────────────────────────────────────────────────────
+
+/** Fallo al cargar los comentarios: se avisa y se puede reintentar (antes la hoja quedaba vacía, sin explicación). */
+function CommentsLoadError({ colors, onRetry }: { colors: ReturnType<typeof useColors>; onRetry: () => void }) {
+  return (
+    <View style={styles.emptyComments}>
+      <Text style={[styles.emptyCommentsText, { color: colors.foreground }]}>No se pudieron cargar los comentarios.</Text>
+      <Pressable
+        onPress={onRetry}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.commentsRetry, { backgroundColor: pressed ? colors.navActivePressed : colors.navActive }]}
+      >
+        <Text style={styles.commentsRetryText}>Reintentar</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 // ─── CommentsModal ────────────────────────────────────────────────────────────
 
 function CommentsModal({
@@ -230,7 +248,7 @@ function CommentsModal({
 }) {
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { comments, isLoading, hasMore, fetchNextPage, refresh } = useComments(visible ? (post?.id ?? null) : null);
+  const { comments, isLoading, error, hasMore, fetchNextPage, refresh } = useComments(visible ? (post?.id ?? null) : null);
   const { addComment, deleteComment } = useSocialMutations(userId, authorName);
 
   useEffect(() => { if (visible) { setDraft(''); refresh(); } }, [visible, post?.id]);
@@ -296,6 +314,8 @@ function CommentsModal({
 
           {isLoading ? (
             <ActivityIndicator style={{ margin: 32 }} color={colors.navActive} />
+          ) : error ? (
+            <CommentsLoadError colors={colors} onRetry={refresh} />
           ) : comments.length === 0 ? (
             <View style={styles.emptyComments}>
               <Text style={[styles.emptyCommentsText, { color: colors.navInactive }]}>Sé el primero en comentar.</Text>
@@ -391,7 +411,7 @@ function AnnouncementCommentsModal({
 }) {
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { comments, isLoading, hasMore, fetchNextPage, refresh } = useAnnouncementComments(
+  const { comments, isLoading, error, hasMore, fetchNextPage, refresh } = useAnnouncementComments(
     visible ? (announcement?.id ?? null) : null,
   );
   const { addComment, deleteComment } = useAnnouncementMutations(userId, authorName);
@@ -457,6 +477,8 @@ function AnnouncementCommentsModal({
 
           {isLoading ? (
             <ActivityIndicator style={{ margin: 32 }} color={colors.navActive} />
+          ) : error ? (
+            <CommentsLoadError colors={colors} onRetry={refresh} />
           ) : comments.length === 0 ? (
             <View style={styles.emptyComments}>
               <Text style={[styles.emptyCommentsText, { color: colors.navInactive }]}>Sé el primero en comentar.</Text>
@@ -1514,6 +1536,8 @@ const styles = StyleSheet.create({
   // le quita espacio, y el recuadro para escribir sigue fijo abajo.
   commentsSheet: { maxHeight: '85%', flexShrink: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   commentsList: { flexGrow: 0, flexShrink: 1 },
+  commentsRetry: { marginTop: SPACING.lg, paddingHorizontal: SPACING.xxl, paddingVertical: SPACING.md, borderRadius: 999 },
+  commentsRetryText: { color: '#fff', fontSize: FONT_SIZE.md, fontFamily: 'Inter_700Bold' },
   commentsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   commentsTitle: { fontSize: 17, fontFamily: 'Anton_400Regular' },
   emptyComments: { padding: SPACING.xxxl, alignItems: 'center' },

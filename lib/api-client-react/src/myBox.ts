@@ -135,11 +135,12 @@ export function useAnnouncementComments(announcementId: string | null) {
   const [isLoading, setIsLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState(false);
 
   const load = useCallback(
     async (cursor?: string) => {
       if (!announcementId) return;
-      if (!cursor) setIsLoading(true);
+      if (!cursor) { setIsLoading(true); setError(false); }
       try {
         const p = new URLSearchParams({ limit: "20", ...(cursor ? { cursor } : {}) });
         const data = await customFetch<{
@@ -151,7 +152,7 @@ export function useAnnouncementComments(announcementId: string | null) {
         setNextCursor(data.nextCursor);
         setHasMore(data.hasMore);
       } catch {
-        if (!cursor) setComments([]);
+        if (!cursor) { setComments([]); setError(true); }
       } finally {
         setIsLoading(false);
       }
@@ -167,7 +168,7 @@ export function useAnnouncementComments(announcementId: string | null) {
   const refresh = useCallback(() => { setNextCursor(null); load(undefined); }, [load]);
   const fetchNextPage = useCallback(() => { if (hasMore && nextCursor) load(nextCursor); }, [hasMore, nextCursor, load]);
 
-  return { comments, isLoading, hasMore, fetchNextPage, refresh };
+  return { comments, isLoading, error, hasMore, fetchNextPage, refresh };
 }
 
 export function useAnnouncementMutations(userId: string, authorName: string) {
