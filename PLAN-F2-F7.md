@@ -130,3 +130,43 @@ Orden de commits de F2: **F2a** servidor (rutas con sesión + rol + box, ruta nu
 4. Si el reloj del teléfono retrocede (alguien lo cambia para saltarse la espera), se guarda también la **hora más alta vista** y se usa el mayor de los dos valores. Adelantar el reloj sí acorta la espera: no se puede evitar sin servidor, y se acepta porque el candado no autoriza nada (la sesión y el rol siguen decidiendo).
 5. El candado de una cuenta se borra al cerrar su sesión (es lo que hace funcionar "Olvidé mi PIN"). Reinstalar la app borra también la sesión; para volver a entrar hace falta la contraseña de la cuenta, así que reinstalar no es un atajo para quien no la tiene.
 6. Límite honesto: quien tenga el teléfono rooteado y sepa lo que hace puede vaciar SecureStore; el candado protege contra el teléfono prestado, no contra un ataque con herramientas.
+
+---
+
+# F7-a en detalle (candado local con PIN) — solo plan, sin código
+
+Contexto: F2a, F2b y F2c ya quitaron el token de la moderación y de `dash-link`. Hoy la app todavía pide el PIN del servidor en `admin-login.tsx` y guarda un token en memoria (`lib/adminSession.ts`) que `admin-dashboard.tsx` exige para abrir el panel. F7-a reemplaza esa puerta por el candado local, sin tocar el servidor (eso es F7-b).
+
+## 1. Piezas nuevas
+1. **`lib/adminLockLogic.ts` (lógica pura, sin nada de React Native):** la escalera de esperas, el contador, la regla "sumar el intento antes de comparar", la hora más alta vista y el formato del registro. Al ser pura se prueba con pruebas automáticas en el computador.
+2. **`lib/adminLock.ts` (almacenamiento):** guarda y lee el registro en SecureStore con la clave `wodplace.adminLock.<id de la cuenta>` (un candado por cuenta). Registro: versión, sal, hash del PIN, intentos fallidos, "no antes de" (hora absoluta), hora más alta vista y si la huella está activada. Expone solo: ¿hay PIN?, crear PIN, probar PIN (devuelve correcto, intentos que quedan o espera), activar o desactivar la huella y borrar. **No expone el contador.** Las pruebas de PIN se atienden de a una (cola) para que dos intentos simultáneos no esquiven el contador.
+3. **`lib/adminUnlock.ts` (reemplaza `adminSession.ts`):** un "permiso de entrada" solo en memoria, de un solo uso: `admin-login` lo concede al desbloquear y `admin-dashboard` lo consume al abrirse. Sin permiso, el panel redirige al candado. Así el PIN se pide **cada vez** que se abre el panel desde el menú. No es un token: no viaja al servidor.
+4. **`components/AdminLockPrompt.tsx`:** pantalla de ingresar o crear el PIN (reutiliza `PinField` de 6 celdas), cuenta regresiva de la espera, botón de huella y el texto de "Olvidé mi PIN".
+
+## 2. Cambios en lo existente
+- **`admin-login.tsx`:** se quitan las llamadas al PIN del servidor (`getAdminPinStatus`, `setupAdminPin`, `verifyAdminPin`, `createAdminSession`), el modo "contraseña de respaldo" y `verifyPassword`. Quedan: elegir panel si hay dos roles, crear PIN la primera vez (obligatorio, 6 dígitos, con confirmación y sin poder saltarlo), ingresar PIN, espera. La lógica de `goToPanel` (ir a `box-details` o `box-waiting` si el box no está listo) se conserva tal cual, pero sin guardar token.
+- **`admin-dashboard.tsx`:** exige y consume el permiso de entrada; ya no manda `X-Admin-Session` a `dash-link` (el servidor lo ignora desde F2b); cuando la app vuelve de segundo plano tras 2 minutos o más, tapa el panel con el candado (superposición: el panel conserva su estado detrás) y pide el PIN otra vez. Al salir del panel se pierde el permiso.
+- **`AuthContext.tsx`:** al cerrar sesión borra el candado de esa cuenta (hoy borra el token en memoria). Es lo que hace funcionar "Olvidé mi PIN".
+- **"Olvidé mi PIN":** un enlace explica "Para crear un PIN nuevo, cierra sesión y vuelve a entrar", con confirmación; cerrar sesión borra el candado y, al volver a abrir el panel, se crea uno nuevo.
+- **Huella:** después de crear el PIN se ofrece activarla (opcional). Con la huella correcta se entra sin PIN; no cambia el contador del PIN y el PIN siempre queda como respaldo. En la web no hay huella ni SecureStore.
+- **Web:** propuesta: sin candado (el navegador es la sesión). Pregunta para Pía: ¿está bien?
+- **No se toca:** el servidor, la compuerta del Acuerdo en el botón "Administrador", el botón Administrador/Coach, `choose-view`, las rutas `/admin/*`.
+
+## 3. Reglas del PIN (aprobadas)
+6 dígitos; obligatorio crearlo la primera vez; un candado por cuenta; se pide cada vez que se abre el panel desde el menú y tras 2 minutos en segundo plano; 5 errores seguidos → espera de 30 s; cada error posterior sube el escalón (1 min, 5, 15 y 30 min como tope); un PIN correcto reinicia todo. **Propuesta a confirmar:** que desde el sexto error cada intento fallido suba un escalón (en vez de volver a permitir 5 intentos por escalón).
+
+**Hash:** con sal aleatoria propia (del mismo generador ya probado en `secureSessionCrypto.ts`), SHA-256 repetido unas miles de veces con `expo-crypto` (el número exacto se mide en el teléfono para que tarde menos de un segundo). Límite honesto: un PIN de 6 dígitos solo tiene un millón de combinaciones, así que si alguien lograra copiar el registro (requiere teléfono con root), podría adivinarlo sin conexión. Lo que protege es SecureStore (Keychain o Keystore) más el contador, y por eso el candado no autoriza nada.
+
+## 4. Orden de commits (cada uno revertible)
+1. **F7-a1:** `adminLockLogic.ts` y sus pruebas automáticas, sin conectar a ninguna pantalla.
+2. **F7-a2:** `adminLock.ts`, `adminUnlock.ts`, `AdminLockPrompt.tsx`; `admin-login.tsx`, `admin-dashboard.tsx` y `AuthContext.tsx` pasan al candado; se retira `adminSession.ts`. Se ejecutan typecheck, `expo export` de Android y `check:pressed-opacity` (y se actualizan sus listas si cambian).
+
+## 5. Pruebas
+- **Automáticas (F7-a1), sin teléfono:** escalera 30 s, 1, 5, 15, 30 min y tope; un PIN correcto reinicia; el contador sobrevive a un "reinicio" (se recrea el módulo con el mismo almacenamiento falso); el intento se suma antes de comparar (se simula cerrar la app a mitad de un intento y el intento cuenta); reloj hacia atrás no acorta la espera (hora más alta vista); aislamiento entre cuentas; borrar al cerrar sesión; comparación del hash sin atajos; dos intentos simultáneos se atienden en cola.
+- **En el teléfono (checklist corta):** (1) primer ingreso: crea PIN y entra; (2) cierra y vuelve a abrir el panel desde el menú: pide PIN cada vez; (3) manda la app a segundo plano 2 minutos y vuelve: pide PIN con el panel detrás; (4) 5 errores: espera de 30 s, y matar la app no la reinicia; (5) activar huella y entrar con ella; (6) "Olvidé mi PIN": cierra sesión, vuelve a entrar y crea uno nuevo.
+- **No se puede probar sin teléfono:** SecureStore real, huella, y el comportamiento de segundo plano.
+
+## 6. Riesgos
+- Quien tenía PIN del servidor tendrá que crear uno nuevo la primera vez (no se migran).
+- Si el PIN se olvida, la salida es cerrar sesión y volver a entrar (necesita la contraseña de la cuenta o Google).
+- iPhone: el Keychain puede conservar el registro tras reinstalar la app; es inofensivo (sigue siendo ese PIN) y "Olvidé mi PIN" lo limpia.
