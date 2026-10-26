@@ -21,19 +21,11 @@ import {
   lt,
   not,
   or,
-  sql,
 } from "drizzle-orm";
 import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
-import {
-  requireAdminAccess,
-  adminAccessOf,
-  canManageBox,
-  canModerateBox,
-  manageScope,
-  resolveSessionCaller,
-} from "../lib/adminAccess";
+import { canModerateBox, resolveSessionCaller } from "../lib/adminAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 
@@ -133,23 +125,6 @@ router.get("/settings/box-name", async (req: Request, res: Response) => {
       .where(and(eq(boxSettingsTable.boxId, boxId), eq(boxSettingsTable.key, "box_name"))).limit(1);
     res.json({ name: row?.value ?? "" });
   } catch { res.json({ name: "" }); }
-});
-
-router.put("/admin/settings/box-name", requireAdminAccess("manage"), async (req: Request, res: Response) => {
-  const parsed = z.object({ name: z.string().trim().min(1).max(60) }).safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Nombre inválido" }); return; }
-  const access = adminAccessOf(res);
-  const boxId = access.claims.boxId ?? (typeof req.query.boxId === "string" ? req.query.boxId : null);
-  if (!boxId) { res.status(400).json({ error: "boxId es requerido" }); return; }
-  if (!canManageBox(access, boxId)) { res.status(403).json({ error: "Forbidden" }); return; }
-  try {
-    await db.insert(boxSettingsTable).values({ boxId, key: "box_name", value: parsed.data.name })
-      .onConflictDoUpdate({ target: [boxSettingsTable.boxId, boxSettingsTable.key], set: { value: parsed.data.name, updatedAt: new Date() } });
-    res.json({ name: parsed.data.name });
-  } catch (error) {
-    req.log.error({ err: error }, "Error updating box name");
-    res.status(500).json({ error: "No se pudo actualizar." });
-  }
 });
 
 // ─── Feed (paginated, last 60 days) ──────────────────────────────────────────
@@ -305,7 +280,7 @@ router.patch("/social/posts/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/social/posts/:id", async (req: Request, res: Response) => {
-  // Quien llama sale de la sesión verificada (F2: sin token de administrador; X-Admin-Session se ignora).
+  // Quien llama sale de la sesión verificada (sin token de administrador).
   const caller = await resolveSessionCaller(req, res, typeof req.query.userId === "string" ? req.query.userId : undefined);
   if (!caller) return;
   try {
@@ -488,96 +463,10 @@ router.post("/social/posts/:id/report", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/admin/social/reports", requireAdminAccess("manage"), async (req: Request, res: Response) => {
-  // Cada administrador ve SOLO los reportes de su box (null = super admin autorizado, todos).
-  const scope = manageScope(adminAccessOf(res));
-  if (scope && scope.length === 0) { res.json([]); return; }
-  try {
-    const reports = await db
-      .select({ report: socialReportsTable, post: socialPostsTable })
-      .from(socialReportsTable)
-      .leftJoin(socialPostsTable, eq(socialReportsTable.postId, socialPostsTable.id))
-      .where(and(isNull(socialReportsTable.resolvedAt), scope ? inArray(socialReportsTable.boxId, scope) : undefined))
-      .orderBy(desc(socialReportsTable.createdAt));
-    res.json(reports.map((r) => ({
-      id: r.report.id, postId: r.report.postId,
-      reporterName: r.report.reporterName, reason: r.report.reason,
-      imageUrl: r.report.imageUrl,
-      createdAt: r.report.createdAt.toISOString(),
-      post: r.post ? {
-        id: r.post.id, authorName: r.post.authorName, body: r.post.body,
-        createdAt: r.post.createdAt.toISOString(), deletedAt: r.post.deletedAt?.toISOString() ?? null,
-      } : null,
-    })));
-  } catch (error) {
-    req.log.error({ err: error }, "Error fetching reports");
-    res.status(500).json({ error: "Failed" });
-  }
-});
-
-router.patch("/admin/social/reports/:id/resolve", requireAdminAccess("manage"), async (req: Request, res: Response) => {
-  const scope = manageScope(adminAccessOf(res));
-  if (scope && scope.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
-  try {
-    // Solo un reporte de SU box; si es de otro box responde igual que si no existiera.
-    const done = await db.update(socialReportsTable).set({ resolvedAt: new Date() })
-      .where(and(eq(socialReportsTable.id, paramString(req.params.id)), scope ? inArray(socialReportsTable.boxId, scope) : undefined))
-      .returning({ id: socialReportsTable.id });
-    if (done.length === 0) { res.status(404).json({ error: "No encontrado." }); return; }
-    res.json({ ok: true });
-  } catch (error) {
-    req.log.error({ err: error }, "Error resolving report");
-    res.status(500).json({ error: "No se pudo resolver." });
-  }
-});
-
 // ─── Block ────────────────────────────────────────────────────────────────────
 
-router.post("/admin/users/:userId/block", requireAdminAccess("manage"), async (req: Request, res: Response) => {
-  const access = adminAccessOf(res);
-  const targetId = paramString(req.params.userId);
-  // Box donde se bloquea: el del token; un super admin sin box atado indica ?boxId=.
-  const boxId = access.claims.boxId ?? (typeof req.query.boxId === "string" ? req.query.boxId : null);
-  if (!boxId) { res.status(400).json({ error: "boxId es requerido" }); return; }
-  if (!canManageBox(access, boxId)) { res.status(403).json({ error: "Forbidden" }); return; }
-  if (targetId === access.userId) { res.status(400).json({ error: "No puedes bloquearte a ti mismo." }); return; }
-  try {
-    // Solo se puede bloquear a alguien de SU box: miembro, o autor de una publicación/comentario del box.
-    const inBox = await db.execute<{ ok: number }>(sql`
-      select 1 as ok from wodplace_users wu
-      where wu.id = ${targetId} and (
-        exists (select 1 from box_members bm where bm.user_id = wu.id and bm.box_id::text = ${boxId})
-        or exists (select 1 from social_posts sp where sp.user_id = wu.id and sp.box_id::text = ${boxId})
-        or exists (select 1 from social_comments sc where sc.user_id = wu.id and sc.box_id::text = ${boxId})
-      ) limit 1
-    `);
-    if (inBox.rows.length === 0) { res.status(404).json({ error: "No encontrado." }); return; }
-    await db.insert(blockedUsersTable).values({ userId: targetId, boxId }).onConflictDoNothing();
-    res.status(201).json({ ok: true });
-  } catch (error) {
-    req.log.error({ err: error }, "Error blocking user");
-    res.status(500).json({ error: "No se pudo bloquear." });
-  }
-});
-
-router.delete("/admin/users/:userId/block", requireAdminAccess("manage"), async (req: Request, res: Response) => {
-  const scope = manageScope(adminAccessOf(res));
-  if (scope && scope.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
-  try {
-    // Solo se levanta un bloqueo hecho por SU box.
-    await db.delete(blockedUsersTable).where(and(
-      eq(blockedUsersTable.userId, paramString(req.params.userId)),
-      scope ? inArray(blockedUsersTable.boxId, scope) : undefined,
-    ));
-    res.status(204).end();
-  } catch (error) {
-    req.log.error({ err: error }, "Error unblocking user");
-    res.status(500).json({ error: "No se pudo desbloquear." });
-  }
-});
-
-// F2: bloqueo desde la publicación, con sesión + rol + box (sin token). El autor y el box salen de la publicación,
-// no de lo que mande el cliente. Las rutas /admin/users/:userId/block de arriba siguen (con token) hasta F7.
+// Bloqueo desde la publicación, con sesión + rol + box (F2; sin token). El autor y el box salen de la publicación,
+// no de lo que mande el cliente.
 // Semántica de hoy: bloquear solo oculta al autor del feed del box. blocked_users tiene llave primaria solo por
 // user_id (una persona, un box): si ya está bloqueada por OTRO box, no se guarda y se avisa en vez de responder "ok".
 router.post("/social/posts/:id/block-author", async (req: Request, res: Response) => {

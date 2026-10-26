@@ -800,7 +800,7 @@ router.delete(
   "/box-memberships/announcements/:id/comments/:commentId",
   async (req: Request, res: Response) => {
     const commentId = typeof req.params.commentId === "string" ? req.params.commentId : undefined;
-    // F2: quien llama sale de la sesión verificada (sin token de administrador; X-Admin-Session se ignora).
+    // Quien llama sale de la sesión verificada (sin token de administrador).
     const caller = await resolveSessionCaller(req, res, typeof req.query.userId === "string" ? req.query.userId : undefined);
     if (!caller) return;
     if (!commentId) {

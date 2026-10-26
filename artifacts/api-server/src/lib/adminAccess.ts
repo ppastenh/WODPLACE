@@ -1,29 +1,25 @@
 import { db, wodplaceUsersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import type { NextFunction, Request, Response } from "express";
+import type { Request, Response } from "express";
 
 import { isSuperAdminAuthorized } from "./aal2Enforcement";
-import { verifyAdminToken, type AdminTokenClaims } from "./adminToken";
 import { assertOwnsAccount, resolveSupabaseUser } from "./supabaseAuth";
 
 /**
- * Incidente 2026-10-22: el token de administrador se entregaba a cualquier
- * cuenta con sesión y las rutas lo aceptaban sin mirar usuario, rol ni box.
- * TODO lo que decide "esta persona es administradora de este box" vive aquí:
+ * Quién es administrador de qué box se decide SOLO aquí, por la sesión de Supabase VERIFICADA de la petición y el
+ * rol vigente en la base (F2, 2026-10-25; F7-b1 quitó el token de administrador y el PIN del servidor):
  *
- *  - roles que dan acceso a un panel hoy (los mismos que muestran el ítem
- *    "Administrador"/"Coach" en la app): box_admin, coach y super_admin;
+ *  - roles que dan acceso a un panel (los mismos que muestran el ítem "Administrador"/"Coach" en la app):
+ *    box_admin, coach y super_admin;
  *  - dueño del box (boxes.owner_user_id) cuenta como box_admin de ese box;
- *  - super_admin solo vale si isSuperAdminAuthorized(aal) lo permite (aal2
- *    cuando el interruptor está encendido) -- el aal sale de la sesión de
- *    Supabase VERIFICADA de esta misma petición, nunca del token.
+ *  - super_admin solo vale si isSuperAdminAuthorized(aal) lo permite (aal2 cuando el interruptor está
+ *    encendido) -- el aal sale de la sesión de Supabase VERIFICADA de esta misma petición.
  *
- * El rol se vuelve a leer en cada petición: quitar un rol corta el acceso de
- * inmediato, sin esperar a que venza el token.
+ * El rol se vuelve a leer en cada petición: quitar un rol corta el acceso de inmediato.
  */
 
 export type PanelAccess = {
-  /** ¿Puede tener un token de administrador (cualquier rol de panel)? */
+  /** ¿Tiene acceso a algún panel (cualquier rol de panel)? */
   allowed: boolean;
   /** Boxes donde administra (box_admin o dueño). */
   manageBoxIds: string[];
@@ -32,14 +28,6 @@ export type PanelAccess = {
   /** Super admin ya autorizado (aal2 si corresponde). */
   isSuper: boolean;
 };
-
-export async function authUserIdForWodplaceUser(userId: string): Promise<string | null> {
-  const [row] = await db
-    .select({ authUserId: wodplaceUsersTable.authUserId })
-    .from(wodplaceUsersTable)
-    .where(eq(wodplaceUsersTable.id, userId));
-  return row?.authUserId ?? null;
-}
 
 export async function resolvePanelAccess(
   authUserId: string,
@@ -77,32 +65,10 @@ export async function resolvePanelAccess(
   };
 }
 
-/** Box al que queda atado un token nuevo; null = plataforma (super admin). */
-export function boxForNewToken(access: PanelAccess, requestedBoxId?: string | null): string | null {
-  const all = [...access.manageBoxIds, ...access.coachBoxIds];
-  if (requestedBoxId && (access.isSuper || all.includes(requestedBoxId))) return requestedBoxId;
-  if (access.isSuper) return null;
-  return all[0] ?? null;
-}
-
-export type AdminAccess = {
-  /** wodplace_users.id que firmó el token (y dueño de la sesión verificada). */
-  userId: string;
-  authUserId: string;
-  claims: AdminTokenClaims;
-  panel: PanelAccess;
-};
-
-/** ¿Puede esta persona administrar (moderar/gestionar) `boxId`? */
-export function canManageBox(a: AdminAccess, boxId: string): boolean {
-  if (a.panel.isSuper) return !a.claims.boxId || a.claims.boxId === boxId;
-  return a.panel.manageBoxIds.includes(boxId) && a.claims.boxId === boxId;
-}
-
 /**
  * F2 (2026-10-25): moderación SIN token ni PIN. Quién llama sale SOLO de la sesión de Supabase verificada;
  * el rol y el box se deciden en cada petición con resolvePanelAccess (rol vigente de la base, aal de ESTA
- * sesión). La cabecera X-Admin-Session ya no se mira aquí: no concede nada.
+ * sesión). No existe ningún token de administrador: la sesión, el rol y el box lo deciden todo.
  */
 export type SessionCaller = { userId: string; authUserId: string; aal: string | null };
 
@@ -145,66 +111,4 @@ export async function canModerateBox(caller: SessionCaller, boxId: string | null
   if (!boxId) return false;
   const panel = await resolvePanelAccess(caller.authUserId, caller.aal);
   return panel.isSuper || panel.manageBoxIds.includes(boxId);
-}
-
-/** Boxes que puede administrar (null = todos, solo super admin). */
-export function manageScope(a: AdminAccess): string[] | null {
-  if (a.panel.isSuper) return a.claims.boxId ? [a.claims.boxId] : null;
-  return a.panel.manageBoxIds.filter((b) => b === a.claims.boxId);
-}
-
-export const ADMIN_SESSION_HEADER = "x-admin-session";
-
-/**
- * Resuelve el acceso de administrador de una petición, o responde 401/403 y
- * devuelve null. Exige las TRES cosas: (1) sesión de Supabase verificada en
- * `Authorization`, (2) token de administrador válido en `X-Admin-Session`
- * firmado para ESA misma cuenta, (3) un rol de panel vigente.
- * `need: "manage"` pide además administrar al menos un box (un coach puro no).
- */
-export async function resolveAdminAccess(
-  req: Request,
-  res: Response,
-  need: "staff" | "manage",
-): Promise<AdminAccess | null> {
-  const sb = await resolveSupabaseUser(req);
-  if (!sb) {
-    res.status(401).json({ error: "Missing or invalid Authorization token" });
-    return null;
-  }
-  const claims = verifyAdminToken(req.header(ADMIN_SESSION_HEADER));
-  if (!claims) {
-    res.status(401).json({ error: "Invalid or expired admin session" });
-    return null;
-  }
-  const authUserId = await authUserIdForWodplaceUser(claims.userId);
-  if (!authUserId || authUserId !== sb.id) {
-    res.status(403).json({ error: "Forbidden" });
-    return null;
-  }
-  const panel = await resolvePanelAccess(sb.id, sb.aal);
-  const effectiveManage = panel.isSuper || panel.manageBoxIds.length > 0;
-  if (!panel.allowed || (need === "manage" && !effectiveManage)) {
-    res.status(403).json({ error: "Forbidden" });
-    return null;
-  }
-  return { userId: claims.userId, authUserId, claims, panel };
-}
-
-/** Middleware para rutas /admin/*; deja el acceso en res.locals.adminAccess. */
-export function requireAdminAccess(need: "staff" | "manage") {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const access = await resolveAdminAccess(req, res, need);
-      if (!access) return;
-      res.locals.adminAccess = access;
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-}
-
-export function adminAccessOf(res: Response): AdminAccess {
-  return res.locals.adminAccess as AdminAccess;
 }
