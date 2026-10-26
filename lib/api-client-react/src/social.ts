@@ -250,12 +250,11 @@ export function useSocialMutations(userId: string, authorName: string) {
   );
 
   const deletePost = useCallback(
-    async (postId: string, adminCode?: string): Promise<void> => {
-      const headers: Record<string, string> = {};
-      if (adminCode) headers["X-Admin-Session"] = adminCode;
+    async (postId: string): Promise<void> => {
+      // Sin token de administrador (F2): el servidor decide por la sesión, el rol y el box.
       await customFetch(
         `/api/social/posts/${postId}?userId=${encodeURIComponent(userId)}`,
-        { method: "DELETE", headers },
+        { method: "DELETE" },
       );
     },
     [userId],
@@ -281,12 +280,10 @@ export function useSocialMutations(userId: string, authorName: string) {
   );
 
   const deleteComment = useCallback(
-    async (postId: string, commentId: string, adminCode?: string): Promise<void> => {
-      const headers: Record<string, string> = {};
-      if (adminCode) headers["X-Admin-Session"] = adminCode;
+    async (postId: string, commentId: string): Promise<void> => {
       await customFetch(
         `/api/social/posts/${postId}/comments/${commentId}?userId=${encodeURIComponent(userId)}`,
-        { method: "DELETE", headers },
+        { method: "DELETE" },
       );
     },
     [userId],
@@ -372,18 +369,20 @@ export function useSocialMutations(userId: string, authorName: string) {
     [userId],
   );
 
-  const blockUser = useCallback(
-    async (targetUserId: string, adminCode: string): Promise<void> => {
-      await customFetch(`/api/admin/users/${targetUserId}/block`, {
+  // Bloquea al autor de ESA publicación (el servidor toma al autor y su box de la publicación y exige que quien
+  // llama administre ese box; sin token de administrador).
+  const blockAuthor = useCallback(
+    async (postId: string): Promise<void> => {
+      await customFetch(`/api/social/posts/${postId}/block-author`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Admin-Session": adminCode },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
     },
     [],
   );
 
-  return { createPost, editPost, deletePost, toggleReaction, addComment, deleteComment, reportPost, uploadReportImage, uploadSocialImage, blockUser };
+  return { createPost, editPost, deletePost, toggleReaction, addComment, deleteComment, reportPost, uploadReportImage, uploadSocialImage, blockAuthor };
 }
 
 // ─── Admin: reports queue ─────────────────────────────────────────────────────

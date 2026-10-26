@@ -25,7 +25,6 @@ import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
-import { getAdminToken } from '@/lib/adminSession';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import {
   getBoxAnnouncements,
@@ -214,7 +213,6 @@ function CommentsModal({
   authorName,
   isAdmin,
   isActive,
-  adminCode,
   visible,
   onClose,
   onDelta,
@@ -225,7 +223,6 @@ function CommentsModal({
   authorName: string;
   isAdmin: boolean;
   isActive: boolean;
-  adminCode: string | null;
   visible: boolean;
   onClose: () => void;
   onDelta: (postId: string, delta: number) => void;
@@ -267,7 +264,7 @@ function CommentsModal({
         text: 'Eliminar', style: 'destructive',
         onPress: async () => {
           try {
-            await deleteComment(post!.id, c.id, isAdmin ? (adminCode ?? undefined) : undefined);
+            await deleteComment(post!.id, c.id);
             onDelta(post!.id, -1);
             refresh();
           } catch (err: unknown) {
@@ -377,7 +374,6 @@ function AnnouncementCommentsModal({
   authorName,
   isAdmin,
   isActive,
-  adminCode,
   visible,
   onClose,
   onDelta,
@@ -388,7 +384,6 @@ function AnnouncementCommentsModal({
   authorName: string;
   isAdmin: boolean;
   isActive: boolean;
-  adminCode: string | null;
   visible: boolean;
   onClose: () => void;
   onDelta: (announcementId: string, delta: number) => void;
@@ -432,7 +427,7 @@ function AnnouncementCommentsModal({
         text: 'Eliminar', style: 'destructive',
         onPress: async () => {
           try {
-            await deleteComment(announcement!.id, c.id, isAdmin ? (adminCode ?? undefined) : undefined);
+            await deleteComment(announcement!.id, c.id);
             onDelta(announcement!.id, -1);
             refresh();
           } catch (err: unknown) {
@@ -679,7 +674,6 @@ function PostCard({
   post,
   userId,
   isAdmin,
-  adminCode,
   colors,
   onReact,
   onDelete,
@@ -692,7 +686,6 @@ function PostCard({
   userId: string;
   authorName: string;
   isAdmin: boolean;
-  adminCode: string | null;
   colors: ReturnType<typeof useColors>;
   onReact: (postId: string, emoji: string) => void;
   onDelete: (postId: string) => void;
@@ -900,12 +893,9 @@ export default function CommunityScreen() {
   const { user, adminStatus, hasBoxMembership, myBox, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
-  const adminCode = getAdminToken(); // admin session token (PIN flow), passed as Bearer
-  // Solo muestra las opciones de moderar a quien de verdad es administrador de
-  // box o super admin (incidente 2026-10-22): un token de administrador que
-  // quedó en memoria de otra sesión ya no basta. El servidor decide igual.
-  const isAdmin =
-    !!adminCode && !!adminStatus?.roles.some((r) => r === 'box_admin' || r === 'super_admin');
+  // F2: las opciones de moderar se muestran según el rol (administrador de box o super admin); NO se pide token
+  // ni haber pasado por el PIN. Quien decide de verdad es el servidor, por la sesión, el rol y el box.
+  const isAdmin = !!adminStatus?.roles.some((r) => r === 'box_admin' || r === 'super_admin');
 
   // No box yet -> the generic "WODPLACE SOCIAL" header and no feed content
   // at all (see Option A of the Comunidad box-scoping change: the backend
@@ -975,7 +965,7 @@ export default function CommunityScreen() {
     );
   }, [posts, bannerAnnouncements]);
 
-  const { createPost, editPost, deletePost, toggleReaction, uploadSocialImage, blockUser } =
+  const { createPost, editPost, deletePost, toggleReaction, uploadSocialImage, blockAuthor } =
     useSocialMutations(user?.id ?? '', user?.name ?? '');
   const { toggleReaction: toggleAnnouncementReaction } = useAnnouncementMutations(
     user?.id ?? '',
@@ -1148,7 +1138,7 @@ export default function CommunityScreen() {
         text: 'Eliminar', style: 'destructive',
         onPress: async () => {
           try {
-            await deletePost(postId, isAdmin ? (adminCode ?? undefined) : undefined);
+            await deletePost(postId);
             removePost(postId);
           } catch (err: unknown) {
             const apiErr = err as { data?: { error?: string }; message?: string } | null;
@@ -1168,14 +1158,14 @@ export default function CommunityScreen() {
   };
 
   const handleBlock = (post: SocialPost) => {
-    if (!post.userId || !adminCode) return;
+    if (!post.userId || !isAdmin) return;
     Alert.alert('Bloquear autor', `¿Bloquear a ${post.authorName}? Sus publicaciones dejarán de aparecer en el feed.`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Bloquear', style: 'destructive',
         onPress: async () => {
           try {
-            await blockUser(post.userId!, adminCode);
+            await blockAuthor(post.id);
             posts.filter((p: SocialPost) => p.userId === post.userId).forEach((p: SocialPost) => removePost(p.id));
             Alert.alert('Bloqueado', `${post.authorName} ha sido bloqueado.`);
           } catch { Alert.alert('Error', 'No se pudo bloquear.'); }
@@ -1301,7 +1291,6 @@ export default function CommunityScreen() {
                 userId={user.id}
                 authorName={user.name}
                 isAdmin={isAdmin}
-                adminCode={adminCode}
                 colors={colors}
                 onReact={handleReact}
                 onDelete={handleDelete}
@@ -1412,7 +1401,6 @@ export default function CommunityScreen() {
         authorName={user.name}
         isAdmin={isAdmin}
         isActive={isActive}
-        adminCode={adminCode}
         visible={commentsVisible}
         onClose={() => { setCommentsVisible(false); setCommentsPost(null); }}
         onDelta={handleDelta}
@@ -1426,7 +1414,6 @@ export default function CommunityScreen() {
         authorName={user.name}
         isAdmin={isAdmin}
         isActive={isActive}
-        adminCode={adminCode}
         visible={commentsAnnouncementVisible}
         onClose={() => { setCommentsAnnouncementVisible(false); setCommentsAnnouncement(null); }}
         onDelta={handleAnnouncementDelta}
