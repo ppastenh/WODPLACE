@@ -23,7 +23,6 @@ import {
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 
-import { findDistinctAdminEmails, resolveAdminRoles } from "../lib/adminRole";
 import {
   adminAccessOf,
   boxForNewToken,
@@ -400,148 +399,102 @@ router.post(
   },
 );
 
-/**
- * Resolves the Supabase Auth email to auto-login into the box dashboard for
- * the PIN identity `pinUserId` (a `wodplace_users.id` — the app's local mock
- * id, NOT an `auth.users.id`).
- *
- * A PIN identity is a non-UUID mock id, so it can't be matched against
- * `boxes.owner_user_id` (a real `auth.users.id` — that comparison actually
- * errors once the column is `uuid`). The only bridge is the shared email:
- * match `wodplace_users.email` against a `profiles` row that also carries a
- * `box_admin` / `super_admin` role. Exactly one distinct account -> use it;
- * ambiguous or missing -> null, and the caller falls back to the dashboard's
- * normal email/password login.
- */
-async function resolveDashLoginEmail(
-  pinUserId: string,
-  log: Request["log"],
-): Promise<string | null> {
-  const [appUser] = await db
-    .select({ email: wodplaceUsersTable.email })
-    .from(wodplaceUsersTable)
-    .where(eq(wodplaceUsersTable.id, pinUserId));
-  if (!appUser?.email) {
-    log.warn(
-      { pinUserId },
-      "[dash-link] no wodplace_users row/email for this PIN identity",
-    );
-    return null;
-  }
+// F2b (2026-10-25): el enlace de acceso automático al panel se decide SOLO por la sesión verificada y el rol vigente
+// de la base. Ya no usa el token de administrador ni el puente por correo entre wodplace_users y profiles: el enlace
+// se genera para la propia cuenta de la sesión (su correo verificado por Supabase), nunca para un correo que mande
+// la app. Reversa: revertir el commit (no hay migración).
+const DASH_LINK_MAX = 10;
+const DASH_LINK_WINDOW_MS = 10 * 60 * 1000;
+const dashLinkHits = new Map<string, number[]>();
 
-  const matches = await findDistinctAdminEmails(appUser.email);
-  if (matches.length !== 1) {
-    log.warn(
-      { pinUserId, email: appUser.email, matchCount: matches.length },
-      "[dash-link] wodplace_users email did not resolve to exactly one box_admin/super_admin profile",
-    );
-    return null;
+/** Límite por cuenta (memoria del proceso): máximo DASH_LINK_MAX peticiones cada DASH_LINK_WINDOW_MS. */
+function dashLinkAllowed(key: string): boolean {
+  const now = Date.now();
+  const hits = (dashLinkHits.get(key) ?? []).filter((t) => now - t < DASH_LINK_WINDOW_MS);
+  if (hits.length >= DASH_LINK_MAX) {
+    dashLinkHits.set(key, hits);
+    return false;
   }
-  log.info(
-    { pinUserId, via: "wodplace_users-email-match" },
-    "[dash-link] resolved dashboard login email via email match",
-  );
-  return matches[0];
+  hits.push(now);
+  dashLinkHits.set(key, hits);
+  if (dashLinkHits.size > 5000) {
+    for (const [k, v] of dashLinkHits) if (v.every((t) => now - t >= DASH_LINK_WINDOW_MS)) dashLinkHits.delete(k);
+  }
+  return true;
 }
 
 /**
- * POST /admin/dash-link  { target?: 'box' | 'super' }
+ * POST /admin/dash-link  { target?: 'box' | 'super', boxId?: string }
  *
- * Mints a single-use Supabase magic link that logs the caller's admin
- * account straight into the requested panel (box-admin by default, or the
+ * Mints a single-use Supabase magic link that logs the caller's own account
+ * straight into the requested panel (box-admin by default, or the
  * super-admin-hub when target: "super"), so the mobile app's WebView never
- * shows a second login. Requires a valid admin session token. Returns 409
- * when no linked Supabase admin account can be resolved, or 403 when
- * target: "super" is requested by an account without the super_admin
- * role — the app then falls back accordingly.
+ * shows a second login.
+ *
+ * Requires only the verified Supabase session (Authorization). Authorization:
+ *  - target "box": the caller must administer (box_admin or owner) or coach at
+ *    least one box -- or, when `boxId` is sent, THAT box -- or be an authorized
+ *    super admin (aal2 when the switch is on);
+ *  - target "super": authorized super admin only.
+ * Otherwise 403. No session: 401. Too many requests: 429. 409 when the session
+ * account has no email to sign in with.
  */
-router.post(
-  "/admin/dash-link",
-  requireAdminAccess("staff"),
-  async (req: Request, res: Response) => {
-    const parsed = CreateAdminDashLinkBody.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid request body" });
+router.post("/admin/dash-link", async (req: Request, res: Response) => {
+  const sb = await resolveSupabaseUser(req);
+  if (!sb) {
+    res.status(401).json({ error: "Missing or invalid Authorization token" });
+    return;
+  }
+  if (!dashLinkAllowed(sb.id)) {
+    res.status(429).json({ error: "Too many requests" });
+    return;
+  }
+  const parsed = CreateAdminDashLinkBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  const { target } = parsed.data;
+  const requestedBoxId = typeof req.body?.boxId === "string" && req.body.boxId ? (req.body.boxId as string) : null;
+
+  try {
+    const panel = await resolvePanelAccess(sb.id, sb.aal);
+    let allowed: boolean;
+    if (target === "super") allowed = panel.isSuper;
+    else if (requestedBoxId) {
+      allowed = panel.isSuper || panel.manageBoxIds.includes(requestedBoxId) || panel.coachBoxIds.includes(requestedBoxId);
+    } else allowed = panel.allowed;
+    if (!allowed) {
+      req.log.warn({ authUserId: sb.id, target }, "[dash-link] 403: this session has no panel access for that target");
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
-    const { target } = parsed.data;
-
-    try {
-      const pinUserId = adminAccessOf(res).userId;
-      if (!pinUserId) {
-        res.status(401).json({ error: "Invalid or expired admin session" });
-        return;
-      }
-
-      const email = await resolveDashLoginEmail(pinUserId, req.log);
-      if (!email) {
-        req.log.warn(
-          { pinUserId },
-          "[dash-link] 409: no linked dashboard account, app will fall back to manual login",
-        );
-        res
-          .status(409)
-          .json({ error: "No linked dashboard account for this identity" });
-        return;
-      }
-
-      if (target === "super") {
-        const roles = await resolveAdminRoles(email);
-        if (!roles.includes("super_admin")) {
-          req.log.warn(
-            { pinUserId, email },
-            "[dash-link] 403: super-admin-hub link requested by a non-super_admin account",
-          );
-          res.status(403).json({ error: "This account does not have the super_admin role" });
-          return;
-        }
-      }
-
-      const redirectTo = `${target === "super" ? getSuperAdminUrl() : getDashboardUrl()}/`;
-      const { data, error } = await getSupabaseAdmin().auth.admin.generateLink({
-        type: "magiclink",
-        email,
-        options: { redirectTo },
-      });
-
-      const url = data?.properties?.action_link;
-      if (error || !url) {
-        req.log.error(
-          { err: error, redirectTo },
-          "[dash-link] 502: Supabase generateLink failed for dash auto-login",
-        );
-        res.status(502).json({ error: "Could not create dashboard link" });
-        return;
-      }
-
-      // Diagnostics: log the link's shape (origin + path + the redirect_to it
-      // actually carries) WITHOUT the one-time token in the query string.
-      let linkShape = "<unparseable>";
-      try {
-        const u = new URL(url);
-        linkShape = `${u.origin}${u.pathname} redirect_to=${u.searchParams.get("redirect_to")}`;
-      } catch {
-        /* keep placeholder */
-      }
-      req.log.info(
-        {
-          pinUserId,
-          target,
-          requestedRedirectTo: redirectTo,
-          linkShape,
-          propertyKeys: data?.properties
-            ? Object.keys(data.properties)
-            : null,
-        },
-        "[dash-link] 200: magic link minted for dash auto-login",
-      );
-      // NB: never log the full `url` — it is a one-time credential.
-      res.json(CreateAdminDashLinkResponse.parse({ url }));
-    } catch (error) {
-      req.log.error({ err: error }, "Error creating admin dashboard link");
-      res.status(500).json({ error: "Failed to create dashboard link" });
+    if (!sb.email) {
+      res.status(409).json({ error: "No linked dashboard account for this identity" });
+      return;
     }
-  },
-);
+
+    const redirectTo = `${target === "super" ? getSuperAdminUrl() : getDashboardUrl()}/`;
+    const { data, error } = await getSupabaseAdmin().auth.admin.generateLink({
+      type: "magiclink",
+      email: sb.email,
+      options: { redirectTo },
+    });
+
+    const url = data?.properties?.action_link;
+    if (error || !url) {
+      req.log.error({ err: error, redirectTo }, "[dash-link] 502: Supabase generateLink failed for dash auto-login");
+      res.status(502).json({ error: "Could not create dashboard link" });
+      return;
+    }
+
+    // NB: never log the `url` (one-time credential) nor the email.
+    req.log.info({ authUserId: sb.id, target }, "[dash-link] 200: magic link minted for dash auto-login");
+    res.json(CreateAdminDashLinkResponse.parse({ url }));
+  } catch (error) {
+    req.log.error({ err: error }, "Error creating admin dashboard link");
+    res.status(500).json({ error: "Failed to create dashboard link" });
+  }
+});
 
 export default router;
