@@ -5,5 +5,5 @@
     "rootDir": "..",
     "types": ["node"]
   },
-  "include": ["src", "../artifacts/wodplace/lib/adminLockLogic.ts"]
+  "include": ["src", "../artifacts/wodplace/lib/adminLockLogic.ts", "../artifacts/wodplace/lib/adminUnlock.ts"]
 }

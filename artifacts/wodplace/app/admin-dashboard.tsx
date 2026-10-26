@@ -1,19 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useCreateAdminDashLink } from '@workspace/api-client-react';
+import { AdminLockPrompt } from '@/components/AdminLockPrompt';
 import { AppHeader } from '@/components/AppHeader';
 import { CancelConfirmModal } from '@/components/CancelConfirmModal';
 import { useAuth } from '@/context/AuthContext';
 import { useDarkColors } from '@/hooks/useDarkColors';
-import { getAdminToken } from '@/lib/adminSession';
+import { shouldRelock } from '@/lib/adminLockLogic';
+import { consumeAdminEntry, releaseAdminEntry } from '@/lib/adminUnlock';
 import { resolveDashboardUrl, resolveSuperAdminUrl } from '@/lib/dashboardUrl';
 
 /**
- * Post-PIN admin screen. Shows the full box-admin dashboard inside a WebView.
+ * Post-candado admin screen. Shows the full box-admin dashboard inside a WebView.
+ *
+ * F7-a2 (2026-10-25): se entra solo con el permiso de un solo uso que concede el candado local (lib/adminUnlock.ts);
+ * sin permiso (enlace profundo, botón "atrás", otra pantalla) se vuelve a /admin-login. Si la app vuelve de segundo
+ * plano tras 2 minutos o más, el candado se pone ENCIMA del panel, que queda detrás sin perder su estado.
  *
  * On open it asks api-server for a one-time Supabase magic link
  * (`POST /admin/dash-link`) so the admin lands logged in, without a second
@@ -106,18 +112,22 @@ function isAllowedInWebView(rawUrl: string, dashboardOrigin: string | null): boo
 
 export default function AdminDashboardScreen() {
   const colors = useDarkColors();
-  const { adminStatus } = useAuth();
+  const { adminStatus, user, logout } = useAuth();
   // 'box' (default) preserves every existing box_admin behavior unchanged;
   // 'super' comes from admin-login.tsx's target chooser/auto-pick.
   const { target: targetParam } = useLocalSearchParams<{ target?: string }>();
   const target: 'box' | 'super' = targetParam === 'super' ? 'super' : 'box';
   const isSuperAdmin = !!adminStatus?.roles.includes('super_admin');
 
-  const [token, setToken] = useState<string | null>(null);
+  // true cuando el candado concedió el permiso de entrada (se gasta al abrir esta pantalla).
+  const [entered, setEntered] = useState(false);
+  // El candado encima del panel tras volver de 2 minutos o más en segundo plano.
+  const [relock, setRelock] = useState(false);
+  const backgroundedAtRef = useRef<number | null>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [alertCount, setAlertCount] = useState(0);
   // Exiting this screen means going through /admin-login (and the PIN) again
-  // next time — see getAdminToken()'s comment above — so it's gated behind a
+  // next time — the entry permit is single-use and released on unmount — so it's gated behind a
   // confirmation instead of a bare tap, and its header icon is deliberately
   // not the usual back arrow (box-admin's own internal "Volver" links sit
   // right below it and use that same arrow-left look for a much cheaper,
@@ -132,21 +142,40 @@ export default function AdminDashboardScreen() {
   const dashboardOrigin = target === 'super' ? resolveSuperAdminUrl() : resolveDashboardUrl();
   const handleWebViewMessage = useRef(createWebViewMessageHandler(setAlertCount)).current;
 
-  const dashLink = useCreateAdminDashLink({
-    request: { headers: token ? { "X-Admin-Session": token } : {} },
-  });
+  // dash-link se decide en el servidor por la sesión de la cuenta y su rol (F2b): no lleva token ni cabecera.
+  const dashLink = useCreateAdminDashLink();
 
+  const enteredOnceRef = useRef(false);
   useEffect(() => {
-    const stored = getAdminToken();
-    if (!stored) {
-      router.replace('/admin-login');
-      return;
+    if (!enteredOnceRef.current) {
+      if (!consumeAdminEntry()) {
+        router.replace('/admin-login');
+        return;
+      }
+      enteredOnceRef.current = true;
+      setEntered(true);
     }
-    setToken(stored);
+    // Al salir de la pantalla no queda ningún permiso: volver a entrar pasa otra vez por el candado.
+    return () => releaseAdminEntry();
   }, []);
 
+  // Cambio entre apps / segundo plano: tras 2 minutos o más, el candado vuelve a taparlo todo.
   useEffect(() => {
-    if (!token || !dashboardOrigin || startedForRef.current === target) return;
+    if (!entered || Platform.OS === 'web') return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        backgroundedAtRef.current = Date.now();
+      } else if (state === 'active') {
+        const since = backgroundedAtRef.current;
+        backgroundedAtRef.current = null;
+        if (since !== null && shouldRelock(since, Date.now())) setRelock(true);
+      }
+    });
+    return () => sub.remove();
+  }, [entered]);
+
+  useEffect(() => {
+    if (!entered || !dashboardOrigin || startedForRef.current === target) return;
     startedForRef.current = target;
     setUri(null); // clear any link fetched for a previous target first
     dashLink
@@ -184,13 +213,13 @@ export default function AdminDashboardScreen() {
         }
         setUri(`${dashboardOrigin}/`);
       });
-  }, [token, dashboardOrigin, target, dashLink]);
+  }, [entered, dashboardOrigin, target, dashLink]);
 
   const viewAsAthlete = () => {
     router.replace('/home');
   };
 
-  if (!token) return null;
+  if (!entered) return null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -319,6 +348,19 @@ export default function AdminDashboardScreen() {
         confirmLabel="Salir"
         cancelLabel="Seguir aquí"
       />
+      {relock && user ? (
+        <View style={styles.relockOverlay}>
+          <AdminLockPrompt
+            userId={user.id}
+            variant="relock"
+            onUnlocked={() => setRelock(false)}
+            onLogout={async () => {
+              await logout();
+              router.replace('/login');
+            }}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -327,6 +369,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
   loadingOverlay: { ...StyleSheet.absoluteFill },
+  // Tapa TODO (también el encabezado) y deja el panel montado debajo, con su estado.
+  relockOverlay: { ...StyleSheet.absoluteFill, zIndex: 100, elevation: 100 },
   msg: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   msgSub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   viewToggle: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },

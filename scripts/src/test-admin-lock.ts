@@ -23,6 +23,14 @@ import {
   type DeviceSecurity,
   type LockDeps,
 } from '../../artifacts/wodplace/lib/adminLockLogic';
+import {
+  ENTRY_TTL_MS,
+  ENTRY_TTL_VIA_FORM_MS,
+  consumeAdminEntry,
+  grantAdminEntry,
+  isAdminEntryActive,
+  releaseAdminEntry,
+} from '../../artifacts/wodplace/lib/adminUnlock';
 
 const GOOD = '482915';
 const OTHER = '739150';
@@ -438,5 +446,66 @@ describe('utilidades', () => {
     assert.equal(safeEqual('abc', 'abd'), false);
     assert.equal(safeEqual('abc', 'abcd'), false);
     assert.equal(safeEqual('', ''), true);
+  });
+});
+
+describe('permiso de entrada al panel (un solo uso, solo en memoria)', () => {
+  it('sin permiso (enlace profundo, botón "atrás", otra pantalla): no abre', () => {
+    releaseAdminEntry();
+    assert.equal(consumeAdminEntry(), false);
+    assert.equal(isAdminEntryActive(), false);
+  });
+
+  it('con el permiso del candado abre UNA vez; la segunda no', () => {
+    releaseAdminEntry();
+    grantAdminEntry({ now: 1000 });
+    assert.equal(consumeAdminEntry(1500), true);
+    assert.equal(isAdminEntryActive(), true);
+    assert.equal(consumeAdminEntry(1600), false);
+  });
+
+  it('al salir de la pantalla no queda nada: volver a entrar pide el candado otra vez', () => {
+    releaseAdminEntry();
+    grantAdminEntry({ now: 1000 });
+    consumeAdminEntry(1100);
+    releaseAdminEntry(); // desmontar admin-dashboard / cerrar sesión
+    assert.equal(isAdminEntryActive(), false);
+    assert.equal(consumeAdminEntry(1200), false);
+  });
+
+  it('vence a los 60 s y un permiso vencido se descarta (no queda para después)', () => {
+    releaseAdminEntry();
+    grantAdminEntry({ now: 1000 });
+    assert.equal(consumeAdminEntry(1000 + ENTRY_TTL_MS + 1), false);
+    assert.equal(consumeAdminEntry(1500), false);
+  });
+
+  it('justo dentro de la vigencia sí vale', () => {
+    releaseAdminEntry();
+    grantAdminEntry({ now: 1000 });
+    assert.equal(consumeAdminEntry(1000 + ENTRY_TTL_MS), true);
+  });
+
+  it('el camino por "Datos del Box" tiene vigencia larga (20 minutos) y no más', () => {
+    releaseAdminEntry();
+    grantAdminEntry({ ttlMs: ENTRY_TTL_VIA_FORM_MS, now: 1000 });
+    assert.equal(consumeAdminEntry(1000 + 19 * 60_000), true);
+    releaseAdminEntry();
+    grantAdminEntry({ ttlMs: ENTRY_TTL_VIA_FORM_MS, now: 1000 });
+    assert.equal(consumeAdminEntry(1000 + 21 * 60_000), false);
+  });
+
+  it('con el reloj atrasado el permiso no vale', () => {
+    releaseAdminEntry();
+    grantAdminEntry({ now: 5000 });
+    assert.equal(consumeAdminEntry(4000), false);
+  });
+
+  it('conceder de nuevo reemplaza al anterior (no se acumulan permisos)', () => {
+    releaseAdminEntry();
+    grantAdminEntry({ now: 1000 });
+    grantAdminEntry({ now: 2000 });
+    assert.equal(consumeAdminEntry(2100), true);
+    assert.equal(consumeAdminEntry(2200), false);
   });
 });

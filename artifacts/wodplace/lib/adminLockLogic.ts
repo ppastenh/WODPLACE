@@ -160,7 +160,10 @@ type Loaded = { kind: 'none' } | { kind: 'bad' } | { kind: 'ok'; rec: LockRecord
 
 // ─── Resultados ────────────────────────────────────────────────────────────────
 
-export type LockStatus = { state: 'no-pin' | 'unreadable' } | { state: 'ready'; bio: boolean; weak: boolean };
+export type LockStatus =
+  | { state: 'no-pin' }
+  | { state: 'unreadable' }
+  | { state: 'ready'; bio: boolean; weak: boolean };
 
 export type CreatePinResult =
   | { status: 'ok'; weak: boolean }
