@@ -4,6 +4,8 @@ Fecha: 2026-10-25. Solo plan: no se ha tocado código. Espera el OK de Pía.
 
 ## Decisión de Pía sobre el PIN (2026-10-25)
 
+> **Prevalece la sección "F7-a (versión final)" al final de este documento.** Corrige un hueco de este texto inicial: "Olvidé mi PIN = cerrar sesión y volver a entrar" no basta; crear un PIN nuevo exige la verificación del propio teléfono. También fija: desde el 6.º error cada fallo sube un escalón, PIN fáciles rechazados, teléfono sin bloqueo de pantalla solo con aviso, y web sin candado.
+
 Se mantiene un **candado LOCAL con PIN**: guardado cifrado solo en el teléfono (SecureStore), sin servidor, y **no autoriza nada** (la sesión, el rol y el box siguen siendo lo único que decide en el servidor). Sirve para el caso de prestar el teléfono con la app abierta.
 
 Reglas propuestas (a afinar):
@@ -131,42 +133,117 @@ Orden de commits de F2: **F2a** servidor (rutas con sesión + rol + box, ruta nu
 5. El candado de una cuenta se borra al cerrar su sesión (es lo que hace funcionar "Olvidé mi PIN"). Reinstalar la app borra también la sesión; para volver a entrar hace falta la contraseña de la cuenta, así que reinstalar no es un atajo para quien no la tiene.
 6. Límite honesto: quien tenga el teléfono rooteado y sepa lo que hace puede vaciar SecureStore; el candado protege contra el teléfono prestado, no contra un ataque con herramientas.
 
+
 ---
 
-# F7-a en detalle (candado local con PIN) — solo plan, sin código
+# F7-a (versión final, revisada por Pía el 2026-10-25): candado local con PIN
 
-Contexto: F2a, F2b y F2c ya quitaron el token de la moderación y de `dash-link`. Hoy la app todavía pide el PIN del servidor en `admin-login.tsx` y guarda un token en memoria (`lib/adminSession.ts`) que `admin-dashboard.tsx` exige para abrir el panel. F7-a reemplaza esa puerta por el candado local, sin tocar el servidor (eso es F7-b).
+Contexto: F2a, F2b y F2c ya quitaron el token de la moderación y de `dash-link`. Hoy la app todavía pide el PIN del servidor en `admin-login.tsx` y guarda un token en memoria (`lib/adminSession.ts`) que `admin-dashboard.tsx` exige para abrir el panel. F7-a reemplaza esa puerta por el candado local, sin tocar el servidor (eso es F7-b, que tendrá su propio plan con el inventario por grep de cada ruta `/admin/*` y cada hook a eliminar).
 
-## 1. Piezas nuevas
-1. **`lib/adminLockLogic.ts` (lógica pura, sin nada de React Native):** la escalera de esperas, el contador, la regla "sumar el intento antes de comparar", la hora más alta vista y el formato del registro. Al ser pura se prueba con pruebas automáticas en el computador.
-2. **`lib/adminLock.ts` (almacenamiento):** guarda y lee el registro en SecureStore con la clave `wodplace.adminLock.<id de la cuenta>` (un candado por cuenta). Registro: versión, sal, hash del PIN, intentos fallidos, "no antes de" (hora absoluta), hora más alta vista y si la huella está activada. Expone solo: ¿hay PIN?, crear PIN, probar PIN (devuelve correcto, intentos que quedan o espera), activar o desactivar la huella y borrar. **No expone el contador.** Las pruebas de PIN se atienden de a una (cola) para que dos intentos simultáneos no esquiven el contador.
-3. **`lib/adminUnlock.ts` (reemplaza `adminSession.ts`):** un "permiso de entrada" solo en memoria, de un solo uso: `admin-login` lo concede al desbloquear y `admin-dashboard` lo consume al abrirse. Sin permiso, el panel redirige al candado. Así el PIN se pide **cada vez** que se abre el panel desde el menú. No es un token: no viaja al servidor.
-4. **`components/AdminLockPrompt.tsx`:** pantalla de ingresar o crear el PIN (reutiliza `PinField` de 6 celdas), cuenta regresiva de la espera, botón de huella y el texto de "Olvidé mi PIN".
+## 0. CORRECCIÓN DE DISEÑO OBLIGATORIA (Pía, 2026-10-25)
+**El hueco:** "Olvidé mi PIN = cerrar sesión y volver a entrar" se salta el candado justo en el caso para el que existe: con el teléfono prestado y desbloqueado, volver a entrar con Google es un toque (la cuenta ya está en el teléfono), y quien lo haga podría crear un PIN nuevo y entrar al panel.
 
-## 2. Cambios en lo existente
-- **`admin-login.tsx`:** se quitan las llamadas al PIN del servidor (`getAdminPinStatus`, `setupAdminPin`, `verifyAdminPin`, `createAdminSession`), el modo "contraseña de respaldo" y `verifyPassword`. Quedan: elegir panel si hay dos roles, crear PIN la primera vez (obligatorio, 6 dígitos, con confirmación y sin poder saltarlo), ingresar PIN, espera. La lógica de `goToPanel` (ir a `box-details` o `box-waiting` si el box no está listo) se conserva tal cual, pero sin guardar token.
-- **`admin-dashboard.tsx`:** exige y consume el permiso de entrada; ya no manda `X-Admin-Session` a `dash-link` (el servidor lo ignora desde F2b); cuando la app vuelve de segundo plano tras 2 minutos o más, tapa el panel con el candado (superposición: el panel conserva su estado detrás) y pide el PIN otra vez. Al salir del panel se pierde el permiso.
-- **`AuthContext.tsx`:** al cerrar sesión borra el candado de esa cuenta (hoy borra el token en memoria). Es lo que hace funcionar "Olvidé mi PIN".
-- **"Olvidé mi PIN":** un enlace explica "Para crear un PIN nuevo, cierra sesión y vuelve a entrar", con confirmación; cerrar sesión borra el candado y, al volver a abrir el panel, se crea uno nuevo.
-- **Huella:** después de crear el PIN se ofrece activarla (opcional). Con la huella correcta se entra sin PIN; no cambia el contador del PIN y el PIN siempre queda como respaldo. En la web no hay huella ni SecureStore.
-- **Web:** propuesta: sin candado (el navegador es la sesión). Pregunta para Pía: ¿está bien?
-- **No se toca:** el servidor, la compuerta del Acuerdo en el botón "Administrador", el botón Administrador/Coach, `choose-view`, las rutas `/admin/*`.
+**La corrección:** crear o reemplazar el PIN (la primera vez y después de "Olvidé mi PIN") **exige la autenticación del propio dispositivo** (huella, rostro o el desbloqueo del teléfono, con respaldo de la credencial del dispositivo) **cuando el teléfono tiene bloqueo de pantalla**. Si no lo tiene, se avisa que el candado es débil y se permite. Cerrar sesión ya no basta: el PIN nuevo también la exige.
 
-## 3. Reglas del PIN (aprobadas)
-6 dígitos; obligatorio crearlo la primera vez; un candado por cuenta; se pide cada vez que se abre el panel desde el menú y tras 2 minutos en segundo plano; 5 errores seguidos → espera de 30 s; cada error posterior sube el escalón (1 min, 5, 15 y 30 min como tope); un PIN correcto reinicia todo. **Propuesta a confirmar:** que desde el sexto error cada intento fallido suba un escalón (en vez de volver a permitir 5 intentos por escalón).
+Cómo se aplica:
+- La verificación se pide **al tocar "Guardar PIN"** (después de escribir y repetir el PIN), no al entrar a la pantalla, y vale para **una sola operación**: no queda un permiso que otra acción pueda reutilizar.
+- En la lógica, crear el PIN primero valida formato y fuerza (sin pedir nada al sistema), luego mira el nivel de seguridad del teléfono, y solo si la verificación sale bien escribe el registro. Si se cancela o falla, el almacenamiento queda intacto.
+- La función de crear **se niega si ya existe un registro** (legible o no): no hay "reemplazar" por esa vía; el único camino para borrar es cerrar sesión (o "Olvidé mi PIN", que cierra sesión), y el nuevo PIN vuelve a exigir la verificación del dispositivo.
+- El atajo de huella para **entrar** (no para crear) usa solo biometría, **sin** respaldo de credencial del teléfono: así quien conozca el código del teléfono (por ejemplo, alguien de la familia) no abre el panel con él. Para **crear** sí se acepta la credencial del dispositivo, porque quien no tiene biometría la necesita.
 
-**Hash:** con sal aleatoria propia (del mismo generador ya probado en `secureSessionCrypto.ts`), SHA-256 repetido unas miles de veces con `expo-crypto` (el número exacto se mide en el teléfono para que tarde menos de un segundo). Límite honesto: un PIN de 6 dígitos solo tiene un millón de combinaciones, así que si alguien lograra copiar el registro (requiere teléfono con root), podría adivinarlo sin conexión. Lo que protege es SecureStore (Keychain o Keystore) más el contador, y por eso el candado no autoriza nada.
+### Otros caminos que se saltarían el candado, y cómo quedan cubiertos
+| Camino | Cómo queda |
+|---|---|
+| Cerrar sesión + Google + crear PIN nuevo | **Cubierto** por la corrección: crear PIN exige la verificación del dispositivo. |
+| Abrir el panel por un enlace profundo o con "atrás" sin pasar por el PIN | `admin-dashboard` exige un permiso de entrada en memoria, de un solo uso, que solo concede el candado; sin permiso redirige a `admin-login`. Prueba en F7-a2. |
+| Matar la app para reiniciar el contador de errores | **Cubierto**: el contador vive en SecureStore y el intento se suma antes de comparar. |
+| Retroceder el reloj para saltarse la espera | **Cubierto**: hora más alta vista; con el reloj atrás la espera no avanza (la salida es "Olvidé mi PIN"). Adelantar el reloj sí acorta la espera: no se puede evitar sin servidor. |
+| Dos intentos simultáneos para esquivar el contador | **Cubierto**: los intentos se atienden en cola. |
+| Registro dañado o ilegible para forzar "crear PIN" | **Cubierto**: ilegible nunca ofrece crear; solo reintentar u "Olvidé mi PIN". |
+| Atajo de huella con el código del teléfono | **Cubierto**: el atajo es solo biometría. |
+| Teléfono sin bloqueo de pantalla (crear PIN sin verificación) | **No se puede cubrir**: se avisa que el candado es débil y se permite (decisión de Pía). |
+| Sesión de la WebView del panel que sigue guardada | La WebView solo se abre desde `admin-dashboard`, detrás del permiso; el panel se vuelve a abrir con un enlace nuevo (`dash-link`), que pide la sesión de la app. |
+| Vista previa del panel en el selector de apps del teléfono | **No cubierto** en F7-a (opción futura: ocultar el contenido en el selector con `FLAG_SECURE`; requiere decisión y posiblemente un cambio nativo). |
+| Teléfono con root, o copiar el registro para adivinar el PIN sin conexión | **No cubierto**: el PIN tiene un millón de combinaciones; lo protegen SecureStore y el contador. |
+| Usar la app como la dueña en vista de alumno con el teléfono abierto | Fuera de alcance del candado (no es el panel). |
 
-## 4. Orden de commits (cada uno revertible)
-1. **F7-a1:** `adminLockLogic.ts` y sus pruebas automáticas, sin conectar a ninguna pantalla.
-2. **F7-a2:** `adminLock.ts`, `adminUnlock.ts`, `AdminLockPrompt.tsx`; `admin-login.tsx`, `admin-dashboard.tsx` y `AuthContext.tsx` pasan al candado; se retira `adminSession.ts`. Se ejecutan typecheck, `expo export` de Android y `check:pressed-opacity` (y se actualizan sus listas si cambian).
+## 1. Dependencias y compilación del teléfono (verificado)
+- `expo-crypto ~57.0.3` y `expo-local-authentication ~57.0.2` ya están en `artifacts/wodplace/package.json`, junto con `expo-secure-store ~57.0.4`. **No se agrega ninguna dependencia.**
+- Compilaciones de desarrollo de EAS (Android, perfil `development`): 2026-10-02 (commit 9e69958), 2026-10-14 14:35 UTC (c52ad55) y **la última, 2026-10-14 16:30 UTC (0beb9ac)**. En ese commit ya estaban `expo-crypto`, `expo-local-authentication` y `expo-dev-client`. `expo-secure-store` y su plugin se agregaron al código después (commit 25fbd53), pero ESTADO.md registra que esa compilación se probó en el teléfono con la sesión cifrada, así que se hizo con esos cambios en el árbol de trabajo.
+- Pruebas en vivo de que los módulos están en el teléfono: `expo-crypto` lo usa el cifrado de la sesión (`secureSessionCrypto.ts`), `expo-secure-store` guarda la clave de la sesión y `expo-local-authentication` lo importa `admin-login.tsx` (el panel con PIN se probó el 14-oct). Las funciones que se usarán (`getEnrolledLevelAsync`, `authenticateAsync` con `disableDeviceFallback`, `digestStringAsync`, `getRandomValues`) existen en las versiones instaladas, y el módulo declara los permisos de Android que necesita.
+- Desde esa compilación no se agregó ningún paquete nativo nuevo a `package.json`. Límite: no puedo inspeccionar el APK instalado en el teléfono; si Pía instaló otra compilación, el chequeo en el teléfono es abrir el panel actual (que ya importa `expo-local-authentication`).
+- iPhone: no hay compilación de iOS. Para Face ID habría que agregar el texto de permiso (`NSFaceIDUsageDescription`) con el plugin de `expo-local-authentication` y compilar de nuevo: **queda anotado para cuando exista una compilación de iOS, no ahora**.
 
-## 5. Pruebas
-- **Automáticas (F7-a1), sin teléfono:** escalera 30 s, 1, 5, 15, 30 min y tope; un PIN correcto reinicia; el contador sobrevive a un "reinicio" (se recrea el módulo con el mismo almacenamiento falso); el intento se suma antes de comparar (se simula cerrar la app a mitad de un intento y el intento cuenta); reloj hacia atrás no acorta la espera (hora más alta vista); aislamiento entre cuentas; borrar al cerrar sesión; comparación del hash sin atajos; dos intentos simultáneos se atienden en cola.
-- **En el teléfono (checklist corta):** (1) primer ingreso: crea PIN y entra; (2) cierra y vuelve a abrir el panel desde el menú: pide PIN cada vez; (3) manda la app a segundo plano 2 minutos y vuelve: pide PIN con el panel detrás; (4) 5 errores: espera de 30 s, y matar la app no la reinicia; (5) activar huella y entrar con ella; (6) "Olvidé mi PIN": cierra sesión, vuelve a entrar y crea uno nuevo.
-- **No se puede probar sin teléfono:** SecureStore real, huella, y el comportamiento de segundo plano.
+## 2. Piezas
+1. **`lib/adminLockLogic.ts` (F7-a1, lógica pura):** reglas, escalera de esperas, contador, formato y validación del registro, fuerza del PIN, verificación del dispositivo para crear, atajo biométrico, bloqueo por segundo plano. Recibe todo lo externo por parámetros (almacenamiento, reloj, hash, azar, verificación del dispositivo), por eso se prueba en el computador sin teléfono.
+2. **`lib/adminLock.ts` (F7-a2):** conecta la lógica a SecureStore (clave `wodplace.adminLock.<id de la cuenta>`), `expo-crypto` y `expo-local-authentication`.
+3. **`lib/adminUnlock.ts` (F7-a2, reemplaza `adminSession.ts`):** permiso de entrada en memoria, de un solo uso.
+4. **`components/AdminLockPrompt.tsx` (F7-a2):** las pantallas de abajo.
 
-## 6. Riesgos
-- Quien tenía PIN del servidor tendrá que crear uno nuevo la primera vez (no se migran).
-- Si el PIN se olvida, la salida es cerrar sesión y volver a entrar (necesita la contraseña de la cuenta o Google).
-- iPhone: el Keychain puede conservar el registro tras reinstalar la app; es inofensivo (sigue siendo ese PIN) y "Olvidé mi PIN" lo limpia.
+El registro guarda: versión, sal, hash, vueltas, intentos fallidos consecutivos, "no antes de" (hora absoluta), hora más alta vista, si la huella está activada y si se creó en modo débil (sin bloqueo de pantalla). No se expone el contador a la interfaz.
+
+## 3. Reglas
+- PIN de **6 dígitos**; creación obligatoria la primera vez; un candado por cuenta.
+- Se pide **cada vez** que se abre el panel desde el menú, y tras **2 minutos** en segundo plano (si el reloj retrocedió, se bloquea: falla hacia lo seguro).
+- **Errores:** los 5 primeros no tienen espera. Desde el 5.º error seguido: **30 s**; 6.º: **1 min**; 7.º: **5 min**; 8.º: **15 min**; 9.º en adelante: **30 min (tope)**. Cada fallo posterior al 5.º sube un escalón. Un PIN correcto reinicia todo. El intento se suma **antes** de comparar. Nunca es un bloqueo permanente.
+- **PIN fáciles rechazados** ("Elige un PIN menos fácil de adivinar."): un solo dígito repetido (000000), secuencias ascendentes o descendentes de 1 en 1 (123456, 654321, 890123), y patrones que se repiten cada 2 o 3 dígitos (121212, 123123, 112112).
+- **Hash:** sal aleatoria propia + SHA-256 repetido unas miles de veces con `expo-crypto` (las vueltas se miden en el teléfono para que tarde menos de 1 s); comparación sin atajos. Límite honesto: un PIN de 6 dígitos tiene un millón de combinaciones.
+- **Teléfono sin bloqueo de pantalla:** solo se avisa; no se niega la entrada; no se ofrece la huella.
+- **Web:** sin candado.
+
+## 4. Pantallas y textos (tuteo)
+1. **Crear PIN** (primera vez, obligatorio). Título "Crea tu PIN del panel". Texto: "Es un candado de este teléfono: protege el panel si alguien usa tu teléfono con la app abierta. No reemplaza tu contraseña." Campos "Elige un PIN de 6 dígitos" y "Repite tu PIN". Botón "Guardar PIN". Al tocarlo aparece la verificación del teléfono con el título "Confirma que eres tú" y el texto "Para guardar tu PIN del panel".
+   - Errores del PIN: "El PIN debe tener 6 dígitos." · "Los PIN no coinciden." · "Elige un PIN menos fácil de adivinar." · "No se pudo guardar el PIN en este teléfono. Reintenta."
+   - **Si cancelas la verificación:** "Cancelaste la verificación. Para guardar tu PIN debes confirmar que eres tú con tu huella, tu rostro o el desbloqueo de este teléfono." (botón "Reintentar")
+   - **Si la verificación falla:** "No pudimos confirmar que eres tú. Reintenta." (botón "Reintentar")
+   - **Si el sistema te bloquea por demasiados intentos:** "Hiciste demasiados intentos. Usa el desbloqueo de tu teléfono o vuelve a intentarlo en un rato."
+   - **Si el teléfono no puede verificar en este momento:** "Este teléfono no puede verificar tu identidad ahora. Reintenta más tarde."
+   - **Aviso si el teléfono no tiene bloqueo de pantalla** (no impide guardar): "Este teléfono no tiene bloqueo de pantalla, así que no podemos confirmar que eres tú. El candado es débil: quien use tu teléfono podría crear su propio PIN. Te recomendamos activar un bloqueo de pantalla en los ajustes del teléfono."
+2. **Activar huella o rostro** (después de crear el PIN, solo si el teléfono tiene biometría configurada). "¿Quieres entrar con tu huella o tu rostro?" Botones "Activar" y "Ahora no".
+3. **Ingresar PIN.** Título "Ingresa tu PIN", subtítulo "Panel de administración". Error: "PIN incorrecto. Te quedan N intentos antes de una espera." Enlaces "Usar huella o rostro" (si está activada) y "Olvidé mi PIN".
+4. **Espera.** "Demasiados intentos. Vuelve a intentar en m:ss." Al terminar vuelve a "Ingresar PIN".
+5. **Bloqueo tras 2 minutos en segundo plano** (superposición sobre el panel, que queda detrás sin perder su estado). "Panel bloqueado. Ingresa tu PIN para continuar."
+6. **Olvidé mi PIN.** "¿Olvidaste tu PIN?" · "Para crear uno nuevo debes cerrar sesión, volver a entrar y confirmar que eres tú con el desbloqueo de tu teléfono. Al cerrar sesión se borra el PIN de este teléfono." Botones "Cerrar sesión" y "Cancelar".
+7. **PIN ilegible.** "No pudimos leer el PIN guardado en este teléfono." con "Reintentar" y "Olvidé mi PIN". Si el registro no se puede leer, **no** se ofrece crear un PIN nuevo.
+
+## 5. Qué pasa al cerrar sesión
+- Cerrar sesión a propósito (menú) **borra el candado de esa cuenta** y el permiso de entrada. Los candados de otras cuentas en el mismo teléfono no se tocan.
+- Al volver a entrar y abrir el panel, se crea un PIN nuevo (pantalla 1) y **eso exige la verificación del teléfono** (sección 0).
+- Si la sesión se cierra sola (vence o se revoca), el candado **se conserva**: la misma cuenta sigue con su PIN. Solo "Cerrar sesión" a propósito y "Olvidé mi PIN" lo borran.
+- Quien tenga el teléfono abierto puede cerrar sesión, pero no obtiene el panel: para volver a entrar necesita la contraseña o Google, y para crear el PIN necesita la verificación del teléfono.
+
+## 6. Teléfono sin bloqueo de pantalla
+- Se detecta con el nivel de seguridad del sistema (`getEnrolledLevelAsync`: ninguno / PIN, patrón o contraseña / biométrico).
+- Android: el almacenamiento seguro funciona igual (clave en el Keystore). iPhone: el Keychain guarda sin protección extra. No se usa la opción de exigir autenticación del sistema al leer.
+- La app no lo bloquea: muestra el aviso de la pantalla 1, marca el registro como débil y no ofrece la huella. El candado es una capa de comodidad y no puede obligar a proteger el teléfono.
+
+## 7. Orden de commits (cada uno revertible)
+1. **F7-a1:** `adminLockLogic.ts` + pruebas automáticas, sin conectar a ninguna pantalla. **Se puede empezar ya.**
+2. **F7-a2:** `adminLock.ts`, `adminUnlock.ts`, `AdminLockPrompt.tsx`; `admin-login.tsx`, `admin-dashboard.tsx` y `AuthContext.tsx` pasan al candado; se retira `adminSession.ts`. **Solo cuando Pía lo apruebe.** Typecheck, `expo export` de Android, `check:pressed-opacity`.
+3. **F7-b** (plan aparte): eliminar rutas `/admin/*`, token y hooks, con inventario por grep.
+
+## 8. Cómo se ejecutan las pruebas automáticas (sin agregar dependencias)
+El repositorio no tiene corredor de pruebas y no se agrega uno. Se usa el corredor **integrado en Node 24** (`node:test` y `node:assert`) ejecutado con `tsx`, que ya es dependencia de `scripts/`:
+- Archivo `scripts/src/test-admin-lock.ts`; comando `pnpm --filter @workspace/scripts test:admin-lock` (que ejecuta `tsx --test`).
+- La lógica no importa nada de React Native ni de Expo, así que corre en Node. Almacenamiento, reloj, azar, hash y verificación del dispositivo se reemplazan por versiones falsas en la prueba (un "reinicio" se simula creando de nuevo el módulo sobre el mismo almacenamiento falso).
+- `scripts/tsconfig.json` pasa a `rootDir` en la raíz del repositorio e incluye ese único archivo de la app, para poder revisar sus tipos; no cambia nada más.
+
+**Casos que cubren las pruebas de F7-a1:**
+- Crear PIN: con bloqueo de pantalla, **pide la verificación del dispositivo antes de escribir**; si se cancela, falla, hay bloqueo del sistema o no está disponible, **el almacenamiento queda intacto** y el estado devuelto es el correcto; sin bloqueo de pantalla, se permite y el registro queda marcado como débil; crear es una sola operación (cada creación pide su propia verificación); **se niega si ya hay un registro** (legible o no); PIN débil o mal formado se rechaza **sin pedir la verificación**.
+- Escalera de esperas: 5 errores → 30 s; 6.º → 1 min; 7.º → 5; 8.º → 15; 9.º y siguientes → 30 min; un PIN correcto reinicia; durante la espera no se prueba el PIN ni se gasta un intento.
+- Contador: sobrevive a un "reinicio"; el intento se suma antes de comparar (si el proceso "muere" justo después de sumar, el intento cuenta); dos intentos simultáneos se atienden en cola.
+- Reloj: retroceder no acorta la espera; avanzar sí; bloqueo por segundo plano (justo en el límite, antes del límite, con el reloj atrás).
+- Registro: ilegible, versión desconocida o campos inválidos → estado "ilegible" sin modificar nada, y no se puede crear encima; aislamiento entre cuentas; borrar solo la cuenta que sale.
+- Atajo biométrico: solo si está activado y el teléfono tiene biometría; **usa biometría sin respaldo de credencial**; no cambia el contador; sin biometría no se puede activar.
+- Fuerza del PIN: 000000, 111111, 123456, 654321, 890123, 121212, 123123, 112112 rechazados; 135790, 482915 aceptados.
+- Hash: misma entrada y misma sal dan el mismo hash; sal distinta, hash distinto; comparación sin atajos.
+
+**No se puede probar sin teléfono (checklist de F7-a2):** SecureStore real, la verificación real del sistema (huella, rostro y credencial del teléfono), el comportamiento en segundo plano y el teléfono sin bloqueo de pantalla.
+
+**Checklist corta de teléfono (F7-a2):** (1) primer ingreso: crear el PIN, confirmar con el desbloqueo del teléfono y entrar; (2) cancelar la verificación: debe verse el mensaje y no guardar nada; (3) cerrar y reabrir el panel desde el menú: pide el PIN cada vez; (4) 2 minutos en segundo plano: vuelve con el candado y el panel detrás; (5) 5 errores: espera de 30 s, y matar la app no la reinicia; (6) activar la huella y entrar con ella; (7) "Olvidé mi PIN": cerrar sesión, volver a entrar con Google y comprobar que **crear el PIN pide la verificación del teléfono**; (8) si hay un teléfono sin bloqueo de pantalla: ver el aviso.
+
+## 9. Riesgos
+- Quien tenía PIN del servidor crea uno nuevo la primera vez (no se migran).
+- Si se olvida el PIN, la salida es cerrar sesión, volver a entrar y confirmar con el teléfono.
+- Con el reloj muy atrasado la espera puede no avanzar hasta que el reloj vuelva a la hora real; la salida es "Olvidé mi PIN".
+- En iPhone el Keychain puede conservar el registro al reinstalar; es inofensivo y "Olvidé mi PIN" lo limpia.
