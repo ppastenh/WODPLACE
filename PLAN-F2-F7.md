@@ -187,7 +187,7 @@ El registro guarda: versión, sal, hash, vueltas, intentos fallidos consecutivos
 - Se pide **cada vez** que se abre el panel desde el menú, y tras **2 minutos** en segundo plano (si el reloj retrocedió, se bloquea: falla hacia lo seguro).
 - **Errores:** los 5 primeros no tienen espera. Desde el 5.º error seguido: **30 s**; 6.º: **1 min**; 7.º: **5 min**; 8.º: **15 min**; 9.º en adelante: **30 min (tope)**. Cada fallo posterior al 5.º sube un escalón. Un PIN correcto reinicia todo. El intento se suma **antes** de comparar. Nunca es un bloqueo permanente.
 - **PIN fáciles rechazados** ("Elige un PIN menos fácil de adivinar."): un solo dígito repetido (000000), secuencias ascendentes o descendentes de 1 en 1 (123456, 654321, 890123), y patrones que se repiten cada 2 o 3 dígitos (121212, 123123, 112112).
-- **Hash:** sal aleatoria propia + SHA-256 repetido unas miles de veces con `expo-crypto` (las vueltas se miden en el teléfono para que tarde menos de 1 s); comparación sin atajos. Límite honesto: un PIN de 6 dígitos tiene un millón de combinaciones.
+- **Hash:** sal aleatoria propia + SHA-256 repetido **1000 veces** con `expo-crypto`; comparación sin atajos. Medido en el teléfono de Pía (ver "Medición del hash" más abajo).
 - **Teléfono sin bloqueo de pantalla:** solo se avisa; no se niega la entrada; no se ofrece la huella.
 - **Web:** sin candado.
 
@@ -247,3 +247,24 @@ El repositorio no tiene corredor de pruebas y no se agrega uno. Se usa el corred
 - Si se olvida el PIN, la salida es cerrar sesión, volver a entrar y confirmar con el teléfono.
 - Con el reloj muy atrasado la espera puede no avanzar hasta que el reloj vuelva a la hora real; la salida es "Olvidé mi PIN".
 - En iPhone el Keychain puede conservar el registro al reinstalar; es inofensivo y "Olvidé mi PIN" lo limpia.
+
+---
+
+# Medición del hash del PIN y decisión (2026-10-26)
+
+**Medición en el teléfono de Pía** (modo desarrollo; el JavaScript de desarrollo corre más lento que el de producción, así que las cifras son pesimistas):
+
+| Vueltas | Tiempo |
+|---|---|
+| 1000 | 774 ms (mín 593, máx 1474) |
+| 5000 | 8589 ms |
+| 20000 | 29780 ms |
+| 50000 | 54280 ms |
+
+Cada vuelta cuesta cerca de 1 ms, casi todo por el cruce al módulo nativo de `expo-crypto`. El valor más alto que baja de 1 segundo es **1000**.
+
+**Decisión de Pía:** se dejan **1000 vueltas** y se **cancela el re-hasheo automático** (subir las vueltas no cambia la seguridad real frente a un PIN de 6 dígitos). La pantalla de medición se borró y no se commiteó.
+
+**Límite honesto:** si alguien obtiene una copia del registro con acceso total al teléfono, un PIN de 6 dígitos (un millón de combinaciones) se adivina sin conexión en segundos, con 1000 vueltas o con 50000. Lo que realmente protege es: SecureStore (Keychain en iPhone, Keystore en Android) que impide leer el registro sin acceso total al teléfono; el contador de errores con espera creciente; y la verificación del teléfono al crear o reemplazar el PIN. El candado no autoriza nada: lo que decide es el servidor.
+
+**Por qué el registro guarda las vueltas:** el número de vueltas va dentro del registro de cada cuenta. Si algún día se agrega un módulo nativo de derivación de claves (por ejemplo PBKDF2 o scrypt, que exige una compilación nueva de la app), se podrá cambiar el método sin invalidar los PIN ya creados.
