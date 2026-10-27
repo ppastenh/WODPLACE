@@ -10,6 +10,7 @@ import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { NO_COACH_LABEL, coachLine, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
+import { planProgressView } from '../../artifacts/wodplace/lib/planProgress';
 
 // tsx entrega el export por defecto de un módulo sin "type" a veces envuelto en otro `default`.
 const colors = ((colorsModule as { default?: typeof colorsModule }).default ?? colorsModule) as typeof colorsModule;
@@ -77,5 +78,55 @@ describe('tarjeta de próxima clase: colores y contraste (mínimo 4,5:1)', () =>
   it('el token anterior de la meta (navInactive) NO cumplía: por eso se cambió', () => {
     assert.ok(contrast(light.navInactive, light.navFloating) < 4.5);
     assert.ok(contrast(light.navInactive, light.navFloatingPressed) < 4.5);
+  });
+});
+
+describe('"Clases del plan": sin plan, plan ilimitado y plan por clases', () => {
+  it('sin plan activo: "—" y "Sin plan activo" (tenga o no datos de plan)', () => {
+    assert.deepEqual(planProgressView({ hasActivePlan: false, planLoading: false, plan: null }), { kind: 'none' });
+    assert.deepEqual(
+      planProgressView({ hasActivePlan: false, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 3 } }),
+      { kind: 'none' },
+    );
+  });
+
+  it('plan activo sin clases por período (ilimitado): "Plan ilimitado", sin barra', () => {
+    assert.deepEqual(
+      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: null, classesUsedInPeriod: null } }),
+      { kind: 'unlimited' },
+    );
+    // aunque el servidor mande un conteo, un plan ilimitado no tiene tope contra el cual mostrar una barra
+    assert.deepEqual(
+      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: null, classesUsedInPeriod: 5 } }),
+      { kind: 'unlimited' },
+    );
+  });
+
+  it('plan con clases por período: N / M con la barra', () => {
+    assert.deepEqual(
+      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 3 } }),
+      { kind: 'classes', used: 3, total: 8, ratio: 0.375 },
+    );
+    assert.deepEqual(
+      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 0 } }),
+      { kind: 'classes', used: 0, total: 8, ratio: 0 },
+    );
+  });
+
+  it('la barra nunca pasa de lleno (más clases usadas que el tope)', () => {
+    const v = planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 11 } });
+    assert.deepEqual(v, { kind: 'classes', used: 11, total: 8, ratio: 1 });
+  });
+
+  it('plan por clases cuyo período aún no empieza (sin pago registrado): muestra el tope y la barra vacía', () => {
+    assert.deepEqual(
+      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: null } }),
+      { kind: 'classes', used: null, total: 8, ratio: 0 },
+    );
+  });
+
+  it('mientras llegan los datos del plan no dice "Sin plan activo" por error', () => {
+    assert.deepEqual(planProgressView({ hasActivePlan: true, planLoading: true, plan: null }), { kind: 'loading' });
+    assert.deepEqual(planProgressView({ hasActivePlan: true, planLoading: false, plan: null }), { kind: 'none' });
   });
 });

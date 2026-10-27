@@ -88,6 +88,7 @@ import { useColors } from '@/hooks/useColors';
 import { getMedalIconColor } from '@/lib/medalColors';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import { coachLine, nextClassCardState } from '@/lib/nextClassCard';
+import { planProgressView } from '@/lib/planProgress';
 import { useRefetchOnFocusIfStale } from '@/lib/useRefetchOnFocusIfStale';
 import {
   formatClassDateShort,
@@ -370,12 +371,13 @@ export default function HomeScreen() {
     router.replace('/login');
   };
 
-  // "Clases del plan" (the stat card below) only shows real numbers once
-  // the plan's period stats are known (classesPerPeriod set AND
-  // next_payment_at seeded server-side) — an unlimited plan, or one with no
-  // period yet, has nothing to show a ceiling against.
-  const hasPeriodProgress =
-    myPlan?.classesPerPeriod != null && myPlan?.classesUsedInPeriod != null;
+  // "Clases del plan" (el mosaico de más abajo): sin plan, plan ilimitado o plan con clases por período
+  // (ver lib/planProgress.ts).
+  const planView = planProgressView({
+    hasActivePlan: !!hasActivePlan,
+    planLoading: myPlanQuery.isPending,
+    plan: myPlan,
+  });
   const nearPlanLimit =
     !!myPlan &&
     ((myPlan.classesPerPeriod != null &&
@@ -677,31 +679,30 @@ export default function HomeScreen() {
             <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
               Clases del plan
             </Text>
-            {hasPeriodProgress ? (
+            {planView.kind === 'classes' ? (
               <>
                 <Text
                   style={[styles.statsValue, { color: colors.foreground }]}
                   maxFontSizeMultiplier={1.3}
                 >
-                  {myPlan!.classesUsedInPeriod} / {myPlan!.classesPerPeriod}
+                  {planView.used ?? '—'} / {planView.total}
                 </Text>
                 <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
                   <View
                     style={[
                       styles.progressFill,
-                      {
-                        backgroundColor: colors.navActive,
-                        width: `${Math.min(
-                          ((myPlan!.classesUsedInPeriod as number) /
-                            (myPlan!.classesPerPeriod as number)) *
-                            100,
-                          100,
-                        )}%`,
-                      },
+                      { backgroundColor: colors.navActive, width: `${planView.ratio * 100}%` },
                     ]}
                   />
                 </View>
               </>
+            ) : planView.kind === 'unlimited' ? (
+              <Text
+                style={[styles.prEmptyValue, { color: colors.foreground }]}
+                maxFontSizeMultiplier={1.3}
+              >
+                Plan ilimitado
+              </Text>
             ) : (
               <>
                 <Text
@@ -710,12 +711,14 @@ export default function HomeScreen() {
                 >
                   —
                 </Text>
-                <Text
-                  style={[styles.statsDetail, { color: colors.navInactive }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  Sin plan activo
-                </Text>
+                {planView.kind === 'none' ? (
+                  <Text
+                    style={[styles.statsDetail, { color: colors.navInactive }]}
+                    maxFontSizeMultiplier={1.3}
+                  >
+                    Sin plan activo
+                  </Text>
+                ) : null}
               </>
             )}
           </View>
