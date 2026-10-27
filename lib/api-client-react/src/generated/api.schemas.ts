@@ -279,72 +279,6 @@ export interface BirthdayConsentResponse {
   birthdayVisibilityConsent: boolean;
 }
 
-export interface AdminPinStatusRequest {
-  /** @minLength 1 */
-  userId: string;
-}
-
-export interface AdminPinStatusResult {
-  hasPin: boolean;
-  failedAttempts: number;
-  /** ISO timestamp until which PIN entry is locked, or null. */
-  lockedUntil: string | null;
-}
-
-export interface AdminPinSetupRequest {
-  /** @minLength 1 */
-  userId: string;
-  /**
-     * 4 to 6 digits.
-     * @pattern ^[0-9]{4,6}$
-     */
-  pin: string;
-}
-
-export interface AdminPinVerifyRequest {
-  /** @minLength 1 */
-  userId: string;
-  /** @minLength 1 */
-  pin: string;
-}
-
-export interface AdminPinVerifyResult {
-  ok: boolean;
-  /** Admin session token; present only when `ok` is true. */
-  token?: string | null;
-  /** PIN attempts left before the 15-minute lockout. */
-  remainingAttempts: number;
-  /** ISO timestamp until which PIN entry is locked, or null. */
-  lockedUntil: string | null;
-}
-
-export interface AdminSessionRequest {
-  /** @minLength 1 */
-  userId: string;
-}
-
-export interface AdminPinSession {
-  ok: boolean;
-  /** Admin session token, sent as an Authorization bearer header. */
-  token: string;
-}
-
-export interface ContractAcceptanceNotification {
-  userId: string;
-  name: string;
-  email: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  acceptedAt: string;
-  guardianName?: string | null;
-  guardianRelationship?: string | null;
-  seen: boolean;
-}
-
-export interface AckContractAcceptancesResult {
-  acknowledged: number;
-}
-
 export interface NewInviteCodeResult {
   /** 14 characters, unambiguous alphabet, cryptographically random. */
   code: string;
@@ -396,7 +330,7 @@ export interface AdminDashLinkResult {
  * Which panel to mint the link for. "box" (default, preserves the
  * existing behavior) redirects into box-admin; "super" redirects
  * into the super-admin-hub and is rejected with 403 unless the
- * caller's resolved admin roles include super_admin.
+ * caller is an authorized super_admin (aal2 when the switch is on).
  */
 export type CreateAdminDashLinkRequestTarget = typeof CreateAdminDashLinkRequestTarget[keyof typeof CreateAdminDashLinkRequestTarget];
 
@@ -411,9 +345,14 @@ export interface CreateAdminDashLinkRequest {
      * Which panel to mint the link for. "box" (default, preserves the
      * existing behavior) redirects into box-admin; "super" redirects
      * into the super-admin-hub and is rejected with 403 unless the
-     * caller's resolved admin roles include super_admin.
+     * caller is an authorized super_admin (aal2 when the switch is on).
      */
   target?: CreateAdminDashLinkRequestTarget;
+  /**
+     * Optional. When sent, the caller must administer (or coach) that
+     * box (or be an authorized super_admin); otherwise 403.
+     */
+  boxId?: string;
 }
 
 export interface RmOkResult {

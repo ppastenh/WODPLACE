@@ -12,7 +12,12 @@ export interface CreateAdminDashLinkRequest {
      * Which panel to mint the link for. "box" (default, preserves the
      * existing behavior) redirects into box-admin; "super" redirects
      * into the super-admin-hub and is rejected with 403 unless the
-     * caller's resolved admin roles include super_admin.
+     * caller is an authorized super_admin (aal2 when the switch is on).
      */
   target?: CreateAdminDashLinkRequestTarget;
+  /**
+     * Optional. When sent, the caller must administer (or coach) that
+     * box (or be an authorized super_admin); otherwise 403.
+     */
+  boxId?: string;
 }

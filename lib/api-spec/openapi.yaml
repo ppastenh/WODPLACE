@@ -628,196 +628,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
-  /admin/pin/status:
-    post:
-      tags: [Admin]
-      operationId: getAdminPinStatus
-      summary: Whether the account has an admin PIN, and its lockout state
-      description: |
-        Called when the user opens the admin panel so the app can decide
-        between the "create PIN", "enter PIN" and "locked" flows.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AdminPinStatusRequest"
-      responses:
-        "200":
-          description: PIN status for the account.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AdminPinStatusResult"
-        "400":
-          description: Missing or invalid required fields.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
-  /admin/pin/setup:
-    post:
-      tags: [Admin]
-      operationId: setupAdminPin
-      summary: Create or replace the account's admin PIN
-      description: |
-        Used for the first-time PIN and for "I forgot my PIN" (after the app
-        has re-verified the account password client-side). Resets the failed
-        attempt counter and any lockout, and returns a fresh admin session
-        token.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AdminPinSetupRequest"
-      responses:
-        "200":
-          description: PIN stored; admin session issued.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AdminPinSession"
-        "400":
-          description: Missing or invalid required fields.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
-  /admin/pin/verify:
-    post:
-      tags: [Admin]
-      operationId: verifyAdminPin
-      summary: Verify the account's admin PIN
-      description: |
-        On success returns an admin session token and resets the failed
-        attempt counter. On failure increments it; after 5 consecutive
-        failures the PIN is locked for 15 minutes and `lockedUntil` is set.
-        While locked, no PIN is checked.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AdminPinVerifyRequest"
-      responses:
-        "200":
-          description: |
-            Verification result. `ok` true carries a `token`; `ok` false
-            carries `remainingAttempts` and, when locked, `lockedUntil`.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AdminPinVerifyResult"
-        "400":
-          description: Missing or invalid required fields.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
-  /admin/pin/session:
-    post:
-      tags: [Admin]
-      operationId: createAdminSession
-      summary: Issue an admin session without a PIN (biometric / password path)
-      description: |
-        Called after the app has verified the user locally — either a device
-        biometric check, or (while the PIN is locked) re-entering the account
-        password. Resets the failed attempt counter and lockout, and returns
-        an admin session token. There is no server-side proof of the local
-        check, matching WODPLACE's current trusted-client model.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AdminSessionRequest"
-      responses:
-        "200":
-          description: Admin session issued.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AdminPinSession"
-        "400":
-          description: Missing or invalid required fields.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-        "404":
-          description: No admin PIN exists for this account yet.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
-  /admin/contract-acceptances:
-    get:
-      tags: [Admin]
-      operationId: listAdminContractAcceptances
-      summary: List contract acceptances for the owner notification badge
-      description: |
-        Returns every recorded contract acceptance (newest first) so the
-        admin panel can show a badge/counter for ones the owner hasn't
-        viewed yet (`seen: false`).
-      responses:
-        "200":
-          description: Contract acceptances.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ContractAcceptanceNotification"
-        "401":
-          description: Missing or invalid admin session.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
-  /admin/contract-acceptances/ack:
-    post:
-      tags: [Admin]
-      operationId: ackContractAcceptances
-      summary: Mark all pending contract acceptances as seen by the owner
-      description: |
-        Called when the owner opens the notifications section of the admin
-        panel. Clears the unseen badge/counter.
-      responses:
-        "200":
-          description: Number of acceptances that were marked seen.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AckContractAcceptancesResult"
-        "401":
-          description: Missing or invalid admin session.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
-
   /admin/dash-link:
     post:
       tags: [Admin]
       operationId: createAdminDashLink
       summary: Mint a one-time auto-login link for the box or super-admin dashboard
       description: |
-        Given a valid admin session token, resolves the caller's Supabase
-        Auth account (via `boxes.owner_user_id`, falling back to an email
-        match against `profiles` that also carries a `box_admin` /
-        `super_admin` role) and returns a single-use Supabase magic link that
-        logs that account into the requested panel (`target`, default
-        "box"). The link is short-lived and must be opened immediately.
-        Returns 409 when no linked Supabase admin account can be resolved —
-        the caller should then load that panel's normal email/password
-        login. Returns 403 when `target: "super"` is requested by an account
-        without the super_admin role.
+        Decided only by the verified Supabase session of the request and the
+        caller's current role (no admin token, no PIN): returns a single-use
+        Supabase magic link for the caller's OWN account that logs it into the
+        requested panel (`target`, default "box"; optional `boxId`). The link
+        is short-lived and must be opened immediately. Returns 403 when the
+        caller does not administer (or coach) any box -- or the requested one --
+        or when `target: "super"` is requested by an account that is not an
+        authorized super_admin (aal2 when the switch is on); 401 without a
+        session; 409 when the session account has no email; 429 after 10 links
+        in 10 minutes.
       requestBody:
         content:
           application/json:
@@ -1873,123 +1699,6 @@ components:
         birthdayVisibilityConsent:
           type: boolean
 
-    AdminPinStatusRequest:
-      type: object
-      required: [userId]
-      properties:
-        userId:
-          type: string
-          minLength: 1
-    AdminPinStatusResult:
-      type: object
-      required: [hasPin, failedAttempts, lockedUntil]
-      properties:
-        hasPin:
-          type: boolean
-        failedAttempts:
-          type: integer
-        lockedUntil:
-          type: string
-          nullable: true
-          description: ISO timestamp until which PIN entry is locked, or null.
-
-    AdminPinSetupRequest:
-      type: object
-      required: [userId, pin]
-      properties:
-        userId:
-          type: string
-          minLength: 1
-        pin:
-          type: string
-          pattern: '^[0-9]{4,6}$'
-          description: 4 to 6 digits.
-
-    AdminPinVerifyRequest:
-      type: object
-      required: [userId, pin]
-      properties:
-        userId:
-          type: string
-          minLength: 1
-        pin:
-          type: string
-          minLength: 1
-    AdminPinVerifyResult:
-      type: object
-      required: [ok, remainingAttempts, lockedUntil]
-      properties:
-        ok:
-          type: boolean
-        token:
-          type: string
-          nullable: true
-          description: Admin session token; present only when `ok` is true.
-        remainingAttempts:
-          type: integer
-          description: PIN attempts left before the 15-minute lockout.
-        lockedUntil:
-          type: string
-          nullable: true
-          description: ISO timestamp until which PIN entry is locked, or null.
-
-    AdminSessionRequest:
-      type: object
-      required: [userId]
-      properties:
-        userId:
-          type: string
-          minLength: 1
-
-    AdminPinSession:
-      type: object
-      required: [ok, token]
-      properties:
-        ok:
-          type: boolean
-        token:
-          type: string
-          description: Admin session token, sent as an Authorization bearer header.
-
-    ContractAcceptanceNotification:
-      type: object
-      required:
-        - userId
-        - name
-        - email
-        - emergencyContactName
-        - emergencyContactPhone
-        - acceptedAt
-        - seen
-      properties:
-        userId:
-          type: string
-        name:
-          type: string
-        email:
-          type: string
-        emergencyContactName:
-          type: string
-        emergencyContactPhone:
-          type: string
-        acceptedAt:
-          type: string
-        guardianName:
-          type: string
-          nullable: true
-        guardianRelationship:
-          type: string
-          nullable: true
-        seen:
-          type: boolean
-
-    AckContractAcceptancesResult:
-      type: object
-      required: [acknowledged]
-      properties:
-        acknowledged:
-          type: integer
-
     NewInviteCodeResult:
       type: object
       required: [code]
@@ -2063,7 +1772,12 @@ components:
             Which panel to mint the link for. "box" (default, preserves the
             existing behavior) redirects into box-admin; "super" redirects
             into the super-admin-hub and is rejected with 403 unless the
-            caller's resolved admin roles include super_admin.
+            caller is an authorized super_admin (aal2 when the switch is on).
+        boxId:
+          type: string
+          description: |
+            Optional. When sent, the caller must administer (or coach) that
+            box (or be an authorized super_admin); otherwise 403.
 
     RmOkResult:
       type: object

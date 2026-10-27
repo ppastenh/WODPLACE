@@ -10,7 +10,7 @@
  * Which panel to mint the link for. "box" (default, preserves the
  * existing behavior) redirects into box-admin; "super" redirects
  * into the super-admin-hub and is rejected with 403 unless the
- * caller's resolved admin roles include super_admin.
+ * caller is an authorized super_admin (aal2 when the switch is on).
  */
 export type CreateAdminDashLinkRequestTarget = typeof CreateAdminDashLinkRequestTarget[keyof typeof CreateAdminDashLinkRequestTarget];
 

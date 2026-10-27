@@ -7,15 +7,7 @@
  */
 
 export * from './acceptContractsRequest';
-export * from './ackContractAcceptancesResult';
 export * from './adminDashLinkResult';
-export * from './adminPinSession';
-export * from './adminPinSetupRequest';
-export * from './adminPinStatusRequest';
-export * from './adminPinStatusResult';
-export * from './adminPinVerifyRequest';
-export * from './adminPinVerifyResult';
-export * from './adminSessionRequest';
 export * from './birthdayConsentRequest';
 export * from './birthdayConsentResponse';
 export * from './bookingActionResponse';
@@ -31,7 +23,6 @@ export * from './claimInviteResultRole';
 export * from './classSessionDto';
 export * from './classSessionDtoMyStatus';
 export * from './contractAcceptance';
-export * from './contractAcceptanceNotification';
 export * from './contractAcceptanceResponse';
 export * from './contractDocument';
 export * from './createAdminDashLinkRequest';

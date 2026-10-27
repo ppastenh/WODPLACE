@@ -426,138 +426,23 @@ export const SetBirthdayConsentSelfResponse = zod.object({
 
 
 /**
- * Called when the user opens the admin panel so the app can decide
- * between the "create PIN", "enter PIN" and "locked" flows.
- * @summary Whether the account has an admin PIN, and its lockout state
- */
-
-
-
-export const GetAdminPinStatusBody = zod.object({
-  "userId": zod.string().min(1)
-})
-
-export const GetAdminPinStatusResponse = zod.object({
-  "hasPin": zod.boolean(),
-  "failedAttempts": zod.number(),
-  "lockedUntil": zod.string().nullable().describe('ISO timestamp until which PIN entry is locked, or null.')
-})
-
-
-/**
- * Used for the first-time PIN and for "I forgot my PIN" (after the app
- * has re-verified the account password client-side). Resets the failed
- * attempt counter and any lockout, and returns a fresh admin session
- * token.
- * @summary Create or replace the account's admin PIN
- */
-
-export const setupAdminPinBodyPinRegExp = new RegExp('^[0-9]{4,6}$');
-
-
-export const SetupAdminPinBody = zod.object({
-  "userId": zod.string().min(1),
-  "pin": zod.string().regex(setupAdminPinBodyPinRegExp).describe('4 to 6 digits.')
-})
-
-export const SetupAdminPinResponse = zod.object({
-  "ok": zod.boolean(),
-  "token": zod.string().describe('Admin session token, sent as an Authorization bearer header.')
-})
-
-
-/**
- * On success returns an admin session token and resets the failed
- * attempt counter. On failure increments it; after 5 consecutive
- * failures the PIN is locked for 15 minutes and `lockedUntil` is set.
- * While locked, no PIN is checked.
- * @summary Verify the account's admin PIN
- */
-
-
-
-
-export const VerifyAdminPinBody = zod.object({
-  "userId": zod.string().min(1),
-  "pin": zod.string().min(1)
-})
-
-export const VerifyAdminPinResponse = zod.object({
-  "ok": zod.boolean(),
-  "token": zod.string().nullish().describe('Admin session token; present only when `ok` is true.'),
-  "remainingAttempts": zod.number().describe('PIN attempts left before the 15-minute lockout.'),
-  "lockedUntil": zod.string().nullable().describe('ISO timestamp until which PIN entry is locked, or null.')
-})
-
-
-/**
- * Called after the app has verified the user locally — either a device
- * biometric check, or (while the PIN is locked) re-entering the account
- * password. Resets the failed attempt counter and lockout, and returns
- * an admin session token. There is no server-side proof of the local
- * check, matching WODPLACE's current trusted-client model.
- * @summary Issue an admin session without a PIN (biometric / password path)
- */
-
-
-
-export const CreateAdminSessionBody = zod.object({
-  "userId": zod.string().min(1)
-})
-
-export const CreateAdminSessionResponse = zod.object({
-  "ok": zod.boolean(),
-  "token": zod.string().describe('Admin session token, sent as an Authorization bearer header.')
-})
-
-
-/**
- * Returns every recorded contract acceptance (newest first) so the
- * admin panel can show a badge/counter for ones the owner hasn't
- * viewed yet (`seen: false`).
- * @summary List contract acceptances for the owner notification badge
- */
-export const ListAdminContractAcceptancesResponseItem = zod.object({
-  "userId": zod.string(),
-  "name": zod.string(),
-  "email": zod.string(),
-  "emergencyContactName": zod.string(),
-  "emergencyContactPhone": zod.string(),
-  "acceptedAt": zod.string(),
-  "guardianName": zod.string().nullish(),
-  "guardianRelationship": zod.string().nullish(),
-  "seen": zod.boolean()
-})
-export const ListAdminContractAcceptancesResponse = zod.array(ListAdminContractAcceptancesResponseItem)
-
-
-/**
- * Called when the owner opens the notifications section of the admin
- * panel. Clears the unseen badge/counter.
- * @summary Mark all pending contract acceptances as seen by the owner
- */
-export const AckContractAcceptancesResponse = zod.object({
-  "acknowledged": zod.number()
-})
-
-
-/**
- * Given a valid admin session token, resolves the caller's Supabase
- * Auth account (via `boxes.owner_user_id`, falling back to an email
- * match against `profiles` that also carries a `box_admin` /
- * `super_admin` role) and returns a single-use Supabase magic link that
- * logs that account into the requested panel (`target`, default
- * "box"). The link is short-lived and must be opened immediately.
- * Returns 409 when no linked Supabase admin account can be resolved —
- * the caller should then load that panel's normal email/password
- * login. Returns 403 when `target: "super"` is requested by an account
- * without the super_admin role.
+ * Decided only by the verified Supabase session of the request and the
+ * caller's current role (no admin token, no PIN): returns a single-use
+ * Supabase magic link for the caller's OWN account that logs it into the
+ * requested panel (`target`, default "box"; optional `boxId`). The link
+ * is short-lived and must be opened immediately. Returns 403 when the
+ * caller does not administer (or coach) any box -- or the requested one --
+ * or when `target: "super"` is requested by an account that is not an
+ * authorized super_admin (aal2 when the switch is on); 401 without a
+ * session; 409 when the session account has no email; 429 after 10 links
+ * in 10 minutes.
  * @summary Mint a one-time auto-login link for the box or super-admin dashboard
  */
 export const createAdminDashLinkBodyTargetDefault = `box`;
 
 export const CreateAdminDashLinkBody = zod.object({
-  "target": zod.enum(['box', 'super']).default(createAdminDashLinkBodyTargetDefault).describe('Which panel to mint the link for. \"box\" (default, preserves the\nexisting behavior) redirects into box-admin; \"super\" redirects\ninto the super-admin-hub and is rejected with 403 unless the\ncaller\'s resolved admin roles include super_admin.\n')
+  "target": zod.enum(['box', 'super']).default(createAdminDashLinkBodyTargetDefault).describe('Which panel to mint the link for. \"box\" (default, preserves the\nexisting behavior) redirects into box-admin; \"super\" redirects\ninto the super-admin-hub and is rejected with 403 unless the\ncaller is an authorized super_admin (aal2 when the switch is on).\n'),
+  "boxId": zod.string().optional().describe('Optional. When sent, the caller must administer (or coach) that\nbox (or be an authorized super_admin); otherwise 403.\n')
 })
 
 export const CreateAdminDashLinkResponse = zod.object({
