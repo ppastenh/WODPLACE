@@ -63,8 +63,14 @@ export type MyPlan = {
    *  null on the subscribed one too until a payment (or first assignment)
    *  seeds box_members.next_payment_at. */
   daysUntilRenewal: number | null;
+  /** Reservas confirmadas del período (realizadas + reservadas): lo que gasta cupo en un plan por cantidad. */
   classesUsedInPeriod: number | null;
   classesRemaining: number | null;
+  /** Clases REALIZADAS en el período (reserva confirmada cuya hora de término ya pasó, en hora de Chile). También en planes
+   *  ilimitados. null hasta que un pago o la asignación del plan fije next_payment_at. */
+  classesCompletedInPeriod: number | null;
+  /** Clases reservadas que todavía no terminan, dentro del período. */
+  classesReservedInPeriod: number | null;
 };
 
 export async function getMyPlans(userId: string): Promise<{ plans: MyPlan[] }> {

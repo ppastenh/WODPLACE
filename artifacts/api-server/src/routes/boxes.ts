@@ -7,6 +7,7 @@ import { z } from "zod";
 import { canModerateBox, resolveSessionCaller } from "../lib/panelAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { todayDateKey } from "../lib/dateUtils";
+import { classesRemainingInPeriod, periodWindow, summarizePeriodClasses } from "../lib/planPeriodStats";
 import { countRecentAttempts, getRealClientIp, MAX_ATTEMPTS, recordFailedAttempt } from "../lib/inviteRateLimit";
 import { getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { assertOwnsAccount, resolveSupabaseUser } from "../lib/supabaseAuth";
@@ -278,8 +279,13 @@ router.get("/box-memberships/my-box", async (req: Request, res: Response) => {
  * marked as theirs.
  *
  * For the subscribed plan only, also computes the athlete's current-period
- * stats (classesUsedInPeriod/classesRemaining/daysUntilRenewal) — the
- * period window is [next_payment_at - duration_days, next_payment_at).
+ * stats (classesCompletedInPeriod/classesReservedInPeriod, and for plans by
+ * class count classesUsedInPeriod/classesRemaining, plus daysUntilRenewal) —
+ * the period window is [next_payment_at - duration_days, next_payment_at).
+ * REALIZADAS = confirmed bookings whose end time already passed (Chile time);
+ * RESERVADAS = confirmed bookings not finished yet; a booking already spends
+ * quota, so classesUsedInPeriod = realizadas + reservadas (see
+ * lib/planPeriodStats.ts, which has the tests).
  * box_members.next_payment_at is now a real, maintained date (box-admin's
  * "Registrar pago"/"Renovar" advance it, and assigning a plan seeds it) —
  * see computeNextPaymentAt on the box-admin side. When it's still null (no
@@ -326,6 +332,8 @@ router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
     let daysUntilRenewal: number | null = null;
     let classesUsedInPeriod: number | null = null;
     let classesRemaining: number | null = null;
+    let classesCompletedInPeriod: number | null = null;
+    let classesReservedInPeriod: number | null = null;
 
     if (myPlan && nextPaymentAt) {
       const periodEnd = new Date(`${nextPaymentAt}T00:00:00`);
@@ -333,20 +341,35 @@ router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
       today.setHours(0, 0, 0, 0);
       daysUntilRenewal = Math.round((periodEnd.getTime() - today.getTime()) / 86_400_000);
 
+      // Todas las reservas del período (también para planes ilimitados: la tarjeta de Inicio muestra las realizadas).
+      const window = periodWindow(nextPaymentAt, myPlan.duration_days);
+      const bookingRows = await db.execute<{
+        status: string;
+        session_date: string;
+        start_time: string;
+        duration_minutes: number;
+      }>(sql`
+        SELECT cb.status, cs.session_date::text AS session_date, cs.start_time::text AS start_time, cs.duration_minutes
+        FROM class_bookings cb
+        JOIN class_sessions cs ON cs.id = cb.session_id
+        WHERE cb.user_id = ${userId} AND cb.status = 'inscrito'
+          AND cs.session_date >= ${window.start}
+          AND cs.session_date < ${window.endExclusive}
+      `);
+      const stats = summarizePeriodClasses(
+        bookingRows.rows.map((r) => ({
+          status: r.status,
+          sessionDate: r.session_date,
+          startTime: r.start_time,
+          durationMinutes: r.duration_minutes,
+        })),
+        window,
+      );
+      classesCompletedInPeriod = stats.completed;
+      classesReservedInPeriod = stats.reserved;
       if (myPlan.classes_per_period != null) {
-        const periodStart = new Date(periodEnd);
-        periodStart.setDate(periodStart.getDate() - myPlan.duration_days);
-
-        const usedRows = await db.execute<{ count: number }>(sql`
-          SELECT count(*)::int AS count
-          FROM class_bookings cb
-          JOIN class_sessions cs ON cs.id = cb.session_id
-          WHERE cb.user_id = ${userId} AND cb.status = 'inscrito'
-            AND cs.session_date >= ${periodStart.toISOString().slice(0, 10)}
-            AND cs.session_date < ${nextPaymentAt}
-        `);
-        classesUsedInPeriod = usedRows.rows[0]?.count ?? 0;
-        classesRemaining = Math.max(0, myPlan.classes_per_period - classesUsedInPeriod);
+        classesUsedInPeriod = stats.completed + stats.reserved;
+        classesRemaining = classesRemainingInPeriod(myPlan.classes_per_period, stats.completed, stats.reserved);
       }
     }
 
@@ -363,6 +386,8 @@ router.get("/box-memberships/my-plans", async (req: Request, res: Response) => {
         daysUntilRenewal: r.id === myPlanId ? daysUntilRenewal : null,
         classesUsedInPeriod: r.id === myPlanId ? classesUsedInPeriod : null,
         classesRemaining: r.id === myPlanId ? classesRemaining : null,
+        classesCompletedInPeriod: r.id === myPlanId ? classesCompletedInPeriod : null,
+        classesReservedInPeriod: r.id === myPlanId ? classesReservedInPeriod : null,
       })),
     });
   } catch (error) {

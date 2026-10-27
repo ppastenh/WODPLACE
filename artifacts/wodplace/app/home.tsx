@@ -679,30 +679,51 @@ export default function HomeScreen() {
             <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
               Clases del plan
             </Text>
-            {planView.kind === 'classes' ? (
+            {planView.kind === 'classes' || planView.kind === 'unlimited' ? (
               <>
                 <Text
                   style={[styles.statsValue, { color: colors.foreground }]}
                   maxFontSizeMultiplier={1.3}
                 >
-                  {planView.used ?? '—'} / {planView.total}
+                  {planView.kind === 'classes'
+                    ? `${planView.completed ?? '—'} / ${planView.total}`
+                    : (planView.completed ?? '—')}
                 </Text>
-                <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { backgroundColor: colors.navActive, width: `${planView.ratio * 100}%` },
-                    ]}
-                  />
-                </View>
+                {planView.kind === 'classes' ? (
+                  <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { backgroundColor: colors.navActive, width: `${planView.ratio * 100}%` },
+                      ]}
+                    />
+                  </View>
+                ) : null}
+                <Text
+                  style={[styles.statsDetail, { color: colors.navInactive }]}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  {planView.legend}
+                </Text>
+                {planView.kind === 'unlimited' ? (
+                  <View style={[styles.planChip, { backgroundColor: colors.accent }]}>
+                    <Text
+                      style={[styles.planChipText, { color: colors.accentForeground }]}
+                      maxFontSizeMultiplier={1.3}
+                    >
+                      {planView.chip}
+                    </Text>
+                  </View>
+                ) : null}
+                {planView.reservedLine ? (
+                  <Text
+                    style={[styles.statsDetail, { color: colors.navInactive }]}
+                    maxFontSizeMultiplier={1.3}
+                  >
+                    {planView.reservedLine}
+                  </Text>
+                ) : null}
               </>
-            ) : planView.kind === 'unlimited' ? (
-              <Text
-                style={[styles.prEmptyValue, { color: colors.foreground }]}
-                maxFontSizeMultiplier={1.3}
-              >
-                Plan ilimitado
-              </Text>
             ) : (
               <>
                 <Text
@@ -1112,6 +1133,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  // Chip "Plan ilimitado" del mosaico "Clases del plan": mismos tokens que el resto (accent / accentForeground).
+  planChip: {
+    alignSelf: 'flex-start',
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    marginTop: SPACING.sm,
+  },
+  planChipText: {
+    fontSize: FONT_SIZE.xs,
+    fontFamily: 'Inter_700Bold',
   },
   // Invitación sin chip: la flecha va a la derecha.
   nextClassTopEnd: { alignItems: 'flex-end' },

@@ -10,7 +10,13 @@ import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { NO_COACH_LABEL, coachLine, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
-import { planProgressView } from '../../artifacts/wodplace/lib/planProgress';
+import { planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
+import {
+  classesRemainingInPeriod,
+  periodWindow,
+  summarizePeriodClasses,
+  type PeriodBooking,
+} from '../../artifacts/api-server/src/lib/planPeriodStats';
 
 // tsx entrega el export por defecto de un módulo sin "type" a veces envuelto en otro `default`.
 const colors = ((colorsModule as { default?: typeof colorsModule }).default ?? colorsModule) as typeof colorsModule;
@@ -81,52 +87,172 @@ describe('tarjeta de próxima clase: colores y contraste (mínimo 4,5:1)', () =>
   });
 });
 
+// ─── Período del plan: realizadas y reservadas (servidor) ────────────────────────────────────────────────────────────
+// Hora fija de referencia: 2026-10-27 13:00 UTC = 10:00 en Chile (horario de verano, UTC-3).
+const AHORA = new Date('2026-10-27T13:00:00Z');
+const VENTANA = periodWindow('2026-11-26', 30); // 2026-10-27 hasta 2026-11-25 (el 26 ya es el próximo período)
+const reserva = (sessionDate: string, startTime: string, durationMinutes = 60, status = 'inscrito'): PeriodBooking => ({
+  status,
+  sessionDate,
+  startTime,
+  durationMinutes,
+});
+
+describe('período del plan: ventana', () => {
+  it('es next_payment_at menos duration_days; incluye el primer día y NO el día del próximo pago', () => {
+    assert.deepEqual(VENTANA, { start: '2026-10-27', endExclusive: '2026-11-26' });
+  });
+  it('cruza el fin de año sin errores', () => {
+    assert.deepEqual(periodWindow('2027-01-10', 30), { start: '2026-12-11', endExclusive: '2027-01-10' });
+  });
+});
+
+describe('período del plan: clases realizadas y reservadas', () => {
+  it('sin reservas: 0 y 0', () => {
+    assert.deepEqual(summarizePeriodClasses([], VENTANA, AHORA), { completed: 0, reserved: 0 });
+  });
+  it('solo realizadas (clases del período que ya terminaron)', () => {
+    const r = [reserva('2026-10-27', '07:00'), reserva('2026-10-27', '08:00')]; // terminan 08:00 y 09:00, ya pasaron
+    assert.deepEqual(summarizePeriodClasses(r, VENTANA, AHORA), { completed: 2, reserved: 0 });
+  });
+  it('solo próximas: son reservadas, no realizadas', () => {
+    const r = [reserva('2026-10-28', '07:00'), reserva('2026-11-02', '19:00')];
+    assert.deepEqual(summarizePeriodClasses(r, VENTANA, AHORA), { completed: 0, reserved: 2 });
+  });
+  it('mezcla: realizadas y reservadas por separado', () => {
+    const r = [reserva('2026-10-27', '07:00'), reserva('2026-10-27', '18:00'), reserva('2026-10-29', '07:00')];
+    assert.deepEqual(summarizePeriodClasses(r, VENTANA, AHORA), { completed: 1, reserved: 2 });
+  });
+  it('una reserva cancelada o en lista de espera no cuenta como ninguna de las dos', () => {
+    const r = [reserva('2026-10-27', '07:00', 60, 'cancelado'), reserva('2026-10-28', '07:00', 60, 'lista_espera'), reserva('2026-10-28', '08:00')];
+    assert.deepEqual(summarizePeriodClasses(r, VENTANA, AHORA), { completed: 0, reserved: 1 });
+  });
+  it('inicio de período: la clase del primer día cuenta; la del día anterior no', () => {
+    const r = [reserva('2026-10-27', '07:00'), reserva('2026-10-26', '07:00')];
+    assert.deepEqual(summarizePeriodClasses(r, VENTANA, AHORA), { completed: 1, reserved: 0 });
+  });
+  it('fin de período: la clase del último día cuenta; la del día del próximo pago no', () => {
+    const r = [reserva('2026-11-25', '19:00'), reserva('2026-11-26', '07:00')];
+    assert.deepEqual(summarizePeriodClasses(r, VENTANA, AHORA), { completed: 0, reserved: 1 });
+  });
+  it('una reserva que termina justo ahora ya es realizada; un minuto antes, todavía reservada', () => {
+    // Clase 09:00 de 60 min termina 10:00 = "ahora" -> realizada.
+    assert.deepEqual(summarizePeriodClasses([reserva('2026-10-27', '09:00')], VENTANA, AHORA), { completed: 1, reserved: 0 });
+    // Clase 09:01 de 60 min termina 10:01 -> aún no.
+    assert.deepEqual(summarizePeriodClasses([reserva('2026-10-27', '09:01')], VENTANA, AHORA), { completed: 0, reserved: 1 });
+    // Con la hora de Chile un minuto antes (09:59), la de 09:00 todavía no terminó.
+    assert.deepEqual(summarizePeriodClasses([reserva('2026-10-27', '09:00')], VENTANA, new Date('2026-10-27T12:59:00Z')), { completed: 0, reserved: 1 });
+  });
+  it('usa la hora de CHILE y no la de UTC: a las 22:30 de Chile (01:30 UTC del día siguiente) la clase de las 20:00 ya pasó', () => {
+    const noche = new Date('2026-10-28T01:30:00Z'); // 27-oct 22:30 en Chile
+    assert.deepEqual(summarizePeriodClasses([reserva('2026-10-27', '20:00')], VENTANA, noche), { completed: 1, reserved: 0 });
+  });
+  it('el hora de inicio con segundos (HH:MM:SS) se entiende igual', () => {
+    assert.deepEqual(summarizePeriodClasses([reserva('2026-10-27', '07:00:00')], VENTANA, AHORA), { completed: 1, reserved: 0 });
+  });
+});
+
+describe('aviso "Te quedan N clases este período": una reserva gasta cupo', () => {
+  it('cuenta realizadas MÁS reservadas', () => {
+    assert.equal(classesRemainingInPeriod(8, 5, 2), 1); // "Te queda 1 clase"
+    assert.equal(classesRemainingInPeriod(8, 4, 0), 4);
+    assert.equal(classesRemainingInPeriod(8, 0, 3), 5); // solo reservadas también gastan cupo
+  });
+  it('nunca baja de 0', () => {
+    assert.equal(classesRemainingInPeriod(8, 7, 4), 0);
+  });
+});
+
+// ─── Tarjeta "Clases del plan" ─────────────────────────────────────────────────────────────────────────────────────────
+const plan = (classesPerPeriod: number | null, completed: number | null, reserved: number | null, durationDays = 30) => ({
+  classesPerPeriod,
+  classesCompletedInPeriod: completed,
+  classesReservedInPeriod: reserved,
+  durationDays,
+});
+
 describe('"Clases del plan": sin plan, plan ilimitado y plan por clases', () => {
   it('sin plan activo: "—" y "Sin plan activo" (tenga o no datos de plan)', () => {
     assert.deepEqual(planProgressView({ hasActivePlan: false, planLoading: false, plan: null }), { kind: 'none' });
-    assert.deepEqual(
-      planProgressView({ hasActivePlan: false, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 3 } }),
-      { kind: 'none' },
-    );
+    assert.deepEqual(planProgressView({ hasActivePlan: false, planLoading: false, plan: plan(8, 3, 1) }), { kind: 'none' });
   });
 
-  it('plan activo sin clases por período (ilimitado): "Plan ilimitado", sin barra', () => {
-    assert.deepEqual(
-      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: null, classesUsedInPeriod: null } }),
-      { kind: 'unlimited' },
-    );
-    // aunque el servidor mande un conteo, un plan ilimitado no tiene tope contra el cual mostrar una barra
-    assert.deepEqual(
-      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: null, classesUsedInPeriod: 5 } }),
-      { kind: 'unlimited' },
-    );
+  it('plan ilimitado: solo el número, leyenda "clases realizadas este mes" y el chip "Plan ilimitado"; sin total', () => {
+    assert.deepEqual(planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(null, 5, 0) }), {
+      kind: 'unlimited',
+      completed: 5,
+      reservedLine: null,
+      legend: 'clases realizadas este mes',
+      chip: 'Plan ilimitado',
+    });
   });
 
-  it('plan con clases por período: N / M con la barra', () => {
-    assert.deepEqual(
-      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 3 } }),
-      { kind: 'classes', used: 3, total: 8, ratio: 0.375 },
-    );
-    assert.deepEqual(
-      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 0 } }),
-      { kind: 'classes', used: 0, total: 8, ratio: 0 },
-    );
+  it('plan ilimitado con clases próximas: agrega "1 reservada" / "N reservadas"', () => {
+    const uno = planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(null, 0, 1) });
+    assert.equal(uno.kind === 'unlimited' ? uno.reservedLine : 'x', '1 reservada');
+    const tres = planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(null, 2, 3) });
+    assert.equal(tres.kind === 'unlimited' ? tres.reservedLine : 'x', '3 reservadas');
   });
 
-  it('la barra nunca pasa de lleno (más clases usadas que el tope)', () => {
-    const v = planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: 11 } });
-    assert.deepEqual(v, { kind: 'classes', used: 11, total: 8, ratio: 1 });
+  it('plan ilimitado que NO dura un mes: la leyenda dice "este período"', () => {
+    const v = planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(null, 2, 0, 7) });
+    assert.equal(v.kind === 'unlimited' ? v.legend : 'x', 'clases realizadas este período');
+    assert.equal(unlimitedLegend(28), 'clases realizadas este mes');
+    assert.equal(unlimitedLegend(31), 'clases realizadas este mes');
+    assert.equal(unlimitedLegend(27), 'clases realizadas este período');
+    assert.equal(unlimitedLegend(90), 'clases realizadas este período');
   });
 
-  it('plan por clases cuyo período aún no empieza (sin pago registrado): muestra el tope y la barra vacía', () => {
-    assert.deepEqual(
-      planProgressView({ hasActivePlan: true, planLoading: false, plan: { classesPerPeriod: 8, classesUsedInPeriod: null } }),
-      { kind: 'classes', used: null, total: 8, ratio: 0 },
-    );
+  it('plan por cantidad: "N / M", barra llena según las REALIZADAS y leyenda "realizadas este período"', () => {
+    assert.deepEqual(planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(8, 3, 2) }), {
+      kind: 'classes',
+      completed: 3,
+      total: 8,
+      ratio: 0.375, // las 2 reservadas NO llenan la barra
+      reservedLine: '2 reservadas',
+      legend: 'realizadas este período',
+    });
+  });
+
+  it('plan por cantidad sin reservas: sin línea chica; con 0 realizadas, barra vacía', () => {
+    const v = planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(8, 0, 0) });
+    assert.deepEqual(v, { kind: 'classes', completed: 0, total: 8, ratio: 0, reservedLine: null, legend: 'realizadas este período' });
+  });
+
+  it('la barra nunca pasa de llena (más realizadas que el tope)', () => {
+    const v = planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(8, 11, 0) });
+    assert.equal(v.kind === 'classes' ? v.ratio : -1, 1);
+  });
+
+  it('período que aún no empieza (sin pago registrado): muestra "—" en vez de un número inventado', () => {
+    const v = planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(8, null, null) });
+    assert.equal(v.kind === 'classes' ? v.completed : 'x', null);
+    assert.equal(v.kind === 'classes' ? v.ratio : -1, 0);
+    const u = planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(null, null, null) });
+    assert.equal(u.kind === 'unlimited' ? u.completed : 'x', null);
   });
 
   it('mientras llegan los datos del plan no dice "Sin plan activo" por error', () => {
     assert.deepEqual(planProgressView({ hasActivePlan: true, planLoading: true, plan: null }), { kind: 'loading' });
     assert.deepEqual(planProgressView({ hasActivePlan: true, planLoading: false, plan: null }), { kind: 'none' });
+  });
+
+  it('la línea de reservadas: singular, plural y ausencia', () => {
+    assert.equal(reservedLine(1), '1 reservada');
+    assert.equal(reservedLine(2), '2 reservadas');
+    assert.equal(reservedLine(0), null);
+    assert.equal(reservedLine(null), null);
+  });
+});
+
+describe('"Clases del plan": colores (solo tokens existentes) y contraste (mínimo 4,5:1)', () => {
+  it('chip "Plan ilimitado": accentForeground sobre accent', () => {
+    assert.ok(contrast(light.accentForeground, light.accent) >= 4.5, String(contrast(light.accentForeground, light.accent)));
+  });
+  it('leyenda y línea de reservadas (navInactive) sobre la tarjeta blanca (card)', () => {
+    assert.ok(contrast(light.navInactive, light.card) >= 4.5, String(contrast(light.navInactive, light.card)));
+  });
+  it('número principal (foreground) sobre la tarjeta (card)', () => {
+    assert.ok(contrast(light.foreground, light.card) >= 4.5);
   });
 });

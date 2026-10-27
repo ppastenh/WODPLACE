@@ -1,37 +1,75 @@
 /**
- * Qué muestra el mosaico "Clases del plan" de Inicio (lógica pura, sin React Native: se prueba en el computador
- * con `pnpm --filter @workspace/scripts test:home-logic`).
+ * Qué muestra la tarjeta "Clases del plan" de Inicio (lógica pura, sin React Native: se prueba en el computador con
+ * `pnpm --filter @workspace/scripts test:home-logic`). Una sola tarjeta, sin rotación:
  *
- *  - Sin plan activo ................................ 'none'      -> "—" / "Sin plan activo"
- *  - Plan activo SIN clases por período (ilimitado) .. 'unlimited' -> "Plan ilimitado" (sin barra)
- *  - Plan activo con clases por período .............. 'classes'   -> "N / M" con la barra de siempre
- *  - Plan activo pero todavía no llegan sus datos .... 'loading'   -> "—" (nunca "Sin plan activo" por error)
+ *  - NÚMERO PRINCIPAL = clases REALIZADAS en el período (reservas confirmadas cuya hora de término ya pasó, en hora de
+ *    Chile; lo calcula el servidor, ver api-server/src/lib/planPeriodStats.ts). El período es next_payment_at menos
+ *    duration_days.
+ *  - LÍNEA CHICA = "1 reservada" / "N reservadas" cuando hay clases próximas dentro del período; sin línea si no hay.
+ *  - Plan por cantidad de clases ........ 'classes'   -> "N / M" con la barra llena según las realizadas, y la
+ *                                                         leyenda "realizadas este período"
+ *  - Plan ilimitado ..................... 'unlimited' -> solo el número, la leyenda "clases realizadas este mes" (o
+ *                                                         "este período" si el plan no dura un mes) y el chip
+ *                                                         "Plan ilimitado"; sin barra ni total
+ *  - Sin plan activo .................... 'none'      -> "—" y "Sin plan activo"
+ *  - Plan activo pero aún sin datos ..... 'loading'   -> "—" (nunca "Sin plan activo" por error)
  *
- * Antes, un plan ilimitado caía en "Sin plan activo" (engañoso) porque el mosaico solo sabía mostrar el caso
- * "con clases por período".
+ * El aviso "Te quedan N clases este período" NO usa esta lógica: sigue contando realizadas MÁS reservadas (una reserva
+ * ya gasta cupo), eso lo calcula el servidor (classesRemaining).
  */
 
 export type PlanProgressInput = {
   hasActivePlan: boolean;
   /** true mientras se pide GET /box-memberships/my-plans. */
   planLoading: boolean;
-  plan: { classesPerPeriod: number | null; classesUsedInPeriod: number | null } | null;
+  plan: {
+    /** null = plan ilimitado. */
+    classesPerPeriod: number | null;
+    /** null hasta que un pago o la asignación del plan fije la fecha del próximo pago. */
+    classesCompletedInPeriod: number | null;
+    classesReservedInPeriod: number | null;
+    durationDays: number;
+  } | null;
 };
 
 export type PlanProgressView =
   | { kind: 'none' }
   | { kind: 'loading' }
-  | { kind: 'unlimited' }
-  /** `used` es null si el período todavía no tiene fecha de inicio (aún no se registra un pago). */
-  | { kind: 'classes'; used: number | null; total: number; ratio: number };
+  | { kind: 'unlimited'; completed: number | null; reservedLine: string | null; legend: string; chip: string }
+  | {
+      kind: 'classes';
+      completed: number | null;
+      total: number;
+      /** Realizadas / total, entre 0 y 1 (la barra nunca pasa de llena). */
+      ratio: number;
+      reservedLine: string | null;
+      legend: string;
+    };
+
+export const UNLIMITED_CHIP = 'Plan ilimitado';
+export const LEGEND_CLASSES = 'realizadas este período';
+
+/** "1 reservada" / "N reservadas"; null (sin línea) si no hay clases próximas dentro del período. */
+export function reservedLine(reserved: number | null | undefined): string | null {
+  if (!reserved || reserved <= 0) return null;
+  return reserved === 1 ? '1 reservada' : `${reserved} reservadas`;
+}
+
+/** Un plan "de un mes" dura entre 28 y 31 días; cualquier otra duración dice "este período". */
+export function unlimitedLegend(durationDays: number): string {
+  return durationDays >= 28 && durationDays <= 31 ? 'clases realizadas este mes' : 'clases realizadas este período';
+}
 
 export function planProgressView(input: PlanProgressInput): PlanProgressView {
   if (!input.hasActivePlan) return { kind: 'none' };
   const plan = input.plan;
   if (!plan) return input.planLoading ? { kind: 'loading' } : { kind: 'none' };
-  if (plan.classesPerPeriod == null) return { kind: 'unlimited' };
+  const completed = plan.classesCompletedInPeriod;
+  const line = reservedLine(plan.classesReservedInPeriod);
+  if (plan.classesPerPeriod == null) {
+    return { kind: 'unlimited', completed, reservedLine: line, legend: unlimitedLegend(plan.durationDays), chip: UNLIMITED_CHIP };
+  }
   const total = plan.classesPerPeriod;
-  const used = plan.classesUsedInPeriod;
-  const ratio = used != null && total > 0 ? Math.min(used / total, 1) : 0;
-  return { kind: 'classes', used, total, ratio };
+  const ratio = completed != null && total > 0 ? Math.min(completed / total, 1) : 0;
+  return { kind: 'classes', completed, total, ratio, reservedLine: line, legend: LEGEND_CLASSES };
 }
