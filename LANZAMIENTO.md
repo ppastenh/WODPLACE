@@ -27,7 +27,9 @@ F1 **hecha y desplegada** (Reportes de Comunidad en el panel). **Orden decidido 
 ### 3. VISUAL (va por el chat de diseño)
 - **Tanda C de la Fase 1** (`more.tsx` y `profile.tsx`): `more.tsx` sale de la app con F6, así que no conviene pulirla; queda `profile.tsx`.
 - **Fase 2 de alineación** (valores sueltos 13, 14, 17, 18, 20…): esperando tus capturas anotadas.
-- **Ronda de color** (resuelve juntos: destino del índigo y del cobre, 18+5 pares de contraste que no cumplen, texto sobre botones cobre, botón deshabilitado en gris sólido, los 26 presionados con opacidad que quedan, MovementSheet y la tarjeta de próxima clase de `home`, modo oscuro general). `DESIGN.md` sigue sin commit hasta decidir la paleta.
+- **Ronda de color** (resuelve juntos: **el texto blanco sobre cobre del chip de fecha de la tarjeta de próxima clase de Inicio, 3,30:1 contra el mínimo de 4,5:1**, destino del índigo y del cobre, 18+5 pares de contraste que no cumplen, texto sobre botones cobre, botón deshabilitado en gris sólido, los 26 presionados con opacidad que quedan, MovementSheet y la tarjeta de próxima clase de `home`, modo oscuro general). `DESIGN.md` sigue sin commit hasta decidir la paleta.
+
+- **Pantalla de desarrollo de Inicio (opción B, `PLAN-HOME-VIEW.md`, aprobada, pendiente de empezar):** sirve también al chat de diseño: permite ver y revisar cualquier estado de Inicio (contrato pendiente, nombre de box largo, cargando, sin clases, etc.) sin tocar la base de datos.
 
 ### 4. ETAPA FINAL (ver "Etapa final" más abajo)
 **Fecha a vigilar:** la **Ley 21.719** (protección de datos personales) entra en vigor el **1 de diciembre de 2026**. No es bloqueante hoy y no se mueve al bloque 1; se vigila porque afecta a los documentos legales (política de privacidad, ARCO, autorización de cumpleaños de menores) y a lo que ya hace la app con datos de menores y contactos de emergencia.
