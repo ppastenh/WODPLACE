@@ -1,5 +1,5 @@
 -- ============================================================================
--- Reversa de 20261027_borrar_admin_pins.sql: recrea public.admin_pins VACÍA, con la misma forma que tenía
+-- Reversa de 20261027140000_borrar_admin_pins.sql: recrea public.admin_pins VACÍA, con la misma forma que tenía
 -- (columnas, llave primaria, llave foránea con borrado en cascada, RLS activada y sin políticas, sin permisos para
 -- anon ni authenticated; solo postgres y service_role). Los hashes de PIN antiguos no se recuperan: el PIN del
 -- servidor no se reutiliza (el PIN de la app es un candado local).
