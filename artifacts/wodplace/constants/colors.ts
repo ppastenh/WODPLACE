@@ -82,6 +82,10 @@ const colors = {
     navActivePressed: '#8B623C',
     navInactive: '#706B63',
     navFloating: '#18191A',
+    // Estado presionado sólido de `navFloating` (la tarjeta de próxima clase de Inicio). MISMO valor que
+    // `adminActionPressed` (el botón de panel tiene el mismo fondo #18191A): no es un color nuevo, solo el nombre
+    // que corresponde a esta tarjeta. Texto principal (`navFloatingForeground`) sobre él: 11,86:1, verificado.
+    navFloatingPressed: '#2E2F35',
     navFloatingForeground: '#F6F1E8',
     navBorder: '#D4CDBF',
     warning: '#F5A623',

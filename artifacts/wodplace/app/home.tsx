@@ -77,6 +77,7 @@ import {
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { AppHeader } from '@/components/AppHeader';
 import { MedalBadge } from '@/components/MedalBadge';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
@@ -86,9 +87,9 @@ import { useNotifications } from '@/context/NotificationsContext';
 import { useColors } from '@/hooks/useColors';
 import { getMedalIconColor } from '@/lib/medalColors';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
+import { coachLine, nextClassCardState } from '@/lib/nextClassCard';
 import { useRefetchOnFocusIfStale } from '@/lib/useRefetchOnFocusIfStale';
 import {
-  addDays,
   formatClassDateShort,
   formatHM,
   isBirthdayToday,
@@ -140,20 +141,6 @@ const CLASS_LEVEL_LABELS: Record<string, string> = {
 };
 
 
-function findNextAvailableSession(
-  now: Date,
-  getSessionsForDate: ReturnType<typeof useBooking>['getSessionsForDate'],
-) {
-  for (let offset = 0; offset < 14; offset += 1) {
-    const date = addDays(now, offset);
-    const session = getSessionsForDate(date).find(
-      (candidate) => !candidate.hasStarted && candidate.remaining > 0,
-    );
-    if (session) return session;
-  }
-  return null;
-}
-
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
@@ -173,7 +160,7 @@ export default function HomeScreen() {
     redeemBoxCode,
     refreshActivationStatus,
   } = useAuth();
-  const { now, getSessionsForDate, getUpcomingBooked } = useBooking();
+  const { now, isLoading: sessionsLoading, getUpcomingBooked } = useBooking();
   const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -395,9 +382,9 @@ export default function HomeScreen() {
       myPlan.classesRemaining != null &&
       myPlan.classesRemaining <= 2) ||
       (myPlan.daysUntilRenewal != null && myPlan.daysUntilRenewal <= 7));
+  // Tarjeta de próxima clase: el estado se decide solo cuando terminó de cargar (ver lib/nextClassCard.ts).
   const nextBooked = getUpcomingBooked(1)[0] ?? null;
-  const nextSession = nextBooked ?? findNextAvailableSession(now, getSessionsForDate);
-  const isNextSessionBooked = !!nextBooked;
+  const nextClassState = nextClassCardState({ isLoading: sessionsLoading, hasUpcomingBooking: !!nextBooked });
 
   const quote = useMemo(() => {
     const index = hashString(toDateKey(now)) % DAILY_QUOTES.length;
@@ -413,10 +400,6 @@ export default function HomeScreen() {
       // Sharing is optional and can be unavailable in a browser preview.
     }
   };
-
-  const nextClassLabel = nextSession
-    ? `${formatClassDateShort(nextSession.startDate)} · ${formatHM(nextSession.startMinutes)}`
-    : 'Sin clases disponibles';
 
   const isOwnBirthdayToday = (() => {
     if (!user.birthdate) return false;
@@ -505,53 +488,77 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {hasBoxMembership ? (
+        {hasBoxMembership && nextClassState === 'loading' ? (
+          // Cargando: ni invitación ni datos; esqueleto con la misma forma y altura de la tarjeta.
+          <View
+            accessibilityRole="progressbar"
+            accessibilityLabel="Cargando tu próxima clase"
+            style={[styles.nextClassCard, { backgroundColor: colors.navFloating }]}
+          >
+            <Skeleton width="40%" height={SPACING.xxl} />
+            <View style={styles.nextClassSkeletonBottom}>
+              <Skeleton width="85%" height={FONT_SIZE.hero} />
+              <Skeleton width="60%" height={FONT_SIZE.xs} />
+            </View>
+          </View>
+        ) : null}
+
+        {hasBoxMembership && nextClassState === 'invite' ? (
+          // Sin reserva (haya o no clases, o haya fallado la carga): solo la invitación.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ir al Calendario para reservar una clase"
+            onPress={() => router.push('/calendar')}
+            style={({ pressed }) => [
+              styles.nextClassCard,
+              { backgroundColor: pressed ? colors.navFloatingPressed : colors.navFloating },
+            ]}
+          >
+            <View style={styles.nextClassTopEnd}>
+              <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
+            </View>
+            <Text style={[styles.nextClassName, { color: colors.navFloatingForeground }]} numberOfLines={2}>
+              Reserva tu próxima clase
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {hasBoxMembership && nextClassState === 'booked' && nextBooked ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ver próxima clase"
             onPress={() => router.push('/calendar')}
             style={({ pressed }) => [
               styles.nextClassCard,
-              { backgroundColor: colors.navFloating },
-              pressed && styles.pressedCard,
+              { backgroundColor: pressed ? colors.navFloatingPressed : colors.navFloating },
             ]}
           >
             <View style={styles.nextClassTop}>
               <View style={[styles.timeChip, { backgroundColor: colors.navActive }]}>
                 <Feather name="calendar" size={13} color={colors.card} />
                 <Text style={[styles.timeChipText, { color: colors.card }]} numberOfLines={1}>
-                  {nextClassLabel}
+                  {formatClassDateShort(nextBooked.startDate)} · {formatHM(nextBooked.startMinutes)}
                 </Text>
               </View>
               <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
             </View>
-            <Text style={[styles.nextClassLabel, { color: colors.navFloatingForeground }]}>
-              {isNextSessionBooked ? 'Tu próxima clase' : 'Reserva tu próxima clase'}
-            </Text>
-            <Text style={[styles.nextClassName, { color: colors.navFloatingForeground }]}>
-              {nextSession?.type ?? 'Revisa el calendario'}
-            </Text>
-            <Text style={[styles.nextClassCoach, { color: colors.navInactive }]}>
-              {nextSession
-                ? `Coach ${nextSession.coach}${myBox?.name ? ` · ${myBox.name}` : ''}`
-                : 'Encuentra un horario para tu próximo WOD'}
-            </Text>
-            {nextSession ? (
-              <View style={styles.nextClassMetaRow}>
-                <View style={styles.nextClassMetaChip}>
-                  <Feather name="clock" size={12} color={colors.navInactive} />
-                  <Text style={[styles.nextClassMetaText, { color: colors.navInactive }]}>
-                    {nextSession.durationLabel}
-                  </Text>
-                </View>
-                <View style={styles.nextClassMetaChip}>
-                  <Feather name="bar-chart-2" size={12} color={colors.navInactive} />
-                  <Text style={[styles.nextClassMetaText, { color: colors.navInactive }]}>
-                    {CLASS_LEVEL_LABELS[nextSession.level] ?? nextSession.level}
-                  </Text>
-                </View>
-              </View>
+            <Text style={[styles.nextClassLabel, { color: colors.navFloatingForeground }]}>Tu próxima clase</Text>
+            <Text style={[styles.nextClassName, { color: colors.navFloatingForeground }]}>{nextBooked.type}</Text>
+            {coachLine(nextBooked.coach) ? (
+              <Text style={[styles.nextClassCoach, { color: colors.inactive }]}>{coachLine(nextBooked.coach)}</Text>
             ) : null}
+            <View style={styles.nextClassMetaRow}>
+              <View style={styles.nextClassMetaChip}>
+                <Feather name="clock" size={12} color={colors.inactive} />
+                <Text style={[styles.nextClassMetaText, { color: colors.inactive }]}>{nextBooked.durationLabel}</Text>
+              </View>
+              <View style={styles.nextClassMetaChip}>
+                <Feather name="bar-chart-2" size={12} color={colors.inactive} />
+                <Text style={[styles.nextClassMetaText, { color: colors.inactive }]}>
+                  {CLASS_LEVEL_LABELS[nextBooked.level] ?? nextBooked.level}
+                </Text>
+              </View>
+            </View>
           </Pressable>
         ) : null}
 
@@ -1103,6 +1110,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  // Invitación sin chip: la flecha va a la derecha.
+  nextClassTopEnd: { alignItems: 'flex-end' },
+  // Esqueleto: los dos renglones de abajo, separados como el título y la línea de la tarjeta real.
+  nextClassSkeletonBottom: { gap: SPACING.md },
   timeChip: {
     flexDirection: 'row',
     alignItems: 'center',

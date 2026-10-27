@@ -8,6 +8,7 @@ import {
   type ClassSessionDto,
 } from '@workspace/api-client-react';
 import { addDays, formatDuration, isSessionEndedInChile, toDateKey } from '@/lib/dateUtils';
+import { NO_COACH_LABEL } from '@/lib/nextClassCard';
 
 export interface ClassSession {
   id: string;
@@ -94,7 +95,7 @@ function toClassSession(dto: ClassSessionDto, now: Date): ClassSession {
     date,
     dateKey: dto.date,
     type: dto.name,
-    coach: dto.coachName ?? 'Sin coach asignado',
+    coach: dto.coachName ?? NO_COACH_LABEL,
     startMinutes,
     endMinutes,
     startDate,
