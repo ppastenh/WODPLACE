@@ -1,6 +1,6 @@
 # LANZAMIENTO.md
 
-## Mapa de pendientes (ordenado; actualizado 2026-10-24)
+## Mapa de pendientes (ordenado; actualizado 2026-10-27)
 
 Esfuerzo en "sesiones" (tuyas y mías juntas), estimado. **Nada de lo que está "sin aplicar" se aplica sin tu orden.** Los detalles de cada ítem están en las secciones de abajo y en `ESTADO.md`; los diseños en `DISENO-SEGURIDAD-CUENTAS.md`, `COMPARATIVA-L1-VERIFICACION-CORREO.md`, `PLAN-REUBICACION-ADMIN.md` y `DESIGN.md`.
 
@@ -18,9 +18,11 @@ Esfuerzo en "sesiones" (tuyas y mías juntas), estimado. **Nada de lo que está 
 | 1.7 | **Retención de logs**: decidir plan (Render guarda 7/14/30 días según plan; Supabase Auth Logs 1 hora en Free y 7 días en Pro). Lo cubre 1.2 y 1.5 | Pendiente de tu decisión de plan; sin código | decisión de Pía |
 
 ### 2. REUBICACIÓN del área de administración (`PLAN-REUBICACION-ADMIN.md`)
+**Estado al 2026-10-27:** hechas y verificadas en producción F1, F2, F3, F4, F5a, F6 y **F7 (CERRADA el 2026-10-27)**. Quedan **F5b**, **F9** y la pantalla **"Autores bloqueados"** (más la migración "dueño siempre box_admin" y **F8**, que es un bloqueante de la sección 1). **F7 eliminó:** las 11 rutas `/admin/*` con token (`pin/status|setup|verify|session`, `contract-acceptances` y `/ack`, `settings/box-name`, `social/reports` y `/resolve`, `users/:userId/block` POST y DELETE), el token de administrador y la cabecera `X-Admin-Session`, el PIN del servidor (y la pantalla de contraseña de respaldo), la tabla `admin_pins` y la variable `ADMIN_ACCESS_CODE` de Render; **el reemplazo es el candado local con PIN** de la app (no autoriza nada; el servidor decide por sesión + rol + box). Se queda `POST /admin/dash-link`. Detalle en `ESTADO.md` y `PLAN-F7B.md`.
+
 F1 **hecha y desplegada** (Reportes de Comunidad en el panel). **Orden decidido por Pía (2026-10-25):** **F3** Contratos → Aceptaciones (con una migración chica de lectura solo-administradores) → **F4** nombre del box en Ajustes (origen único `boxes.name`, sin migración) → **F5a** Acuerdo de Plataforma: ver y estado, solo lectura, sin migración → **F6** quitar "Más" de la app (siempre al final de esas tres y solo después de verificarlas) → después **F2** moderación en la publicación sin token y `dash-link` endurecido → **F7** eliminar rutas `/admin/*` y el token → **F5b** guardia del Acuerdo en el panel (migración) → **F9** "Buzón de alumnos" (migración). **F8** (soporte) va con los bloqueantes (1.3). La compuerta del Acuerdo en el botón "Administrador" de la app se queda hasta F5b. Plan detallado de F3, F4, F5a y F6 (sin código, esperando OK): `PLAN-F3-F4-F5A-F6.md`.
 - **Dependencia:** F6 saca el área de administración de "Más", así que **"Más" no se rediseña ni se pule antes de F6** (tampoco su tanda C visual).
-**Pendiente de tu decisión: el PIN** — candado local sin autorización (con SecureStore y biometría que ya existen, sin librerías nuevas) o retirarlo del todo; mientras tanto no se toca. Nombres decididos: "Buzón de alumnos" y "Contactar a WODPLACE". Comentarios reportables: idea futura posterior al lanzamiento.
+**El PIN: DECIDIDO y HECHO (2026-10-25/27)** — candado local con PIN (SecureStore y biometría que ya existían, sin librerías nuevas), ya en la app; el PIN del servidor se eliminó (F7). Nombres decididos: "Buzón de alumnos" y "Contactar a WODPLACE". Comentarios reportables: idea futura posterior al lanzamiento.
 
 ### 3. VISUAL (va por el chat de diseño)
 - **Tanda C de la Fase 1** (`more.tsx` y `profile.tsx`): `more.tsx` sale de la app con F6, así que no conviene pulirla; queda `profile.tsx`.
