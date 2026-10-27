@@ -684,26 +684,6 @@ export const blockedUsersTable = pgTable("blocked_users", {
 });
 export type BlockedUserRow = typeof blockedUsersTable.$inferSelect;
 
-// SIN USO desde F7-b1 (2026-10-26): el PIN del servidor se reemplazó por un candado local en el teléfono y
-// ninguna ruta lee ni escribe esta tabla. Queda solo hasta que Pía apruebe la migración que la borra (F7-d);
-// entonces se elimina también este esquema. (Antes: PIN por cuenta del panel de administración, con hash scrypt,
-// 5 intentos y 15 minutos de bloqueo; la tabla real se creó a mano en Supabase, ver lib/db/migrations/0001_admin_pins.sql.)
-export const adminPinsTable = pgTable("admin_pins", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => wodplaceUsersTable.id, { onDelete: "cascade" }),
-  pinHash: text("pin_hash").notNull(),
-  failedAttempts: integer("failed_attempts").notNull().default(0),
-  lockedUntil: timestamp("locked_until", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-export type AdminPinRow = typeof adminPinsTable.$inferSelect;
-
 // ── RM / 1RM module ─────────────────────────────────────────────────────────
 
 // Movement catalog. Seeded rows have `createdBy = null` + `isDefault = true`;

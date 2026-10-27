@@ -64,41 +64,6 @@ export type Database = {
           },
         ]
       }
-      admin_pins: {
-        Row: {
-          created_at: string
-          failed_attempts: number
-          locked_until: string | null
-          pin_hash: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          failed_attempts?: number
-          locked_until?: string | null
-          pin_hash: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          failed_attempts?: number
-          locked_until?: string | null
-          pin_hash?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_pins_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "wodplace_users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       announcement_athlete_reads: {
         Row: {
           announcement_id: string

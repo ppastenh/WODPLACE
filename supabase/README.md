@@ -37,7 +37,7 @@ today; keep the split:
 
 - **Drizzle (`lib/db`)** owns the tables the api-server reads/writes through
   Drizzle: `wodplace_users`, `contract_documents`, `contract_acceptances`,
-  `box_settings`, `social_*`, `blocked_users`, `admin_pins`, `posts`.
+  `box_settings`, `social_*`, `blocked_users`, `posts`.
   Changes go in `lib/db/src/schema/` and reach the DB via `pnpm --filter db
   push` (run by `scripts/post-merge.sh`).
 - **`supabase/migrations/*.sql`** owns everything Drizzle does not model: RLS,
