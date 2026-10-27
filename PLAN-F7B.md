@@ -88,3 +88,39 @@ Cada commit se revierte solo con `git revert`, en orden inverso. Se hace push y 
 
 ## Alcance real de F7-b1 (lo hecho el 2026-10-26)
 Solo el servidor, un commit, reversible con `git revert`: se eliminan las 11 rutas, `adminToken.ts`, `pinHash.ts` y las piezas del token de `adminAccess.ts`; queda `POST /admin/dash-link`. **No** se renombra nada, **no** se toca la especificación ni el cliente generado (F7-b2), **no** se toca `ADMIN_ACCESS_CODE` en Render ni la tabla `admin_pins` (F7-d y F7-e, solo con OK de Pía).
+
+---
+
+# F7-d y F7-e: PREPARADOS, SIN APLICAR (2026-10-27)
+
+Ninguno de los dos se hace sin el OK explícito de Pía. Antes de cualquiera: que F7-b1, F7-b2 y F7-b3 estén en el remoto y verificados en producción.
+
+## F7-d — borrar la tabla `admin_pins` (lo aplico yo, con tu OK)
+- **Archivos:** `supabase/propuestas/20261027_borrar_admin_pins.sql` y `…reversa.sql` (fuera de `supabase/migrations/` hasta aplicarse, igual que las demás propuestas).
+- **Qué hace:** `DROP TABLE public.admin_pins` **sin CASCADE** (si algo dependiera de la tabla, falla en vez de borrar de más). La tabla tiene hoy 2 filas, que son solo hashes de PIN antiguos que no se reutilizan.
+- **Reversa:** recrea la tabla **vacía** con la misma forma (columnas, llave primaria, llave foránea con cascada, RLS activada, sin políticas, sin permisos para `anon`/`authenticated`). Los hashes no se recuperan ni hace falta.
+- **Probado en ROLLBACK (16 de 16, sin dejar ningún cambio):** la migración falla si una vista depende de la tabla; borra la tabla; la reversa la recrea vacía con columnas, llaves, índices, RLS, permisos y dueño idénticos a los originales; acepta filas y rechaza un usuario inexistente; después del ROLLBACK la tabla real y sus 2 filas siguen intactas. Los chequeos obligatorios para migraciones también pasan: `check:super-admin-inlining` y `check:security-definer-grants`.
+- **Al aplicarla (con tu OK):** la ejecuto a mano, muevo los archivos a `supabase/migrations/` con la cabecera "STATUS: applied", quito `adminPinsTable` de `lib/db/src/schema/wodplace.ts`, el tipo de `lib/supabase-types` y la mención de `supabase/README.md`, y verifico que la tabla no existe, que el panel, la moderación y `dash-link` siguen funcionando (matriz de producción) y que no queda ningún error en los registros de Render.
+
+## F7-e — quitar `ADMIN_ACCESS_CODE` de Render (lo haces tú, con tu OK)
+**Antes de empezar:** confirma conmigo que F7-b1, F7-b2 y F7-b3 ya están en el remoto y que Render ya los desplegó (la línea "Deployed commit" del servicio debe empezar por el último commit). La variable ya no la lee ningún código, así que quitarla no cambia nada para nadie; este paso es solo limpieza de un secreto que no se usa.
+
+**Paso a paso (en el navegador del computador):**
+1. Entra a **dashboard.render.com** con tu cuenta.
+2. Abre el servicio de la API (el que tiene el dominio `api.wodplace.cl`; en la lista se llama algo como "wodplace-api" o "api-server").
+3. En el menú de la izquierda toca **Environment**.
+4. Baja hasta **Environment Variables**. Verás una lista con 12 variables. Busca la que se llama **`ADMIN_ACCESS_CODE`**. **No copies ni pegues su valor en ninguna parte** (ni en el chat).
+5. A la derecha de esa fila toca el ícono de **lápiz (editar)** o el de **basurero (eliminar)**; si editas, elimina la fila con el basurero. Borra **solo esa** variable, ninguna otra.
+6. Arriba o abajo aparece un botón **"Save, rebuild, and deploy"** (o "Save and deploy"). Tócalo. Si Render te ofrece "Save only", **no la elijas**: esa opción guarda el cambio pero no lo aplica hasta el próximo despliegue.
+
+**Qué verás:**
+- El servicio pasa a **"Deploying"** (en amarillo) y en unos minutos a **"Live"** (en verde). En la pestaña **Events** aparece una línea nueva "Deploy started/live". La lista de variables ahora tiene **11**.
+- Durante el cambio la API puede tardar unos segundos en responder; no es un error, Render mantiene la versión anterior hasta que la nueva está lista.
+
+**Cómo comprobar que todo sigue bien:**
+1. Abre en el navegador **https://api.wodplace.cl/api/healthz**: debe mostrar `{"status":"ok"}`.
+2. En tu teléfono: menú → **Administrador** → PIN → debe abrir el panel como siempre.
+3. En Comunidad, borra una publicación o un comentario de prueba (no los reales): debe funcionar.
+4. Avísame y yo repito la matriz completa en producción (moderación, `dash-link`, comentarios y contratos, con cuentas desechables) y reviso la línea "Deployed commit".
+
+**Si algo sale mal (reversa):** vuelve a **Environment**, toca **"Add Environment Variable"**, escribe el nombre `ADMIN_ACCESS_CODE`, pon como valor **cualquier texto largo y aleatorio** (no hace falta recuperar el antiguo, porque ningún token sobrevive) y guarda con "Save, rebuild, and deploy". Ningún código lee esa variable, así que en la práctica no debería hacer falta.
