@@ -15,28 +15,9 @@ export interface AppNotification {
   read: boolean;
 }
 
-const STORAGE_KEY = 'wodplace_notifications_read';
-
-const SEED_NOTIFICATIONS: Omit<AppNotification, 'read'>[] = [
-  {
-    id: 'n1',
-    title: 'Tu clase de mañana',
-    body: 'No olvides tu clase de CrossFit a las 07:00 hrs. ¡Te esperamos!',
-    createdAt: '2026-07-11T20:00:00-04:00',
-  },
-  {
-    id: 'n2',
-    title: 'Renovación de plan',
-    body: 'Tu plan se renueva en 3 días. Revisa tus datos de pago.',
-    createdAt: '2026-07-10T14:30:00-04:00',
-  },
-  {
-    id: 'n3',
-    title: '¡Nuevo récord!',
-    body: 'Felicidades, superaste tu marca anterior en el WOD de la semana.',
-    createdAt: '2026-07-08T09:15:00-04:00',
-  },
-];
+// Clave del almacenamiento local que solo servía para marcar como leídas las notificaciones de ejemplo (ya no
+// existen); se borra una vez para no dejar basura en los teléfonos que la tenían.
+const LEGACY_READ_IDS_KEY = 'wodplace_notifications_read';
 
 interface NotificationsContextValue {
   notifications: AppNotification[];
@@ -48,15 +29,11 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
-  const [readIds, setReadIds] = useState<string[]>([]);
   const [remoteNotifications, setRemoteNotifications] = useState<AppNotification[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
-    (async () => {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) setReadIds(JSON.parse(raw) as string[]);
-    })();
+    AsyncStorage.removeItem(LEGACY_READ_IDS_KEY).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -69,7 +46,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         if (!mounted) return;
         setRemoteNotifications(rows);
       } catch {
-        // Local seed notifications remain available when the API is offline.
+        // Sin conexión: se conserva la última lista cargada (o ninguna).
       }
     };
 
@@ -81,37 +58,26 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     };
   }, [user?.id]);
 
-  const persist = async (ids: string[]) => {
-    setReadIds(ids);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-  };
-
-  const notifications = useMemo<AppNotification[]>(() => {
-    const local = SEED_NOTIFICATIONS.map((item) => ({
-      ...item,
-      read: readIds.includes(item.id),
-    }));
-    return [...remoteNotifications, ...local].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-  }, [readIds, remoteNotifications]);
+  // Solo notificaciones reales del servidor (GET /notifications), de la más nueva a la más antigua.
+  const notifications = useMemo<AppNotification[]>(
+    () =>
+      [...remoteNotifications].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ),
+    [remoteNotifications],
+  );
 
   const unreadCount = notifications.filter((item) => !item.read).length;
 
   const markAsRead = (id: string) => {
-    const remote = remoteNotifications.some((item) => item.id === id);
-    if (remote && user) {
-      setRemoteNotifications((current) =>
-        current.map((item) => (item.id === id ? { ...item, read: true } : item)),
-      );
-      markNotificationRead(id, { userId: user.id }).catch(() => {});
-      return;
-    }
-    if (!readIds.includes(id)) persist([...readIds, id]);
+    if (!user || !remoteNotifications.some((item) => item.id === id)) return;
+    setRemoteNotifications((current) =>
+      current.map((item) => (item.id === id ? { ...item, read: true } : item)),
+    );
+    markNotificationRead(id, { userId: user.id }).catch(() => {});
   };
 
   const markAllAsRead = () => {
-    persist(SEED_NOTIFICATIONS.map((item) => item.id));
     if (user) {
       setRemoteNotifications((current) => current.map((item) => ({ ...item, read: true })));
       markAllNotificationsRead({ userId: user.id }).catch(() => {});
@@ -120,7 +86,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   const value = useMemo<NotificationsContextValue>(
     () => ({ notifications, unreadCount, markAsRead, markAllAsRead }),
-    [notifications, unreadCount, readIds],
+    [notifications, unreadCount],
   );
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
