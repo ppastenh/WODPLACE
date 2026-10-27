@@ -40,7 +40,7 @@ Reglas de trabajo y datos fijos del proyecto WODPLACEtes, para no repetirlos en 
 
 - **Google OAuth en Android**: el crypto de React Native/Hermes puede tener `crypto` definido pero sin un `getRandomValues` real — hay que revisar el método mismo, no solo si existe. Samsung Internet como navegador por defecto rompe el Custom Tabs del login; se fuerza Chrome específicamente cuando está disponible (`AuthContext.tsx`, alrededor de la línea 715).
 - **Cloudflare Workers**: los paneles (box-admin, super-admin) necesitan que el build del servidor SSR quede en un solo archivo — un bundling con chunks separados puede generar una importación circular que falla en el runtime de Workers (no en Node). Los secretos de cada panel se configuran en Cloudflare, con un script propio que parchea la config de Wrangler.
-- **Render (api-server)**: son 12 variables de entorno configuradas ahí, incluyendo `ADMIN_ACCESS_CODE` (secreto de firma de sesión admin) — no viven en este repo.
+- **Render (api-server)**: son 12 variables de entorno configuradas ahí — no viven en este repo. Una de ellas, `ADMIN_ACCESS_CODE` (antes, secreto de firma del token de administrador), **ya no la lee ningún código** (F7-b1, 2026-10-26) y está **pendiente de borrar de Render, solo con OK de Pía** (F7-e). Del mismo modo, la tabla `admin_pins` (PIN antiguo del servidor) está sin uso y **pendiente de borrar, solo con OK de Pía** (F7-d). No hay token de administrador ni PIN en el servidor: quién puede qué lo deciden siempre la sesión verificada, el rol y el box (`panelAccess.ts`); el PIN de la app es un candado local del teléfono que no autoriza nada.
 
 ## Referencias
 

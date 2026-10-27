@@ -684,12 +684,10 @@ export const blockedUsersTable = pgTable("blocked_users", {
 });
 export type BlockedUserRow = typeof blockedUsersTable.$inferSelect;
 
-// Per-account PIN for the hidden admin panel, replacing the single shared
-// ADMIN_ACCESS_CODE. Written only by the api-server (privileged connection);
-// the raw PIN is never stored, only its scrypt hash. `failedAttempts` resets
-// on a successful verify/setup; `lockedUntil` is set to now()+15min once it
-// hits 5. The real table already exists in Supabase (applied by hand, see
-// lib/db/migrations/0001_admin_pins.sql — kept only as a historical record).
+// SIN USO desde F7-b1 (2026-10-26): el PIN del servidor se reemplazó por un candado local en el teléfono y
+// ninguna ruta lee ni escribe esta tabla. Queda solo hasta que Pía apruebe la migración que la borra (F7-d);
+// entonces se elimina también este esquema. (Antes: PIN por cuenta del panel de administración, con hash scrypt,
+// 5 intentos y 15 minutos de bloqueo; la tabla real se creó a mano en Supabase, ver lib/db/migrations/0001_admin_pins.sql.)
 export const adminPinsTable = pgTable("admin_pins", {
   userId: text("user_id")
     .primaryKey()

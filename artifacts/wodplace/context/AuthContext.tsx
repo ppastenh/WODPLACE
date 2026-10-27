@@ -97,7 +97,7 @@ export interface WodplaceUser {
   /**
    * Fase 2 of the mock-auth -> real Supabase Auth migration. `'real'` means
    * this session has a live Supabase Auth account (register()/login()
-   * resolved it via the server) — boot/logout/verifyPassword branch on this
+   * resolved it via the server) — boot/logout branch on this
    * to use the real Supabase session instead of the local AsyncStorage
    * flow. `'mock'` is every account from before this fase (still 100% the
    * old flow, untouched — migrating them is Fase 3). Read with `=== 'real'`
@@ -212,13 +212,6 @@ interface AuthContextValue {
     code: string,
     account?: Pick<WodplaceUser, 'id' | 'name' | 'email'>,
   ) => Promise<RedeemBoxCodeResult>;
-  /**
-   * Checks a password against the signed-in account without touching the
-   * session. Used by the admin PIN flow ("forgot PIN" / unlock while locked).
-   * Client-side only, like login() — the mock auth model has no server-side
-   * password.
-   */
-  verifyPassword: (password: string) => Promise<boolean>;
 }
 
 const STORAGE_KEY = 'wodplace_user';
@@ -540,24 +533,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const verifyPassword = async (password: string): Promise<boolean> => {
-    if (!user) return false;
-    if (user.authMode === 'real') {
-      // Re-authenticates without disturbing the active session (still the
-      // same account, worst case it just rotates to a fresh token pair) —
-      // there's no local password to compare for a real account.
-      const { error } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password,
-      });
-      return !error;
-    }
-    // Solo queda el perfil simulado de Apple (__DEV__, ver loginWithProvider)
-    // — no tiene contraseña real que verificar, así que nunca pasa esta
-    // puerta (coherente con que tampoco puede hacer nada en el servidor).
-    return false;
-  };
-
   const loginWithProvider = async (provider: 'apple') => {
     // Fully simulated (needs a paid Apple Developer account to build the
     // real integration) — creates a brand-new server-side account with no
@@ -796,7 +771,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       register,
       redeemBoxCode,
-      verifyPassword,
       loginWithProvider,
       loginWithGoogle,
       completeGoogleOnboarding,

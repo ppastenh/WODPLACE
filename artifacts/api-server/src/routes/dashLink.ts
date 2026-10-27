@@ -1,7 +1,7 @@
 import { CreateAdminDashLinkBody, CreateAdminDashLinkResponse } from "@workspace/api-zod";
 import { Router, type IRouter, type Request, type Response } from "express";
 
-import { resolvePanelAccess } from "../lib/adminAccess";
+import { resolvePanelAccess } from "../lib/panelAccess";
 import { getDashboardUrl, getSuperAdminUrl, getSupabaseAdmin } from "../lib/supabaseAdmin";
 import { resolveSupabaseUser } from "../lib/supabaseAuth";
 

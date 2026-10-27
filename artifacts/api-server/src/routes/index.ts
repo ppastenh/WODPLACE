@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import adminRouter from "./admin";
+import dashLinkRouter from "./dashLink";
 import boxesRouter from "./boxes";
 import contractsRouter from "./contracts";
 import platformAgreementRouter from "./platformAgreement";
@@ -31,7 +31,7 @@ router.use(rmRouter);
 router.use(achievementsRouter);
 router.use(wodRouter);
 router.use(authRouter);
-router.use(adminRouter);
+router.use(dashLinkRouter);
 router.use(invitesRouter);
 router.use(memberInvitesRouter);
 

@@ -32,31 +32,9 @@ export type SocialComment = {
   createdAt: string;
 };
 
-export type SocialReport = {
-  id: string;
-  postId: string;
-  reporterName: string;
-  reason: string;
-  /** Optional screenshot/evidence the reporter attached, or null. */
-  imageUrl: string | null;
-  createdAt: string;
-  post: {
-    id: string;
-    authorName: string;
-    body: string;
-    createdAt: string;
-    deletedAt: string | null;
-  } | null;
-};
-
 type FeedPage = { posts: SocialPost[]; nextCursor: string | null; hasMore: boolean };
 
 // ─── Box name ─────────────────────────────────────────────────────────────────
-//
-// NOTE: the `adminCode` / `code` params below now carry the admin *session
-// token* from the PIN flow (sent as the `X-Admin-Session` header; `Authorization` carries the Supabase session), not the
-// old shared access code. The names are kept to avoid churn at the call sites.
-
 export function useBoxName() {
   const [name, setName] = useState("");
   useEffect(() => {
@@ -65,31 +43,6 @@ export function useBoxName() {
       .catch(() => {});
   }, []);
   return { name };
-}
-
-export function useAdminBoxName(adminCode: string | null) {
-  const [name, setName] = useState("");
-
-  useEffect(() => {
-    customFetch<{ name: string }>("/api/settings/box-name")
-      .then((d) => setName(d.name))
-      .catch(() => {});
-  }, []);
-
-  const save = useCallback(
-    async (newName: string) => {
-      if (!adminCode) return;
-      const data = await customFetch<{ name: string }>("/api/admin/settings/box-name", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "X-Admin-Session": adminCode },
-        body: JSON.stringify({ name: newName }),
-      });
-      setName(data.name);
-    },
-    [adminCode],
-  );
-
-  return { name, setName, save };
 }
 
 // ─── Paginated feed helper ────────────────────────────────────────────────────
@@ -384,55 +337,4 @@ export function useSocialMutations(userId: string, authorName: string) {
   );
 
   return { createPost, editPost, deletePost, toggleReaction, addComment, deleteComment, reportPost, uploadReportImage, uploadSocialImage, blockAuthor };
-}
-
-// ─── Admin: reports queue ─────────────────────────────────────────────────────
-
-export function useAdminSocialReports(adminCode: string | null) {
-  const [reports, setReports] = useState<SocialReport[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const fetchReports = useCallback(async () => {
-    if (!adminCode) return;
-    setIsLoading(true);
-    try {
-      const data = await customFetch<SocialReport[]>("/api/admin/social/reports", {
-        headers: { "X-Admin-Session": adminCode },
-      });
-      setReports(data);
-    } catch {
-      setReports([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [adminCode]);
-
-  useEffect(() => { fetchReports(); }, [fetchReports]);
-
-  const resolve = useCallback(
-    async (reportId: string, deletePost: boolean, overrideCode?: string) => {
-      const code = overrideCode ?? adminCode;
-      if (!code) return;
-      if (deletePost) {
-        const report = (await customFetch<SocialReport[]>("/api/admin/social/reports", {
-          headers: { "X-Admin-Session": code },
-        }).catch(() => [] as SocialReport[])).find((r: SocialReport) => r.id === reportId);
-        if (report?.postId) {
-          await customFetch(`/api/social/posts/${report.postId}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json", "X-Admin-Session": code },
-            body: JSON.stringify({ userId: "admin" }),
-          }).catch(() => {});
-        }
-      }
-      await customFetch(`/api/admin/social/reports/${reportId}/resolve`, {
-        method: "PATCH",
-        headers: { "X-Admin-Session": code },
-      });
-      setReports((prev: SocialReport[]) => prev.filter((r: SocialReport) => r.id !== reportId));
-    },
-    [adminCode],
-  );
-
-  return { reports, isLoading, refresh: fetchReports, resolve };
 }

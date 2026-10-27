@@ -25,7 +25,7 @@ import {
 import { z } from "zod";
 
 import { validateSocialImageUris } from "../lib/socialImageValidation";
-import { canModerateBox, resolveSessionCaller } from "../lib/adminAccess";
+import { canModerateBox, resolveSessionCaller } from "../lib/panelAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { assertOwnsAccount } from "../lib/supabaseAuth";
 

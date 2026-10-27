@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 
-import { canModerateBox, resolveSessionCaller } from "../lib/adminAccess";
+import { canModerateBox, resolveSessionCaller } from "../lib/panelAccess";
 import { resolveBoxIdForAthlete } from "../lib/boxContext";
 import { todayDateKey } from "../lib/dateUtils";
 import { countRecentAttempts, getRealClientIp, MAX_ATTEMPTS, recordFailedAttempt } from "../lib/inviteRateLimit";
