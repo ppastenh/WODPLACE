@@ -589,6 +589,7 @@ router.post("/bookings/cancel", async (req: Request, res: Response) => {
           await tx.insert(wodplaceNotificationsTable).values({
             id: makeId("notification"),
             userId: next.userId,
+            boxId: next.boxId,
             title: "¡Tu clase se agendó!",
             body: `Se liberó un cupo en ${sessionDescription}. Ya estás agendado.`,
           });

@@ -499,6 +499,9 @@ export const wodplaceNotificationsTable = pgTable(
       .notNull()
       .defaultNow(),
     readAt: timestamp("read_at", { withTimezone: true }),
+    // NOT NULL (FK a boxes) en la tabla real de Supabase desde que Comunidad y las reservas quedaron por box; el
+    // esquema no lo declaraba y por eso TODA notificación creada por el servidor fallaba al insertarse (ver ESTADO.md).
+    boxId: text("box_id").notNull(),
   },
   (table) => [
     uniqueIndex("wodplace_notifications_user_created_idx").on(

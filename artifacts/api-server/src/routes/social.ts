@@ -348,7 +348,7 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
     await db.insert(socialCommentsTable).values({ id, postId: paramString(req.params.id), userId, authorName, body, boxId });
     if (post.userId && post.userId !== userId) {
       db.insert(wodplaceNotificationsTable).values({
-        id: makeId("notif"), userId: post.userId,
+        id: makeId("notif"), userId: post.userId, boxId: post.boxId,
         title: "Nuevo comentario", body: `${authorName} comentó en tu publicación.`,
       }).catch(() => {});
     }
@@ -411,7 +411,7 @@ router.post("/social/posts/:id/reactions", async (req: Request, res: Response) =
       isNew = true;
       if (post.userId && post.userId !== userId) {
         db.insert(wodplaceNotificationsTable).values({
-          id: makeId("notif"), userId: post.userId,
+          id: makeId("notif"), userId: post.userId, boxId: post.boxId,
           title: "Nueva reacción", body: `Alguien reaccionó a tu publicación con ${emoji}.`,
         }).catch(() => {});
       }
