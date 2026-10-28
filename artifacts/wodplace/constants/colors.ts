@@ -67,6 +67,9 @@ const colors = {
 
     // Borders and input outlines
     border: '#E3D9C2',
+    // Borde de CAMPOS de formulario (el borde decorativo sigue siendo `border`). En el claro es el mismo valor que
+    // `border`, así que nada cambia; en la paleta oscura es más fuerte para cumplir los 3:1 de bordes de campos.
+    inputBorder: '#E3D9C2',
     input: '#EFE8D8',
 
     // Bottom navigation
