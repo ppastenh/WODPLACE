@@ -59,3 +59,78 @@ describe('tema: preferencia guardada', () => {
     assert.equal(parseThemeMode('auto'), 'light');
   });
 });
+
+// Los valores del claro tal como estaban ANTES de empezar el modo oscuro (2026-10-28). Ninguno puede cambiar; los tokens
+// agregados después (solo con el MISMO valor de otro existente) se listan aparte.
+const LIGHT_ANTES: Record<string, string> = {
+  text: '#191A1E',
+  tint: '#4B3CF5',
+  background: '#F6F1E8',
+  foreground: '#18191A',
+  card: '#FFFFFF',
+  cardForeground: '#191A1E',
+  cardPressed: '#EBEBEB',
+  primary: '#4B3CF5',
+  primaryForeground: '#FFFFFF',
+  primaryPressed: '#4033D0',
+  secondary: '#EAE6F9',
+  secondaryForeground: '#4B3CF5',
+  secondaryPressed: '#DEDBED',
+  muted: '#EAE2CF',
+  mutedForeground: '#8C8574',
+  accent: '#F0D9A8',
+  accentForeground: '#6B4A12',
+  destructive: '#E0524A',
+  destructiveForeground: '#FFFFFF',
+  destructivePressed: '#BE463F',
+  destructiveTextSmall: '#B13A33',
+  adminAction: '#18191A',
+  adminActionPressed: '#2E2F35',
+  adminActionForeground: '#F6F1E8',
+  border: '#E3D9C2',
+  input: '#EFE8D8',
+  navActive: '#B98250',
+  navActiveTextSmall: '#8B5E34',
+  navActivePressed: '#8B623C',
+  navInactive: '#706B63',
+  navFloating: '#18191A',
+  navFloatingPressed: '#2E2F35',
+  navFloatingForeground: '#F6F1E8',
+  navBorder: '#D4CDBF',
+  warning: '#F5A623',
+  warningBackground: '#FFF0D5',
+  successBackground: '#E7F8EC',
+  eventBlue: '#4A7CFF',
+  success: '#2F9E56',
+  successForeground: '#FFFFFF',
+  inactive: '#A9A296',
+  inactiveForeground: '#5B564C',
+  authBackground: '#111319',
+  authCard: '#1B1D26',
+  authBorder: '#2A2D38',
+  authInput: '#20222C',
+  authText: '#F5F4F2',
+  authMuted: '#8C8E99',
+};
+const LIGHT_AGREGADOS_IGUAL_A: Record<string, string> = {
+  inputBorder: 'border',
+  nextClassCard: 'navFloating',
+  nextClassCardPressed: 'navFloatingPressed',
+  nextClassCardForeground: 'navFloatingForeground',
+};
+
+describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {
+  const light = colors.light as Record<string, string>;
+  it('los 48 tokens que existían conservan su valor exacto', () => {
+    assert.equal(Object.keys(LIGHT_ANTES).length, 48);
+    for (const [key, value] of Object.entries(LIGHT_ANTES)) assert.equal(light[key], value, key);
+    assert.equal(colors.radius, 20);
+  });
+  it('los tokens agregados valen lo mismo que el token existente del que parten', () => {
+    for (const [key, from] of Object.entries(LIGHT_AGREGADOS_IGUAL_A)) assert.equal(light[key], LIGHT_ANTES[from], key);
+  });
+  it('no hay otros tokens claros nuevos', () => {
+    const extra = Object.keys(light).filter((k) => !(k in LIGHT_ANTES) && !(k in LIGHT_AGREGADOS_IGUAL_A));
+    assert.deepEqual(extra, []);
+  });
+});
