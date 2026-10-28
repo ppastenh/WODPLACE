@@ -21,6 +21,8 @@ const darkColors = {
   // Cards / elevated surfaces
   card: "#24262A",
   cardForeground: "#F2EDE2",
+  // Estado presionado sólido de `card` (botones/chips con fondo de tarjeta) -- 11,31:1 contra foreground, verificado.
+  cardPressed: "#2E3035",
 
   // Primary action color = copper accent
   primary: "#C79A6B",
@@ -54,6 +56,15 @@ const darkColors = {
   // Estado presionado sólido de `destructive` -- 4.78:1 contra
   // destructiveForeground, verificado.
   destructivePressed: "#B3423B",
+  // Rojo para texto CHICO sobre fondo oscuro o tarjeta (el `destructive` de relleno da 3,95:1 sobre card) -- 5,58:1
+  // sobre card y 7,06:1 sobre background, verificado. Mismo patrón que destructiveTextSmall de colors.ts.
+  destructiveTextSmall: "#F07A72",
+
+  // Botón de acceso a un panel (Administrador/Coach/Super admin) del menú lateral: en la paleta oscura es el cobre
+  // (mismo par que primary), texto oscuro encima -- 7,55:1 en reposo y 6,03:1 presionado, verificado.
+  adminAction: "#C79A6B",
+  adminActionPressed: "#B3885E",
+  adminActionForeground: "#0E0F11",
 
   // Borders and inputs
   border: "#2C2F34",
@@ -61,11 +72,17 @@ const darkColors = {
 
   // Bottom navigation
   navActive: "#C79A6B",
+  // Texto chico en cobre: en la paleta oscura `navActive` ya cumple 4,5:1 sobre background (7,55:1) y card (5,96:1), así
+  // que es el mismo valor (en la clara hace falta uno más oscuro).
+  navActiveTextSmall: "#C79A6B",
   // Estado presionado sólido de `navActive` como fondo de botón -- 4.89:1
   // contra `card` (#24262A), verificado.
   navActivePressed: "#B38B60",
   navInactive: "#7C7A73",
   navFloating: "#C79A6B",
+  // Estado presionado sólido de `navFloating` (cobre) -- 6,03:1 contra navFloatingForeground, verificado. Mismo valor que
+  // primaryPressed/adminActionPressed.
+  navFloatingPressed: "#B3885E",
   navFloatingForeground: "#0E0F11",
   navBorder: "#2C2F34",
 
