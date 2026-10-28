@@ -255,6 +255,10 @@ export default function HomeScreen() {
     ...item,
     badge: item.key === 'notifications' ? unreadCount : undefined,
   }));
+  // Solo en desarrollo -- nunca en una build de producción (ver app/dev-home.tsx).
+  if (__DEV__) {
+    navItems.push({ key: 'dev-home', label: 'Estados de Inicio (dev)', icon: 'layers', route: '/dev-home' });
+  }
   const adminNavItem = getAdminNavItem(adminStatus);
 
   const handleNavigate = (route: string) => {

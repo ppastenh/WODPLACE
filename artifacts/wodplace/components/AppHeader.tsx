@@ -22,6 +22,8 @@ interface AppHeaderProps {
   dark?: boolean;
   /** Show the notification bell on the right with an unread badge. */
   showBell?: boolean;
+  /** Para la pantalla de desarrollo (datos inventados): reemplaza la cantidad del contexto. En la app real no se pasa. */
+  unreadCount?: number;
   /**
    * Admin alerts bell (box-admin's own alerts inside the admin WebView —
    * unrelated to `showBell`/`useNotifications`, which is the member-facing
@@ -42,13 +44,15 @@ export function AppHeader({
   menuOpen,
   dark,
   showBell,
+  unreadCount: unreadCountOverride,
   adminAlertCount,
   onPressAdminAlerts,
   rightExtra,
 }: AppHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { unreadCount } = useNotifications();
+  const { unreadCount: contextUnreadCount } = useNotifications();
+  const unreadCount = unreadCountOverride ?? contextUnreadCount;
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
   // `dark` renders the same fixed dark palette as the RM module and the
