@@ -51,11 +51,12 @@ const darkColors = {
   accentForeground: "#0E0F11",
 
   // Destructive
-  destructive: "#E0524A",
-  destructiveForeground: "#F2EDE2",
-  // Estado presionado sólido de `destructive` -- 4.78:1 contra
-  // destructiveForeground, verificado.
-  destructivePressed: "#B3423B",
+  // Relleno de botón/insignia destructiva. Era #E0524A con texto #F2EDE2 (3,29:1, bajo el mínimo). Ahora #C23E37 con texto
+  // #FFFFFF: 5,20:1 en reposo y 6,53:1 presionado (#A8352F), verificado. Como relleno/punto sobre background da 3,69:1
+  // (≥ 3:1, no es texto). El TEXTO rojo sobre fondo oscuro usa destructiveTextSmall, no este token.
+  destructive: "#C23E37",
+  destructiveForeground: "#FFFFFF",
+  destructivePressed: "#A8352F",
   // Rojo para texto CHICO sobre fondo oscuro o tarjeta (el `destructive` de relleno da 3,95:1 sobre card) -- 5,58:1
   // sobre card y 7,06:1 sobre background, verificado. Mismo patrón que destructiveTextSmall de colors.ts.
   destructiveTextSmall: "#F07A72",
@@ -99,7 +100,7 @@ const darkColors = {
   successForeground: "#0E0F11",
   // `inactive` se usa como texto gris (meta de la tarjeta de próxima clase) y como relleno de chip con `inactiveForeground`
   // encima (igual que la clara: relleno claro, texto oscuro). Era #5B584F con #9A968C (2,41:1 el chip; 2,13:1 como texto
-  // sobre card). Ahora #A29E94 (5,67:1 como texto sobre card) con #0E0F11 encima (7,19:1 como chip).
+  // sobre card). Ahora #A29E94 (5,67:1 como texto sobre card) con #0E0F11 encima (7,17:1 como chip).
   inactive: "#A29E94",
   inactiveForeground: "#0E0F11",
 

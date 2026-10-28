@@ -280,7 +280,7 @@ export default function BarLoaderScreen() {
 
           {/* status */}
           {autoResult?.error ? (
-            <Text style={[styles.status, { color: colors.destructive }]}>{autoResult.error}</Text>
+            <Text style={[styles.status, { color: colors.destructiveTextSmall }]}>{autoResult.error}</Text>
           ) : autoResult ? (
             <Text
               style={[

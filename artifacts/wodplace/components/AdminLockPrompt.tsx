@@ -253,7 +253,7 @@ export function AdminLockPrompt({ userId, variant, onUnlocked, onLogout }: Props
             <PinField value={pin} onChangeText={pinChange(setPin)} length={PIN_LENGTH} autoFocus />
             <Text style={[styles.label, { color: colors.authMuted }]}>Repite tu PIN</Text>
             <PinField value={pinConfirm} onChangeText={pinChange(setPinConfirm)} length={PIN_LENGTH} />
-            {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.error, { color: colors.destructiveTextSmall }]}>{error}</Text> : null}
             <AppButton label="Guardar PIN" variant="primary" palette="dark" fullWidth loading={busy} onPress={submitCreate} style={styles.button} />
           </>
         ) : null}
@@ -271,7 +271,7 @@ export function AdminLockPrompt({ userId, variant, onUnlocked, onLogout }: Props
         {mode === 'enter' ? (
           <>
             <PinField value={pin} onChangeText={pinChange(setPin)} length={PIN_LENGTH} autoFocus onSubmitEditing={submitEnter} />
-            {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.error, { color: colors.destructiveTextSmall }]}>{error}</Text> : null}
             <AppButton label="Entrar" variant="primary" palette="dark" fullWidth loading={busy} onPress={submitEnter} style={styles.button} />
             {bioLink}
             {forgotLink}
@@ -284,7 +284,7 @@ export function AdminLockPrompt({ userId, variant, onUnlocked, onLogout }: Props
               Demasiados intentos. Vuelve a intentar en{' '}
               <Text style={{ color: colors.authText, fontFamily: 'Inter_600SemiBold' }}>{formatWait((waitEnd ?? nowMs) - nowMs)}</Text>.
             </Text>
-            {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.error, { color: colors.destructiveTextSmall }]}>{error}</Text> : null}
             {bioLink}
             {forgotLink}
           </>
