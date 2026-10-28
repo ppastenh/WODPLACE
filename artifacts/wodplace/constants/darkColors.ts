@@ -91,6 +91,11 @@ const darkColors = {
   // primaryPressed/adminActionPressed.
   navFloatingPressed: "#B3885E",
   navFloatingForeground: "#0E0F11",
+  // Tarjeta de próxima clase de Inicio: base neutra (color de tarjeta), presionado sólido y texto claro -- 12,98:1 en
+  // reposo y 11,31:1 presionado, verificado.
+  nextClassCard: "#24262A",
+  nextClassCardPressed: "#2E3035",
+  nextClassCardForeground: "#F2EDE2",
   navBorder: "#2C2F34",
 
   warning: "#F5A623",

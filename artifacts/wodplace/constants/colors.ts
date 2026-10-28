@@ -90,6 +90,12 @@ const colors = {
     // que corresponde a esta tarjeta. Texto principal (`navFloatingForeground`) sobre él: 11,86:1, verificado.
     navFloatingPressed: '#2E2F35',
     navFloatingForeground: '#F6F1E8',
+    // Tarjeta de próxima clase de Inicio: tokens propios (antes usaba navFloating*). En el claro son los MISMOS valores
+    // que navFloating*, así que nada cambia; en la paleta oscura la base es el neutro de tarjeta y navFloating queda para
+    // el cobre del botón Agendar y los acentos.
+    nextClassCard: '#18191A',
+    nextClassCardPressed: '#2E3035',
+    nextClassCardForeground: '#F6F1E8',
     navBorder: '#D4CDBF',
     warning: '#F5A623',
     warningBackground: '#FFF0D5',
