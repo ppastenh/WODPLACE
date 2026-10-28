@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import darkColors from '@/constants/darkColors';
 import { useColors } from '@/hooks/useColors';
 import { useNotifications } from '@/context/NotificationsContext';
+import { useTheme } from '@/context/ThemeContext';
 import { SPACING } from '@/constants/spacing';
 import { RADIUS } from '@/constants/radius';
 
@@ -53,6 +54,7 @@ export function AppHeader({
   const insets = useSafeAreaInsets();
   const { unreadCount: contextUnreadCount } = useNotifications();
   const unreadCount = unreadCountOverride ?? contextUnreadCount;
+  const { mode } = useTheme();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
   // `dark` renders the same fixed dark palette as the RM module and the
@@ -60,6 +62,9 @@ export function AppHeader({
   const iconColor = dark ? darkColors.foreground : colors.foreground;
   const bg = dark ? darkColors.background : colors.background;
   const borderColor = dark ? darkColors.border : colors.border;
+  // Aro del punto de la campana: en claro se queda blanco (como siempre); en un encabezado oscuro (prop `dark` o tema
+  // oscuro) es el color del fondo, para que el punto se recorte limpio en vez de dibujar un aro blanco.
+  const bellDotRing = dark || mode === 'dark' ? bg : '#FFFFFF';
 
   return (
     <View
@@ -109,7 +114,7 @@ export function AppHeader({
           >
             <Feather name="bell" size={22} color={iconColor} />
             {(adminAlertCount ?? 0) > 0 ? (
-              <View style={[styles.bellDot, { backgroundColor: colors.destructive }]} />
+              <View style={[styles.bellDot, { backgroundColor: colors.destructive, borderColor: bellDotRing }]} />
             ) : null}
           </Pressable>
         ) : showBell ? (
@@ -122,7 +127,7 @@ export function AppHeader({
           >
             <Feather name="bell" size={22} color={iconColor} />
             {unreadCount > 0 ? (
-              <View style={[styles.bellDot, { backgroundColor: colors.destructive }]} />
+              <View style={[styles.bellDot, { backgroundColor: colors.destructive, borderColor: bellDotRing }]} />
             ) : null}
           </Pressable>
         ) : null}
