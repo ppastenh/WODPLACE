@@ -78,7 +78,10 @@ const darkColors = {
   // Estado presionado sólido de `navActive` como fondo de botón -- 4.89:1
   // contra `card` (#24262A), verificado.
   navActivePressed: "#B38B60",
-  navInactive: "#7C7A73",
+  // Texto/íconos inactivos y leyendas. Era #7C7A73 (4,46:1 sobre background, 3,53:1 sobre card, 3,09:1 sobre el fondo de aviso):
+  // bajo el mínimo de 4,5:1. #A29E94: 7,17:1 sobre background, 5,67:1 sobre card, 5,71:1 sobre successBackground, 4,97:1 sobre
+  // warningBackground y 4,94:1 sobre cardPressed.
+  navInactive: "#A29E94",
   navFloating: "#C79A6B",
   // Estado presionado sólido de `navFloating` (cobre) -- 6,03:1 contra navFloatingForeground, verificado. Mismo valor que
   // primaryPressed/adminActionPressed.
@@ -94,8 +97,11 @@ const darkColors = {
   // Status
   success: "#3FBE72",
   successForeground: "#0E0F11",
-  inactive: "#5B584F",
-  inactiveForeground: "#9A968C",
+  // `inactive` se usa como texto gris (meta de la tarjeta de próxima clase) y como relleno de chip con `inactiveForeground`
+  // encima (igual que la clara: relleno claro, texto oscuro). Era #5B584F con #9A968C (2,41:1 el chip; 2,13:1 como texto
+  // sobre card). Ahora #A29E94 (5,67:1 como texto sobre card) con #0E0F11 encima (7,19:1 como chip).
+  inactive: "#A29E94",
+  inactiveForeground: "#0E0F11",
 
   // Auth / splash surfaces (already dark-ish; align to this palette)
   authBackground: "#0E0F11",
