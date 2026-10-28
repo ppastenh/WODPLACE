@@ -10,6 +10,7 @@
     "check:pressed-opacity": "tsx ./src/check-pressed-opacity.ts",
     "test:home-logic": "tsx --test ./src/test-home-logic.ts",
     "test:admin-lock": "tsx --test ./src/test-admin-lock.ts",
+    "test:theme": "tsx --test ./src/test-theme.ts",
     "check:booking-notifications": "tsx ./src/check-booking-notifications.ts",
     "check:community-comments": "tsx ./src/check-community-comments.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

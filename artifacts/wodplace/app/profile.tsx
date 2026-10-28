@@ -29,6 +29,13 @@ import { useColors } from '@/hooks/useColors';
 import { useMyPosts, uploadAvatarImage, SKILL_LEVEL_LABELS, type SocialPost } from '@workspace/api-client-react';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 
+// Interruptor de tema: solo en desarrollo, y el require dentro de la condición deja el componente fuera del paquete de
+// producción (el paso (d) del plan lo abre a todos).
+const ThemeSwitch: React.ComponentType | null = __DEV__
+  ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('@/components/ThemeSwitch').ThemeSwitch
+  : null;
+
 const NAV_ITEMS: Omit<DrawerNavItem, 'badge'>[] = [
   { key: 'personal-data', label: 'Datos Personales', icon: 'user', route: '/personal-data' },
   { key: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications' },
@@ -205,6 +212,8 @@ export default function ProfileScreen() {
           style={styles.scheduleButton}
           icon={<Feather name="calendar" size={18} color={colors.authText} />}
         />
+
+        {ThemeSwitch ? <ThemeSwitch /> : null}
 
         {/* Tab bar */}
         <View style={[styles.tabBar, { borderBottomColor: colors.navBorder }]}>

@@ -5,5 +5,5 @@
     "rootDir": "..",
     "types": ["node"]
   },
-  "include": ["src", "../artifacts/wodplace/lib/adminLockLogic.ts", "../artifacts/wodplace/lib/adminUnlock.ts", "../artifacts/wodplace/lib/nextClassCard.ts", "../artifacts/wodplace/lib/planProgress.ts", "../artifacts/api-server/src/lib/planPeriodStats.ts", "../artifacts/api-server/src/lib/dateUtils.ts", "../artifacts/wodplace/constants/colors.ts"]
+  "include": ["src", "../artifacts/wodplace/lib/adminLockLogic.ts", "../artifacts/wodplace/lib/adminUnlock.ts", "../artifacts/wodplace/lib/nextClassCard.ts", "../artifacts/wodplace/lib/planProgress.ts", "../artifacts/api-server/src/lib/planPeriodStats.ts", "../artifacts/api-server/src/lib/dateUtils.ts", "../artifacts/wodplace/constants/colors.ts", "../artifacts/wodplace/constants/darkColors.ts", "../artifacts/wodplace/lib/theme.ts"]
 }

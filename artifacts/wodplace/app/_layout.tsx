@@ -19,6 +19,7 @@ import { BookingProvider } from '@/context/BookingContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { configureApiClient } from '@/lib/apiConfig';
 import { BottomNavBar, isBottomNavRoute } from '@/components/BottomNavBar';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -99,6 +100,15 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutContent />
+    </ThemeProvider>
+  );
+}
+
+function RootLayoutContent() {
+  const { ready: themeReady } = useTheme();
   const [interLoaded, interError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -107,8 +117,9 @@ export default function RootLayout() {
   });
   const [antonLoaded, antonError] = useAntonFonts({ Anton_400Regular });
 
-  const fontsLoaded = interLoaded && antonLoaded;
-  const fontError = interError || antonError;
+  // El splash se mantiene hasta leer también la preferencia de tema, así no hay parpadeo al abrir.
+  const fontsLoaded = interLoaded && antonLoaded && themeReady;
+  const fontError = (interError || antonError) && themeReady;
 
   useEffect(() => {
     if (fontsLoaded || fontError) {

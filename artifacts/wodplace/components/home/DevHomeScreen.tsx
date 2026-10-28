@@ -11,7 +11,9 @@ import {
   defaultSelection,
   type DevSelection,
 } from '@/components/home/devHomeStates';
+import { ThemeOverride } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
+import type { ThemeMode } from '@/lib/theme';
 import { FONT_SIZE } from '@/constants/typography';
 import { SPACING } from '@/constants/spacing';
 import { RADIUS } from '@/constants/radius';
@@ -34,6 +36,20 @@ const EVENTS: HomeViewEvents = {
  * con datos inventados (components/home/devHomeStates.ts), sin llamadas al servidor ni a la base.
  */
 export default function DevHomeScreen() {
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  return (
+    <ThemeOverride mode={themeMode}>
+      <DevHomeBody themeMode={themeMode} onThemeMode={setThemeMode} />
+    </ThemeOverride>
+  );
+}
+
+const THEME_CHIPS: { mode: ThemeMode; label: string }[] = [
+  { mode: 'light', label: 'Claro' },
+  { mode: 'dark', label: 'Oscuro' },
+];
+
+function DevHomeBody({ themeMode, onThemeMode }: { themeMode: ThemeMode; onThemeMode: (mode: ThemeMode) => void }) {
   const colors = useColors();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
   const [chipsOpen, setChipsOpen] = useState(true);
@@ -53,6 +69,27 @@ export default function DevHomeScreen() {
         </Pressable>
         {chipsOpen ? (
           <ScrollView style={styles.chipsScroll} nestedScrollEnabled>
+            <View style={styles.group}>
+              <Text style={[styles.groupTitle, { color: colors.navInactive }]}>Tema (solo esta pantalla)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                {THEME_CHIPS.map((chip) => {
+                  const selected = themeMode === chip.mode;
+                  return (
+                    <Pressable
+                      key={chip.mode}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => onThemeMode(chip.mode)}
+                      style={[styles.chip, { backgroundColor: selected ? colors.accent : colors.input }]}
+                    >
+                      <Text style={[styles.chipText, { color: selected ? colors.accentForeground : colors.foreground }]}>
+                        {chip.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
             {DEV_GROUPS.map((group) => (
               <View key={group.id} style={styles.group}>
                 <Text style={[styles.groupTitle, { color: colors.navInactive }]}>{group.title}</Text>

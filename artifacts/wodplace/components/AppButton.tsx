@@ -10,6 +10,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 import { useDarkColors } from '@/hooks/useDarkColors';
+import { useTheme } from '@/context/ThemeContext';
 
 export type AppButtonVariant =
   | 'primary'
@@ -55,7 +56,9 @@ export function AppButton({
   const light = useColors();
   const dark = useDarkColors();
   const colors = palette === 'dark' ? dark : light;
-  const isDark = palette === 'dark';
+  // 'light' (el valor por defecto) significa "la paleta activa del tema": en modo oscuro del tema los botones también son oscuros.
+  const { mode } = useTheme();
+  const isDark = palette === 'dark' || mode === 'dark';
 
   // 'dark' and 'outlineLight' are the two variants designed specifically
   // for an auth-styled dark button sitting on an otherwise LIGHT screen
