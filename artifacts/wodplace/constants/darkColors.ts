@@ -49,6 +49,9 @@ const darkColors = {
   // Accent highlights
   accent: "#C79A6B",
   accentForeground: "#0E0F11",
+  // Extremo final del degradado de la tarjeta de frase: cobre más profundo (mismo valor que navActivePressed) -- el texto
+  // accentForeground da 6,19:1 sobre él (sobre el #24262A que usa el claro como extremo daría 1,27:1).
+  accentGradientEnd: "#B38B60",
 
   // Destructive
   // Relleno de botón/insignia destructiva. Era #E0524A con texto #F2EDE2 (3,29:1, bajo el mínimo). Ahora #C23E37 con texto
@@ -99,6 +102,8 @@ const darkColors = {
   navBorder: "#2C2F34",
 
   warning: "#F5A623",
+  // Ícono sobre el relleno `warning`: oscuro -- 9,46:1 (el `foreground` crema daría 1,74:1).
+  warningForeground: "#0E0F11",
   warningBackground: "#3A2E14",
   successBackground: "#132A1B",
   eventBlue: "#4A7CFF",

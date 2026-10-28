@@ -227,7 +227,7 @@ export function HomeView({ data, events }: { data: HomeViewData; events: HomeVie
       {hasActivePlan && nearPlanLimit ? (
         <View style={[styles.noticeCard, { backgroundColor: colors.warningBackground }]}>
           <View style={[styles.noticeIcon, { backgroundColor: colors.warning }]}>
-            <Feather name="alert-circle" size={16} color={colors.foreground} />
+            <Feather name="alert-circle" size={16} color={colors.warningForeground} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             {myPlan!.classesPerPeriod != null &&
@@ -323,7 +323,7 @@ export function HomeView({ data, events }: { data: HomeViewData; events: HomeVie
       ) : null}
 
       <LinearGradient
-        colors={[colors.accent, colors.card]}
+        colors={[colors.accent, colors.accentGradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.quoteRow}

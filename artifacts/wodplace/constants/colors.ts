@@ -44,6 +44,9 @@ const colors = {
     // Accent highlights (badges, selected items, focus rings)
     accent: '#F0D9A8',
     accentForeground: '#6B4A12',
+    // Extremo final del degradado de la tarjeta de frase (accent -> accentGradientEnd). Mismo valor que `card`: nada cambia
+    // en el claro; en el oscuro es un cobre más profundo para que el texto oscuro no quede sobre un extremo oscuro.
+    accentGradientEnd: '#FFFFFF',
 
     // Destructive / cancel actions
     destructive: '#E0524A',
@@ -98,6 +101,8 @@ const colors = {
     nextClassCardForeground: '#F6F1E8',
     navBorder: '#D4CDBF',
     warning: '#F5A623',
+    // Ícono sobre el relleno `warning` (aviso de plan por vencer). Mismo valor que `foreground`: nada cambia en el claro.
+    warningForeground: '#18191A',
     warningBackground: '#FFF0D5',
     successBackground: '#E7F8EC',
     eventBlue: '#4A7CFF',
