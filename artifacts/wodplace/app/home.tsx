@@ -88,7 +88,7 @@ import { useColors } from '@/hooks/useColors';
 import { getMedalIconColor } from '@/lib/medalColors';
 import { getAdminNavItem, shouldShowContracts } from '@/lib/navigation';
 import { coachLine, nextClassCardState } from '@/lib/nextClassCard';
-import { planProgressView } from '@/lib/planProgress';
+import { planProgressView, monthlyCardParts } from '@/lib/planProgress';
 import { useRefetchOnFocusIfStale } from '@/lib/useRefetchOnFocusIfStale';
 import {
   formatClassDateShort,
@@ -378,6 +378,7 @@ export default function HomeScreen() {
     planLoading: myPlanQuery.isPending,
     plan: myPlan,
   });
+  const monthly = monthlyCardParts(planView);
   const nearPlanLimit =
     !!myPlan &&
     ((myPlan.classesPerPeriod != null &&
@@ -669,81 +670,103 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <View style={styles.twoColumnRow}>
-          <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
-            <View style={styles.smallCardHeader}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
-                <Feather name="calendar" size={17} color={colors.accentForeground} />
-              </View>
+        {planView.kind === 'loading' ? (
+          <View style={[styles.wideCard, { backgroundColor: colors.card }]}>
+            <Skeleton width="45%" height={FONT_SIZE.xs} />
+            <View style={styles.monthlySkeletonBottom}>
+              <Skeleton width="30%" height={FONT_SIZE.display} />
+              <Skeleton width="100%" height={7} />
+              <Skeleton width="55%" height={FONT_SIZE.xs} />
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
-              Clases del plan
+          </View>
+        ) : planView.kind === 'none' ? (
+          <View style={[styles.monthlyEmptyCard, { backgroundColor: colors.card }]}>
+            <View>
+              <Text style={[styles.smallCardLabel, styles.monthlyTitle, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+                Progreso mensual
+              </Text>
+              <Text style={[styles.statsValue, { color: colors.foreground }]} maxFontSizeMultiplier={1.3}>
+                —
+              </Text>
+            </View>
+            <Text style={[styles.statsDetail, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              Sin plan activo
             </Text>
-            {planView.kind === 'classes' || planView.kind === 'unlimited' ? (
-              <>
-                <Text
-                  style={[styles.statsValue, { color: colors.foreground }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  {planView.kind === 'classes'
-                    ? `${planView.completed ?? '—'} / ${planView.total}`
-                    : (planView.completed ?? '—')}
-                </Text>
-                {planView.kind === 'classes' ? (
-                  <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { backgroundColor: colors.navActive, width: `${planView.ratio * 100}%` },
-                      ]}
-                    />
-                  </View>
-                ) : null}
-                <Text
-                  style={[styles.statsDetail, { color: colors.navInactive }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  {planView.legend}
-                </Text>
-                {planView.kind === 'unlimited' ? (
-                  <View style={[styles.planChip, { backgroundColor: colors.accent }]}>
-                    <Text
-                      style={[styles.planChipText, { color: colors.accentForeground }]}
-                      maxFontSizeMultiplier={1.3}
-                    >
-                      {planView.chip}
+          </View>
+        ) : monthly ? (
+          <View style={[styles.wideCard, { backgroundColor: colors.card }]}>
+            <View style={styles.monthlyHeader}>
+              <Text style={[styles.smallCardLabel, styles.monthlyTitle, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+                Progreso mensual
+              </Text>
+              <View style={styles.monthlyTopEnd}>
+                {monthly.chip ? (
+                  <View style={[styles.planChip, styles.monthlyChip, { backgroundColor: colors.accent }]}>
+                    <Text style={[styles.planChipText, { color: colors.accentForeground }]} maxFontSizeMultiplier={1.3}>
+                      {monthly.chip}
                     </Text>
                   </View>
                 ) : null}
-                {planView.reservedLine ? (
-                  <Text
-                    style={[styles.statsDetail, { color: colors.navInactive }]}
-                    maxFontSizeMultiplier={1.3}
-                  >
-                    {planView.reservedLine}
+                {monthly.topRightReserved || monthly.chipReserved ? (
+                  <Text style={[styles.statsDetail, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+                    {monthly.topRightReserved ?? monthly.chipReserved}
                   </Text>
                 ) : null}
-              </>
-            ) : (
-              <>
-                <Text
-                  style={[styles.statsValue, { color: colors.foreground }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  —
-                </Text>
-                {planView.kind === 'none' ? (
-                  <Text
-                    style={[styles.statsDetail, { color: colors.navInactive }]}
-                    maxFontSizeMultiplier={1.3}
-                  >
-                    Sin plan activo
-                  </Text>
-                ) : null}
-              </>
-            )}
+              </View>
+            </View>
+            <Text style={[styles.statsValue, { color: colors.foreground }]} maxFontSizeMultiplier={1.3}>
+              {monthly.value}
+              {monthly.totalSuffix ? (
+                <Text style={[styles.monthlyTotal, { color: colors.navInactive }]}>{monthly.totalSuffix}</Text>
+              ) : null}
+            </Text>
+            {monthly.showBar ? (
+              <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: SPACING.sm }]}>
+                <View style={[styles.progressFill, { backgroundColor: colors.navActive, width: `${monthly.ratio * 100}%` }]} />
+              </View>
+            ) : null}
+            <Text style={[styles.statsDetail, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              {monthly.legend}
+            </Text>
           </View>
+        ) : null}
 
+        <View style={styles.twoColumnRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver perfil"
+            onPress={() => router.push('/personal-data')}
+            style={({ pressed }) => [
+              styles.statsCard,
+              { backgroundColor: colors.card },
+              pressed && styles.pressedCard,
+            ]}
+          >
+            <View style={styles.smallCardHeader}>
+              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
+                <Feather name="shield" size={17} color={colors.accentForeground} />
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.navInactive} />
+            </View>
+            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+              Tu nivel
+            </Text>
+            <Text
+              style={[styles.statsValue, { color: colors.foreground }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+              maxFontSizeMultiplier={1.3}
+            >
+              {SKILL_LEVEL_LABELS[user.rank] ?? user.rank}
+            </Text>
+            <Text
+              style={[styles.statsDetail, { color: colors.navInactive }]}
+              maxFontSizeMultiplier={1.3}
+            >
+              Sigue avanzando
+            </Text>
+          </Pressable>
           <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
             <View style={styles.smallCardHeader}>
               <View style={[styles.iconBadge, { backgroundColor: colors.warningBackground }]}>
@@ -768,95 +791,58 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={[styles.twoColumnRow, { marginTop: 12 }]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ver progreso y PRs"
-            onPress={() => router.push('/rm')}
-            style={({ pressed }) => [
-              styles.statsCard,
-              { backgroundColor: colors.successBackground },
-              pressed && styles.pressedCard,
-            ]}
-          >
-            <View style={styles.smallCardHeader}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.card }]}>
-                <MaterialCommunityIcons name="trophy-outline" size={18} color={colors.success} />
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.navInactive} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ver progreso y PRs"
+          onPress={() => router.push('/rm')}
+          style={({ pressed }) => [
+            styles.wideCard,
+            { backgroundColor: colors.successBackground },
+            pressed && styles.pressedCard,
+          ]}
+        >
+          <View style={styles.smallCardHeader}>
+            <View style={[styles.iconBadge, { backgroundColor: colors.card }]}>
+              <MaterialCommunityIcons name="trophy-outline" size={18} color={colors.success} />
             </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
-              PR destacado
-            </Text>
-            {rotatingFeaturedPr ? (
-              <>
-                <Text
-                  style={[styles.statsValue, { color: colors.foreground }]}
-                  numberOfLines={2}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  {rotatingFeaturedPr.liftName}
-                </Text>
-                <Text
-                  style={[styles.statsDetail, { color: colors.navInactive }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  {rotatingFeaturedPr.weightKg} kg
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text
-                  style={[styles.prEmptyValue, { color: colors.foreground }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  Aún no hay PRs
-                </Text>
-                <Text
-                  style={[styles.statsDetail, { color: colors.navInactive }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  Registra tu primera marca
-                </Text>
-              </>
-            )}
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ver perfil"
-            onPress={() => router.push('/personal-data')}
-            style={({ pressed }) => [
-              styles.statsCard,
-              { backgroundColor: colors.card },
-              pressed && styles.pressedCard,
-            ]}
-          >
-            <View style={styles.smallCardHeader}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
-                <Feather name="shield" size={17} color={colors.accentForeground} />
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.navInactive} />
-            </View>
-            <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
-              Tu nivel
-            </Text>
-            <Text
-              style={[styles.statsValue, { color: colors.foreground }]}
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.3}
-            >
-              {SKILL_LEVEL_LABELS[user.rank] ?? user.rank}
-            </Text>
-            <Text
-              style={[styles.statsDetail, { color: colors.navInactive }]}
-              maxFontSizeMultiplier={1.3}
-            >
-              Sigue avanzando
-            </Text>
-          </Pressable>
-        </View>
-
+            <Feather name="chevron-right" size={18} color={colors.navInactive} />
+          </View>
+          <Text style={[styles.smallCardLabel, { color: colors.navInactive }]} maxFontSizeMultiplier={1.3}>
+            PR destacado
+          </Text>
+          {rotatingFeaturedPr ? (
+            <>
+              <Text
+                style={[styles.statsValue, { color: colors.foreground }]}
+                numberOfLines={2}
+                maxFontSizeMultiplier={1.3}
+              >
+                {rotatingFeaturedPr.liftName}
+              </Text>
+              <Text
+                style={[styles.statsDetail, { color: colors.navInactive }]}
+                maxFontSizeMultiplier={1.3}
+              >
+                {rotatingFeaturedPr.weightKg} kg
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text
+                style={[styles.prEmptyValue, { color: colors.foreground }]}
+                maxFontSizeMultiplier={1.3}
+              >
+                Aún no hay PRs
+              </Text>
+              <Text
+                style={[styles.statsDetail, { color: colors.navInactive }]}
+                maxFontSizeMultiplier={1.3}
+              >
+                Registra tu primera marca
+              </Text>
+            </>
+          )}
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Ver medallas"
@@ -1204,6 +1190,32 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs2,
     lineHeight: 16,
   },
+  wideCard: {
+    minHeight: 112,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+  },
+  monthlyEmptyCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+  },
+  monthlyHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+  },
+  monthlyTitle: { marginTop: 0 },
+  monthlyTopEnd: { alignItems: 'flex-end' },
+  monthlyChip: { marginTop: 0, alignSelf: 'flex-end' },
+  monthlyTotal: {
+    fontSize: FONT_SIZE.base,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  monthlySkeletonBottom: { gap: SPACING.md, marginTop: SPACING.md },
   twoColumnRow: {
     flexDirection: 'row',
     gap: SPACING.lg,

@@ -10,7 +10,7 @@ import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { NO_COACH_LABEL, coachLine, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
-import { planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
+import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
 import {
   classesRemainingInPeriod,
   periodWindow,
@@ -254,5 +254,44 @@ describe('"Clases del plan": colores (solo tokens existentes) y contraste (míni
   });
   it('número principal (foreground) sobre la tarjeta (card)', () => {
     assert.ok(contrast(light.foreground, light.card) >= 4.5);
+  });
+});
+
+describe('Tarjeta ancha "Progreso mensual": número, barra y "reservadas" por tipo de plan', () => {
+  const vista = (p: ReturnType<typeof plan>) => monthlyCardParts(planProgressView({ hasActivePlan: true, planLoading: false, plan: p }));
+
+  it('plan por cantidad: "N" + " / M clases", con barra y "reservadas" arriba a la derecha', () => {
+    const v = vista(plan(8, 3, 2))!;
+    assert.equal(v.value, '3');
+    assert.equal(v.totalSuffix, ' / 8 clases');
+    assert.equal(v.showBar, true);
+    assert.equal(v.ratio, 3 / 8);
+    assert.equal(v.legend, 'realizadas este período');
+    assert.equal(v.topRightReserved, '2 reservadas');
+    assert.equal(v.chip, null);
+  });
+  it('plan por cantidad sin próximas: no hay línea de reservadas', () => {
+    assert.equal(vista(plan(8, 3, 0))!.topRightReserved, null);
+  });
+  it('plan ilimitado: SOLO el número (sin total ni barra), con chip y leyenda del mes', () => {
+    const v = vista(plan(null, 0, 1))!;
+    assert.equal(v.value, '0');
+    assert.equal(v.totalSuffix, null);
+    assert.equal(v.showBar, false);
+    assert.equal(v.legend, 'clases realizadas este mes');
+    assert.equal(v.chip, 'Plan ilimitado');
+    assert.equal(v.topRightReserved, null);
+    assert.equal(v.chipReserved, '1 reservada');
+  });
+  it('plan ilimitado sin próximas: el chip queda solo, sin "reservadas"', () => {
+    assert.equal(vista(plan(null, 5, 0))!.chipReserved, null);
+  });
+  it('sin dato todavía: el número es "—" en ambos tipos', () => {
+    assert.equal(vista(plan(8, null, null))!.value, '—');
+    assert.equal(vista(plan(null, null, null))!.value, '—');
+  });
+  it('sin plan y cargando: no hay tarjeta ancha (compacta o esqueleto)', () => {
+    assert.equal(monthlyCardParts({ kind: 'none' }), null);
+    assert.equal(monthlyCardParts({ kind: 'loading' }), null);
   });
 });

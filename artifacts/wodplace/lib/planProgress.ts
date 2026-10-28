@@ -73,3 +73,49 @@ export function planProgressView(input: PlanProgressInput): PlanProgressView {
   const ratio = completed != null && total > 0 ? Math.min(completed / total, 1) : 0;
   return { kind: 'classes', completed, total, ratio, reservedLine: line, legend: LEGEND_CLASSES };
 }
+
+/**
+ * Piezas de la tarjeta ancha "Progreso mensual" a partir de la vista del plan (lo único que decide qué se dibuja):
+ *  - value / totalSuffix ... número grande y, solo en plan por cantidad, " / M clases"
+ *  - showBar ............... barra solo en plan por cantidad
+ *  - topRightReserved ...... "N reservada(s)" arriba a la derecha (plan por cantidad); null si no hay próximas
+ *  - chip + chipReserved ... plan ilimitado: chip arriba a la derecha y, debajo, "N reservada(s)" si hay
+ */
+export type MonthlyCardParts = {
+  value: string;
+  totalSuffix: string | null;
+  showBar: boolean;
+  ratio: number;
+  legend: string;
+  topRightReserved: string | null;
+  chip: string | null;
+  chipReserved: string | null;
+};
+
+export function monthlyCardParts(view: PlanProgressView): MonthlyCardParts | null {
+  if (view.kind === 'classes') {
+    return {
+      value: String(view.completed ?? '—'),
+      totalSuffix: ` / ${view.total} clases`,
+      showBar: true,
+      ratio: view.ratio,
+      legend: view.legend,
+      topRightReserved: view.reservedLine,
+      chip: null,
+      chipReserved: null,
+    };
+  }
+  if (view.kind === 'unlimited') {
+    return {
+      value: String(view.completed ?? '—'),
+      totalSuffix: null,
+      showBar: false,
+      ratio: 0,
+      legend: view.legend,
+      topRightReserved: null,
+      chip: view.chip,
+      chipReserved: view.reservedLine,
+    };
+  }
+  return null;
+}
