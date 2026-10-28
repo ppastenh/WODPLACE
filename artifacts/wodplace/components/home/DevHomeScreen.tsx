@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { AppHeader } from '@/components/AppHeader';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
 import {
+  DEMO_ANNOUNCEMENT,
   DEV_GROUPS,
   buildDevState,
   defaultSelection,
@@ -80,6 +82,12 @@ export default function DevHomeScreen() {
         ) : null}
       </View>
       <HomeView data={state} events={EVENTS} />
+      <AnnouncementModal
+        visible={state.popup}
+        announcement={DEMO_ANNOUNCEMENT}
+        onClose={() => setSelection((s) => ({ ...s, popup: 'cerrado' }))}
+        onConfirmRead={() => {}}
+      />
     </View>
   );
 }
