@@ -94,7 +94,7 @@ const colors = {
     // que navFloating*, así que nada cambia; en la paleta oscura la base es el neutro de tarjeta y navFloating queda para
     // el cobre del botón Agendar y los acentos.
     nextClassCard: '#18191A',
-    nextClassCardPressed: '#2E3035',
+    nextClassCardPressed: '#2E2F35',
     nextClassCardForeground: '#F6F1E8',
     navBorder: '#D4CDBF',
     warning: '#F5A623',
