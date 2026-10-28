@@ -253,7 +253,7 @@ export function HomeView({ data, events }: { data: HomeViewData; events: HomeVie
         <View
           accessibilityRole="progressbar"
           accessibilityLabel="Cargando tu próxima clase"
-          style={[styles.nextClassCard, { backgroundColor: colors.navFloating }]}
+          style={[styles.nextClassCard, { backgroundColor: colors.nextClassCard }]}
         >
           <Skeleton width="40%" height={SPACING.xxl} />
           <View style={styles.nextClassSkeletonBottom}>
@@ -271,13 +271,13 @@ export function HomeView({ data, events }: { data: HomeViewData; events: HomeVie
           onPress={() => events.onOpenCalendar()}
           style={({ pressed }) => [
             styles.nextClassCard,
-            { backgroundColor: pressed ? colors.navFloatingPressed : colors.navFloating },
+            { backgroundColor: pressed ? colors.nextClassCardPressed : colors.nextClassCard },
           ]}
         >
           <View style={styles.nextClassTopEnd}>
-            <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
+            <Feather name="arrow-up-right" size={18} color={colors.nextClassCardForeground} />
           </View>
-          <Text style={[styles.nextClassName, { color: colors.navFloatingForeground }]} numberOfLines={2}>
+          <Text style={[styles.nextClassName, { color: colors.nextClassCardForeground }]} numberOfLines={2}>
             Reserva tu próxima clase
           </Text>
         </Pressable>
@@ -290,7 +290,7 @@ export function HomeView({ data, events }: { data: HomeViewData; events: HomeVie
           onPress={() => events.onOpenCalendar()}
           style={({ pressed }) => [
             styles.nextClassCard,
-            { backgroundColor: pressed ? colors.navFloatingPressed : colors.navFloating },
+            { backgroundColor: pressed ? colors.nextClassCardPressed : colors.nextClassCard },
           ]}
         >
           <View style={styles.nextClassTop}>
@@ -300,10 +300,10 @@ export function HomeView({ data, events }: { data: HomeViewData; events: HomeVie
                 {formatClassDateShort(nextBooked.startDate)} · {formatHM(nextBooked.startMinutes)}
               </Text>
             </View>
-            <Feather name="arrow-up-right" size={18} color={colors.navFloatingForeground} />
+            <Feather name="arrow-up-right" size={18} color={colors.nextClassCardForeground} />
           </View>
-          <Text style={[styles.nextClassLabel, { color: colors.navFloatingForeground }]}>Tu próxima clase</Text>
-          <Text style={[styles.nextClassName, { color: colors.navFloatingForeground }]}>{nextBooked.type}</Text>
+          <Text style={[styles.nextClassLabel, { color: colors.nextClassCardForeground }]}>Tu próxima clase</Text>
+          <Text style={[styles.nextClassName, { color: colors.nextClassCardForeground }]}>{nextBooked.type}</Text>
           {coachLine(nextBooked.coach) ? (
             <Text style={[styles.nextClassCoach, { color: colors.inactive }]}>{coachLine(nextBooked.coach)}</Text>
           ) : null}
