@@ -1,3 +1,21 @@
 #!/bin/sh
-# Git NO ejecuta pre-commit en un merge automático (sí ejecuta este gancho): se reutiliza el mismo chequeo.
+# Git NO ejecuta pre-commit en un merge automático (sí ejecuta este gancho), y en ese momento MERGE_HEAD todavía no existe:
+# lo único que dice qué se está mezclando es GIT_REFLOG_ACTION ("merge <ramas o commits>").
+# Solo actúa en la rama "rediseno". Se salta ÚNICAMENTE si TODO lo que se mezcla es alcanzable desde chore/expo-sdk-57; si algo
+# no se puede resolver o no viene de esa rama, corre el mismo chequeo que pre-commit.
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+[ "$branch" = "rediseno" ] || exit 0
+case "$GIT_REFLOG_ACTION" in
+  "merge "*)
+    all_from_chore=1
+    count=0
+    for ref in ${GIT_REFLOG_ACTION#merge }; do
+      case "$ref" in -*) continue ;; esac
+      sha=$(git rev-parse -q --verify "$ref^{commit}" 2>/dev/null) || { all_from_chore=0; break; }
+      git merge-base --is-ancestor "$sha" refs/heads/chore/expo-sdk-57 2>/dev/null || { all_from_chore=0; break; }
+      count=$((count + 1))
+    done
+    if [ "$all_from_chore" = 1 ] && [ "$count" -gt 0 ]; then exit 0; fi
+    ;;
+esac
 exec "$(dirname "$0")/pre-commit"
