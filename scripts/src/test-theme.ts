@@ -122,6 +122,11 @@ const LIGHT_AGREGADOS_IGUAL_A: Record<string, string> = {
   destructiveAccent: 'destructive',
 };
 
+// Tokens agregados que reemplazan un color escrito a mano: su valor claro es EXACTAMENTE el de antes.
+const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
+  imagePlaceholder: '#E0E0E0',
+};
+
 describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {
   const light = colors.light as Record<string, string>;
   it('los 48 tokens que existían conservan su valor exacto', () => {
@@ -131,9 +136,10 @@ describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {
   });
   it('los tokens agregados valen lo mismo que el token existente del que parten', () => {
     for (const [key, from] of Object.entries(LIGHT_AGREGADOS_IGUAL_A)) assert.equal(light[key], LIGHT_ANTES[from], key);
+    for (const [key, value] of Object.entries(LIGHT_AGREGADOS_VALOR)) assert.equal(light[key], value, key);
   });
   it('no hay otros tokens claros nuevos', () => {
-    const extra = Object.keys(light).filter((k) => !(k in LIGHT_ANTES) && !(k in LIGHT_AGREGADOS_IGUAL_A));
+    const extra = Object.keys(light).filter((k) => !(k in LIGHT_ANTES) && !(k in LIGHT_AGREGADOS_IGUAL_A) && !(k in LIGHT_AGREGADOS_VALOR));
     assert.deepEqual(extra, []);
   });
 });

@@ -32,6 +32,7 @@ function PostThumb({
       onPress={onPress}
       style={({ pressed }) => [
         styles.postThumb,
+        { backgroundColor: colors.imagePlaceholder },
         { width: ITEM_SIZE, height: ITEM_SIZE, transform: [{ scale: pressed ? 0.96 : 1 }] },
       ]}
     >

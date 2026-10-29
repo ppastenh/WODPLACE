@@ -78,6 +78,8 @@ const darkColors = {
   // Borde de CAMPOS de formulario (el decorativo sigue siendo `border`, 1,13:1 sobre card: no sirve para delimitar un
   // campo). #70747C: 4,09:1 sobre background, 3,23:1 sobre card y 3,72:1 sobre input (≥ 3:1), verificado.
   inputBorder: "#70747C",
+  // Relleno de la miniatura de una publicación mientras carga su imagen: gris oscuro (antes, en claro, #e0e0e0 brillante).
+  imagePlaceholder: "#2C2F34",
   input: "#181A1D",
 
   // Bottom navigation
