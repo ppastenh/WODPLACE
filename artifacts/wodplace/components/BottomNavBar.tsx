@@ -5,6 +5,7 @@ import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
+import { useTheme } from '@/context/ThemeContext';
 import { SPACING } from '@/constants/spacing';
 
 type NavRoute = '/home' | '/community' | '/calendar' | '/rm' | '/profile';
@@ -42,6 +43,7 @@ function isSelected(route: NavRoute, pathname: string): boolean {
 
 export function BottomNavBar() {
   const colors = useColors();
+  const { mode } = useTheme();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
@@ -117,6 +119,11 @@ export function BottomNavBar() {
               style={({ pressed }) => [styles.item, pressed && styles.pressedItem]}
             >
               <View style={styles.iconSlot}>
+                {/* Señal de pestaña activa que no depende del color ni del peso: barra de acento sobre el ícono. SOLO en
+                    el tema oscuro (en claro no cambia nada hasta su propia ronda). */}
+                {mode === 'dark' && active ? (
+                  <View style={[styles.activeBar, { backgroundColor: colors.navActive }]} />
+                ) : null}
                 {item.icon === 'dumbbell' ? (
                   <MaterialCommunityIcons name="dumbbell" size={22} color={itemColor} />
                 ) : (
@@ -174,6 +181,14 @@ const styles = StyleSheet.create({
     width: 36,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Barra de 3 px sobre el ícono de la pestaña activa (solo tema oscuro); absoluta, no mueve nada.
+  activeBar: {
+    position: 'absolute',
+    top: -2,
+    width: 20,
+    height: 3,
+    borderRadius: 2,
   },
   label: {
     fontSize: 10,

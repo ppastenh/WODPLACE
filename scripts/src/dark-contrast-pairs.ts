@@ -112,6 +112,8 @@ export const PAIRS: Pair[] = [
   { ...ui('secondaryForeground', 'secondary', 'insignia "Terminada" (estado deshabilitado a propósito, opacidad 0,6; 3:1)'), bgOver: { over: 'card', alpha: 0.6 }, textOver: { over: 'card', alpha: 0.6 } },
   // Esqueleto de carga en el tema oscuro (inputBorder sobre la tarjeta y sobre la tarjeta de próxima clase)
   ui('inputBorder', 'nextClassCard', 'esqueleto de la tarjeta de próxima clase'),
+  // Barra de pestaña activa (3 px, solo tema oscuro)
+  ui('navActive', 'card', 'barra de acento sobre el ícono activo'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),
