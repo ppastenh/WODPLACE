@@ -78,6 +78,8 @@ const darkColors = {
   // Borde de CAMPOS de formulario (el decorativo sigue siendo `border`, 1,13:1 sobre card: no sirve para delimitar un
   // campo). #70747C: 4,09:1 sobre background, 3,23:1 sobre card y 3,72:1 sobre input (≥ 3:1), verificado.
   inputBorder: "#70747C",
+  // Línea divisoria sobre la tarjeta del plan suscrito (en el oscuro, relleno crema): el fondo oscuro al 15 %.
+  inverseDivider: "rgba(14,15,17,0.15)",
   // Borde de campos y botones de las hojas de Comunidad: el mismo borde fuerte de campos (3,23:1 sobre card, 4,09:1 sobre fondo).
   inputBorderNav: "#70747C",
   // Velo translúcido detrás de las hojas: negro (la opacidad se agrega en el uso).

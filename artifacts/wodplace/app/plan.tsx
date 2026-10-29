@@ -64,7 +64,7 @@ export default function PlanScreen() {
                 </Text>
                 {plan.isSubscribed ? (
                   <View style={[styles.activeTag, { backgroundColor: colors.success }]}>
-                    <Text style={styles.activeTagText}>Suscrito</Text>
+                    <Text style={[styles.activeTagText, { color: colors.successForeground }]}>Suscrito</Text>
                   </View>
                 ) : null}
               </View>
@@ -86,7 +86,7 @@ export default function PlanScreen() {
                       styles.planDivider,
                       {
                         backgroundColor: plan.isSubscribed
-                          ? 'rgba(255,255,255,0.15)'
+                          ? colors.inverseDivider
                           : colors.border,
                       },
                     ]}

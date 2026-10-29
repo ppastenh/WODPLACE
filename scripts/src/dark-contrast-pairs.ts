@@ -130,6 +130,10 @@ export const PAIRS: Pair[] = [
   t('foreground', 'background', 'notas del WOD (caja sobre la tarjeta) y campos de tiempo'),
   t('secondaryForeground', 'secondary', 'formato y nivel del WOD'),
   t('primaryForeground', 'primaryPressed', 'botón Guardar resultado presionado'),
+  // Plan (el plan suscrito invierte los colores: relleno foreground, texto background)
+  t('background', 'foreground', 'nombre, precio y beneficios del plan suscrito'),
+  t('successForeground', 'success', 'etiqueta "Suscrito"'),
+  t('primary', 'card', 'ícono de beneficio de los planes no suscritos'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),

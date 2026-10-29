@@ -76,6 +76,9 @@ const colors = {
     // Borde de CAMPOS de formulario (el borde decorativo sigue siendo `border`). En el claro es el mismo valor que
     // `border`, así que nada cambia; en la paleta oscura es más fuerte para cumplir los 3:1 de bordes de campos.
     inputBorder: '#E3D9C2',
+    // Línea divisoria sobre la tarjeta del plan suscrito (que es de color INVERTIDO: relleno foreground, texto background).
+    // Antes escrita a mano como rgba(255,255,255,0.15); en el oscuro la tarjeta es clara y la línea es oscura.
+    inverseDivider: 'rgba(255,255,255,0.15)',
     // Borde de campos y botones de las hojas de Comunidad. En el claro es el mismo valor que `navBorder` (como estaba
     // escrito antes); en el oscuro es el borde fuerte de campos.
     inputBorderNav: '#D4CDBF',

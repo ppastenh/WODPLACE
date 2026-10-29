@@ -128,6 +128,7 @@ const LIGHT_AGREGADOS_IGUAL_A: Record<string, string> = {
 const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   imagePlaceholder: '#E0E0E0',
   likeAccent: '#E0245E',
+  inverseDivider: 'rgba(255,255,255,0.15)',
 };
 
 describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {
