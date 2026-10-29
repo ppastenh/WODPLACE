@@ -63,6 +63,9 @@ const darkColors = {
   // Rojo para texto CHICO sobre fondo oscuro o tarjeta (el `destructive` de relleno da 3,95:1 sobre card) -- 5,58:1
   // sobre card y 7,06:1 sobre background, verificado. Mismo patrón que destructiveTextSmall de colors.ts.
   destructiveTextSmall: "#F07A72",
+  // Rojo para texto/punto sobre el tinte rojo translúcido de "Cuenta no activa" -- 6,09:1 sobre ese tinte (el `destructive`
+  // de relleno daría 3,18:1). Mismo valor que destructiveTextSmall.
+  destructiveAccent: "#F07A72",
 
   // Botón de acceso a un panel (Administrador/Coach/Super admin) del menú lateral: en la paleta oscura es el cobre
   // (mismo par que primary), texto oscuro encima -- 7,55:1 en reposo y 6,03:1 presionado, verificado.

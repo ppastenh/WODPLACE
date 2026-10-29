@@ -59,6 +59,9 @@ const colors = {
     // bajo el mínimo de 4.5:1 para texto chico; este da ~6:1. Mismo patrón
     // que navActiveTextSmall más abajo.
     destructiveTextSmall: '#B13A33',
+    // Rojo para texto/punto sobre el TINTE rojo translúcido de "Cuenta no activa" (Perfil). En el claro es el mismo
+    // valor que `destructive` (como estaba escrito antes); en el oscuro es un rojo claro que se lee sobre el tinte.
+    destructiveAccent: '#E0524A',
 
     // Botón de acceso a un panel (Administrador/Coach/Super admin) en el
     // menú lateral -- fondo oscuro sólido en los dos estados (nunca

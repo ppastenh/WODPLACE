@@ -94,6 +94,12 @@ export const PAIRS: Pair[] = [
   t('foreground', 'secondary', 'texto sobre el relleno de fila activa'),
   t('destructiveForeground', 'destructive', 'contador de notificaciones del menú (#FFFFFF)'),
   t('destructiveTextSmall', 'card', 'Cerrar sesión'),
+  // Perfil
+  t('successForeground', 'success', 'Cuenta Activa (texto y punto)'),
+  { ...t('destructiveAccent', 'background', 'Cuenta no activa sobre su tinte rgba(224,82,74,0.15)'), bgLiteral: { hex: '#E0524A', over: 'background', alpha: 0.15 } },
+  t('navActive', 'background', 'pestaña activa de Perfil'),
+  t('navInactive', 'background', 'pestaña inactiva de Perfil'),
+  t('foreground', 'input', 'opción del interruptor de Apariencia'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),

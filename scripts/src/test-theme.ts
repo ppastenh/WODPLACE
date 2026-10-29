@@ -119,6 +119,7 @@ const LIGHT_AGREGADOS_IGUAL_A: Record<string, string> = {
   nextClassCardForeground: 'navFloatingForeground',
   warningForeground: 'foreground',
   accentGradientEnd: 'card',
+  destructiveAccent: 'destructive',
 };
 
 describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {
