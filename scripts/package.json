@@ -12,6 +12,8 @@
     "test:admin-lock": "tsx --test ./src/test-admin-lock.ts",
     "test:theme": "tsx --test ./src/test-theme.ts",
     "test:dark-contrast": "tsx --test ./src/test-dark-contrast.ts",
+    "test:design-boundary": "tsx --test ./src/test-design-boundary.ts",
+    "check:design-boundary": "tsx ./src/check-design-boundary.ts",
     "check:booking-notifications": "tsx ./src/check-booking-notifications.ts",
     "check:community-comments": "tsx ./src/check-community-comments.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
