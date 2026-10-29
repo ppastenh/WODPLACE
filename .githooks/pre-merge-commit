@@ -1,0 +1,3 @@
+#!/bin/sh
+# Git NO ejecuta pre-commit en un merge automático (sí ejecuta este gancho): se reutiliza el mismo chequeo.
+exec "$(dirname "$0")/pre-commit"

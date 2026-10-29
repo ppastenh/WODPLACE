@@ -1,0 +1,19 @@
+#!/bin/sh
+# Frontera del diseño: este gancho solo actúa en la rama "rediseno"; en cualquier otra rama no hace nada.
+# Instalar: git config core.hooksPath .githooks   |   Verificar: git config --get core.hooksPath   |   Desactivar: git config --unset core.hooksPath
+#
+# Excepción ÚNICA: un merge en curso (MERGE_HEAD existe) cuyos padres agregados son TODOS alcanzables desde la rama
+# chore/expo-sdk-57 (es decir, traer lo ya aprobado de esa rama). Cualquier otro caso en rediseno corre el chequeo.
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+[ "$branch" = "rediseno" ] || exit 0
+merge_head=$(git rev-parse --git-path MERGE_HEAD)
+if [ -f "$merge_head" ]; then
+  all_from_chore=1
+  while read -r sha _; do
+    [ -n "$sha" ] || continue
+    git merge-base --is-ancestor "$sha" refs/heads/chore/expo-sdk-57 2>/dev/null || all_from_chore=0
+  done < "$merge_head"
+  [ "$all_from_chore" = 1 ] && exit 0
+fi
+cd "$(git rev-parse --show-toplevel)" || exit 1
+pnpm --filter @workspace/scripts check:design-boundary
