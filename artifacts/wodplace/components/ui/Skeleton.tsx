@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { useDarkColors } from '@/hooks/useDarkColors';
+import { useTheme } from '@/context/ThemeContext';
 import { RADIUS } from '@/constants/radius';
 
 interface SkeletonProps {
@@ -20,6 +21,11 @@ export function Skeleton({ width, height, borderRadius = RADIUS.sm, palette = 'l
   const light = useColors();
   const dark = useDarkColors();
   const colors = palette === 'dark' ? dark : light;
+  const { mode } = useTheme();
+  // En el tema oscuro `muted` (#181A1D) es MÁS oscuro que la tarjeta (#24262A) y el esqueleto casi no se ve (1,15:1);
+  // `inputBorder` es un token existente más claro que la tarjeta (3,23:1). En claro y en las islas oscuras (palette="dark")
+  // no cambia nada.
+  const fill = palette !== 'dark' && mode === 'dark' ? colors.inputBorder : colors.muted;
 
   const pulse = useRef(new Animated.Value(0.4)).current;
 
@@ -50,7 +56,7 @@ export function Skeleton({ width, height, borderRadius = RADIUS.sm, palette = 'l
         width,
         height,
         borderRadius,
-        backgroundColor: colors.muted,
+        backgroundColor: fill,
         opacity: pulse,
       }}
     />
