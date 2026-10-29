@@ -289,7 +289,7 @@ export default function ActiveContractsScreen() {
                         { backgroundColor: doc.read ? colors.success : colors.inactive },
                       ]}
                     >
-                      <Text style={styles.statusTagText}>
+                      <Text style={[styles.statusTagText, { color: doc.read ? colors.successForeground : colors.primaryForeground }]}>
                         {doc.read ? 'Leído' : 'Pendiente'}
                       </Text>
                     </View>
@@ -390,7 +390,7 @@ export default function ActiveContractsScreen() {
                       </Text>
                       {acceptance.birthdayVisibilityConsent ? (
                         <Pressable onPress={handleWithdrawBirthdayConsent} hitSlop={6}>
-                          <Text style={[styles.withdrawLink, { color: colors.destructive }]}>
+                          <Text style={[styles.withdrawLink, { color: colors.destructiveAccent }]}>
                             Retirar
                           </Text>
                         </Pressable>
@@ -415,13 +415,13 @@ export default function ActiveContractsScreen() {
                   placeholderTextColor={colors.mutedForeground}
                   style={[
                     styles.input,
-                    { backgroundColor: colors.input, color: colors.foreground, borderColor: colors.border },
+                    { backgroundColor: colors.input, color: colors.foreground, borderColor: colors.inputBorder },
                   ]}
                 />
                 <View
                   style={[
                     styles.phoneRow,
-                    { backgroundColor: colors.input, borderColor: colors.border },
+                    { backgroundColor: colors.input, borderColor: colors.inputBorder },
                   ]}
                 >
                   <Text style={[styles.phonePrefix, { color: colors.foreground }]}>+56</Text>
@@ -482,7 +482,7 @@ export default function ActiveContractsScreen() {
                         {
                           backgroundColor: colors.input,
                           color: colors.foreground,
-                          borderColor: colors.border,
+                          borderColor: colors.inputBorder,
                         },
                       ]}
                     />
@@ -496,7 +496,7 @@ export default function ActiveContractsScreen() {
                         {
                           backgroundColor: colors.input,
                           color: colors.foreground,
-                          borderColor: colors.border,
+                          borderColor: colors.inputBorder,
                         },
                       ]}
                     />

@@ -134,6 +134,14 @@ export const PAIRS: Pair[] = [
   t('background', 'foreground', 'nombre, precio y beneficios del plan suscrito'),
   t('successForeground', 'success', 'etiqueta "Suscrito"'),
   t('primary', 'card', 'ícono de beneficio de los planes no suscritos'),
+  // Contratos activos
+  t('successForeground', 'success', 'etiqueta "Leído"'),
+  t('primaryForeground', 'inactive', 'etiqueta "Pendiente"'),
+  t('destructiveAccent', 'secondary', 'enlace "Retirar" sobre el cuadro de aceptado'),
+  t('mutedForeground', 'secondary', 'avisos dentro de cuadros secundarios'),
+  t('secondaryForeground', 'secondary', 'cuadro de contrato aceptado y de faltantes'),
+  t('primaryForeground', 'primary', 'palomita de las casillas marcadas'),
+  ui('inputBorder', 'card', 'borde de los campos de contacto y fecha'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),
