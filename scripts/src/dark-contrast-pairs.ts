@@ -100,6 +100,16 @@ export const PAIRS: Pair[] = [
   t('navActive', 'background', 'pestaña activa de Perfil'),
   t('navInactive', 'background', 'pestaña inactiva de Perfil'),
   t('foreground', 'input', 'opción del interruptor de Apariencia'),
+  // Calendario y Agendar (WeekCalendar, MonthCalendar, ClassCard y sus insignias)
+  t('primaryForeground', 'primary', 'día seleccionado'),
+  ui('primary', 'card', 'borde del día de hoy y punto de cupo'),
+  t('primary', 'card', 'cifras y enlaces en cobre dentro de ClassCard'),
+  t('mutedForeground', 'card', 'días fuera de mes, coach y detalles'),
+  ui('success', 'card', 'punto de día con clase reservada'),
+  t('secondaryForeground', 'secondary', 'insignia "Agendado"'),
+  t('secondaryForeground', 'secondaryPressed', 'insignia "Agendado" presionada'),
+  t('destructiveForeground', 'destructive', 'insignia "Cancelando"'),
+  { ...ui('secondaryForeground', 'secondary', 'insignia "Terminada" (estado deshabilitado a propósito, opacidad 0,6; 3:1)'), bgOver: { over: 'card', alpha: 0.6 }, textOver: { over: 'card', alpha: 0.6 } },
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),
