@@ -5,7 +5,20 @@
  * Mínimos: 4,5:1 para texto y 3:1 para íconos y bordes de campos de formulario. El borde decorativo (`border`) no se mide:
  * no delimita un campo (para eso existe `inputBorder`).
  */
-export type Pair = { text: string; bg: string; min: 4.5 | 3; note: string };
+/**
+ * `bgOver` / `textOver`: el token se dibuja con esa opacidad sobre otro token (insignias con `opacity`).
+ * `bgLiteral`: un color escrito a mano (hex) con opacidad sobre un token (por ejemplo rgba(224,82,74,0.15) sobre el fondo).
+ */
+export type Over = { over: string; alpha: number };
+export type Pair = {
+  text: string;
+  bg: string;
+  min: 4.5 | 3;
+  note: string;
+  bgOver?: Over;
+  textOver?: Over;
+  bgLiteral?: { hex: string; over: string; alpha: number };
+};
 
 const t = (text: string, bg: string, note: string): Pair => ({ text, bg, min: 4.5, note });
 const ui = (text: string, bg: string, note: string): Pair => ({ text, bg, min: 3, note });
@@ -75,6 +88,12 @@ export const PAIRS: Pair[] = [
   t('inactive', 'nextClassCard', 'meta de la tarjeta de próxima clase'),
   t('inactive', 'nextClassCardPressed', 'meta, presionada'),
   t('inactiveForeground', 'inactive', 'chip inactivo'),
+  // Menú lateral (SideDrawer)
+  t('primary', 'card', 'nombre del plan/enlace en cobre sobre el menú'),
+  t('secondaryForeground', 'secondary', 'fila activa del menú'),
+  t('foreground', 'secondary', 'texto sobre el relleno de fila activa'),
+  t('destructiveForeground', 'destructive', 'contador de notificaciones del menú (#FFFFFF)'),
+  t('destructiveTextSmall', 'card', 'Cerrar sesión'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),
@@ -88,6 +107,13 @@ export const PAIRS: Pair[] = [
   ui('inputBorder', 'input', 'borde sobre el relleno del campo'),
   ui('destructive', 'background', 'punto/relleno rojo (campana)'),
 ];
+
+const parse = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const mixHex = (fg: string, bg: string, alpha: number): string =>
+  '#' +
+  parse(fg)
+    .map((v, i) => Math.round(v * alpha + (parse(bg)[i] as number) * (1 - alpha)).toString(16).padStart(2, '0'))
+    .join('');
 
 const lin = (hex: string): number[] => {
   const n = parseInt(hex.slice(1), 16);
@@ -111,9 +137,24 @@ export type Measure = { pair: Pair; ratio: number | null; ok: boolean };
 /** `ratio: null` = el token no existe en la paleta (cuenta como falla). */
 export function measure(palette: Record<string, string>): Measure[] {
   return PAIRS.map((pair) => {
-    const a = palette[pair.text];
-    const b = palette[pair.bg];
+    let a = palette[pair.text];
+    let b = palette[pair.bg];
     if (!a || !b) return { pair, ratio: null, ok: false };
+    if (pair.textOver) {
+      const under = palette[pair.textOver.over];
+      if (!under) return { pair, ratio: null, ok: false };
+      a = mixHex(a, under, pair.textOver.alpha);
+    }
+    if (pair.bgOver) {
+      const under = palette[pair.bgOver.over];
+      if (!under) return { pair, ratio: null, ok: false };
+      b = mixHex(b, under, pair.bgOver.alpha);
+    }
+    if (pair.bgLiteral) {
+      const under = palette[pair.bgLiteral.over];
+      if (!under) return { pair, ratio: null, ok: false };
+      b = mixHex(pair.bgLiteral.hex, under, pair.bgLiteral.alpha);
+    }
     const ratio = contrast(a, b);
     return { pair, ratio, ok: ratio >= pair.min };
   });
