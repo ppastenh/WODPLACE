@@ -125,6 +125,11 @@ export const PAIRS: Pair[] = [
   t('navInactive', 'background', 'hora, contadores y textos de apoyo'),
   ui('inputBorderNav', 'background', 'borde del campo de publicación y del botón de adjuntar imágenes'),
   ui('inputBorderNav', 'card', 'borde sobre tarjeta'),
+  // WOD del día y resultados
+  t('mutedForeground', 'card', 'descripción del WOD y separador de tiempo'),
+  t('foreground', 'background', 'notas del WOD (caja sobre la tarjeta) y campos de tiempo'),
+  t('secondaryForeground', 'secondary', 'formato y nivel del WOD'),
+  t('primaryForeground', 'primaryPressed', 'botón Guardar resultado presionado'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),

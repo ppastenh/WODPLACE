@@ -152,7 +152,7 @@ export default function WodScreen() {
                 onChangeText={setNotes}
                 placeholder="Notas (opcional)"
                 placeholderTextColor={colors.mutedForeground}
-                style={[styles.notesInput, { color: colors.foreground, borderColor: colors.border }]}
+                style={[styles.notesInput, { color: colors.foreground, borderColor: colors.inputBorder }]}
               />
 
               <Pressable
@@ -200,7 +200,7 @@ function TimeField({
         style={[
           styles.timeInput,
           wide && { width: '100%' },
-          { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background },
+          { color: colors.foreground, borderColor: colors.inputBorder, backgroundColor: colors.background },
         ]}
       />
       <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>{label}</Text>
