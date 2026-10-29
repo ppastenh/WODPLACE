@@ -100,7 +100,7 @@ function PostAvatar({ name, isBox, size = 40 }: { name: string; isBox?: boolean;
   if (isBox) {
     return (
       <View style={[circleStyle, styles.avatarFallback, { backgroundColor: colors.navActive }]}>
-        <Feather name="home" size={size * 0.44} color="#fff" />
+        <Feather name="home" size={size * 0.44} color={colors.primaryForeground} />
       </View>
     );
   }
@@ -188,7 +188,7 @@ function PostMenuSheet({
               style={({ pressed }) => [styles.sheetItem, pressed && { opacity: 0.6 }]}
             >
               <Feather name={a.icon as never} size={18} color={a.destructive ? colors.destructive : colors.foreground} />
-              <Text style={[styles.sheetItemText, { color: a.destructive ? colors.destructive : colors.foreground }]}>
+              <Text style={[styles.sheetItemText, { color: a.destructive ? colors.destructiveAccent : colors.foreground }]}>
                 {a.label}
               </Text>
             </Pressable>
@@ -217,7 +217,7 @@ function CommentsLoadError({ colors, onRetry }: { colors: ReturnType<typeof useC
         accessibilityRole="button"
         style={({ pressed }) => [styles.commentsRetry, { backgroundColor: pressed ? colors.navActivePressed : colors.navActive }]}
       >
-        <Text style={styles.commentsRetryText}>Reintentar</Text>
+        <Text style={[styles.commentsRetryText, { color: colors.primaryForeground }]}>Reintentar</Text>
       </Pressable>
     </View>
   );
@@ -301,7 +301,7 @@ function CommentsModal({
           rises above the keyboard (same library as EditPhraseModal). */}
       <KeyboardAvoidingView
         behavior="padding"
-        style={[styles.commentsBackdrop, { backgroundColor: colors.foreground + '55' }]}
+        style={[styles.commentsBackdrop, { backgroundColor: colors.scrim + '55' }]}
       >
         <View style={[styles.commentsSheet, { backgroundColor: colors.background }]}>
           <View style={[styles.handle, { backgroundColor: colors.navBorder, alignSelf: 'center', marginTop: 12, marginBottom: 4 }]} />
@@ -374,7 +374,7 @@ function CommentsModal({
                 { backgroundColor: draft.trim() ? (pressed ? colors.navActivePressed : colors.navActive) : colors.navBorder },
               ]}
             >
-              <Feather name="arrow-up" size={15} color="#fff" />
+              <Feather name="arrow-up" size={15} color={colors.primaryForeground} />
             </Pressable>
           </View>
         </View>
@@ -464,7 +464,7 @@ function AnnouncementCommentsModal({
     <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior="padding"
-        style={[styles.commentsBackdrop, { backgroundColor: colors.foreground + '55' }]}
+        style={[styles.commentsBackdrop, { backgroundColor: colors.scrim + '55' }]}
       >
         <View style={[styles.commentsSheet, { backgroundColor: colors.background }]}>
           <View style={[styles.handle, { backgroundColor: colors.navBorder, alignSelf: 'center', marginTop: 12, marginBottom: 4 }]} />
@@ -536,7 +536,7 @@ function AnnouncementCommentsModal({
                 { backgroundColor: draft.trim() ? (pressed ? colors.navActivePressed : colors.navActive) : colors.navBorder },
               ]}
             >
-              <Feather name="arrow-up" size={15} color="#fff" />
+              <Feather name="arrow-up" size={15} color={colors.primaryForeground} />
             </Pressable>
           </View>
         </View>
@@ -674,7 +674,7 @@ function ReportModal({
               { backgroundColor: selected ? (pressed ? colors.navActivePressed : colors.navActive) : colors.navBorder },
             ]}
           >
-            <Text style={[styles.reportSubmitText, { color: selected ? '#fff' : colors.navInactive }]}>
+            <Text style={[styles.reportSubmitText, { color: selected ? colors.primaryForeground : colors.navInactive }]}>
               {submitting ? 'Enviando...' : 'Reportar'}
             </Text>
           </Pressable>
@@ -786,10 +786,10 @@ function PostCard({
           <Feather
             name="heart"
             size={21}
-            color={isLiked ? '#E0245E' : colors.navInactive}
+            color={isLiked ? colors.likeAccent : colors.navInactive}
           />
           {heartItem && heartItem.count > 0 ? (
-            <Text style={[styles.actionCount, { color: isLiked ? '#E0245E' : colors.navInactive }]}>
+            <Text style={[styles.actionCount, { color: isLiked ? colors.likeAccent : colors.navInactive }]}>
               {heartItem.count}
             </Text>
           ) : null}
@@ -876,9 +876,9 @@ function AnnouncementFeedCard({
           onPress={() => onReact(announcement.id, '❤️')}
           style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.65 }]}
         >
-          <Feather name="heart" size={21} color={isLiked ? '#E0245E' : colors.navInactive} />
+          <Feather name="heart" size={21} color={isLiked ? colors.likeAccent : colors.navInactive} />
           {heartItem && heartItem.count > 0 ? (
-            <Text style={[styles.actionCount, { color: isLiked ? '#E0245E' : colors.navInactive }]}>
+            <Text style={[styles.actionCount, { color: isLiked ? colors.likeAccent : colors.navInactive }]}>
               {heartItem.count}
             </Text>
           ) : null}
@@ -1330,7 +1330,7 @@ export default function CommunityScreen() {
       <Modal animationType="slide" transparent visible={composerVisible} onRequestClose={closeComposer}>
         <KeyboardAvoidingView
           behavior="padding"
-          style={[styles.composerBackdrop, { backgroundColor: colors.foreground + '66' }]}
+          style={[styles.composerBackdrop, { backgroundColor: colors.scrim + '66' }]}
         >
           <View style={[styles.composerSheet, { backgroundColor: colors.background }]}>
             <View style={[styles.handle, { backgroundColor: colors.navBorder, alignSelf: 'center', marginBottom: 18 }]} />
@@ -1349,7 +1349,7 @@ export default function CommunityScreen() {
             </View>
 
             <TextInput
-              style={[styles.draftInput, { color: colors.foreground, borderColor: colors.navBorder }]}
+              style={[styles.draftInput, { color: colors.foreground, borderColor: colors.inputBorderNav }]}
               placeholder="¿Qué quieres compartir hoy?"
               placeholderTextColor={colors.navInactive}
               value={draft}
@@ -1382,7 +1382,7 @@ export default function CommunityScreen() {
                   disabled={selectedImages.length >= 4}
                   style={({ pressed }) => [
                     styles.attachButton,
-                    { borderColor: colors.navBorder, opacity: selectedImages.length >= 4 ? 0.35 : 1 },
+                    { borderColor: colors.inputBorderNav, opacity: selectedImages.length >= 4 ? 0.35 : 1 },
                     pressed && { opacity: 0.65 },
                   ]}
                 >

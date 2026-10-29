@@ -76,6 +76,15 @@ const colors = {
     // Borde de CAMPOS de formulario (el borde decorativo sigue siendo `border`). En el claro es el mismo valor que
     // `border`, así que nada cambia; en la paleta oscura es más fuerte para cumplir los 3:1 de bordes de campos.
     inputBorder: '#E3D9C2',
+    // Borde de campos y botones de las hojas de Comunidad. En el claro es el mismo valor que `navBorder` (como estaba
+    // escrito antes); en el oscuro es el borde fuerte de campos.
+    inputBorderNav: '#D4CDBF',
+    // Color base del velo translúcido detrás de las hojas (se le agrega la opacidad: scrim + '55'). En el claro es el mismo
+    // valor que `foreground` (como estaba escrito antes); en el oscuro es negro: con el crema de `foreground` el velo
+    // dibujaba una neblina clara sobre una app oscura.
+    scrim: '#18191A',
+    // Color del corazón de "me gusta" activo (antes escrito a mano como #E0245E).
+    likeAccent: '#E0245E',
     // Relleno de la miniatura de una publicación mientras carga su imagen (antes escrito a mano como #e0e0e0).
     imagePlaceholder: '#E0E0E0',
     input: '#EFE8D8',

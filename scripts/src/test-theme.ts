@@ -120,11 +120,14 @@ const LIGHT_AGREGADOS_IGUAL_A: Record<string, string> = {
   warningForeground: 'foreground',
   accentGradientEnd: 'card',
   destructiveAccent: 'destructive',
+  inputBorderNav: 'navBorder',
+  scrim: 'foreground',
 };
 
 // Tokens agregados que reemplazan un color escrito a mano: su valor claro es EXACTAMENTE el de antes.
 const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   imagePlaceholder: '#E0E0E0',
+  likeAccent: '#E0245E',
 };
 
 describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {

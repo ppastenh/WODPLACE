@@ -114,6 +114,17 @@ export const PAIRS: Pair[] = [
   ui('inputBorder', 'nextClassCard', 'esqueleto de la tarjeta de próxima clase'),
   // Barra de pestaña activa (3 px, solo tema oscuro)
   ui('navActive', 'card', 'barra de acento sobre el ícono activo'),
+  // Comunidad (publicaciones, comentarios, hojas de comentarios, avisos y reporte)
+  t('likeAccent', 'card', 'corazón y contador de "me gusta" en la tarjeta'),
+  t('likeAccent', 'background', 'corazón y contador sobre el fondo (hojas)'),
+  t('primaryForeground', 'navActive', 'enviar comentario, Reportar, Reintentar, avatar del box'),
+  t('primaryForeground', 'navActivePressed', 'idem, presionado'),
+  t('navInactive', 'navBorder', 'texto de "Reportar" deshabilitado'),
+  t('destructiveAccent', 'card', 'acción destructiva en la hoja de opciones (Eliminar)'),
+  t('warning', 'warningBackground', 'etiqueta BOX'),
+  t('navInactive', 'background', 'hora, contadores y textos de apoyo'),
+  ui('inputBorderNav', 'background', 'borde del campo de publicación y del botón de adjuntar imágenes'),
+  ui('inputBorderNav', 'card', 'borde sobre tarjeta'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),
