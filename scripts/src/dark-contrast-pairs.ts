@@ -144,6 +144,14 @@ export const PAIRS: Pair[] = [
   ui('inputBorder', 'card', 'borde de los campos de contacto y fecha'),
   // Barra de fila activa del menú lateral (3 px, solo tema oscuro)
   ui('navActive', 'secondary', 'barra de acento junto a la fila activa'),
+  // Notificaciones, Datos personales y detalle del box (solo tokens: sin cambios de código)
+  t('foreground', 'secondary', 'notificación sin leer (su relleno es secondary)'),
+  t('mutedForeground', 'secondary', 'cuerpo y fecha de la notificación sin leer'),
+  ui('destructive', 'secondary', 'punto rojo de notificación sin leer'),
+  t('success', 'card', 'estado "Activa" en Datos personales'),
+  t('inactive', 'card', 'estado inactivo en Datos personales'),
+  t('primaryForeground', 'primary', 'inicial del logo del box en Datos personales y detalle del box'),
+  t('secondaryForeground', 'secondaryPressed', 'redes sociales presionadas (detalle del box)'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),
