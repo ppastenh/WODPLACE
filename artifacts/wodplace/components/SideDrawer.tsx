@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useColors } from '@/hooks/useColors';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(Math.max(SCREEN_WIDTH * 0.78, 280), 380);
@@ -66,6 +67,7 @@ export function SideDrawer({
   swipeToOpenEnabled = true,
 }: SideDrawerProps) {
   const colors = useColors();
+  const { mode } = useTheme();
   const insets = useSafeAreaInsets();
 
   const translateX = useSharedValue(-DRAWER_WIDTH);
@@ -231,6 +233,11 @@ export function SideDrawer({
                     pressed && !active && { backgroundColor: colors.muted },
                   ]}
                 >
+                  {/* Señal de fila activa que no depende solo del color del texto: barra de acento a la izquierda. SOLO en el
+                      tema oscuro (en claro no cambia nada hasta su propia ronda). */}
+                  {mode === 'dark' && active ? (
+                    <View style={[styles.activeBar, { backgroundColor: colors.navActive }]} />
+                  ) : null}
                   <Feather
                     name={item.icon}
                     size={19}
@@ -378,6 +385,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
+  },
+  // Barra de 3 px a la izquierda de la fila activa (solo tema oscuro); absoluta, no mueve nada.
+  activeBar: {
+    position: 'absolute',
+    left: 0,
+    top: 8,
+    bottom: 8,
+    width: 3,
+    borderRadius: 2,
   },
   navBadgeText: {
     color: '#FFFFFF',

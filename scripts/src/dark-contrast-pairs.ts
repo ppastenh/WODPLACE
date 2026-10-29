@@ -142,6 +142,8 @@ export const PAIRS: Pair[] = [
   t('secondaryForeground', 'secondary', 'cuadro de contrato aceptado y de faltantes'),
   t('primaryForeground', 'primary', 'palomita de las casillas marcadas'),
   ui('inputBorder', 'card', 'borde de los campos de contacto y fecha'),
+  // Barra de fila activa del menú lateral (3 px, solo tema oscuro)
+  ui('navActive', 'secondary', 'barra de acento junto a la fila activa'),
   // Pantallas de acceso y candado
   t('authText', 'authBackground', ''),
   t('authText', 'authCard', ''),
