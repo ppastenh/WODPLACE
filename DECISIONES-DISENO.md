@@ -62,3 +62,9 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **Fecha:** 2026-10-30
 - **Decisión:** "Nueva dirección de Inicio: barra superior de carbón con logo centrado en Anton, banner fotográfico a todo el ancho con velo oscuro y tarjeta de vidrio (negro 55 a 65 % de opacidad, borde blanco muy sutil) con avatar, nombre del box y saludo, y una superficie crema (#F2E9DB) con esquinas superiores redondeadas para el contenido; menú inferior oscuro con Agenda elevado. Reemplaza el estado de (c); activa la foto clase-piernas.jpg de (e); (b) sigue vigente para Inicio real hasta mi aprobación."
 - **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
+
+## (l) Ajuste del banner de Inicio
+
+- **Fecha:** 2026-10-30
+- **Decisión:** "Ajuste del banner de Inicio: la barra superior (menú, logo y campana) es un bloque sólido de carbón separado de la foto, y el banner empieza debajo de ella; reemplaza lo de la barra 'integrada sin separación' de (k); el banner es un 10 % más alto (foto con velo, medido bajo la barra); el saludo 'Hola, nombre' de la tarjeta de vidrio es más pequeño."
+- **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
