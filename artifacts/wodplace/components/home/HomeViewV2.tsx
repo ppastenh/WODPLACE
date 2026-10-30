@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -46,7 +46,16 @@ const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
   elite: 'Elite',
 };
 
-const PHOTO = require('@/assets/images/home/clase-piernas.jpg');
+/**
+ * FOTO PROVISIONAL del banner (decisión (n) de DECISIONES-DISENO.md): clase-piernas.jpg se cambiará. Esta es la ÚNICA constante que
+ * decide la foto: cuando haya otra solo cambian el require y el foco; el alto del banner, el velo, la tarjeta de vidrio, el halo y la
+ * crema no dependen de ella. Siempre cover a todo el ancho (foco 50 % horizontal y 70 % vertical). Procedimiento para cambiarla y para
+ * medir el contraste antes de activarla: CREDITOS-IMAGENES.md.
+ */
+const BANNER_PHOTO = {
+  source: require('@/assets/images/home/clase-piernas.jpg'),
+  focus: { left: '50%', top: '70%' },
+} as const;
 
 /** Alto de la barra sin la zona de la barra de estado; los botones miden 48 (mínimo táctil: 44). */
 const TOP_BAR_H = 48;
@@ -57,11 +66,6 @@ const BAR_BUTTON = 48;
  * foto sobre la tarjeta.
  */
 const BANNER_H = 192;
-
-/** Foto ENTERA (contain) a lo alto del banner: 1080 x 692 escalada a BANNER_H de alto mide unos 300 dp de ancho. */
-const PHOTO_W_AT_BANNER = (1080 / 692) * BANNER_H;
-/** Cuánto de la foto, hacia adentro, se desvanece hacia el carbón en cada costado (la banda de carbón sobrante va aparte). */
-const SIDE_FADE = 28;
 
 /**
  * MARCADOR del logo del box: mientras no exista el logo definitivo, el recuadro de cobre de la tarjeta (avatar con la inicial) se
@@ -110,18 +114,15 @@ export function HomeViewV2({
   data,
   events,
   photoFails = false,
-  photoMode = 'entera',
 }: {
   data: HomeViewV2Data;
   events: HomeViewV2Events;
   /** Solo para la pantalla de desarrollo: simula que la foto no carga (se ve el color base). */
   photoFails?: boolean;
-  /** 'entera': la foto completa a lo alto del banner, con desvanecido a carbón en los costados. 'recorte': cover con foco 50 % / 70 %. */
-  photoMode?: 'recorte' | 'entera';
 }) {
   return (
     <ThemeOverride mode="light">
-      <HomeViewV2Inner data={data} events={events} photoFails={photoFails} photoMode={photoMode} />
+      <HomeViewV2Inner data={data} events={events} photoFails={photoFails} />
     </ThemeOverride>
   );
 }
@@ -153,19 +154,8 @@ function BarButton({
   );
 }
 
-function HomeViewV2Inner({
-  data,
-  events,
-  photoFails,
-  photoMode,
-}: {
-  data: HomeViewV2Data;
-  events: HomeViewV2Events;
-  photoFails: boolean;
-  photoMode: 'recorte' | 'entera';
-}) {
+function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; events: HomeViewV2Events; photoFails: boolean }) {
   const colors = useColors();
-  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [photoError, setPhotoError] = useState(false);
   const {
@@ -204,10 +194,6 @@ function HomeViewV2Inner({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   } as const;
-  // Banda de carbón que sobra a cada lado cuando la foto va entera (0 si la pantalla es más angosta que la foto).
-  const sideBand = Math.max(0, (screenWidth - PHOTO_W_AT_BANNER) / 2);
-  const fadeWidth = sideBand + SIDE_FADE;
-  const solidShare = fadeWidth > 0 ? sideBand / fadeWidth : 0;
   const firstName = getFirstName(user.name);
   const glassLabel = myBox ? `${myBox.name}. Hola, ${firstName}` : `Hola, ${firstName}`;
 
@@ -228,37 +214,14 @@ function HomeViewV2Inner({
               importantForAccessibility="no-hide-descendants"
             >
               <Image
-                source={PHOTO}
+                source={BANNER_PHOTO.source}
                 style={StyleSheet.absoluteFill}
-                // 'entera': contain, la foto completa (100 %) a lo alto del banner. 'recorte': cover con foco 50 % horizontal (el disco
-                // está al centro) y 70 % vertical, que deja ver el disco desde su borde superior (fila 130) en 320, 360 y 412 dp; muestra
-                // el 94 %, 83 % y 73 % de la foto. Nunca se estira ni se deforma.
-                contentFit={photoMode === 'entera' ? 'contain' : 'cover'}
-                contentPosition={photoMode === 'entera' ? { left: '50%', top: '50%' } : { left: '50%', top: '70%' }}
+                // Cover a todo el ancho, sin estirar ni deformar; el color base (carbón del banner) se ve mientras carga o si falla.
+                contentFit="cover"
+                contentPosition={BANNER_PHOTO.focus}
                 transition={300}
                 onError={() => setPhotoError(true)}
               />
-              {photoMode === 'entera' ? (
-                <>
-                  {/* Desvanecido hacia el carbón en los costados: sin franja a la vista. */}
-                  <LinearGradient
-                    colors={[colors.charcoal, colors.charcoal, `${colors.charcoal}00`]}
-                    locations={[0, solidShare, 1]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: fadeWidth }}
-                    pointerEvents="none"
-                  />
-                  <LinearGradient
-                    colors={[`${colors.charcoal}00`, colors.charcoal, colors.charcoal]}
-                    locations={[0, 1 - solidShare, 1]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: fadeWidth }}
-                    pointerEvents="none"
-                  />
-                </>
-              ) : null}
             </View>
           ) : null}
           {/* Velo oscuro (carbón al 55 % arriba y abajo, 40 % al centro: el mínimo en la zona de la tarjeta es 40 %). */}

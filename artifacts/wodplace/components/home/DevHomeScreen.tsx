@@ -42,7 +42,6 @@ const EVENTS_V2: HomeViewV2Events = {
 
 type Design = 'actual' | 'nuevo';
 type Photo = 'ok' | 'falla';
-type PhotoMode = 'recorte' | 'entera';
 
 const DESIGN_CHIPS: { id: Design; label: string }[] = [
   { id: 'actual', label: 'Diseño: actual' },
@@ -55,10 +54,6 @@ const THEME_CHIPS: { id: ThemeMode; label: string }[] = [
 const PHOTO_CHIPS: { id: Photo; label: string }[] = [
   { id: 'ok', label: 'Foto: carga' },
   { id: 'falla', label: 'Foto: falla' },
-];
-const PHOTO_MODE_CHIPS: { id: PhotoMode; label: string }[] = [
-  { id: 'entera', label: 'Foto: entera' },
-  { id: 'recorte', label: 'Foto: recorte' },
 ];
 
 /**
@@ -128,7 +123,6 @@ function DevHomeBody({
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
   const [photo, setPhoto] = useState<Photo>('ok');
-  const [photoMode, setPhotoMode] = useState<PhotoMode>('entera');
   // Con el diseño actual el panel va arriba y abierto; con el nuevo va plegado al pie, para no tapar la barra superior.
   const [chipsOpen, setChipsOpen] = useState(true);
   const state = useMemo(() => buildDevState(selection), [selection]);
@@ -158,10 +152,7 @@ function DevHomeBody({
           {design === 'actual' ? (
             <ChipGroup title="Tema (solo esta pantalla)" chips={THEME_CHIPS} selected={themeMode} onSelect={onThemeMode} />
           ) : (
-            <>
-              <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
-              <ChipGroup title="Foto: entera o recortada" chips={PHOTO_MODE_CHIPS} selected={photoMode} onSelect={setPhotoMode} />
-            </>
+            <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
           )}
           {DEV_GROUPS.map((group) => (
             <ChipGroup
@@ -192,7 +183,7 @@ function DevHomeBody({
         {/* Íconos claros de la barra de estado SOLO mientras esta pantalla está en "nuevo": el componente se desmonta al
             cambiar a "actual" o al salir, y React Native restaura el estilo que había antes. */}
         <StatusBar style="light" />
-        <HomeViewV2 data={state} events={EVENTS_V2} photoFails={photo === 'falla'} photoMode={photoMode} />
+        <HomeViewV2 data={state} events={EVENTS_V2} photoFails={photo === 'falla'} />
         {panel}
         {popup}
       </View>
