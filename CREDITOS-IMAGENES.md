@@ -2,29 +2,35 @@
 
 Imágenes de terceros usadas en la app, con su origen y licencia.
 
-## `artifacts/wodplace/assets/images/home/clase-piernas.jpg`
+## `artifacts/wodplace/assets/images/home/home-banner-anillo.jpg`
 
-- **Uso:** banner del diseño nuevo de Inicio (decisión (k) de `DECISIONES-DISENO.md`), con velo oscuro. Hoy solo en la pantalla de desarrollo "Estados de Inicio (dev)".
-- **Origen:** Pexels, https://www.pexels.com/es-es/foto/barra-negra-685530/
-- **Edición:** recortada para quitar el logo de la zapatilla; tratamiento en blanco y negro.
-- **Licencia de Pexels:** uso comercial y modificación permitidos; no exige atribución.
+- **Uso:** banner del diseño nuevo de Inicio (decisión (k) de `DECISIONES-DISENO.md`; foto elegida en la decisión (o)), con velo oscuro. Hoy solo en la pantalla de desarrollo "Estados de Inicio (dev)".
+- **Foto:** "Primer plano de un anillo de gimnasia de madera colgando en un gimnasio interior con poca luz" (título de la página: "Anillo de color latón con correa negra").
+- **Autor:** Leon Mart, https://www.pexels.com/es-es/@leonmart/
+- **Página de origen:** https://www.pexels.com/es-es/foto/anillo-de-color-laton-con-correa-negra-1552251/ (foto del 2018-10-31; datos de la página tomados por Pía).
+- **Licencia:** licencia gratuita de Pexels, https://www.pexels.com/es-es/license/ (uso comercial y modificación permitidos; no exige atribución).
+- **Fecha de consulta:** 2026-10-30.
+- **Original:** 4288 × 2848 px (3:2).
+- **Edición:** solo recorte (x = 214, y = 643, 3644 × 1822 px) y reducción a 1080 × 540 px, JPEG, sin metadatos (58.569 bytes). Sin retoque de color ni oscurecimiento.
+- **Archivo:** `home-banner-anillo.jpg`.
+- La foto no lleva logos de marcas; el texto visible en la hebilla de la correa es la palabra genérica PRESS (ilegible a tamaño real), y las formas del fondo son anillas desenfocadas.
 
 ## Estado de la foto del banner
 
-`clase-piernas.jpg` es **PROVISIONAL** (decisión (n) de `DECISIONES-DISENO.md`): se cambiará. Una foto nueva se mide en contraste ANTES de activarla.
+`home-banner-anillo.jpg` está **ACTIVA** desde la decisión (o) (2026-10-30); reemplazó a `clase-piernas.jpg` (provisional, ya eliminada; sigue en el historial de git). Una foto nueva se mide en contraste ANTES de activarla.
 
 ## Cómo cambiar la foto del banner
 
 1. **Formato y tamaño:** JPEG o WebP, **1080 × 540 px (2:1)**, **máximo 200 KB**, **sin metadatos** (ni ubicación GPS ni cámara).
-2. **Contenido:** sin logos de marcas ni caras reconocibles si se puede evitar (por eso la foto actual se recortó sin el logo de la zapatilla). Blanco y negro o teñida en cobre, siempre con el velo oscuro de la pantalla.
+2. **Contenido:** sin logos de marcas ni caras reconocibles si se puede evitar (la foto actual se revisó con zoom en 320, 360 y 412 dp). Siempre con el velo oscuro de la pantalla.
 3. **Fuente y licencia:** anota la URL de origen y la licencia en este archivo, en una sección propia como la de arriba (la licencia de Pexels permite uso comercial y modificación sin atribución obligatoria). No se activa una foto sin esa fuente.
 4. **Dónde se guarda:** `artifacts/wodplace/assets/images/home/` (la carpeta de las fotos del banner).
-5. **Cómo se activa:** en `components/home/HomeViewV2.tsx` hay UNA sola constante, `BANNER_PHOTO`, con el `require` y el foco del recorte (50 % / 70 %). Solo cambian esas dos cosas; el alto del banner, el velo, la tarjeta de vidrio y la crema no dependen de la foto.
+5. **Cómo se activa:** en `components/home/HomeViewV2.tsx` hay UNA sola constante, `BANNER_PHOTO`, con el `require` y el foco del recorte (50 % / 0 %). Solo cambian esas dos cosas; el alto del banner, el velo, la tarjeta de vidrio y la crema no dependen de la foto.
 6. **Zonas del encuadre medidas en la imagen de 540 px de alto** (el banner mide 192 dp y la foto se escala a 0,356 dp por px, es decir 2,81 px por dp):
    - **y = 0 a 208: zona libre.** Se ve la foto con el velo; aquí va el sujeto principal.
    - **y = 208 a 416: bajo la tarjeta de vidrio.** Se ve oscurecida por el vidrio (negro al 60 %).
    - **y = 416 en adelante: tapada por la crema.** En detalle: de 416 a 450 queda una franja de 12 dp visible bajo la tarjeta, y desde 450 la crema sube sobre la foto.
-   - **Márgenes laterales de 90 px a cada lado: pueden recortarse.** En una pantalla de 320 dp se pierden esos 90 px por lado; en 360 dp, unos 34; en 412 dp no se pierde ancho, pero se recortan unos 37 px en vertical (la foto se escala más). No pongas nada importante en esos márgenes.
+   - **Márgenes laterales de 90 px a cada lado: pueden recortarse.** En una pantalla de 320 dp se pierden esos 90 px por lado; en 360 dp, unos 34; en 412 dp no se pierde ancho, pero se recortan unos 37 px en vertical (la foto se escala más; con el foco vertical en 0 % todo ese recorte cae abajo, bajo la crema). No pongas nada importante en esos márgenes.
 7. **Mide el contraste del texto crema en el peor caso ANTES de activar** (ver abajo) y deja el resultado en `ESTADO.md`.
 
 ## Cómo volver a medir el contraste del texto crema de la tarjeta de vidrio
