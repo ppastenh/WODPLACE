@@ -48,6 +48,25 @@ describe('tema: modo oscuro', () => {
   });
 });
 
+describe('tema: tokens del diseño nuevo de Inicio (decisión (k))', () => {
+  const dark = paletteFor('dark') as unknown as Record<string, string>;
+  const light = paletteFor('light') as unknown as Record<string, string>;
+  const fijos = ['charcoal', 'charcoalPressed', 'cream', 'creamMuted', 'glassBackground', 'glassBorder'];
+  for (const key of fijos) {
+    it(`${key} vale lo mismo en el claro y en el oscuro (diseño de claro fijo)`, () => assert.equal(dark[key], light[key]));
+  }
+  it('los presionados de relleno existen en las dos paletas', () => {
+    for (const key of ['accentPressed', 'successBackgroundPressed', 'warningBackgroundPressed']) {
+      assert.ok(typeof dark[key] === 'string' && typeof light[key] === 'string', key);
+    }
+  });
+  it('el borde y el vidrio son translúcidos y el resto son hex de 6 cifras', () => {
+    assert.match(light.glassBackground!, /^rgba\(0,0,0,0\.6\)$/);
+    assert.match(light.glassBorder!, /^rgba\(255,255,255,0\.\d+\)$/);
+    for (const key of ['charcoal', 'charcoalPressed', 'cream', 'creamMuted']) assert.match(light[key]!, /^#[0-9A-F]{6}$/);
+  });
+});
+
 describe('tema: preferencia guardada', () => {
   it('solo "light" y "dark" valen', () => {
     assert.equal(parseThemeMode('dark'), 'dark');
@@ -129,6 +148,16 @@ const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   imagePlaceholder: '#E0E0E0',
   likeAccent: '#E0245E',
   inverseDivider: 'rgba(255,255,255,0.15)',
+  // Diseño nuevo de Inicio (decisión (k))
+  charcoal: '#0D0F10',
+  charcoalPressed: '#25292D',
+  cream: '#F2E9DB',
+  creamMuted: '#665F55',
+  glassBackground: 'rgba(0,0,0,0.6)',
+  glassBorder: 'rgba(255,255,255,0.14)',
+  accentPressed: '#E4CB93',
+  successBackgroundPressed: '#D3EDDB',
+  warningBackgroundPressed: '#FFE2B0',
 };
 
 describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {

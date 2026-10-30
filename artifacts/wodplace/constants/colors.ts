@@ -137,6 +137,23 @@ const colors = {
     authInput: '#20222C',
     authText: '#F5F4F2',
     authMuted: '#8C8E99',
+
+    // ── Diseño nuevo de Inicio (decisión (k), solo la pantalla de desarrollo por ahora) ──
+    // Barra superior y fondo oscuro del banner (carbón) y su estado presionado SÓLIDO.
+    charcoal: '#0D0F10',
+    charcoalPressed: '#25292D',
+    // Crema: superficie de contenido y texto/íconos sobre carbón o sobre el vidrio.
+    cream: '#F2E9DB',
+    // Gris de texto sobre crema, tarjetas blancas y rellenos de tarjeta (#706B63 da 4,39:1 sobre crema y #8C8574 3,05:1).
+    creamMuted: '#665F55',
+    // Tarjeta de "vidrio" sobre la foto: negro al 60 % (sin desenfoque real) y borde blanco muy sutil.
+    glassBackground: 'rgba(0,0,0,0.6)',
+    glassBorder: 'rgba(255,255,255,0.14)',
+    // Estados presionados SÓLIDOS de las tarjetas de relleno de color (WOD de hoy y PR destacado).
+    accentPressed: '#E4CB93',
+    successBackgroundPressed: '#D3EDDB',
+    // Presionado SÓLIDO del aviso importante (relleno warningBackground).
+    warningBackgroundPressed: '#FFE2B0',
   },
 
   // Border radius (in px) applied to cards, buttons, inputs, and modals.

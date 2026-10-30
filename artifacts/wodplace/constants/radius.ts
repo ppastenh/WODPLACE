@@ -16,5 +16,7 @@ export const RADIUS = {
   md: 10,
   lg: 16,
   xl: 20,
+  // Esquinas superiores de la superficie crema del diseño nuevo de Inicio (decisión (k)).
+  xxl: 32,
   full: 999,
 } as const;

@@ -166,12 +166,50 @@ export const PAIRS: Pair[] = [
   ui('destructive', 'background', 'punto/relleno rojo (campana)'),
 ];
 
+/**
+ * Pares del diseño nuevo de Inicio (decisión (k)), medidos contra la paleta CLARA, porque ese diseño es de claro fijo.
+ * El punto más claro de la foto real clase-piernas.jpg mide luminancia 0,83 (gris sRGB 235, #EBEBEB), medido con System.Drawing
+ * sobre los 747.360 píxeles; el vidrio es negro al 60 % y se mezcla en sRGB, como hace React Native.
+ */
+export const PAIRS_LIGHT: Pair[] = [
+  // Barra superior
+  t('cream', 'charcoal', 'logo WODPLACE y menú/campana sobre la barra'),
+  t('cream', 'charcoalPressed', 'menú/campana presionados'),
+  ui('navActive', 'charcoal', 'punto cobre de notificaciones sobre la barra'),
+  ui('navActive', 'charcoalPressed', 'punto cobre sobre el botón presionado'),
+  t('#A29E94', 'charcoal', 'gris claro sobre carbón'),
+  // Tarjeta de vidrio sobre la foto (peor caso: el punto más claro de la foto)
+  { ...t('cream', 'charcoal', 'nombre del box y saludo, PEOR caso: punto más claro de la foto SIN velo, vidrio 60 %'), bgLiteral: { hex: '#000000', over: '#EBEBEB', alpha: 0.6 } },
+  { ...t('cream', 'charcoal', 'idem con el velo mínimo (40 %) sobre el punto más claro'), bgLiteral: { hex: '#000000', over: '#8D8D8D', alpha: 0.6 } },
+  t('charcoal', 'navActive', 'inicial del avatar en carbón sobre cobre'),
+  // Texto sobre la superficie crema y sobre las tarjetas
+  t('foreground', 'cream', 'títulos y nombres sobre la crema'),
+  t('creamMuted', 'cream', 'gris de texto sobre la crema'),
+  t('navActiveTextSmall', 'cream', 'ícono y texto chico cobre sobre la crema'),
+  t('creamMuted', 'card', 'etiquetas y leyendas sobre tarjetas blancas'),
+  t('creamMuted', 'cardPressed', 'etiquetas sobre tarjeta blanca presionada'),
+  t('creamMuted', 'successBackground', 'etiqueta del PR destacado'),
+  t('creamMuted', 'successBackgroundPressed', 'etiqueta del PR destacado presionado'),
+  t('creamMuted', 'warningBackground', 'etiqueta de los avisos'),
+  t('creamMuted', 'accent', 'gris de texto sobre el relleno cobre claro'),
+  t('navActiveTextSmall', 'card', 'inicial de los cumpleaños sobre blanco'),
+  t('foreground', 'cardPressed', 'tarjeta blanca presionada'),
+  t('foreground', 'successBackgroundPressed', 'PR destacado presionado'),
+  t('foreground', 'warningBackgroundPressed', 'aviso importante presionado'),
+  t('creamMuted', 'warningBackgroundPressed', 'etiqueta del aviso importante presionado'),
+  t('accentForeground', 'accent', 'WOD de hoy y frase'),
+  t('accentForeground', 'accentPressed', 'WOD de hoy presionado'),
+];
+
 const parse = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const mixHex = (fg: string, bg: string, alpha: number): string =>
   '#' +
   parse(fg)
     .map((v, i) => Math.round(v * alpha + (parse(bg)[i] as number) * (1 - alpha)).toString(16).padStart(2, '0'))
     .join('');
+
+/** Un token de la paleta o un hex escrito a mano (por ejemplo el punto más claro de la foto). */
+const pick = (palette: Record<string, string>, key: string): string | undefined => (key.startsWith('#') ? key : palette[key]);
 
 const lin = (hex: string): number[] => {
   const n = parseInt(hex.slice(1), 16);
@@ -193,23 +231,23 @@ export function contrast(a: string, b: string): number {
 export type Measure = { pair: Pair; ratio: number | null; ok: boolean };
 
 /** `ratio: null` = el token no existe en la paleta (cuenta como falla). */
-export function measure(palette: Record<string, string>): Measure[] {
-  return PAIRS.map((pair) => {
-    let a = palette[pair.text];
-    let b = palette[pair.bg];
+export function measure(palette: Record<string, string>, pairs: Pair[] = PAIRS): Measure[] {
+  return pairs.map((pair) => {
+    let a = pick(palette, pair.text);
+    let b = pick(palette, pair.bg);
     if (!a || !b) return { pair, ratio: null, ok: false };
     if (pair.textOver) {
-      const under = palette[pair.textOver.over];
+      const under = pick(palette, pair.textOver.over);
       if (!under) return { pair, ratio: null, ok: false };
       a = mixHex(a, under, pair.textOver.alpha);
     }
     if (pair.bgOver) {
-      const under = palette[pair.bgOver.over];
+      const under = pick(palette, pair.bgOver.over);
       if (!under) return { pair, ratio: null, ok: false };
       b = mixHex(b, under, pair.bgOver.alpha);
     }
     if (pair.bgLiteral) {
-      const under = palette[pair.bgLiteral.over];
+      const under = pick(palette, pair.bgLiteral.over);
       if (!under) return { pair, ratio: null, ok: false };
       b = mixHex(pair.bgLiteral.hex, under, pair.bgLiteral.alpha);
     }

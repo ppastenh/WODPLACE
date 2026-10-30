@@ -137,6 +137,19 @@ const darkColors = {
   authInput: "#181A1D",
   authText: "#F2EDE2",
   authMuted: "#9A968C",
+
+  // ── Diseño nuevo de Inicio (decisión (k)) ──
+  // Los colores propios del diseño (carbón, crema, vidrio) valen LO MISMO en las dos paletas: ese diseño es de claro fijo.
+  charcoal: "#0D0F10",
+  charcoalPressed: "#25292D",
+  cream: "#F2E9DB",
+  creamMuted: "#665F55",
+  glassBackground: "rgba(0,0,0,0.6)",
+  glassBorder: "rgba(255,255,255,0.14)",
+  // Presionados de relleno de color en la paleta oscura: cobre presionado y verde oscuro presionado.
+  accentPressed: "#B38B60",
+  successBackgroundPressed: "#1C3B28",
+  warningBackgroundPressed: "#4A3B1A",
 };
 
 export default darkColors;

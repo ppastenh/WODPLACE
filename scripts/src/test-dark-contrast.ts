@@ -9,10 +9,24 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import darkModule from '../../artifacts/wodplace/constants/darkColors';
-import { PAIRS, measure } from './dark-contrast-pairs';
+import colorsModule from '../../artifacts/wodplace/constants/colors';
+import { PAIRS, PAIRS_LIGHT, measure } from './dark-contrast-pairs';
 
 // tsx entrega el export por defecto de un módulo sin "type" a veces envuelto en otro `default`.
 const dark = ((darkModule as { default?: typeof darkModule }).default ?? darkModule) as Record<string, string>;
+
+const colorsLight = (((colorsModule as { default?: typeof colorsModule }).default ?? colorsModule) as typeof colorsModule).light as Record<string, string>;
+
+describe('diseño nuevo de Inicio (claro fijo): contraste WCAG de los pares nuevos', () => {
+  const light = measure(colorsLight, PAIRS_LIGHT);
+  for (const { pair, ratio } of light) {
+    it(`${pair.text} sobre ${pair.bg}${pair.bgLiteral ? ` (vidrio sobre ${pair.bgLiteral.over})` : ''} (mín ${pair.min}:1)${pair.note ? ` — ${pair.note}` : ''}`, () => {
+      assert.ok(ratio !== null, `falta un token: ${pair.text} / ${pair.bg}`);
+      assert.ok(ratio >= pair.min, `${pair.text} sobre ${pair.bg} da ${ratio.toFixed(2)}:1, bajo el mínimo de ${pair.min}:1`);
+    });
+  }
+  it('hay pares medidos', () => assert.ok(PAIRS_LIGHT.length >= 20));
+});
 
 describe('paleta oscura: contraste WCAG de todos los pares reales', () => {
   const results = measure(dark);
