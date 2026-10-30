@@ -233,7 +233,8 @@ function BarButton({
       style={({ pressed }) => [styles.barButton, { backgroundColor: pressed ? colors.charcoalPressed : 'transparent' }]}
     >
       <Feather name={icon} size={24} color={colors.cream} />
-      {dot ? <View style={[styles.bellDot, { backgroundColor: colors.navActive, borderColor: colors.charcoal }]} /> : null}
+      {/* Cobre claro sobre la barra de carbón (regla del cobre: #C79A6B sobre superficies oscuras o con foto). */}
+      {dot ? <View style={[styles.bellDot, { backgroundColor: colors.charcoalAccentLight, borderColor: colors.charcoal }]} /> : null}
     </Pressable>
   );
 }
@@ -332,7 +333,7 @@ function HomeViewInner({ data, events, photoFails }: { data: HomeViewData; event
                   right: -GLOW_STEP * (i + 1),
                   borderRadius: RADIUS.xl + GLOW_STEP * (i + 1),
                   borderWidth: GLOW_STEP,
-                  borderColor: `${colors.navActive}${alpha}`,
+                  borderColor: `${colors.charcoalAccentLight}${alpha}`,
                 }}
               />
             ))}

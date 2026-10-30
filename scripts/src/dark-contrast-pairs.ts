@@ -206,6 +206,10 @@ export const PAIRS_LIGHT: Pair[] = [
   t('charcoalAccentLight', 'charcoal', 'rótulo seleccionado del menú inferior, cobre claro'),
   ui('charcoalAccentLight', 'charcoal', 'ícono seleccionado y borde de Agenda, cobre claro'),
   ui('charcoalAccentLight', 'charcoalPressed', 'ícono y borde de Agenda presionado, cobre claro'),
+  // Regla del cobre (pedido 13): el punto de la campana y el halo de la tarjeta de vidrio pasan al cobre claro. El punto es un ícono sobre carbón
+  // (3:1); el halo es decorativo (anillos de 22 %, 11 % y 5 % de opacidad fuera de la tarjeta, sin texto encima). El recuadro de cobre y el borde
+  // de la tarjeta NO cambian todavía: con el cobre claro la letra blanca baja a 4,41:1 y el texto crema junto al borde a 4,27:1.
+  ui('charcoalAccentLight', 'charcoal', 'punto de la campana sobre la barra de carbón'),
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),
   t('creamMuted', 'cream', 'gris de texto sobre la crema'),
