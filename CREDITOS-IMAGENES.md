@@ -11,7 +11,7 @@ Imágenes de terceros usadas en la app, con su origen y licencia.
 - **Licencia:** licencia gratuita de Pexels, https://www.pexels.com/es-es/license/ (uso comercial y modificación permitidos; no exige atribución).
 - **Fecha de consulta:** 2026-10-30.
 - **Original:** 4288 × 2848 px (3:2).
-- **Edición:** solo recorte (x = 214, y = 643, 3644 × 1822 px) y reducción a 1080 × 540 px, JPEG, sin metadatos (58.569 bytes). Sin retoque de color ni oscurecimiento.
+- **Edición:** solo recorte (x = 214, y = 549, 3644 × 1822 px) y reducción a 1080 × 540 px, JPEG, sin metadatos (60.115 bytes). Sin retoque de color ni oscurecimiento. El recorte arranca 94 px más arriba que la primera versión (y = 643, 58.569 bytes) para que el aro baje unos 10 dp en el banner; esa versión quedó respaldada fuera del repositorio (`C:UserspiapaDocumentswodplace-respaldohome-banner-anillo-y643.jpg`).
 - **Archivo:** `home-banner-anillo.jpg`.
 - La foto no lleva logos de marcas; el texto visible en la hebilla de la correa es la palabra genérica PRESS (ilegible a tamaño real), y las formas del fondo son anillas desenfocadas.
 
