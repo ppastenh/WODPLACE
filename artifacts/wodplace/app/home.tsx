@@ -15,7 +15,6 @@ import {
   type BoxAnnouncement,
 } from '@workspace/api-client-react';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
-import { AppHeader } from '@/components/AppHeader';
 import { HomeView, type HomeViewData } from '@/components/home/HomeView';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
@@ -329,11 +328,11 @@ export default function HomeScreen() {
     rotatingFeaturedPr,
     medalsSummary,
     birthdays,
+    unreadCount,
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader showBell onMenu={() => setDrawerVisible(true)} menuOpen={drawerVisible} />
       <HomeView
         data={homeData}
         events={{
@@ -345,6 +344,8 @@ export default function HomeScreen() {
           onOpenProfile: () => router.push('/personal-data'),
           onOpenMedals: () => router.push('/medallas'),
           onShareQuote: shareQuote,
+          onMenu: () => setDrawerVisible(true),
+          onBell: () => router.push('/notifications'),
         }}
       />
       <SideDrawer
