@@ -68,3 +68,9 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **Fecha:** 2026-10-30
 - **Decisión:** "Ajuste del banner de Inicio: la barra superior (menú, logo y campana) es un bloque sólido de carbón separado de la foto, y el banner empieza debajo de ella; reemplaza lo de la barra 'integrada sin separación' de (k); el banner es un 10 % más alto (foto con velo, medido bajo la barra); el saludo 'Hola, nombre' de la tarjeta de vidrio es más pequeño."
 - **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
+
+## (m) Detalles del banner de Inicio
+
+- **Fecha:** 2026-10-30
+- **Decisión:** "Detalles del banner de Inicio: el alto baja un 5 % (de 202 a unos 192 dp); el borde de la tarjeta de vidrio es de cobre difuminado; el recuadro de cobre de la tarjeta (marcador del logo del box) es un poco transparente hasta que se agregue el logo definitivo, que será sólido; la foto se muestra con menos zoom."
+- **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
