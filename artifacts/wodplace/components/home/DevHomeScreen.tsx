@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
@@ -180,9 +179,6 @@ function DevHomeBody() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.charcoal }]}>
-      {/* Íconos claros de la barra de estado SOLO mientras esta pantalla está abierta: el componente se desmonta al salir y React
-          Native restaura el estilo que había antes. */}
-      <StatusBar style="light" />
       <HomeView data={state} events={EVENTS} photoFails={photo === 'falla'} />
       {panel}
       {menuNode}

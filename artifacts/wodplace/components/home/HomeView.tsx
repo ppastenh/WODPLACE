@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
@@ -16,9 +18,10 @@ import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { MedalBadge } from '@/components/MedalBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { useBooking } from '@/context/BookingContext';
-import { ThemeOverride } from '@/context/ThemeContext';
+import { ThemeOverride, useTheme } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { getMedalIconColor } from '@/lib/medalColors';
+import { statusBarStyleFor } from '@/lib/theme';
 import { coachLine, type nextClassCardState } from '@/lib/nextClassCard';
 import { monthlyCardParts, type PlanProgressView } from '@/lib/planProgress';
 import { formatClassDateShort, formatHM, MONTH_NAMES } from '@/lib/dateUtils';
@@ -168,6 +171,22 @@ const CLASS_LEVEL_LABELS: Record<string, string> = {
   avanzado: 'Avanzado',
 };
 
+/**
+ * Íconos claros de la barra de estado SOLO mientras Inicio está enfocado (la barra superior es de carbón). Al perder el foco (navegar a
+ * otra pantalla, o salir de Inicio con replace) el cleanup devuelve el estilo de siempre según el tema REAL de la app: este hook corre
+ * fuera del ThemeOverride claro, así que lee el modo verdadero. El estilo se fija con setStyle (imperativo) y no con un <StatusBar>
+ * montado, porque al desmontarse este el de React Native vuelve a su valor por defecto (íconos claros) y se quedaría atrapado.
+ */
+function useInicioStatusBar() {
+  const { mode } = useTheme();
+  useFocusEffect(
+    useCallback(() => {
+      StatusBar.setStyle(statusBarStyleFor(true, mode), false);
+      return () => StatusBar.setStyle(statusBarStyleFor(false, mode), false);
+    }, [mode]),
+  );
+}
+
 export function HomeView({
   data,
   events,
@@ -178,6 +197,7 @@ export function HomeView({
   /** Solo para la pantalla de desarrollo: simula que la foto no carga (se ve el color base). */
   photoFails?: boolean;
 }) {
+  useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
       <HomeViewInner data={data} events={events} photoFails={photoFails} />

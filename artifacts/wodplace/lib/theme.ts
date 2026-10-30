@@ -21,6 +21,15 @@ export function parseThemeMode(raw: string | null | undefined): ThemeMode {
   return raw === 'light' || raw === 'dark' ? raw : DEFAULT_THEME_MODE;
 }
 
+/**
+ * Estilo de los íconos de la barra de estado (hora, batería): CLAROS mientras Inicio está enfocado (la barra de carbón es oscura) y, en
+ * cualquier otra pantalla, el de siempre: oscuros en el tema claro (cabeceras claras) y claros en el tema oscuro.
+ */
+export function statusBarStyleFor(inicioFocused: boolean, mode: ThemeMode): 'light' | 'dark' {
+  if (inicioFocused) return 'light';
+  return mode === 'dark' ? 'light' : 'dark';
+}
+
 export function paletteFor(mode: ThemeMode): Palette {
   if (mode === 'dark') return { ...colors.light, ...darkColors, radius: colors.radius };
   return { ...colors.light, radius: colors.radius };

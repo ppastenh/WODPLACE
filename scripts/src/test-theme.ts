@@ -11,7 +11,7 @@ import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import darkModule from '../../artifacts/wodplace/constants/darkColors';
-import { DEFAULT_THEME_MODE, paletteFor, parseThemeMode } from '../../artifacts/wodplace/lib/theme';
+import { DEFAULT_THEME_MODE, paletteFor, parseThemeMode, statusBarStyleFor } from '../../artifacts/wodplace/lib/theme';
 
 // tsx entrega el export por defecto de un módulo sin "type" a veces envuelto en otro `default`.
 const colors = ((colorsModule as { default?: typeof colorsModule }).default ?? colorsModule) as typeof colorsModule;
@@ -64,6 +64,17 @@ describe('tema: tokens del diseño nuevo de Inicio (decisión (k))', () => {
     assert.match(light.glassBackground!, /^rgba\(0,0,0,0\.6\)$/);
     assert.match(light.glassBorder!, /^rgba\(185,130,80,0\.\d+\)$/);
     for (const key of ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'charcoalAccentLight', 'cream', 'creamMuted']) assert.match(light[key]!, /^#[0-9A-F]{6}$/);
+  });
+});
+
+describe('tema: barra de estado de Inicio', () => {
+  it('con Inicio enfocado los íconos son claros en cualquier tema', () => {
+    assert.equal(statusBarStyleFor(true, 'light'), 'light');
+    assert.equal(statusBarStyleFor(true, 'dark'), 'light');
+  });
+  it('fuera de Inicio vuelve al estilo de siempre: oscuros en claro, claros en oscuro', () => {
+    assert.equal(statusBarStyleFor(false, 'light'), 'dark');
+    assert.equal(statusBarStyleFor(false, 'dark'), 'light');
   });
 });
 
