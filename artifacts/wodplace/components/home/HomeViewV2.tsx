@@ -51,7 +51,12 @@ const PHOTO = require('@/assets/images/home/clase-piernas.jpg');
 /** Alto de la barra sin la zona de la barra de estado; los botones miden 48 (mínimo táctil: 44). */
 const TOP_BAR_H = 48;
 const BAR_BUTTON = 48;
-const BANNER_H = 300;
+/**
+ * Alto del banner SIN la zona de la barra de estado (el total es BANNER_H + insets.top; fijo, no depende del ancho ni del alto de
+ * la pantalla). Era 300; el mínimo cómodo es 48 (barra) + 18 (foto visible entre la barra y la tarjeta) + 74 (tarjeta de vidrio:
+ * 52 de avatar + 2 x 10 de relleno + 2 de borde) + 12 (aire hasta la crema) + 32 (lo que la crema sube sobre el banner) = 184.
+ */
+const BANNER_H = 184;
 
 // scrollContent has 20px horizontal padding each side; the pinned aviso
 // card itself has 16px padding each side (see pinnedAvisoCard).
@@ -201,6 +206,9 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
                 source={PHOTO}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
+                // Foco: 50 % horizontal (el disco está al centro) y 70 % vertical, es decir, se recorta más por ARRIBA (suelo y la
+                // marca de tiza, lo más claro de la foto) y se conservan el disco y la barra. Cover: sin estirar ni deformar.
+                contentPosition={{ left: '50%', top: '70%' }}
                 transition={300}
                 onError={() => setPhotoError(true)}
               />
@@ -216,7 +224,7 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
           <LinearGradient
             colors={[colors.charcoal, `${colors.charcoal}00`]}
             locations={[0.35, 1]}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: barTotal + 40 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: barTotal + 20 }}
             pointerEvents="none"
           />
           {/* Tarjeta de vidrio: solo informativa (sin flecha ni toque), se lee como un solo grupo. */}
