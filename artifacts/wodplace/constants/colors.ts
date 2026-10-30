@@ -146,6 +146,9 @@ const colors = {
     // charcoalPressed) y cobre de la opción seleccionada y del borde de Agenda (5,83:1 sobre carbón, 4,44:1 sobre charcoalPressed).
     charcoalMuted: '#A29E94',
     charcoalAccent: '#B98250',
+    // Enmienda de (p): la opción seleccionada y el borde de Agenda usan el cobre más claro (el #B98250 se veía naranjo): 7,56:1 sobre carbón,
+    // 5,76:1 sobre charcoalPressed. charcoalAccent queda sin uso por ahora (no se borra).
+    charcoalAccentLight: '#C79A6B',
     // Crema: superficie de contenido y texto/íconos sobre carbón o sobre el vidrio.
     cream: '#F2E9DB',
     // Gris de texto sobre crema, tarjetas blancas y rellenos de tarjeta (#706B63 da 4,39:1 sobre crema y #8C8574 3,05:1).

@@ -12,7 +12,7 @@ import { RADIUS } from '@/constants/radius';
  *
  * Geometría (dp): fila de 64 + franja de 14 por encima (OPCIÓN B: reservada dentro de la barra, transparente y sin captar toques) + la
  * zona del sistema (insets.bottom), todo con el fondo carbón extendido hasta el borde inferior. Alto total = 14 + 64 + insets.bottom
- * (+ hasta 5 dp con la letra al máximo). El botón de Agenda mide 52, sobresale 14 por encima de la fila y queda por encima de la franja
+ * (+ hasta 2 dp con la letra a 1,1). Sin barra de acento: la opción seleccionada se distingue por el cobre claro y la negrita. El botón de Agenda mide 52, sobresale 14 por encima de la fila y queda por encima de la franja
  * del gesto del sistema; los cinco ítems también.
  */
 export type NavV2Key = 'inicio' | 'comunidad' | 'agenda' | 'progreso' | 'perfil';
@@ -32,7 +32,9 @@ const CIRCLE = 52;
 const ICON = 22;
 const LABEL_SIZE = 11;
 const LABEL_LINE = 14;
-const MAX_FONT_SCALE = 1.3;
+/** Crecimiento máximo de los rótulos con la letra grande del sistema: 1,1 veces (1,0 si la barra mide menos de 340 dp). */
+const MAX_FONT_SCALE = 1.1;
+const NARROW_WIDTH = 340;
 
 type FeatherName = React.ComponentProps<typeof Feather>['name'];
 const FEATHER_ICONS: Partial<Record<NavV2Key, FeatherName>> = {
@@ -69,6 +71,7 @@ export function BottomNavBarV2({
   bottomInset,
   stripColor = 'transparent',
   labelScale,
+  inactiveColor,
 }: {
   selected: NavV2Key;
   onSelect: (key: NavV2Key) => void;
@@ -78,30 +81,36 @@ export function BottomNavBarV2({
   stripColor?: string;
   /** Solo desarrollo: simula la letra grande del sistema (por ejemplo 1,3) aunque el teléfono la tenga en normal. */
   labelScale?: number;
+  /** Solo desarrollo: gris de los íconos y rótulos inactivos (para comparar con el actual). */
+  inactiveColor?: string;
 }) {
   const colors = useColors();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width: windowWidth } = useWindowDimensions();
+  const [barWidth, setBarWidth] = useState(windowWidth);
+  const inactive = inactiveColor ?? colors.charcoalMuted;
+  const accent = colors.charcoalAccentLight;
   const [agendaPressed, setAgendaPressed] = useState(false);
-  const scale = labelScale ?? Math.min(fontScale, MAX_FONT_SCALE);
+  const cap = barWidth < NARROW_WIDTH ? 1 : MAX_FONT_SCALE;
+  const scale = Math.min(labelScale ?? fontScale, cap);
   // Con la letra grande la fila crece lo justo para que el rótulo de Agenda no toque el botón elevado.
   const rowHeight = NAV_V2_ROW + Math.ceil(LABEL_LINE * (scale - 1));
 
+  // Con la letra simulada (solo desarrollo) el tamaño se calcula aquí y se apaga el escalado del sistema para no escalar dos veces.
+  const simulated = labelScale !== undefined;
   const labelStyle = (active: boolean) => ({
-    color: active ? colors.charcoalAccent : colors.charcoalMuted,
+    color: active ? accent : inactive,
     fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium',
-    fontSize: LABEL_SIZE * (labelScale ?? 1),
-    lineHeight: LABEL_LINE * (labelScale ?? 1),
+    fontSize: LABEL_SIZE * (simulated ? scale : 1),
+    lineHeight: LABEL_LINE * (simulated ? scale : 1),
   });
   const labelProps = {
     numberOfLines: 1,
-    maxFontSizeMultiplier: MAX_FONT_SCALE,
-    // "Comunidad" en negrita mide 61,9 dp a 11 sp y la columna de 320 dp mide 64: con la letra grande se reduce hasta el 75 % para caber.
-    adjustsFontSizeToFit: true,
-    minimumFontScale: 0.75,
+    maxFontSizeMultiplier: cap,
+    allowFontScaling: !simulated,
   } as const;
 
   return (
-    <View pointerEvents="box-none" style={styles.wrapper}>
+    <View pointerEvents="box-none" style={styles.wrapper} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
       {/* Franja reservada del botón elevado: transparente y sin captar toques. */}
       <View pointerEvents="none" style={{ height: NAV_V2_RAISE, backgroundColor: stripColor }} />
       <View style={{ backgroundColor: colors.charcoal, paddingBottom: bottomInset }}>
@@ -126,7 +135,7 @@ export function BottomNavBarV2({
                 </Pressable>
               );
             }
-            const color = active ? colors.charcoalAccent : colors.charcoalMuted;
+            const color = active ? accent : inactive;
             return (
               <Pressable
                 key={item.key}
@@ -137,7 +146,6 @@ export function BottomNavBarV2({
                 // Presionado SÓLIDO (charcoalPressed); el ítem ya seleccionado no se rellena (tocarlo no navega).
                 style={({ pressed }) => [styles.item, pressed && !active && { backgroundColor: colors.charcoalPressed }]}
               >
-                {active ? <View style={[styles.activeBar, { backgroundColor: colors.charcoalAccent }]} /> : null}
                 <View style={styles.iconSlot}>
                   <NavIcon item={item.key} color={color} />
                 </View>
@@ -162,12 +170,12 @@ export function BottomNavBarV2({
             styles.circle,
             {
               backgroundColor: agendaPressed ? colors.charcoalPressed : colors.charcoal,
-              borderColor: colors.charcoalAccent,
+              borderColor: accent,
               borderWidth: selected === 'agenda' ? 2.5 : 1.5,
             },
           ]}
         >
-          <NavIcon item="agenda" color={selected === 'agenda' ? colors.charcoalAccent : colors.charcoalMuted} />
+          <NavIcon item="agenda" color={selected === 'agenda' ? accent : inactive} />
         </Pressable>
       </View>
     </View>
@@ -186,8 +194,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
   },
   iconSlot: { height: 30, width: 48, alignItems: 'center', justifyContent: 'center' },
-  // Barra de acento de 3 px sobre el ícono de la opción seleccionada (siempre, no solo en el tema oscuro).
-  activeBar: { position: 'absolute', top: 2, width: 20, height: 3, borderRadius: 2 },
   circleLayer: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' },
   circle: {
     width: CIRCLE,

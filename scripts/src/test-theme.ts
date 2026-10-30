@@ -51,7 +51,7 @@ describe('tema: modo oscuro', () => {
 describe('tema: tokens del diseño nuevo de Inicio (decisión (k))', () => {
   const dark = paletteFor('dark') as unknown as Record<string, string>;
   const light = paletteFor('light') as unknown as Record<string, string>;
-  const fijos = ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'cream', 'creamMuted', 'glassBackground', 'glassBorder'];
+  const fijos = ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'charcoalAccentLight', 'cream', 'creamMuted', 'glassBackground', 'glassBorder'];
   for (const key of fijos) {
     it(`${key} vale lo mismo en el claro y en el oscuro (diseño de claro fijo)`, () => assert.equal(dark[key], light[key]));
   }
@@ -63,7 +63,7 @@ describe('tema: tokens del diseño nuevo de Inicio (decisión (k))', () => {
   it('el borde (cobre) y el vidrio son translúcidos y el resto son hex de 6 cifras', () => {
     assert.match(light.glassBackground!, /^rgba\(0,0,0,0\.6\)$/);
     assert.match(light.glassBorder!, /^rgba\(185,130,80,0\.\d+\)$/);
-    for (const key of ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'cream', 'creamMuted']) assert.match(light[key]!, /^#[0-9A-F]{6}$/);
+    for (const key of ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'charcoalAccentLight', 'cream', 'creamMuted']) assert.match(light[key]!, /^#[0-9A-F]{6}$/);
   });
 });
 
@@ -154,6 +154,7 @@ const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   // Menú inferior nuevo (decisión (p))
   charcoalMuted: '#A29E94',
   charcoalAccent: '#B98250',
+  charcoalAccentLight: '#C79A6B',
   cream: '#F2E9DB',
   creamMuted: '#665F55',
   glassBackground: 'rgba(0,0,0,0.6)',

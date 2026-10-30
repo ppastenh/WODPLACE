@@ -145,6 +145,7 @@ const darkColors = {
   // Menú inferior nuevo (decisión (p)): fijos sobre carbón, valen lo mismo que en la paleta clara.
   charcoalMuted: "#A29E94",
   charcoalAccent: "#B98250",
+  charcoalAccentLight: "#C79A6B",
   cream: "#F2E9DB",
   creamMuted: "#665F55",
   glassBackground: "rgba(0,0,0,0.6)",

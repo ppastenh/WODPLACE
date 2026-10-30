@@ -197,11 +197,15 @@ export const PAIRS_LIGHT: Pair[] = [
   // no se rellena al presionarlo (tocarlo no navega), así que no hay par cobre sobre charcoalPressed para el texto: ahí el cobre da 4,44:1.
   t('charcoalMuted', 'charcoal', 'rótulo inactivo del menú inferior'),
   t('charcoalMuted', 'charcoalPressed', 'rótulo inactivo presionado'),
-  t('charcoalAccent', 'charcoal', 'rótulo seleccionado del menú inferior'),
+  t('charcoalAccent', 'charcoal', 'rótulo seleccionado del menú inferior (cobre #B98250, ya sin uso: la enmienda de (p) pasó al cobre claro)'),
   ui('charcoalMuted', 'charcoal', 'ícono inactivo del menú inferior'),
   ui('charcoalMuted', 'charcoalPressed', 'ícono inactivo presionado'),
   ui('charcoalAccent', 'charcoal', 'ícono seleccionado y borde de Agenda'),
   ui('charcoalAccent', 'charcoalPressed', 'ícono y borde de Agenda presionado'),
+  // Enmienda de (p): opción seleccionada y borde de Agenda en cobre claro #C79A6B (charcoalAccentLight).
+  t('charcoalAccentLight', 'charcoal', 'rótulo seleccionado del menú inferior, cobre claro'),
+  ui('charcoalAccentLight', 'charcoal', 'ícono seleccionado y borde de Agenda, cobre claro'),
+  ui('charcoalAccentLight', 'charcoalPressed', 'ícono y borde de Agenda presionado, cobre claro'),
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),
   t('creamMuted', 'cream', 'gris de texto sobre la crema'),
