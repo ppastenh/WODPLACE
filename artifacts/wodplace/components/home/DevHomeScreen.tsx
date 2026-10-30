@@ -5,8 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { AppHeader } from '@/components/AppHeader';
-import { BottomNavBar } from '@/components/BottomNavBar';
-import { BottomNavBarV2, NAV_V2_ITEMS, type NavV2Key } from '@/components/BottomNavBarV2';
+import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
 import { HomeViewV2, type HomeViewV2Events } from '@/components/home/HomeViewV2';
 import {
@@ -45,15 +44,10 @@ const EVENTS_V2: HomeViewV2Events = {
 type Design = 'actual' | 'nuevo';
 type Photo = 'ok' | 'falla';
 
-// Prototipo del menú inferior nuevo (decisión (p)): solo se dibuja aquí; la barra real (BottomNavBar.tsx) no cambia.
-type Menu = 'actual' | 'nuevo';
+// Menú inferior (decisión (p)): aquí se dibuja la parte de presentación de la barra real para probar sus estados, el ancho y la letra.
 type MenuWidth = 'real' | '360' | '320';
 type MenuFont = 'sistema' | '1' | '1.1' | '1.3';
-const MENU_CHIPS: { id: Menu; label: string }[] = [
-  { id: 'actual', label: 'Menú: actual' },
-  { id: 'nuevo', label: 'Menú: nuevo' },
-];
-const MENU_SELECTED_CHIPS = NAV_V2_ITEMS.map((item) => ({ id: item.key, label: item.label }));
+const MENU_SELECTED_CHIPS = NAV_ITEMS.map((item) => ({ id: item.key, label: item.label }));
 const MENU_WIDTH_CHIPS: { id: MenuWidth; label: string }[] = [
   { id: 'real', label: 'Ancho: real' },
   { id: '360', label: 'Ancho: 360' },
@@ -146,8 +140,7 @@ function DevHomeBody({
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
   const [photo, setPhoto] = useState<Photo>('ok');
-  const [menu, setMenu] = useState<Menu>('actual');
-  const [menuSel, setMenuSel] = useState<NavV2Key>('inicio');
+  const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
   const [menuFont, setMenuFont] = useState<MenuFont>('sistema');
   const { width: screenWidth, fontScale } = useWindowDimensions();
@@ -185,7 +178,6 @@ function DevHomeBody({
           ) : (
             <>
               <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
-              <ChipGroup title="Menú inferior (prototipo)" chips={MENU_CHIPS} selected={menu} onSelect={setMenu} />
               <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
               <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />
               <ChipGroup title="Menú: letra simulada" chips={MENU_FONT_CHIPS} selected={menuFont} onSelect={setMenuFont} />
@@ -214,6 +206,18 @@ function DevHomeBody({
     />
   );
 
+  const menuNode = (
+    <View style={{ alignSelf: 'center', width: menuWidth === 'real' ? '100%' : Number(menuWidth) }}>
+      <BottomNavView
+        selected={menuSel}
+        onSelect={setMenuSel}
+        bottomInset={insets.bottom}
+        stripColor={design === 'nuevo' ? colors.cream : colors.background}
+        labelScale={menuFont === 'sistema' ? undefined : Number(menuFont)}
+      />
+    </View>
+  );
+
   if (design === 'nuevo') {
     return (
       <View style={[styles.container, { backgroundColor: colors.charcoal }]}>
@@ -222,22 +226,7 @@ function DevHomeBody({
         <StatusBar style="light" />
         <HomeViewV2 data={state} events={EVENTS_V2} photoFails={photo === 'falla'} />
         {panel}
-        {menu === 'nuevo' ? (
-          <View style={{ alignSelf: 'center', width: menuWidth === 'real' ? '100%' : Number(menuWidth) }}>
-            <BottomNavBarV2
-              selected={menuSel}
-              onSelect={setMenuSel}
-              bottomInset={insets.bottom}
-              stripColor={colors.cream}
-              labelScale={menuFont === 'sistema' ? undefined : Number(menuFont)}
-            />
-          </View>
-        ) : (
-          // Barra real, solo para comparar: sin toques (no navega desde esta pantalla).
-          <View pointerEvents="none">
-            <BottomNavBar />
-          </View>
-        )}
+        {menuNode}
         {popup}
       </View>
     );
@@ -248,6 +237,7 @@ function DevHomeBody({
       <AppHeader showBell unreadCount={state.unreadCount} onBack={() => router.back()} />
       {panel}
       <HomeView data={state} events={EVENTS} />
+      {menuNode}
       {popup}
     </View>
   );

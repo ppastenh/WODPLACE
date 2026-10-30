@@ -1,229 +1,247 @@
-import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
-import { useTheme } from '@/context/ThemeContext';
-import { SPACING } from '@/constants/spacing';
+import { RADIUS } from '@/constants/radius';
 
+/**
+ * MENÚ INFERIOR (decisión (p) de DECISIONES-DISENO.md, aprobada como diseño definitivo; aplicada a la app real por la decisión (q)).
+ * `BottomNavView` es la parte de presentación (sin enrutador: el estado llega por props, así la pantalla de desarrollo la usa para
+ * probar estados); `BottomNavBar` la conecta al enrutador y es lo que dibuja app/_layout.tsx en las cuatro pantallas principales.
+ *
+ * Geometría (dp): fila de 64 + franja de 14 por encima (OPCIÓN B: reservada dentro de la barra, transparente y sin captar toques) + la
+ * zona del sistema (insets.bottom), todo con el fondo carbón extendido hasta el borde inferior. Alto total = 14 + 64 + insets.bottom
+ * (+ hasta 2 dp con la letra a 1,1). Sin barra de acento: la opción seleccionada se distingue por el cobre claro, la negrita y
+ * accessibilityState selected. El botón de Agenda mide 52, sobresale 14 por encima de la fila y queda por encima de la franja del
+ * gesto del sistema; los cinco ítems también. Presionado SIEMPRE con color sólido (nunca opacidad).
+ */
+export type NavKey = 'inicio' | 'comunidad' | 'agenda' | 'progreso' | 'perfil';
 type NavRoute = '/home' | '/community' | '/calendar' | '/rm' | '/profile';
-type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
-type NavIcon = FeatherIconName | 'dumbbell';
 
-const NAV_ITEMS: Array<{
-  key: string;
-  label: string;
-  route: NavRoute;
-  icon: NavIcon;
-}> = [
-  { key: 'home', label: 'Home', route: '/home', icon: 'home' },
-  { key: 'community', label: 'Comunidad', route: '/community', icon: 'users' },
-  { key: 'schedule', label: 'Agendar', route: '/calendar', icon: 'calendar' },
-  { key: 'progress', label: 'Progreso', route: '/rm', icon: 'dumbbell' },
-  { key: 'profile', label: 'Perfil', route: '/profile', icon: 'user' },
+// Agenda va al Calendario y Progreso a /rm, como siempre.
+export const NAV_ITEMS: { key: NavKey; label: string; route: NavRoute }[] = [
+  { key: 'inicio', label: 'Inicio', route: '/home' },
+  { key: 'comunidad', label: 'Comunidad', route: '/community' },
+  { key: 'agenda', label: 'Agenda', route: '/calendar' },
+  { key: 'progreso', label: 'Progreso', route: '/rm' },
+  { key: 'perfil', label: 'Perfil', route: '/profile' },
 ];
 
-// `/rm` is its own nested navigator with a dedicated bottom nav, so the
-// app-wide shell is hidden while inside it — keep it out of this list.
-export const BOTTOM_NAV_ROUTES = NAV_ITEMS.filter(
-  (item) => item.route !== '/rm',
-).map((item) => item.route) as NavRoute[];
+// `/rm` es su propio navegador con una barra inferior propia (RmBottomNav), así que la barra de toda la app se oculta ahí: no va en esta lista.
+export const BOTTOM_NAV_ROUTES = NAV_ITEMS.filter((item) => item.route !== '/rm').map((item) => item.route) as NavRoute[];
+
+function normalizePath(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+}
 
 export function isBottomNavRoute(pathname: string): pathname is NavRoute {
-  const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-  return BOTTOM_NAV_ROUTES.includes(normalizedPath as NavRoute);
+  return BOTTOM_NAV_ROUTES.includes(normalizePath(pathname) as NavRoute);
 }
 
-function isSelected(route: NavRoute, pathname: string): boolean {
-  const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-  return normalizedPath === route;
+/** Cuánto sobresale el botón de Agenda por encima de la fila (franja reservada). */
+export const NAV_RAISE = 14;
+export const NAV_ROW = 64;
+const CIRCLE = 52;
+const ICON = 22;
+const LABEL_SIZE = 11;
+const LABEL_LINE = 14;
+/** Crecimiento máximo de los rótulos con la letra grande del sistema: 1,1 veces (1,0 si la barra mide menos de 340 dp). */
+const MAX_FONT_SCALE = 1.1;
+const NARROW_WIDTH = 340;
+
+type FeatherName = React.ComponentProps<typeof Feather>['name'];
+const FEATHER_ICONS: Partial<Record<NavKey, FeatherName>> = {
+  inicio: 'home',
+  comunidad: 'users',
+  agenda: 'calendar',
+  perfil: 'user',
+};
+
+/** Pesa dibujada con la misma grilla y el mismo trazo que Feather (viewBox 24, trazo 2, extremos redondeados). */
+function DumbbellIcon({ color }: { color: string }) {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24" accessible={false}>
+      <Path
+        d="M3 9v6 M6 6v12 M6 12h12 M18 6v12 M21 9v6"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
 }
 
-export function BottomNavBar() {
+function NavIcon({ item, color }: { item: NavKey; color: string }) {
+  if (item === 'progreso') return <DumbbellIcon color={color} />;
+  return <Feather name={FEATHER_ICONS[item]!} size={ICON} color={color} />;
+}
+
+export function BottomNavView({
+  selected,
+  onSelect,
+  bottomInset,
+  stripColor = 'transparent',
+  labelScale,
+}: {
+  /** Opción seleccionada (null si la ruta actual no es ninguna de las cinco). */
+  selected: NavKey | null;
+  onSelect: (key: NavKey) => void;
+  /** Zona del sistema bajo la barra (insets.bottom): el carbón se extiende hasta el borde inferior. */
+  bottomInset: number;
+  /** Color que se ve en la franja de 14 dp junto al botón: el fondo de la pantalla que hay detrás. */
+  stripColor?: string;
+  /** Solo desarrollo: simula la letra grande del sistema (por ejemplo 1,3) aunque el teléfono la tenga en normal. */
+  labelScale?: number;
+}) {
   const colors = useColors();
-  const { mode } = useTheme();
-  const pathname = usePathname();
-  const insets = useSafeAreaInsets();
-  const isWeb = Platform.OS === 'web';
-  const bottomInset = isWeb ? 34 : insets.bottom;
+  const { fontScale, width: windowWidth } = useWindowDimensions();
+  const [barWidth, setBarWidth] = useState(windowWidth);
+  const inactive = colors.charcoalMuted;
+  const accent = colors.charcoalAccentLight;
+  const [agendaPressed, setAgendaPressed] = useState(false);
+  const cap = barWidth < NARROW_WIDTH ? 1 : MAX_FONT_SCALE;
+  const scale = Math.min(labelScale ?? fontScale, cap);
+  // Con la letra grande la fila crece lo justo para que el rótulo de Agenda no toque el botón elevado.
+  const rowHeight = NAV_ROW + Math.ceil(LABEL_LINE * (scale - 1));
 
-  const handlePress = (route: NavRoute) => {
-    Haptics.selectionAsync().catch(() => {});
-    if (pathname !== route) {
-      router.replace(route);
-    }
-  };
+  // Con la letra simulada (solo desarrollo) el tamaño se calcula aquí y se apaga el escalado del sistema para no escalar dos veces.
+  const simulated = labelScale !== undefined;
+  const labelStyle = (active: boolean) => ({
+    color: active ? accent : inactive,
+    fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium',
+    fontSize: LABEL_SIZE * (simulated ? scale : 1),
+    lineHeight: LABEL_LINE * (simulated ? scale : 1),
+  });
+  const labelProps = {
+    numberOfLines: 1,
+    maxFontSizeMultiplier: cap,
+    allowFontScaling: !simulated,
+  } as const;
 
   return (
-    <View
-      style={[
-        styles.wrapper,
-        {
-          backgroundColor: colors.card,
-          borderTopColor: colors.navBorder,
-          shadowColor: colors.foreground,
-          paddingBottom: bottomInset,
-        },
-      ]}
-    >
-      <View style={styles.row}>
-        {NAV_ITEMS.map((item) => {
-          const active = isSelected(item.route, pathname);
-          const isCenter = item.key === 'schedule';
-          const itemColor = active ? colors.navActive : colors.navInactive;
-
-          if (isCenter) {
+    <View pointerEvents="box-none" accessibilityRole="tablist" style={styles.wrapper} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+      {/* Franja reservada del botón elevado: transparente y sin captar toques. */}
+      <View pointerEvents="none" style={{ height: NAV_RAISE, backgroundColor: stripColor }} />
+      <View style={{ backgroundColor: colors.charcoal, paddingBottom: bottomInset }}>
+        <View style={[styles.row, { height: rowHeight }]}>
+          {NAV_ITEMS.map((item) => {
+            const active = item.key === selected;
+            if (item.key === 'agenda') {
+              return (
+                <Pressable
+                  key={item.key}
+                  accessibilityRole="tab"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: active }}
+                  onPress={() => onSelect(item.key)}
+                  onPressIn={() => setAgendaPressed(true)}
+                  onPressOut={() => setAgendaPressed(false)}
+                  style={styles.item}
+                >
+                  <Text style={labelStyle(active)} {...labelProps}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            }
+            const color = active ? accent : inactive;
             return (
-              <View key={item.key} style={styles.item}>
+              <Pressable
+                key={item.key}
+                accessibilityRole="tab"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: active }}
+                onPress={() => onSelect(item.key)}
+                // Presionado SÓLIDO (charcoalPressed); el ítem ya seleccionado no se rellena (tocarlo no navega).
+                style={({ pressed }) => [styles.item, pressed && !active && { backgroundColor: colors.charcoalPressed }]}
+              >
                 <View style={styles.iconSlot}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Agendar"
-                    accessibilityState={{ selected: active }}
-                    onPress={() => handlePress(item.route)}
-                    style={({ pressed }) => [
-                      styles.floatingRing,
-                      { backgroundColor: colors.background },
-                      pressed && styles.pressedFloating,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.floatingButton,
-                        {
-                          backgroundColor: colors.navFloating,
-                          shadowColor: colors.navFloating,
-                        },
-                      ]}
-                    >
-                      <Feather name="calendar" size={23} color={colors.navFloatingForeground} />
-                    </View>
-                  </Pressable>
+                  <NavIcon item={item.key} color={color} />
                 </View>
-                <Text style={[styles.label, { color: itemColor }, active && styles.activeLabel]}>
+                <Text style={labelStyle(active)} {...labelProps}>
                   {item.label}
                 </Text>
-              </View>
+              </Pressable>
             );
-          }
-
-          return (
-            <Pressable
-              key={item.key}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              accessibilityState={{ selected: active }}
-              onPress={() => handlePress(item.route)}
-              style={({ pressed }) => [styles.item, pressed && styles.pressedItem]}
-            >
-              <View style={styles.iconSlot}>
-                {/* Señal de pestaña activa que no depende del color ni del peso: barra de acento sobre el ícono. SOLO en
-                    el tema oscuro (en claro no cambia nada hasta su propia ronda). */}
-                {mode === 'dark' && active ? (
-                  <View style={[styles.activeBar, { backgroundColor: colors.navActive }]} />
-                ) : null}
-                {item.icon === 'dumbbell' ? (
-                  <MaterialCommunityIcons name="dumbbell" size={22} color={itemColor} />
-                ) : (
-                  <Feather name={item.icon} size={21} color={itemColor} />
-                )}
-              </View>
-              <Text style={[styles.label, { color: itemColor }, active && styles.activeLabel]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+          })}
+        </View>
+      </View>
+      {/* Botón de Agenda: sobresale NAV_RAISE por encima de la fila, centrado. */}
+      <View
+        pointerEvents="box-none"
+        style={styles.circleLayer}
+        // El lector de pantalla anuncia la columna de Agenda (misma opción, mismo orden); el círculo solo es táctil.
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityLabel="Agenda"
+          accessibilityState={{ selected: selected === 'agenda' }}
+          onPress={() => onSelect('agenda')}
+          onPressIn={() => setAgendaPressed(true)}
+          onPressOut={() => setAgendaPressed(false)}
+          style={[
+            styles.circle,
+            {
+              backgroundColor: agendaPressed ? colors.charcoalPressed : colors.charcoal,
+              borderColor: accent,
+              borderWidth: selected === 'agenda' ? 2.5 : 1.5,
+            },
+          ]}
+        >
+          <NavIcon item="agenda" color={selected === 'agenda' ? accent : inactive} />
+        </Pressable>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  row: {
-    height: 64,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    justifyContent: 'space-around',
-  },
+  wrapper: { width: '100%' },
+  row: { flexDirection: 'row' },
   item: {
     flex: 1,
-    minWidth: 44,
     alignItems: 'center',
-    // Anchored to the bottom (not centered) with a fixed-height iconSlot
-    // above the label for every item, including the floating one: the
-    // slot's height is the same 30px whether it holds a plain 21px icon or
-    // the 64px ring (which overflows the slot via absolute positioning
-    // instead of growing it). That keeps the label's position identical
-    // across all 5 items regardless of what icon sits above it — raising
-    // these ~5px from where they'd land at dead-center of the 64px row
-    // doesn't require touching the floating item separately.
     justifyContent: 'flex-end',
-    // Fase 1 (tokens): solo paddingBottom calza exacto (SPACING.lg). Fase 2,
-    // paso 1 (2026-10-21): gap:4 ya se migró a SPACING.xs2. El shadowOffset
-    // height:4 de floatingButton (más abajo) NO se tocó: es geometría de
-    // sombra, no espaciado. El resto de esta pantalla no calza con ningún
-    // token -- ver la propuesta de Fase 2 antes de moverlo.
-    paddingBottom: SPACING.lg,
-    gap: SPACING.xs2,
+    paddingBottom: 10,
+    gap: 4,
+    borderRadius: RADIUS.lg,
   },
-  iconSlot: {
-    height: 30,
-    width: 36,
+  iconSlot: { height: 30, width: 48, alignItems: 'center', justifyContent: 'center' },
+  circleLayer: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' },
+  circle: {
+    width: CIRCLE,
+    height: CIRCLE,
+    borderRadius: CIRCLE / 2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // Barra de 3 px sobre el ícono de la pestaña activa (solo tema oscuro); absoluta, no mueve nada.
-  activeBar: {
-    position: 'absolute',
-    top: -2,
-    width: 20,
-    height: 3,
-    borderRadius: 2,
-  },
-  label: {
-    fontSize: 10,
-    lineHeight: 13,
-    fontFamily: 'Inter_500Medium',
-  },
-  activeLabel: {
-    fontFamily: 'Inter_700Bold',
-  },
-  floatingRing: {
-    position: 'absolute',
-    bottom: 0,
-    left: '50%',
-    marginLeft: -32,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  floatingButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 7,
-    elevation: 7,
-  },
-  pressedFloating: {
-    transform: [{ scale: 0.96 }],
-  },
-  pressedItem: {
-    opacity: 0.72,
   },
 });
+
+/** Barra real, conectada al enrutador. Conserva los nombres exportados de siempre (BottomNavBar, isBottomNavRoute). */
+export function BottomNavBar() {
+  const colors = useColors();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'web' ? 34 : insets.bottom;
+  const path = normalizePath(pathname);
+  const selected = NAV_ITEMS.find((item) => item.route === path)?.key ?? null;
+  // La franja de 14 dp deja ver el fondo de la pantalla: Inicio es de crema fija; las demás siguen el tema.
+  const stripColor = path === '/home' ? colors.cream : colors.background;
+
+  const handleSelect = (key: NavKey) => {
+    const item = NAV_ITEMS.find((i) => i.key === key);
+    if (!item) return;
+    Haptics.selectionAsync().catch(() => {});
+    if (path !== item.route) router.replace(item.route);
+  };
+
+  return <BottomNavView selected={selected} onSelect={handleSelect} bottomInset={bottomInset} stripColor={stripColor} />;
+}
