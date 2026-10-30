@@ -71,7 +71,6 @@ export function BottomNavBarV2({
   bottomInset,
   stripColor = 'transparent',
   labelScale,
-  inactiveColor,
 }: {
   selected: NavV2Key;
   onSelect: (key: NavV2Key) => void;
@@ -81,13 +80,11 @@ export function BottomNavBarV2({
   stripColor?: string;
   /** Solo desarrollo: simula la letra grande del sistema (por ejemplo 1,3) aunque el teléfono la tenga en normal. */
   labelScale?: number;
-  /** Solo desarrollo: gris de los íconos y rótulos inactivos (para comparar con el actual). */
-  inactiveColor?: string;
 }) {
   const colors = useColors();
   const { fontScale, width: windowWidth } = useWindowDimensions();
   const [barWidth, setBarWidth] = useState(windowWidth);
-  const inactive = inactiveColor ?? colors.charcoalMuted;
+  const inactive = colors.charcoalMuted;
   const accent = colors.charcoalAccentLight;
   const [agendaPressed, setAgendaPressed] = useState(false);
   const cap = barWidth < NARROW_WIDTH ? 1 : MAX_FONT_SCALE;

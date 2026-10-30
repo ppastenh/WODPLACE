@@ -49,9 +49,6 @@ type Photo = 'ok' | 'falla';
 type Menu = 'actual' | 'nuevo';
 type MenuWidth = 'real' | '360' | '320';
 type MenuFont = 'sistema' | '1' | '1.1' | '1.3';
-type MenuInactive = 'actual' | 'oscuro';
-// Gris inactivo más oscuro SOLO para comparar (propuesta sin aplicar): 5,96:1 sobre #0D0F10 y 4,54:1 sobre el presionado #25292D.
-const INACTIVE_DARKER = '#938F86';
 const MENU_CHIPS: { id: Menu; label: string }[] = [
   { id: 'actual', label: 'Menú: actual' },
   { id: 'nuevo', label: 'Menú: nuevo' },
@@ -67,10 +64,6 @@ const MENU_FONT_CHIPS: { id: MenuFont; label: string }[] = [
   { id: '1', label: 'Letra: 1,0' },
   { id: '1.1', label: 'Letra: 1,1' },
   { id: '1.3', label: 'Letra: 1,3' },
-];
-const MENU_INACTIVE_CHIPS: { id: MenuInactive; label: string }[] = [
-  { id: 'actual', label: 'Inactivo: actual' },
-  { id: 'oscuro', label: 'Inactivo: más oscuro' },
 ];
 
 const DESIGN_CHIPS: { id: Design; label: string }[] = [
@@ -157,7 +150,6 @@ function DevHomeBody({
   const [menuSel, setMenuSel] = useState<NavV2Key>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
   const [menuFont, setMenuFont] = useState<MenuFont>('sistema');
-  const [menuInactive, setMenuInactive] = useState<MenuInactive>('actual');
   const { width: screenWidth, fontScale } = useWindowDimensions();
   // Con el diseño actual el panel va arriba y abierto; con el nuevo va plegado al pie, para no tapar la barra superior.
   const [chipsOpen, setChipsOpen] = useState(true);
@@ -197,7 +189,6 @@ function DevHomeBody({
               <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
               <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />
               <ChipGroup title="Menú: letra simulada" chips={MENU_FONT_CHIPS} selected={menuFont} onSelect={setMenuFont} />
-              <ChipGroup title="Menú: gris de los inactivos" chips={MENU_INACTIVE_CHIPS} selected={menuInactive} onSelect={setMenuInactive} />
             </>
           )}
           {DEV_GROUPS.map((group) => (
@@ -239,7 +230,6 @@ function DevHomeBody({
               bottomInset={insets.bottom}
               stripColor={colors.cream}
               labelScale={menuFont === 'sistema' ? undefined : Number(menuFont)}
-              inactiveColor={menuInactive === 'oscuro' ? INACTIVE_DARKER : undefined}
             />
           </View>
         ) : (
