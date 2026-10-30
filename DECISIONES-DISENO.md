@@ -34,7 +34,7 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **`frase-atardecer-cobre.jpg`:** https://www.pexels.com/es-es/foto/amanecer-paisaje-montanas-naturaleza-5669667/
 - **Licencia Pexels:** uso comercial y modificación permitidos, sin atribución obligatoria.
 - **Estado:** ELEGIDAS, EN PAUSA. No se integran en la dirección actual hasta nueva orden; siguen sin seguimiento en git.
-- **ACTIVA, PROVISIONAL** (2026-10-30; ver (n)): `clase-piernas.jpg`. `frase-atardecer-cobre.jpg` sigue EN PAUSA.
+- **ACTIVA** (2026-10-30; ver (o)): `home-banner-anillo.jpg` (Leon Mart, Pexels; sin tratamiento: la foto ya es oscura y cálida). Reemplazó a `clase-piernas.jpg` (era provisional, ver (n); eliminada del proyecto, queda en el historial de git). `frase-atardecer-cobre.jpg` sigue EN PAUSA.
 
 ## (f) Lema "Train · Connect · Evolve"
 
@@ -79,4 +79,10 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 
 - **Fecha:** 2026-10-30
 - **Decisión:** "Foto del banner: se usa el recorte a todo el ancho (cover); la foto actual (clase-piernas.jpg) es PROVISIONAL y se cambiará; la nueva se mide en contraste antes de activarla."
+- **Estado:** CUMPLIDA Y REEMPLAZADA por (o) (2026-10-30): la foto provisional se cambió por `home-banner-anillo.jpg`; la regla de medir el contraste antes de activar sigue vigente.
+
+## (o) Foto del banner elegida
+
+- **Fecha:** 2026-10-30
+- **Decisión:** "Foto del banner: elegida la foto de Leon Mart (Pexels, anillo de gimnasia de madera con correa negra, poca luz) como home-banner-anillo.jpg, recorte a todo el ancho, 192 dp de alto; reemplaza a clase-piernas.jpg; las ilustraciones de línea (discos y barra) y las otras candidatas quedan descartadas por ahora; la foto se puede cambiar midiendo el contraste antes."
 - **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
