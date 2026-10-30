@@ -145,7 +145,7 @@ const darkColors = {
   cream: "#F2E9DB",
   creamMuted: "#665F55",
   glassBackground: "rgba(0,0,0,0.6)",
-  glassBorder: "rgba(255,255,255,0.14)",
+  glassBorder: "rgba(185,130,80,0.5)",
   // Presionados de relleno de color en la paleta oscura: cobre presionado y verde oscuro presionado.
   accentPressed: "#B38B60",
   successBackgroundPressed: "#1C3B28",

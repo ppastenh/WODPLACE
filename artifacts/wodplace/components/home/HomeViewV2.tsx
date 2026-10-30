@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,11 +52,28 @@ const PHOTO = require('@/assets/images/home/clase-piernas.jpg');
 const TOP_BAR_H = 48;
 const BAR_BUTTON = 48;
 /**
- * Alto del banner (foto + velo), medido BAJO la barra superior; fijo, no depende del ancho ni del alto de la pantalla. Antes eran 184
- * (que incluían la barra); +10 % = 202. Con la tarjeta de vidrio (74), el aire hasta la crema (12) y lo que la crema sube sobre el
- * banner (32) quedan 202 - 44 - 74 = 84 dp de foto sobre la tarjeta.
+ * Alto del banner (foto + velo), medido BAJO la barra superior; fijo, no depende del ancho ni del alto de la pantalla. 202 -5 % = 192.
+ * Con la tarjeta de vidrio (74), el aire hasta la crema (12) y lo que la crema sube sobre el banner (32) quedan 192 - 44 - 74 = 74 dp de
+ * foto sobre la tarjeta.
  */
-const BANNER_H = 202;
+const BANNER_H = 192;
+
+/** Foto ENTERA (contain) a lo alto del banner: 1080 x 692 escalada a BANNER_H de alto mide unos 300 dp de ancho. */
+const PHOTO_W_AT_BANNER = (1080 / 692) * BANNER_H;
+/** Cuánto de la foto, hacia adentro, se desvanece hacia el carbón en cada costado (la banda de carbón sobrante va aparte). */
+const SIDE_FADE = 28;
+
+/**
+ * MARCADOR del logo del box: mientras no exista el logo definitivo, el recuadro de cobre de la tarjeta (avatar con la inicial) se
+ * dibuja con el cobre al 70 % de opacidad (B3 en hex). CUANDO SE AGREGUE EL LOGO DEFINITIVO DEL BOX, ESTE RECUADRO SERÁ SÓLIDO: se
+ * borra esta constante y el fondo vuelve a ser colors.navActive. Es una opacidad fija de un elemento decorativo (no es un estado
+ * presionado). La letra es blanca porque carbón o crema sobre el cobre al 70 % bajan de 4,5:1.
+ */
+const LOGO_MARKER_ALPHA = 'B3';
+
+/** Anillos del halo de cobre de la tarjeta de vidrio, de adentro hacia afuera: [alfa en hex]. Cada anillo mide GLOW_STEP dp. */
+const GLOW_RINGS = ['38', '1C', '0D'] as const;
+const GLOW_STEP = 3;
 
 // scrollContent has 20px horizontal padding each side; the pinned aviso
 // card itself has 16px padding each side (see pinnedAvisoCard).
@@ -93,15 +110,18 @@ export function HomeViewV2({
   data,
   events,
   photoFails = false,
+  photoMode = 'entera',
 }: {
   data: HomeViewV2Data;
   events: HomeViewV2Events;
   /** Solo para la pantalla de desarrollo: simula que la foto no carga (se ve el color base). */
   photoFails?: boolean;
+  /** 'entera': la foto completa a lo alto del banner, con desvanecido a carbón en los costados. 'recorte': cover con foco 50 % / 70 %. */
+  photoMode?: 'recorte' | 'entera';
 }) {
   return (
     <ThemeOverride mode="light">
-      <HomeViewV2Inner data={data} events={events} photoFails={photoFails} />
+      <HomeViewV2Inner data={data} events={events} photoFails={photoFails} photoMode={photoMode} />
     </ThemeOverride>
   );
 }
@@ -133,8 +153,19 @@ function BarButton({
   );
 }
 
-function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; events: HomeViewV2Events; photoFails: boolean }) {
+function HomeViewV2Inner({
+  data,
+  events,
+  photoFails,
+  photoMode,
+}: {
+  data: HomeViewV2Data;
+  events: HomeViewV2Events;
+  photoFails: boolean;
+  photoMode: 'recorte' | 'entera';
+}) {
   const colors = useColors();
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [photoError, setPhotoError] = useState(false);
   const {
@@ -173,6 +204,10 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   } as const;
+  // Banda de carbón que sobra a cada lado cuando la foto va entera (0 si la pantalla es más angosta que la foto).
+  const sideBand = Math.max(0, (screenWidth - PHOTO_W_AT_BANNER) / 2);
+  const fadeWidth = sideBand + SIDE_FADE;
+  const solidShare = fadeWidth > 0 ? sideBand / fadeWidth : 0;
   const firstName = getFirstName(user.name);
   const glassLabel = myBox ? `${myBox.name}. Hola, ${firstName}` : `Hola, ${firstName}`;
 
@@ -195,14 +230,35 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
               <Image
                 source={PHOTO}
                 style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                // Foco: 50 % horizontal (el disco está al centro) y 75 % vertical: con el banner de 202 dp se recorta algo más por ARRIBA
-                // que por abajo y SIEMPRE se ve el disco completo (desde la fila 130 de la foto) y casi toda la barra, en 320, 360 y 412 dp.
-                // Cover: sin estirar ni deformar.
-                contentPosition={{ left: '50%', top: '75%' }}
+                // 'entera': contain, la foto completa (100 %) a lo alto del banner. 'recorte': cover con foco 50 % horizontal (el disco
+                // está al centro) y 70 % vertical, que deja ver el disco desde su borde superior (fila 130) en 320, 360 y 412 dp; muestra
+                // el 94 %, 83 % y 73 % de la foto. Nunca se estira ni se deforma.
+                contentFit={photoMode === 'entera' ? 'contain' : 'cover'}
+                contentPosition={photoMode === 'entera' ? { left: '50%', top: '50%' } : { left: '50%', top: '70%' }}
                 transition={300}
                 onError={() => setPhotoError(true)}
               />
+              {photoMode === 'entera' ? (
+                <>
+                  {/* Desvanecido hacia el carbón en los costados: sin franja a la vista. */}
+                  <LinearGradient
+                    colors={[colors.charcoal, colors.charcoal, `${colors.charcoal}00`]}
+                    locations={[0, solidShare, 1]}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: fadeWidth }}
+                    pointerEvents="none"
+                  />
+                  <LinearGradient
+                    colors={[`${colors.charcoal}00`, colors.charcoal, colors.charcoal]}
+                    locations={[0, 1 - solidShare, 1]}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: fadeWidth }}
+                    pointerEvents="none"
+                  />
+                </>
+              ) : null}
             </View>
           ) : null}
           {/* Velo oscuro (carbón al 55 % arriba y abajo, 40 % al centro: el mínimo en la zona de la tarjeta es 40 %). */}
@@ -212,17 +268,40 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
             pointerEvents="none"
           />
           {/* Tarjeta de vidrio: solo informativa (sin flecha ni toque), se lee como un solo grupo. */}
-          <View
-            accessible
-            accessibilityRole="text"
-            accessibilityLabel={glassLabel}
-            style={[styles.glassCard, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
-          >
-            <View style={[styles.glassAvatar, { backgroundColor: colors.navActive }]} importantForAccessibility="no-hide-descendants">
+          <View style={styles.glassWrap}>
+            {/* Halo de cobre: anillos concéntricos de baja opacidad, SIN desenfoque real; el interior de la tarjeta no se tiñe. */}
+            {GLOW_RINGS.map((alpha, i) => (
+              <View
+                key={alpha}
+                pointerEvents="none"
+                accessible={false}
+                importantForAccessibility="no-hide-descendants"
+                style={{
+                  position: 'absolute',
+                  top: -GLOW_STEP * (i + 1),
+                  bottom: -GLOW_STEP * (i + 1),
+                  left: -GLOW_STEP * (i + 1),
+                  right: -GLOW_STEP * (i + 1),
+                  borderRadius: RADIUS.xl + GLOW_STEP * (i + 1),
+                  borderWidth: GLOW_STEP,
+                  borderColor: `${colors.navActive}${alpha}`,
+                }}
+              />
+            ))}
+            <View
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={glassLabel}
+              style={[styles.glassCard, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
+            >
+            <View
+              style={[styles.glassAvatar, { backgroundColor: `${colors.navActive}${LOGO_MARKER_ALPHA}` }]}
+              importantForAccessibility="no-hide-descendants"
+            >
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
               ) : (
-                <Text style={[styles.glassAvatarText, { color: colors.charcoal }]} maxFontSizeMultiplier={1.3}>
+                <Text style={[styles.glassAvatarText, { color: colors.primaryForeground }]} maxFontSizeMultiplier={1.3}>
                   {(firstName[0] ?? '?').toUpperCase()}
                 </Text>
               )}
@@ -236,6 +315,7 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
               <Text style={[styles.glassHello, { color: colors.cream }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                 Hola, {firstName}
               </Text>
+            </View>
             </View>
           </View>
         </View>
@@ -766,11 +846,8 @@ const styles = StyleSheet.create({
   barButton: { width: BAR_BUTTON, height: BAR_BUTTON, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center' },
   bellDot: { position: 'absolute', top: 9, right: 9, width: 11, height: 11, borderRadius: RADIUS.full, borderWidth: 2 },
   banner: { overflow: 'hidden' },
+  glassWrap: { position: 'absolute', left: SPACING.lg, right: SPACING.lg, bottom: RADIUS.xxl + SPACING.lg },
   glassCard: {
-    position: 'absolute',
-    left: SPACING.lg,
-    right: SPACING.lg,
-    bottom: RADIUS.xxl + SPACING.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,

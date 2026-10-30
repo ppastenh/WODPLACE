@@ -148,7 +148,7 @@ const colors = {
     creamMuted: '#665F55',
     // Tarjeta de "vidrio" sobre la foto: negro al 60 % (sin desenfoque real) y borde blanco muy sutil.
     glassBackground: 'rgba(0,0,0,0.6)',
-    glassBorder: 'rgba(255,255,255,0.14)',
+    glassBorder: 'rgba(185,130,80,0.5)',
     // Estados presionados SÓLIDOS de las tarjetas de relleno de color (WOD de hoy y PR destacado).
     accentPressed: '#E4CB93',
     successBackgroundPressed: '#D3EDDB',

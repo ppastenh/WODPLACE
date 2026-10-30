@@ -184,8 +184,12 @@ export const PAIRS_LIGHT: Pair[] = [
   // Peor caso con el banner de 202 dp (foco 50 % / 75 %), medido sobre la foto real con System.Drawing en anchos de 320, 360 y 412 dp, con el
   // velo mínimo (40 %) y el vidrio al 60 %: el gris sRGB del fondo más claro bajo la tarjeta (el más desfavorable de los tres anchos).
   // La barra superior ya NO va sobre la foto: es carbón sólido (pares cream/charcoal y cream/charcoalPressed de arriba).
-  t('cream', '#3A3A3A', 'tarjeta de vidrio con el banner de 202 dp, peor caso de los tres anchos'),
-  t('charcoal', 'navActive', 'inicial del avatar en carbón sobre cobre'),
+  t('cream', '#3A3A3A', 'tarjeta de vidrio con el banner de 192 dp, foto entera o recortada: peor caso de los tres anchos'),
+  // Borde de cobre al 50 % de la tarjeta de vidrio sobre ese peor fondo (el texto queda a 10 dp del borde; el halo va FUERA de la tarjeta).
+  { ...t('cream', '#3A3A3A', 'texto crema junto al borde de cobre al 50 %, peor caso'), bgLiteral: { hex: '#B98250', over: '#3A3A3A', alpha: 0.5 } },
+  // Recuadro de cobre al 70 % (marcador del logo del box) con letra blanca: base más clara bajo el recuadro (gris 49 medido) y base casi negra.
+  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 70 %, base más clara bajo el recuadro'), bgLiteral: { hex: '#B98250', over: '#313131', alpha: 0.7 } },
+  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 70 %, base casi negra'), bgLiteral: { hex: '#B98250', over: '#020202', alpha: 0.7 } },
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),
   t('creamMuted', 'cream', 'gris de texto sobre la crema'),
