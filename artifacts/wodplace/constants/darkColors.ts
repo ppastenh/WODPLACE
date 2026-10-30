@@ -142,6 +142,9 @@ const darkColors = {
   // Los colores propios del diseño (carbón, crema, vidrio) valen LO MISMO en las dos paletas: ese diseño es de claro fijo.
   charcoal: "#0D0F10",
   charcoalPressed: "#25292D",
+  // Menú inferior nuevo (decisión (p)): fijos sobre carbón, valen lo mismo que en la paleta clara.
+  charcoalMuted: "#A29E94",
+  charcoalAccent: "#B98250",
   cream: "#F2E9DB",
   creamMuted: "#665F55",
   glassBackground: "rgba(0,0,0,0.6)",

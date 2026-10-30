@@ -142,6 +142,10 @@ const colors = {
     // Barra superior y fondo oscuro del banner (carbón) y su estado presionado SÓLIDO.
     charcoal: '#0D0F10',
     charcoalPressed: '#25292D',
+    // Menú inferior nuevo (decisión (p)), fijo sobre carbón: gris claro de íconos y rótulos inactivos (7,19:1 sobre carbón, 5,48:1 sobre
+    // charcoalPressed) y cobre de la opción seleccionada y del borde de Agenda (5,83:1 sobre carbón, 4,44:1 sobre charcoalPressed).
+    charcoalMuted: '#A29E94',
+    charcoalAccent: '#B98250',
     // Crema: superficie de contenido y texto/íconos sobre carbón o sobre el vidrio.
     cream: '#F2E9DB',
     // Gris de texto sobre crema, tarjetas blancas y rellenos de tarjeta (#706B63 da 4,39:1 sobre crema y #8C8574 3,05:1).

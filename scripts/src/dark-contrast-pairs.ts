@@ -193,6 +193,15 @@ export const PAIRS_LIGHT: Pair[] = [
   // la madera del aro, gris 229 sin velo -> 57 con velo 40 % y vidrio 60 %; se usa 58 para cubrir ambos recortes de la foto) y base casi negra.
   { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 60 %, base más clara bajo el recuadro'), bgLiteral: { hex: '#B98250', over: '#3A3A3A', alpha: 0.6 } },
   { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 60 %, base casi negra'), bgLiteral: { hex: '#B98250', over: '#020202', alpha: 0.6 } },
+  // Menú inferior nuevo (decisión (p)): carbón fijo con rótulos de 11 sp (texto, 4,5:1) e íconos y borde de Agenda (3:1). El ítem YA seleccionado
+  // no se rellena al presionarlo (tocarlo no navega), así que no hay par cobre sobre charcoalPressed para el texto: ahí el cobre da 4,44:1.
+  t('charcoalMuted', 'charcoal', 'rótulo inactivo del menú inferior'),
+  t('charcoalMuted', 'charcoalPressed', 'rótulo inactivo presionado'),
+  t('charcoalAccent', 'charcoal', 'rótulo seleccionado del menú inferior'),
+  ui('charcoalMuted', 'charcoal', 'ícono inactivo del menú inferior'),
+  ui('charcoalMuted', 'charcoalPressed', 'ícono inactivo presionado'),
+  ui('charcoalAccent', 'charcoal', 'ícono seleccionado y borde de Agenda'),
+  ui('charcoalAccent', 'charcoalPressed', 'ícono y borde de Agenda presionado'),
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),
   t('creamMuted', 'cream', 'gris de texto sobre la crema'),
