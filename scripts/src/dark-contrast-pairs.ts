@@ -189,9 +189,10 @@ export const PAIRS_LIGHT: Pair[] = [
   t('cream', '#3A3A3A', 'tarjeta de vidrio con el banner de 192 dp, foto entera o recortada: peor caso de los tres anchos'),
   // Borde de cobre al 50 % de la tarjeta de vidrio sobre ese peor fondo (el texto queda a 10 dp del borde; el halo va FUERA de la tarjeta).
   { ...t('cream', '#3A3A3A', 'texto crema junto al borde de cobre al 50 %, peor caso'), bgLiteral: { hex: '#B98250', over: '#3A3A3A', alpha: 0.5 } },
-  // Recuadro de cobre al 70 % (marcador del logo del box) con letra blanca: base más clara bajo el recuadro (gris 49 medido) y base casi negra.
-  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 70 %, base más clara bajo el recuadro'), bgLiteral: { hex: '#B98250', over: '#313131', alpha: 0.7 } },
-  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 70 %, base casi negra'), bgLiteral: { hex: '#B98250', over: '#020202', alpha: 0.7 } },
+  // Recuadro de cobre al 60 % (marcador del logo del box, LOGO_MARKER_ALPHA = 99) con letra blanca: base más clara bajo el recuadro (peor caso:
+  // la madera del aro, gris 229 sin velo -> 57 con velo 40 % y vidrio 60 %; se usa 58 para cubrir ambos recortes de la foto) y base casi negra.
+  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 60 %, base más clara bajo el recuadro'), bgLiteral: { hex: '#B98250', over: '#3A3A3A', alpha: 0.6 } },
+  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 60 %, base casi negra'), bgLiteral: { hex: '#B98250', over: '#020202', alpha: 0.6 } },
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),
   t('creamMuted', 'cream', 'gris de texto sobre la crema'),

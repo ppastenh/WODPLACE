@@ -69,12 +69,16 @@ const BAR_BUTTON = 48;
 const BANNER_H = 192;
 
 /**
- * MARCADOR del logo del box: mientras no exista el logo definitivo, el recuadro de cobre de la tarjeta (avatar con la inicial) se
- * dibuja con el cobre al 70 % de opacidad (B3 en hex). CUANDO SE AGREGUE EL LOGO DEFINITIVO DEL BOX, ESTE RECUADRO SERÁ SÓLIDO: se
- * borra esta constante y el fondo vuelve a ser colors.navActive. Es una opacidad fija de un elemento decorativo (no es un estado
- * presionado). La letra es blanca porque carbón o crema sobre el cobre al 70 % bajan de 4,5:1.
+ * MARCADOR del logo del box: transparente hasta que se agregue el logo definitivo, que será SÓLIDO. Mientras tanto, el recuadro de
+ * cobre de la tarjeta (avatar con la inicial) se dibuja con el cobre al 60 % de opacidad (99 en hex). CUANDO SE AGREGUE EL LOGO
+ * DEFINITIVO DEL BOX, ESTE RECUADRO SERÁ SÓLIDO: se borra esta constante y el fondo vuelve a ser colors.navActive. Es una opacidad fija
+ * de un elemento decorativo (no es un estado presionado). La letra es blanca porque carbón o crema sobre el cobre bajan de 4,5:1.
+ * Valor elegido por el contraste de la letra blanca: 5,31:1 en el peor caso a 320 dp (velo 40 %, vidrio 60 %, foto más clara bajo el
+ * recuadro). Valores probados (320 / 360 / 412 dp): 0,80 = 4,15 / 4,15 / 4,72; 0,75 = 4,41 / 4,41 / 5,19; 0,70 = 4,69 / 4,69 / 5,72;
+ * 0,65 = 4,99 / 4,99 / 6,32; 0,60 = 5,31 / 5,31 / 6,99; 0,55 = 5,66 / 5,66 / 7,74; 0,50 = 6,03 / 6,03 / 8,58. Más opacidad ACLARA el
+ * recuadro y baja el contraste de la letra blanca.
  */
-const LOGO_MARKER_ALPHA = 'B3';
+const LOGO_MARKER_ALPHA = '99';
 
 /** Anillos del halo de cobre de la tarjeta de vidrio, de adentro hacia afuera: [alfa en hex]. Cada anillo mide GLOW_STEP dp. */
 const GLOW_RINGS = ['38', '1C', '0D'] as const;
