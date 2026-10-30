@@ -27,7 +27,7 @@ import { RADIUS } from '@/constants/radius';
  *
  *  - Barra superior de carbón SÓLIDO (menú a la izquierda, logo WODPLACE en Anton, campana con punto cobre), fija arriba y siempre
  *    sólida; cubre también la zona de la barra de estado. El banner empieza justo debajo de ella (decisión (l)).
- *  - Banner con la foto clase-piernas.jpg (decorativa), velo oscuro y una tarjeta de vidrio informativa (sin toque) con avatar,
+ *  - Banner con la foto home-banner-anillo.jpg (decorativa), velo oscuro y una tarjeta de vidrio informativa (sin toque) con avatar,
  *    nombre del box y saludo. SIN desenfoque real: negro al 60 % con borde blanco muy sutil.
  *  - Superficie crema con esquinas superiores redondeadas con el contenido de Inicio, sin cambiar su contenido ni su lógica.
  */
@@ -47,14 +47,15 @@ const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
 };
 
 /**
- * FOTO PROVISIONAL del banner (decisión (n) de DECISIONES-DISENO.md): clase-piernas.jpg se cambiará. Esta es la ÚNICA constante que
- * decide la foto: cuando haya otra solo cambian el require y el foco; el alto del banner, el velo, la tarjeta de vidrio, el halo y la
- * crema no dependen de ella. Siempre cover a todo el ancho (foco 50 % horizontal y 70 % vertical). Procedimiento para cambiarla y para
- * medir el contraste antes de activarla: CREDITOS-IMAGENES.md.
+ * FOTO del banner (decisión (o) de DECISIONES-DISENO.md): home-banner-anillo.jpg, de Leon Mart (Pexels; créditos en CREDITOS-IMAGENES.md).
+ * Esta es la ÚNICA constante que decide la foto: cuando haya otra solo cambian el require y el foco; el alto del banner, el velo, la
+ * tarjeta de vidrio, el halo y la crema no dependen de ella. Siempre cover a todo el ancho (foco 50 % horizontal y 0 % vertical: arriba
+ * queda completo el aro y lo que se recorta en pantallas anchas es la parte baja, que tapa la crema). Procedimiento para cambiarla y
+ * para medir el contraste antes de activarla: CREDITOS-IMAGENES.md.
  */
 const BANNER_PHOTO = {
-  source: require('@/assets/images/home/clase-piernas.jpg'),
-  focus: { left: '50%', top: '70%' },
+  source: require('@/assets/images/home/home-banner-anillo.jpg'),
+  focus: { left: '50%', top: '0%' },
 } as const;
 
 /** Alto de la barra sin la zona de la barra de estado; los botones miden 48 (mínimo táctil: 44). */

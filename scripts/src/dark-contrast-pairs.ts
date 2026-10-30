@@ -170,6 +170,8 @@ export const PAIRS: Pair[] = [
  * Pares del diseño nuevo de Inicio (decisión (k)), medidos contra la paleta CLARA, porque ese diseño es de claro fijo.
  * El punto más claro de la foto real clase-piernas.jpg mide luminancia 0,83 (gris sRGB 235, #EBEBEB), medido con System.Drawing
  * sobre los 747.360 píxeles; el vidrio es negro al 60 % y se mezcla en sRGB, como hace React Native.
+ * La foto activa hoy (home-banner-anillo.jpg, decisión (o)) mide gris 239 como máximo bajo la tarjeta SIN velo y 58 con velo 40 % y vidrio
+ * (crema 9,43:1 a 9,63:1 según el ancho): la diferencia con el #EBEBEB (235) del par sin velo es de 4 niveles de gris y no cambia el resultado (crema 5,3:1 con el vidrio, sobre el mínimo de 4,5:1).
  */
 export const PAIRS_LIGHT: Pair[] = [
   // Barra superior
