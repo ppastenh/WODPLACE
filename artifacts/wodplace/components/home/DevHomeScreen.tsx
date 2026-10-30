@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { AppHeader } from '@/components/AppHeader';
+import { BottomNavBar } from '@/components/BottomNavBar';
+import { BottomNavBarV2, NAV_V2_ITEMS, type NavV2Key } from '@/components/BottomNavBarV2';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
 import { HomeViewV2, type HomeViewV2Events } from '@/components/home/HomeViewV2';
 import {
@@ -42,6 +44,25 @@ const EVENTS_V2: HomeViewV2Events = {
 
 type Design = 'actual' | 'nuevo';
 type Photo = 'ok' | 'falla';
+
+// Prototipo del menú inferior nuevo (decisión (p)): solo se dibuja aquí; la barra real (BottomNavBar.tsx) no cambia.
+type Menu = 'actual' | 'nuevo';
+type MenuWidth = 'real' | '360' | '320';
+type MenuFont = '1' | '1.3';
+const MENU_CHIPS: { id: Menu; label: string }[] = [
+  { id: 'actual', label: 'Menú: actual' },
+  { id: 'nuevo', label: 'Menú: nuevo' },
+];
+const MENU_SELECTED_CHIPS = NAV_V2_ITEMS.map((item) => ({ id: item.key, label: item.label }));
+const MENU_WIDTH_CHIPS: { id: MenuWidth; label: string }[] = [
+  { id: 'real', label: 'Ancho: real' },
+  { id: '360', label: 'Ancho: 360' },
+  { id: '320', label: 'Ancho: 320' },
+];
+const MENU_FONT_CHIPS: { id: MenuFont; label: string }[] = [
+  { id: '1', label: 'Letra: normal' },
+  { id: '1.3', label: 'Letra: máxima (1,3)' },
+];
 
 const DESIGN_CHIPS: { id: Design; label: string }[] = [
   { id: 'actual', label: 'Diseño: actual' },
@@ -123,6 +144,11 @@ function DevHomeBody({
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
   const [photo, setPhoto] = useState<Photo>('ok');
+  const [menu, setMenu] = useState<Menu>('actual');
+  const [menuSel, setMenuSel] = useState<NavV2Key>('inicio');
+  const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
+  const [menuFont, setMenuFont] = useState<MenuFont>('1');
+  const { width: screenWidth, fontScale } = useWindowDimensions();
   // Con el diseño actual el panel va arriba y abierto; con el nuevo va plegado al pie, para no tapar la barra superior.
   const [chipsOpen, setChipsOpen] = useState(true);
   const state = useMemo(() => buildDevState(selection), [selection]);
@@ -136,7 +162,7 @@ function DevHomeBody({
     <View
       style={[
         styles.panel,
-        design === 'actual' ? { borderBottomWidth: 1 } : { borderTopWidth: 1, paddingBottom: insets.bottom },
+        design === 'actual' ? { borderBottomWidth: 1 } : { borderTopWidth: 1 },
         { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
@@ -146,13 +172,22 @@ function DevHomeBody({
         </Text>
         <Text style={[styles.panelToggle, { color: colors.accentForeground }]}>{chipsOpen ? 'Ocultar' : 'Mostrar'}</Text>
       </Pressable>
+      <Text style={[styles.insetsLine, { color: colors.navInactive }]}>
+        insets.bottom: {insets.bottom.toFixed(1)} dp · ancho: {Math.round(screenWidth)} dp · letra del sistema: ×{fontScale.toFixed(2)}
+      </Text>
       {chipsOpen ? (
         <ScrollView style={styles.chipsScroll} nestedScrollEnabled>
           <ChipGroup title="Diseño de Inicio" chips={DESIGN_CHIPS} selected={design} onSelect={changeDesign} />
           {design === 'actual' ? (
             <ChipGroup title="Tema (solo esta pantalla)" chips={THEME_CHIPS} selected={themeMode} onSelect={onThemeMode} />
           ) : (
-            <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
+            <>
+              <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
+              <ChipGroup title="Menú inferior (prototipo)" chips={MENU_CHIPS} selected={menu} onSelect={setMenu} />
+              <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
+              <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />
+              <ChipGroup title="Menú: letra simulada" chips={MENU_FONT_CHIPS} selected={menuFont} onSelect={setMenuFont} />
+            </>
           )}
           {DEV_GROUPS.map((group) => (
             <ChipGroup
@@ -185,6 +220,22 @@ function DevHomeBody({
         <StatusBar style="light" />
         <HomeViewV2 data={state} events={EVENTS_V2} photoFails={photo === 'falla'} />
         {panel}
+        {menu === 'nuevo' ? (
+          <View style={{ alignSelf: 'center', width: menuWidth === 'real' ? '100%' : Number(menuWidth) }}>
+            <BottomNavBarV2
+              selected={menuSel}
+              onSelect={setMenuSel}
+              bottomInset={insets.bottom}
+              stripColor={colors.cream}
+              labelScale={menuFont === '1.3' ? 1.3 : undefined}
+            />
+          </View>
+        ) : (
+          // Barra real, solo para comparar: sin toques (no navega desde esta pantalla).
+          <View pointerEvents="none">
+            <BottomNavBar />
+          </View>
+        )}
         {popup}
       </View>
     );
@@ -213,6 +264,7 @@ const styles = StyleSheet.create({
   panelTitle: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_700Bold', flex: 1 },
   panelToggle: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_700Bold' },
   chipsScroll: { maxHeight: 210 },
+  insetsLine: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_600SemiBold', paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
   group: { paddingBottom: SPACING.sm },
   groupTitle: {
     fontSize: FONT_SIZE.xs,
