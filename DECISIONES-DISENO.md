@@ -34,7 +34,7 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **`frase-atardecer-cobre.jpg`:** https://www.pexels.com/es-es/foto/amanecer-paisaje-montanas-naturaleza-5669667/
 - **Licencia Pexels:** uso comercial y modificación permitidos, sin atribución obligatoria.
 - **Estado:** ELEGIDAS, EN PAUSA. No se integran en la dirección actual hasta nueva orden; siguen sin seguimiento en git.
-- **ACTIVA en (k)** (2026-10-30): `clase-piernas.jpg`. `frase-atardecer-cobre.jpg` sigue EN PAUSA.
+- **ACTIVA, PROVISIONAL** (2026-10-30; ver (n)): `clase-piernas.jpg`. `frase-atardecer-cobre.jpg` sigue EN PAUSA.
 
 ## (f) Lema "Train · Connect · Evolve"
 
@@ -73,4 +73,10 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 
 - **Fecha:** 2026-10-30
 - **Decisión:** "Detalles del banner de Inicio: el alto baja un 5 % (de 202 a unos 192 dp); el borde de la tarjeta de vidrio es de cobre difuminado; el recuadro de cobre de la tarjeta (marcador del logo del box) es un poco transparente hasta que se agregue el logo definitivo, que será sólido; la foto se muestra con menos zoom."
+- **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
+
+## (n) Foto del banner
+
+- **Fecha:** 2026-10-30
+- **Decisión:** "Foto del banner: se usa el recorte a todo el ancho (cover); la foto actual (clase-piernas.jpg) es PROVISIONAL y se cambiará; la nueva se mide en contraste antes de activarla."
 - **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
