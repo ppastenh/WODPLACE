@@ -7,7 +7,7 @@ Imágenes de terceros usadas en la app, con su origen y licencia.
 - **Uso:** banner del diseño nuevo de Inicio (decisión (k) de `DECISIONES-DISENO.md`; foto elegida en la decisión (o)), con velo oscuro. Hoy solo en la pantalla de desarrollo "Estados de Inicio (dev)".
 - **Foto:** "Primer plano de un anillo de gimnasia de madera colgando en un gimnasio interior con poca luz" (título de la página: "Anillo de color latón con correa negra").
 - **Autor:** Leon Mart, https://www.pexels.com/es-es/@leonmart/
-- **Página de origen:** https://www.pexels.com/es-es/foto/anillo-de-color-laton-con-correa-negra-1552251/ (foto del 2018-10-31; datos de la página tomados por Pía).
+- **Página de origen:** https://www.pexels.com/es-es/foto/anillo-de-color-laton-con-correa-negra-1552251/ (foto tomada el 2018-10-26 y publicada el 2018-10-31; datos verificados en la página de Pexels el 2026-10-30: autor, licencia gratuita de Pexels, dimensiones y fecha).
 - **Licencia:** licencia gratuita de Pexels, https://www.pexels.com/es-es/license/ (uso comercial y modificación permitidos; no exige atribución).
 - **Fecha de consulta:** 2026-10-30.
 - **Original:** 4288 × 2848 px (3:2).
