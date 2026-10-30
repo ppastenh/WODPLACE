@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Animated, Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,8 +25,8 @@ import { RADIUS } from '@/constants/radius';
  * pantalla de desarrollo "Estados de Inicio (dev)". Cuando Pía apruebe el diseño, esto reemplaza a HomeView en un solo commit.
  * Es de CLARO FIJO (no sigue el tema) y no toca ni HomeView ni home.tsx.
  *
- *  - Barra superior de carbón (menú a la izquierda, logo WODPLACE en Anton, campana con punto cobre), integrada con la foto con
- *    un degradado; al bajar, la barra se vuelve carbón sólido antes de que la crema llegue a ella.
+ *  - Barra superior de carbón SÓLIDO (menú a la izquierda, logo WODPLACE en Anton, campana con punto cobre), fija arriba y siempre
+ *    sólida; cubre también la zona de la barra de estado. El banner empieza justo debajo de ella (decisión (l)).
  *  - Banner con la foto clase-piernas.jpg (decorativa), velo oscuro y una tarjeta de vidrio informativa (sin toque) con avatar,
  *    nombre del box y saludo. SIN desenfoque real: negro al 60 % con borde blanco muy sutil.
  *  - Superficie crema con esquinas superiores redondeadas con el contenido de Inicio, sin cambiar su contenido ni su lógica.
@@ -52,11 +52,11 @@ const PHOTO = require('@/assets/images/home/clase-piernas.jpg');
 const TOP_BAR_H = 48;
 const BAR_BUTTON = 48;
 /**
- * Alto del banner SIN la zona de la barra de estado (el total es BANNER_H + insets.top; fijo, no depende del ancho ni del alto de
- * la pantalla). Era 300; el mínimo cómodo es 48 (barra) + 18 (foto visible entre la barra y la tarjeta) + 74 (tarjeta de vidrio:
- * 52 de avatar + 2 x 10 de relleno + 2 de borde) + 12 (aire hasta la crema) + 32 (lo que la crema sube sobre el banner) = 184.
+ * Alto del banner (foto + velo), medido BAJO la barra superior; fijo, no depende del ancho ni del alto de la pantalla. Antes eran 184
+ * (que incluían la barra); +10 % = 202. Con la tarjeta de vidrio (74), el aire hasta la crema (12) y lo que la crema sube sobre el
+ * banner (32) quedan 202 - 44 - 74 = 84 dp de foto sobre la tarjeta.
  */
-const BANNER_H = 184;
+const BANNER_H = 202;
 
 // scrollContent has 20px horizontal padding each side; the pinned aviso
 // card itself has 16px padding each side (see pinnedAvisoCard).
@@ -136,7 +136,6 @@ function BarButton({
 function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; events: HomeViewV2Events; photoFails: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const scrollY = useRef(new Animated.Value(0)).current;
   const [photoError, setPhotoError] = useState(false);
   const {
     user,
@@ -162,15 +161,8 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
   } = data;
   const monthly = monthlyCardParts(planView);
   const showPhoto = !photoFails && !photoError;
+  // La barra fija (carbón sólido) mide la zona de la barra de estado más TOP_BAR_H; el banner empieza justo debajo.
   const barTotal = insets.top + TOP_BAR_H;
-  const bannerHeight = BANNER_H + insets.top;
-  // La barra pasa a carbón sólido justo antes de que la superficie crema (que sube RADIUS.xxl sobre el banner) llegue a ella.
-  const surfaceTop = bannerHeight - RADIUS.xxl;
-  const solidBar = scrollY.interpolate({
-    inputRange: [Math.max(0, surfaceTop - barTotal - 48), Math.max(1, surfaceTop - barTotal)],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
   // Tarjetas blancas: sombra muy suave y borde discreto.
   const soft = {
     borderWidth: 1,
@@ -186,14 +178,12 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
 
   return (
     <View style={[styles.root, { backgroundColor: colors.charcoal }]}>
-      <Animated.ScrollView
+      <ScrollView
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
-        scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingTop: barTotal }}
       >
-        <View style={[styles.banner, { height: bannerHeight, backgroundColor: colors.charcoal }]}>
+        <View style={[styles.banner, { height: BANNER_H, backgroundColor: colors.charcoal }]}>
           {showPhoto ? (
             // Foto decorativa: oculta a los lectores de pantalla.
             <View
@@ -206,9 +196,10 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
                 source={PHOTO}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
-                // Foco: 50 % horizontal (el disco está al centro) y 70 % vertical, es decir, se recorta más por ARRIBA (suelo y la
-                // marca de tiza, lo más claro de la foto) y se conservan el disco y la barra. Cover: sin estirar ni deformar.
-                contentPosition={{ left: '50%', top: '70%' }}
+                // Foco: 50 % horizontal (el disco está al centro) y 75 % vertical: con el banner de 202 dp se recorta algo más por ARRIBA
+                // que por abajo y SIEMPRE se ve el disco completo (desde la fila 130 de la foto) y casi toda la barra, en 320, 360 y 412 dp.
+                // Cover: sin estirar ni deformar.
+                contentPosition={{ left: '50%', top: '75%' }}
                 transition={300}
                 onError={() => setPhotoError(true)}
               />
@@ -218,13 +209,6 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
           <LinearGradient
             colors={[`${colors.charcoal}8C`, `${colors.charcoal}66`, `${colors.charcoal}8C`]}
             style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          {/* Integración de la barra con la foto, sin línea de separación: carbón que se desvanece hacia la foto. */}
-          <LinearGradient
-            colors={[colors.charcoal, `${colors.charcoal}00`]}
-            locations={[0.35, 1]}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: barTotal + 20 }}
             pointerEvents="none"
           />
           {/* Tarjeta de vidrio: solo informativa (sin flecha ni toque), se lee como un solo grupo. */}
@@ -746,16 +730,12 @@ function HomeViewV2Inner({ data, events, photoFails }: { data: HomeViewV2Data; e
           </View>
         ) : null}
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
 
-      {/* Barra superior fija: sin fondo sobre la foto; carbón sólido al llegar la crema. */}
-      <View style={[styles.topBar, { height: barTotal }]} pointerEvents="box-none">
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.charcoal, opacity: solidBar }]}
-          pointerEvents="none"
-        />
+      {/* Barra superior fija y SIEMPRE de carbón sólido, también bajo la barra de estado (sin franjas de otro color). */}
+      <View style={[styles.topBar, { height: barTotal, backgroundColor: colors.charcoal }]}>
         <View style={{ height: insets.top }} />
-        <View style={styles.topBarRow} pointerEvents="box-none">
+        <View style={styles.topBarRow}>
           <BarButton icon="menu" label="Abrir el menú" onPress={events.onMenu} />
           <Text
             style={[styles.logo, { color: colors.cream }]}
@@ -802,7 +782,9 @@ const styles = StyleSheet.create({
   glassAvatarText: { fontSize: 22, fontFamily: 'Inter_700Bold' },
   glassTextCol: { flex: 1, gap: 2 },
   glassBoxName: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
-  glassHello: { fontSize: FONT_SIZE.xl, fontFamily: 'Inter_700Bold' },
+  // Saludo: 15 sp (antes FONT_SIZE.xl = 18, -17 %). Sigue por encima del nombre del box (12 sp) y la tarjeta no crece: con la letra del
+  // sistema al máximo permitido (maxFontSizeMultiplier 1,3) las dos líneas miden unos 44 dp, menos que los 52 del avatar.
+  glassHello: { fontSize: 15, fontFamily: 'Inter_700Bold' },
   surface: {
     flexGrow: 1,
     marginTop: -RADIUS.xxl,

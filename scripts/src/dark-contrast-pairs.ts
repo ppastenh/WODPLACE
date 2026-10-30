@@ -181,13 +181,10 @@ export const PAIRS_LIGHT: Pair[] = [
   // Tarjeta de vidrio sobre la foto (peor caso: el punto más claro de la foto)
   { ...t('cream', 'charcoal', 'nombre del box y saludo, PEOR caso: punto más claro de la foto SIN velo, vidrio 60 %'), bgLiteral: { hex: '#000000', over: '#EBEBEB', alpha: 0.6 } },
   { ...t('cream', 'charcoal', 'idem con el velo mínimo (40 %) sobre el punto más claro'), bgLiteral: { hex: '#000000', over: '#8D8D8D', alpha: 0.6 } },
-  // Peor caso con el recorte del banner de 184 dp (foco 50 % / 70 %), medido sobre la foto real con System.Drawing en anchos de 320, 360
-  // y 412 dp y barra de estado de 24 dp, con el velo mínimo (40 %), el degradado de la barra y el vidrio; el valor es el gris sRGB
-  // del fondo más claro de cada zona (el más desfavorable de los tres anchos).
-  t('cream', '#393939', 'tarjeta de vidrio con el recorte nuevo, peor caso de los tres anchos'),
-  t('cream', '#505050', 'menú sobre la foto con el recorte nuevo, peor caso'),
-  t('cream', '#656565', 'campana sobre la foto con el recorte nuevo, peor caso (320 dp)'),
-  t('cream', '#626262', 'logo WODPLACE sobre la foto con el recorte nuevo, peor caso (320 dp)'),
+  // Peor caso con el banner de 202 dp (foco 50 % / 75 %), medido sobre la foto real con System.Drawing en anchos de 320, 360 y 412 dp, con el
+  // velo mínimo (40 %) y el vidrio al 60 %: el gris sRGB del fondo más claro bajo la tarjeta (el más desfavorable de los tres anchos).
+  // La barra superior ya NO va sobre la foto: es carbón sólido (pares cream/charcoal y cream/charcoalPressed de arriba).
+  t('cream', '#3A3A3A', 'tarjeta de vidrio con el banner de 202 dp, peor caso de los tres anchos'),
   t('charcoal', 'navActive', 'inicial del avatar en carbón sobre cobre'),
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),
