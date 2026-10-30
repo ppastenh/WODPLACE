@@ -86,3 +86,10 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **Fecha:** 2026-10-30
 - **Decisión:** "Foto del banner: elegida la foto de Leon Mart (Pexels, anillo de gimnasia de madera con correa negra, poca luz) como home-banner-anillo.jpg, recorte a todo el ancho, 192 dp de alto; reemplaza a clase-piernas.jpg; las ilustraciones de línea (discos y barra) y las otras candidatas quedan descartadas por ahora; la foto se puede cambiar midiendo el contraste antes."
 - **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; Inicio real no cambia hasta que Pía lo apruebe.
+
+## (p) Menú inferior
+
+- **Fecha:** 2026-10-30
+- **Decisión:** "Menú inferior: fondo carbón #0D0F10, igual a la barra superior, fijo abajo y extendido bajo la zona del sistema (insets.bottom); cinco opciones (Inicio, Comunidad, Agenda, Progreso y Perfil) con íconos lineales de trazo uniforme (Feather a 22 dp y la pesa de Progreso dibujada en SVG con el mismo trazo); íconos y rótulos inactivos en gris claro (#A29E94); opción seleccionada en cobre #B98250, con barra de acento de 3 px (siempre) y rótulo en negrita; Agenda es un botón circular central, elevado 14 dp (franja reservada dentro de la barra, que no capta toques), con fondo carbón y borde cobre (1,5 px; 2,5 px cuando está seleccionada). Rótulos de 11 sp en una sola línea. Presionado con color sólido (#25292D), sin opacidad; la opción ya seleccionada no se rellena al presionarla. Sin el indicador blanco del sistema (exigiría expo-navigation-bar, módulo nativo no instalado). Se aplica primero solo en la pantalla de desarrollo; la barra real no cambia hasta mi aprobación."
+- **Pendiente (decisión sin tomar):** unificar la barra de Progreso (`RmBottomNav`, de 3 pestañas y colores del tema) con este menú. NO se unifica ahora.
+- **Estado:** VIGENTE. Se trabaja SOLO en la pantalla de desarrollo "Estados de Inicio (dev)"; la barra real no cambia hasta que Pía lo apruebe.
