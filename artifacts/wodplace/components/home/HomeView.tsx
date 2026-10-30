@@ -127,16 +127,16 @@ const BAR_BUTTON = 48;
 const BANNER_H = 192;
 
 /**
- * MARCADOR del logo del box: transparente hasta que se agregue el logo definitivo, que será SÓLIDO. Mientras tanto, el recuadro de
- * cobre de la tarjeta (avatar con la inicial) se dibuja con el cobre al 60 % de opacidad (99 en hex). CUANDO SE AGREGUE EL LOGO
- * DEFINITIVO DEL BOX, ESTE RECUADRO SERÁ SÓLIDO: se borra esta constante y el fondo vuelve a ser colors.navActive. Es una opacidad fija
- * de un elemento decorativo (no es un estado presionado). La letra es blanca porque carbón o crema sobre el cobre bajan de 4,5:1.
- * Valor elegido por el contraste de la letra blanca: 5,31:1 en el peor caso a 320 dp (velo 40 %, vidrio 60 %, foto más clara bajo el
- * recuadro). Valores probados (320 / 360 / 412 dp): 0,80 = 4,15 / 4,15 / 4,72; 0,75 = 4,41 / 4,41 / 5,19; 0,70 = 4,69 / 4,69 / 5,72;
- * 0,65 = 4,99 / 4,99 / 6,32; 0,60 = 5,31 / 5,31 / 6,99; 0,55 = 5,66 / 5,66 / 7,74; 0,50 = 6,03 / 6,03 / 8,58. Más opacidad ACLARA el
- * recuadro y baja el contraste de la letra blanca.
+ * MARCADOR del logo del box: el recuadro de cobre de la tarjeta (avatar con la inicial) es un marcador del logo del box: transparente
+ * hasta que se agregue el logo definitivo, que será SÓLIDO. CUANDO LLEGUE EL LOGO DEFINITIVO, ESTE RECUADRO SERÁ SÓLIDO: se borra esta
+ * constante y el fondo vuelve a ser colors.charcoalAccentLight. Es una opacidad fija de un elemento decorativo (no es un estado
+ * presionado). Mientras tanto se dibuja con el cobre CLARO #C79A6B (regla del cobre: el #B98250 se ve naranjo sobre fondo oscuro o foto)
+ * al 55 % de opacidad (8C en hex). La letra es blanca porque el carbón sobre el cobre al 55 % da menos de 4,5:1.
+ * Valor elegido por el contraste de la letra blanca con el cobre claro, en el peor caso (velo mínimo de 40 %, vidrio al 60 %, parte más
+ * clara de la foto bajo el recuadro; 320 / 360 / 412 dp): 0,60 = 4,41 / 4,42 / 5,70 (no pasa); 0,55 = 4,78 / 4,78 / 6,40; 0,50 = 5,16 /
+ * 5,16 / 7,19. Más opacidad ACLARA el recuadro y baja el contraste de la letra blanca. (Con el cobre #B98250 al 60 % daba 5,32 / 5,32 / 6,93.)
  */
-const LOGO_MARKER_ALPHA = '99';
+const LOGO_MARKER_ALPHA = '8C';
 
 /** Anillos del halo de cobre de la tarjeta de vidrio, de adentro hacia afuera: [alfa en hex]. Cada anillo mide GLOW_STEP dp. */
 const GLOW_RINGS = ['38', '1C', '0D'] as const;
@@ -344,7 +344,7 @@ function HomeViewInner({ data, events, photoFails }: { data: HomeViewData; event
               style={[styles.glassCard, { backgroundColor: colors.glassBackground, borderColor: colors.glassBorder }]}
             >
             <View
-              style={[styles.glassAvatar, { backgroundColor: `${colors.navActive}${LOGO_MARKER_ALPHA}` }]}
+              style={[styles.glassAvatar, { backgroundColor: `${colors.charcoalAccentLight}${LOGO_MARKER_ALPHA}` }]}
               importantForAccessibility="no-hide-descendants"
             >
               {avatarUri ? (

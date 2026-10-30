@@ -188,11 +188,13 @@ export const PAIRS_LIGHT: Pair[] = [
   // La barra superior ya NO va sobre la foto: es carbón sólido (pares cream/charcoal y cream/charcoalPressed de arriba).
   t('cream', '#3A3A3A', 'tarjeta de vidrio con el banner de 192 dp, foto entera o recortada: peor caso de los tres anchos'),
   // Borde de cobre al 50 % de la tarjeta de vidrio sobre ese peor fondo (el texto queda a 10 dp del borde; el halo va FUERA de la tarjeta).
-  { ...t('cream', '#3A3A3A', 'texto crema junto al borde de cobre al 50 %, peor caso'), bgLiteral: { hex: '#B98250', over: '#3A3A3A', alpha: 0.5 } },
-  // Recuadro de cobre al 60 % (marcador del logo del box, LOGO_MARKER_ALPHA = 99) con letra blanca: base más clara bajo el recuadro (peor caso:
+  // El borde pasó al cobre claro #C79A6B al 45 %; el gris más claro bajo la tarjeta con el banner actual es 240 en los tres anchos (base 60 con
+  // velo 40 % y vidrio 60 %), por eso la base es #3C3C3C: 4,52:1 (a 0,5 daba 4,27:1).
+  { ...t('cream', '#3C3C3C', 'texto crema junto al borde de cobre claro al 45 %, peor caso'), bgLiteral: { hex: '#C79A6B', over: '#3C3C3C', alpha: 0.45 } },
+  // Recuadro de cobre CLARO #C79A6B al 55 % (marcador del logo del box, LOGO_MARKER_ALPHA = 8C) con letra blanca (a 0,60 daba 4,41:1 a 320 dp): base más clara bajo el recuadro (peor caso:
   // la madera del aro, gris 229 sin velo -> 57 con velo 40 % y vidrio 60 %; se usa 58 para cubrir ambos recortes de la foto) y base casi negra.
-  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 60 %, base más clara bajo el recuadro'), bgLiteral: { hex: '#B98250', over: '#3A3A3A', alpha: 0.6 } },
-  { ...t('primaryForeground', 'navActive', 'inicial blanca sobre el cobre al 60 %, base casi negra'), bgLiteral: { hex: '#B98250', over: '#020202', alpha: 0.6 } },
+  { ...t('primaryForeground', 'charcoalAccentLight', 'inicial blanca sobre el cobre claro al 55 %, base más clara bajo el recuadro (4,78:1 a 320 y 360 dp)'), bgLiteral: { hex: '#C79A6B', over: '#3A3A3A', alpha: 0.55 } },
+  { ...t('primaryForeground', 'charcoalAccentLight', 'inicial blanca sobre el cobre claro al 55 %, base casi negra'), bgLiteral: { hex: '#C79A6B', over: '#020202', alpha: 0.55 } },
   // Menú inferior nuevo (decisión (p)): carbón fijo con rótulos de 11 sp (texto, 4,5:1) e íconos y borde de Agenda (3:1). El ítem YA seleccionado
   // no se rellena al presionarlo (tocarlo no navega), así que no hay par cobre sobre charcoalPressed para el texto: ahí el cobre da 4,44:1.
   t('charcoalMuted', 'charcoal', 'rótulo inactivo del menú inferior'),
@@ -208,7 +210,7 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoalAccentLight', 'charcoalPressed', 'ícono y borde de Agenda presionado, cobre claro'),
   // Regla del cobre (pedido 13): el punto de la campana y el halo de la tarjeta de vidrio pasan al cobre claro. El punto es un ícono sobre carbón
   // (3:1); el halo es decorativo (anillos de 22 %, 11 % y 5 % de opacidad fuera de la tarjeta, sin texto encima). El recuadro de cobre y el borde
-  // de la tarjeta NO cambian todavía: con el cobre claro la letra blanca baja a 4,41:1 y el texto crema junto al borde a 4,27:1.
+  // de la tarjeta también pasaron al cobre claro (ver los pares de más arriba: marcador al 55 % y borde al 45 %).
   ui('charcoalAccentLight', 'charcoal', 'punto de la campana sobre la barra de carbón'),
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),

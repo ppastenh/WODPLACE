@@ -155,7 +155,9 @@ const colors = {
     creamMuted: '#665F55',
     // Tarjeta de "vidrio" sobre la foto: negro al 60 % (sin desenfoque real) y borde blanco muy sutil.
     glassBackground: 'rgba(0,0,0,0.6)',
-    glassBorder: 'rgba(185,130,80,0.5)',
+    // Borde de la tarjeta: cobre claro #C79A6B al 45 % (regla del cobre: claro sobre superficies oscuras o con foto). Al 50 % el texto crema
+    // junto al borde bajaba a 4,27:1; al 45 % da 4,52:1 en el peor caso.
+    glassBorder: 'rgba(199,154,107,0.45)',
     // Estados presionados SÓLIDOS de las tarjetas de relleno de color (WOD de hoy y PR destacado).
     accentPressed: '#E4CB93',
     successBackgroundPressed: '#D3EDDB',

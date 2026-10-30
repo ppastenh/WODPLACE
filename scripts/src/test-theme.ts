@@ -62,7 +62,7 @@ describe('tema: tokens del diseño nuevo de Inicio (decisión (k))', () => {
   });
   it('el borde (cobre) y el vidrio son translúcidos y el resto son hex de 6 cifras', () => {
     assert.match(light.glassBackground!, /^rgba\(0,0,0,0\.6\)$/);
-    assert.match(light.glassBorder!, /^rgba\(185,130,80,0\.\d+\)$/);
+    assert.match(light.glassBorder!, /^rgba\(199,154,107,0\.45\)$/);
     for (const key of ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'charcoalAccentLight', 'cream', 'creamMuted']) assert.match(light[key]!, /^#[0-9A-F]{6}$/);
   });
 });
@@ -169,7 +169,7 @@ const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   cream: '#F2E9DB',
   creamMuted: '#665F55',
   glassBackground: 'rgba(0,0,0,0.6)',
-  glassBorder: 'rgba(185,130,80,0.5)',
+  glassBorder: 'rgba(199,154,107,0.45)',
   accentPressed: '#E4CB93',
   successBackgroundPressed: '#D3EDDB',
   warningBackgroundPressed: '#FFE2B0',
