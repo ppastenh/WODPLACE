@@ -6,6 +6,7 @@
  * Corre con: pnpm --filter @workspace/scripts test:home-logic
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
@@ -32,6 +33,24 @@ function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
+
+describe('barra superior de Inicio (HomeView.tsx): el botón de menú recibe el toque', () => {
+  // Comprobación ESTÁTICA del código (no dibuja nada): habría detectado el error de octubre, cuando el logo, que ocupa todo el ancho de la
+  // barra, se dibujaba encima del botón de menú con pointerEvents puesto en un <Text> (Android solo lo respeta en View) y el menú no abría.
+  const source = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
+  it('el botón de menú llama a events.onMenu y la campana a events.onBell', () => {
+    assert.match(source, /<BarButton[^>]*icon="menu"[^>]*onPress=\{events\.onMenu\}/);
+    assert.match(source, /<BarButton\s+icon="bell"[\s\S]*?onPress=\{events\.onBell\}/);
+  });
+  it('el botón de menú declara su estado expandido para lectores de pantalla', () => {
+    assert.match(source, /<BarButton[^>]*icon="menu"[^>]*expanded=\{menuOpen\}/);
+    assert.match(source, /accessibilityState=\{expanded === undefined \? undefined : \{ expanded \}\}/);
+  });
+  it('ningún <Text> usa pointerEvents (Android lo ignora): el logo va dentro de un View con pointerEvents="none"', () => {
+    assert.doesNotMatch(source, /<Text[^>]*pointerEvents=/);
+    assert.match(source, /<View pointerEvents="none" style=\{styles\.logoWrap\}>/);
+  });
+});
 
 describe('tarjeta de próxima clase: estado', () => {
   it('cargando: esqueleto, nunca la invitación (aunque todavía no se sepa si hay reserva)', () => {

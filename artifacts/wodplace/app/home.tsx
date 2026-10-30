@@ -329,6 +329,7 @@ export default function HomeScreen() {
     medalsSummary,
     birthdays,
     unreadCount,
+    menuOpen: drawerVisible,
   };
 
   return (

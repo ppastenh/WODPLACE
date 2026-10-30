@@ -74,6 +74,8 @@ export type HomeViewData = {
   avatarUri?: string | null;
   /** Notificaciones sin leer (punto de la campana). */
   unreadCount?: number;
+  /** El menú lateral está abierto (estado "expandido" del botón de menú para lectores de pantalla). */
+  menuOpen?: boolean;
 };
 
 export type HomeViewEvents = {
@@ -210,17 +212,21 @@ function BarButton({
   label,
   onPress,
   dot,
+  expanded,
 }: {
   icon: React.ComponentProps<typeof Feather>['name'];
   label: string;
   onPress?: () => void;
   dot?: boolean;
+  /** Solo el botón de menú: si el menú que abre está abierto. */
+  expanded?: boolean;
 }) {
   const colors = useColors();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={expanded === undefined ? undefined : { expanded }}
       onPress={onPress}
       hitSlop={4}
       // Estado presionado SÓLIDO (charcoalPressed), nunca opacidad.
@@ -257,6 +263,7 @@ function HomeViewInner({ data, events, photoFails }: { data: HomeViewData; event
     birthdays,
     avatarUri,
     unreadCount = 0,
+    menuOpen = false,
   } = data;
   const monthly = monthlyCardParts(planView);
   const showPhoto = !photoFails && !photoError;
@@ -857,15 +864,15 @@ function HomeViewInner({ data, events, photoFails }: { data: HomeViewData; event
       <View style={[styles.topBar, { height: barTotal, backgroundColor: colors.charcoal }]}>
         <View style={{ height: insets.top }} />
         <View style={styles.topBarRow}>
-          <BarButton icon="menu" label="Abrir el menú" onPress={events.onMenu} />
-          <Text
-            style={[styles.logo, { color: colors.cream }]}
-            accessibilityRole="header"
-            pointerEvents="none"
-            maxFontSizeMultiplier={1.2}
-          >
-            WODPLACE
-          </Text>
+          <BarButton icon="menu" label="Menú" onPress={events.onMenu} expanded={menuOpen} />
+          {/* El logo ocupa todo el ancho de la barra y se dibuja ENCIMA del botón de menú: va dentro de un View con pointerEvents="none".
+              En Android la propiedad pointerEvents solo existe en View (y ScrollView), NO en Text: puesta en el Text se ignora y el logo se
+              come los toques del botón de menú (la campana, que va después en el orden, sí recibía el toque). */}
+          <View pointerEvents="none" style={styles.logoWrap}>
+            <Text style={[styles.logo, { color: colors.cream }]} accessibilityRole="header" maxFontSizeMultiplier={1.2}>
+              WODPLACE
+            </Text>
+          </View>
           <BarButton
             icon="bell"
             label={unreadCount > 0 ? `Notificaciones, ${unreadCount} sin leer` : 'Notificaciones'}
@@ -883,7 +890,8 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   topBarRow: { height: TOP_BAR_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.sm },
-  logo: { position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 22, letterSpacing: 1.5, fontFamily: 'Anton_400Regular' },
+  logoWrap: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
+  logo: { textAlign: 'center', fontSize: 22, letterSpacing: 1.5, fontFamily: 'Anton_400Regular' },
   barButton: { width: BAR_BUTTON, height: BAR_BUTTON, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center' },
   bellDot: { position: 'absolute', top: 9, right: 9, width: 11, height: 11, borderRadius: RADIUS.full, borderWidth: 2 },
   banner: { overflow: 'hidden' },
