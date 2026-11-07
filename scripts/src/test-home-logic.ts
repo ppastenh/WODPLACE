@@ -76,9 +76,14 @@ describe('tarjeta de próxima clase (NextClassCard.tsx): el toque llega a la tar
   it('el estado presionado es sólido: ninguna línea mezcla "pressed" con opacity', () => {
     for (const line of source.split('\n')) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
   });
-  it('la textura por defecto sale de una sola constante y es la foto del aro', () => {
-    assert.match(source, /export const NEXT_CLASS_TEXTURE[\s\S]*?home-banner-anillo\.jpg/);
+  it('la textura por defecto sale de una sola constante (un patrón dibujado en código, sin imágenes sin seguimiento)', () => {
+    assert.match(source, /export const NEXT_CLASS_TEXTURE: NextClassTexture = \{ kind: 'pattern', pattern: 'rombos' \}/);
     assert.match(source, /texture: NEXT_CLASS_TEXTURE/);
+    assert.doesNotMatch(source, /textura-\d\.jpg/, 'el componente real no depende de las candidatas');
+  });
+  it('la duración y el nivel van en la misma fila y la tarjeta es un rectángulo bajo (alto mínimo de 124 dp)', () => {
+    assert.match(source, /metaRow: \{ flexDirection: 'row'/);
+    assert.match(source, /const CARD_MIN_H = 124;/);
   });
 });
 

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
 import type { HomeViewData } from '@/components/home/HomeView';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useColors } from '@/hooks/useColors';
@@ -21,37 +22,46 @@ import { RADIUS } from '@/constants/radius';
  */
 export type NextClassCapsule = 'A' | 'B' | 'C';
 export type NextClassCopper = 'base' | 'claro';
-export type NextClassTexture = { source: number; position: { left: string; top: string } } | null;
+export type NextClassPattern = 'rombos' | 'lineas' | 'puntos';
+/** Textura: una foto recortada, un patrón dibujado en código (sin imágenes ni licencias) o ninguna. */
+export type NextClassTexture =
+  | { kind: 'image'; source: number; position: { left: string; top: string } }
+  | { kind: 'pattern'; pattern: NextClassPattern }
+  | null;
 export type NextClassLook = { capsule: NextClassCapsule; copper: NextClassCopper; texture: NextClassTexture };
 
 /**
- * UNA sola constante decide la textura de la tarjeta (como BANNER_PHOTO): independiente del resto. PROVISIONAL (decisión (r)): un
- * recorte de la foto ya activa del banner (home-banner-anillo.jpg, créditos en CREDITOS-IMAGENES.md) hasta que Pía elija otra con
- * licencia. Para cambiarla solo cambian el require y la posición del recorte.
+ * UNA sola constante decide la textura de la tarjeta (como BANNER_PHOTO): independiente del resto. Por defecto, el patrón "rombos" (el
+ * entramado de un moleteado, dibujado con react-native-svg: no hay imagen ni licencia). La foto del aro (recorte de home-banner-anillo.jpg,
+ * créditos en CREDITOS-IMAGENES.md) se ve demasiado oscura y queda como opción de la pantalla de desarrollo (NEXT_CLASS_TEXTURE_ARO).
  */
-export const NEXT_CLASS_TEXTURE: NonNullable<NextClassTexture> = {
+export const NEXT_CLASS_TEXTURE: NextClassTexture = { kind: 'pattern', pattern: 'rombos' };
+export const NEXT_CLASS_TEXTURE_ARO: NextClassTexture = {
+  kind: 'image',
   source: require('@/assets/images/home/home-banner-anillo.jpg'),
   position: { left: '30%', top: '40%' },
 };
 
 /**
- * Cápsula de la fecha por defecto: A = cobre con texto e ícono carbón (5,83:1; el crema sobre cobre da 2,93:1 y NO pasa). Cobre #B98250
- * (charcoalAccent); el cobre claro #C79A6B (charcoalAccentLight) se elige con el chip de la pantalla de desarrollo.
+ * Por defecto: cápsula C (vidrio oscuro con borde cobre y texto crema) y cobre #B98250 (charcoalAccent); el cobre claro #C79A6B
+ * (charcoalAccentLight) y las otras cápsulas se eligen con los chips de la pantalla de desarrollo. El crema sobre cobre #B98250 da 2,93:1
+ * y NO pasa, por eso la cápsula A lleva texto carbón.
  */
-export const NEXT_CLASS_LOOK: NextClassLook = { capsule: 'A', copper: 'base', texture: NEXT_CLASS_TEXTURE };
+export const NEXT_CLASS_LOOK: NextClassLook = { capsule: 'C', copper: 'base', texture: NEXT_CLASS_TEXTURE };
 
-// Textura: ocupa la mitad derecha de la tarjeta (52 %) a toda la altura, con la foto al 50 % de opacidad; el velo negro es 100 % hasta el 60 %
-// del ancho de la tarjeta (ahí van el texto gris y casi todo el nombre) y baja a 35 % (0x59) en el borde derecho. Contrastes en
-// scripts/src/dark-contrast-pairs.ts.
+// Textura: ocupa la mitad derecha de la tarjeta (52 %) a toda la altura; la foto va al 80 % de opacidad. El velo negro es 100 % hasta el 66 %
+// del ancho de la tarjeta (ahí va el texto gris, que mide como máximo el 66 % del ancho útil) y baja a 20 % (0x33) en el borde derecho. El peor
+// caso de contraste (el punto más claro de cualquier foto) está en scripts/src/dark-contrast-pairs.ts; los patrones son más oscuros que eso.
 const TEXTURE_WIDTH = '52%';
-const TEXTURE_OPACITY = 0.5;
-const VEIL_PLATEAU = 0.6;
-const VEIL_END = '59';
+const TEXTURE_OPACITY = 0.8;
+const VEIL_PLATEAU = 0.66;
+const VEIL_END = '33';
+const PATTERN_OPACITY = 0.55;
 
-const CIRCLE = 36;
-const CAPSULE_H = 32;
-const ARROW = 36;
-const CARD_MIN_H = 154;
+const CIRCLE = 32;
+const CAPSULE_H = 28;
+const ARROW = 32;
+const CARD_MIN_H = 124;
 
 type Booked = NonNullable<HomeViewData['nextBooked']>;
 
@@ -70,8 +80,13 @@ function Frame({
   return (
     <View style={[styles.frame, { backgroundColor: colors.nextClassCard, shadowColor: colors.charcoal }]}>
       <View pointerEvents="none" style={styles.layers}>
-        {texture ? (
+        {texture?.kind === 'image' ? (
           <Image source={texture.source} style={styles.texture} contentFit="cover" contentPosition={texture.position} />
+        ) : null}
+        {texture?.kind === 'pattern' ? (
+          <View style={styles.textureBox}>
+            <PatternLayer kind={texture.pattern} color={colors.charcoalMuted} />
+          </View>
         ) : null}
         <LinearGradient
           colors={[veil, veil, `${veil}${VEIL_END}`]}
@@ -86,13 +101,41 @@ function Frame({
   );
 }
 
+/** Patrones dibujados en código con el gris cálido (charcoalMuted) a baja opacidad: sin imágenes. */
+function PatternLayer({ kind, color }: { kind: NextClassPattern; color: string }) {
+  const id = `textura-${kind}`;
+  return (
+    <Svg width="100%" height="100%">
+      <Defs>
+        {kind === 'rombos' ? (
+          // Entramado de rombos (moleteado): dos diagonales cada 12 dp.
+          <Pattern id={id} width={12} height={12} patternUnits="userSpaceOnUse">
+            <Path d="M0 12 L12 0 M0 0 L12 12" stroke={color} strokeWidth={1} strokeOpacity={PATTERN_OPACITY} />
+          </Pattern>
+        ) : kind === 'lineas' ? (
+          // Rayas diagonales.
+          <Pattern id={id} width={9} height={9} patternUnits="userSpaceOnUse">
+            <Path d="M-1 10 L10 -1" stroke={color} strokeWidth={1.5} strokeOpacity={PATTERN_OPACITY} />
+          </Pattern>
+        ) : (
+          // Trama de puntos.
+          <Pattern id={id} width={10} height={10} patternUnits="userSpaceOnUse">
+            <Circle cx={5} cy={5} r={1.3} fill={color} fillOpacity={PATTERN_OPACITY} />
+          </Pattern>
+        )}
+      </Defs>
+      <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
 /** Flecha DECORATIVA en un círculo translúcido con borde cobre, a la derecha y centrada en la altura. */
 function Arrow({ copper }: { copper: string }) {
   const colors = useColors();
   return (
     <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.arrowWrap}>
       <View style={[styles.arrow, { backgroundColor: colors.glassBackground, borderColor: copper }]}>
-        <Feather name="arrow-right" size={18} color={colors.nextClassCardForeground} />
+        <Feather name="arrow-right" size={16} color={colors.nextClassCardForeground} />
       </View>
     </View>
   );
@@ -128,7 +171,7 @@ export function NextClassCard({
           <View pointerEvents="none" style={styles.content}>
             <View style={styles.dateRow}>
               <Skeleton width={CIRCLE} height={CIRCLE} borderRadius={CIRCLE / 2} />
-              <Skeleton width={150} height={CAPSULE_H} borderRadius={CAPSULE_H / 2} />
+              <Skeleton width={140} height={CAPSULE_H} borderRadius={CAPSULE_H / 2} />
             </View>
             <View style={styles.skeletonBottom}>
               <Skeleton width="60%" height={FONT_SIZE.hero} />
@@ -198,7 +241,7 @@ export function NextClassCard({
           <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.content}>
             <View style={styles.dateRow}>
               <View style={[styles.circle, { backgroundColor: cap.bg, borderColor: cap.border }]}>
-                <Feather name="calendar" size={18} color={cap.icon} />
+                <Feather name="calendar" size={16} color={cap.icon} />
               </View>
               <View style={[styles.capsule, { backgroundColor: cap.bg, borderColor: cap.border }]}>
                 <Text style={[styles.capsuleText, { color: cap.text }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
@@ -261,8 +304,9 @@ const styles = StyleSheet.create({
   },
   layers: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.xl, overflow: 'hidden' },
   texture: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH, opacity: TEXTURE_OPACITY },
-  content: { padding: SPACING.xl, gap: SPACING.md, justifyContent: 'center', flexGrow: 1 },
-  inviteContent: { paddingRight: SPACING.xl + ARROW + SPACING.sm },
+  textureBox: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH },
+  content: { padding: SPACING.lg, gap: SPACING.sm, justifyContent: 'center', flexGrow: 1 },
+  inviteContent: { paddingRight: SPACING.lg + ARROW + SPACING.sm },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   circle: {
     width: CIRCLE,
@@ -282,16 +326,16 @@ const styles = StyleSheet.create({
   },
   capsuleText: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_700Bold' },
   // El texto no pasa por debajo de la flecha: se corta con "…" antes de ella.
-  textCol: { paddingRight: ARROW + SPACING.sm, gap: 1 },
-  label: { fontSize: FONT_SIZE.sm, lineHeight: 16, fontFamily: 'Inter_500Medium' },
-  name: { fontSize: 28, lineHeight: 34, fontFamily: 'Anton_400Regular' },
-  coach: { fontSize: FONT_SIZE.xs, lineHeight: 15, fontFamily: 'Inter_500Medium' },
-  // Duración y nivel: como máximo el 58 % del ancho de la tarjeta (todo el texto gris queda sobre el tramo 100 % negro del velo; si no
-  // cabe, pasa a un segundo renglón).
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: SPACING.md, rowGap: SPACING.xs, maxWidth: '58%' },
+  textCol: { paddingRight: ARROW + SPACING.sm, gap: 0 },
+  label: { fontSize: FONT_SIZE.sm, lineHeight: 14, fontFamily: 'Inter_500Medium' },
+  name: { fontSize: FONT_SIZE.hero, lineHeight: 30, fontFamily: 'Anton_400Regular' },
+  coach: { fontSize: FONT_SIZE.xs, lineHeight: 14, fontFamily: 'Inter_500Medium' },
+  // Última línea: la duración y, al lado, el nivel. Como máximo el 66 % del ancho útil (todo el texto gris queda sobre el tramo 100 % negro
+  // del velo); solo si no cabe (320 dp con "Todos los niveles" y letra grande) el nivel pasa a un segundo renglón.
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: SPACING.lg, rowGap: SPACING.xs, maxWidth: '66%' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  metaText: { fontSize: FONT_SIZE.xs, lineHeight: 15, fontFamily: 'Inter_600SemiBold' },
-  arrowWrap: { position: 'absolute', top: 0, bottom: 0, right: SPACING.xl, justifyContent: 'center' },
+  metaText: { fontSize: FONT_SIZE.xs, lineHeight: 14, fontFamily: 'Inter_600SemiBold' },
+  arrowWrap: { position: 'absolute', top: 0, bottom: 0, right: SPACING.lg, justifyContent: 'center' },
   arrow: {
     width: ARROW,
     height: ARROW,
