@@ -100,3 +100,9 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **Fecha:** 2026-10-30
 - **Decisión:** "Diseño nuevo aplicado a la app real: menú inferior oscuro, Inicio con barra de carbón, banner con la foto home-banner-anillo.jpg, tarjeta de vidrio y superficie crema; HomeViewV2 reemplaza a HomeView; las demás pantallas conservan su cabecera hasta su rediseño; el cobre de los elementos oscuros se unifica en un cambio aparte; la barra de Progreso (RmBottomNav) queda pendiente."
 - **Estado:** VIGENTE. Reemplaza lo de "solo en la pantalla de desarrollo" de (k) a (p) para Inicio y el menú inferior.
+
+## (r) Tarjeta "Tu próxima clase" rediseñada
+
+- **Fecha:** 2026-11-07
+- **Decisión:** "Tarjeta 'Tu próxima clase' rediseñada: fondo grafito con textura fotográfica a la derecha y degradado negro, círculo cobre con ícono de calendario y cápsula de fecha, nombre de la clase en Anton, duración y nivel con íconos, flecha decorativa en círculo translúcido; la textura es provisional (foto del aro) hasta que se elija otra con licencia."
+- **Estado:** VIGENTE. Se aplica a Inicio real (decisión (q)); la textura es PROVISIONAL.
