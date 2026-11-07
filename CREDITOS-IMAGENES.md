@@ -15,6 +15,19 @@ Imágenes de terceros usadas en la app, con su origen y licencia.
 - **Archivo:** `home-banner-anillo.jpg`.
 - La foto no lleva logos de marcas; el texto visible en la hebilla de la correa es la palabra genérica PRESS (ilegible a tamaño real), y las formas del fondo son anillas desenfocadas.
 
+## `artifacts/wodplace/assets/images/home/home-card-pizarra.jpg`
+
+- **Uso:** textura de la tarjeta "Tu próxima clase" de Inicio (decisión (r) de `DECISIONES-DISENO.md`), a la derecha y bajo un velo negro. Lo da UNA sola constante, `NEXT_CLASS_TEXTURE`, en `components/home/NextClassCard.tsx`.
+- **Foto:** "Superficie de pizarra de textura oscura de cerca" (etiquetas de la página: textura, abstracto, oscuro, negro, tiza, esponja).
+- **Autor:** Noita Digital, https://unsplash.com/es/@noitadigital
+- **Página de origen:** https://unsplash.com/es/fotos/superficie-de-pizarra-de-textura-oscura-de-cerca-zcx5ztIjQAM (publicada el 2021-02-25; datos verificados en la página el 2026-11-07: autor, licencia, título y fecha; la página no indica las dimensiones del original).
+- **Licencia:** Licencia Unsplash (uso gratuito, comercial y modificación permitidos; no exige atribución, se agradece), https://unsplash.com/es/licencia
+- **Fecha de consulta:** 2026-11-07.
+- **Original:** 3744 × 5616 px (el archivo que descargó Pía; la página no permite confirmar que sea idéntico, pero el contenido, una pizarra oscura con borrones de tiza, coincide con el título y las etiquetas).
+- **Edición:** solo recorte a 3:2 (x = 0, y = 3115, 3744 × 2496 px), espejado horizontal (para que el remolino de tiza quede a la derecha), reducción a 720 × 480 px y elevación de luminosidad con gamma 0,70 (salida = 255 · (entrada/255)^0,70), JPEG sin metadatos (70.308 bytes). Sin retoque de color.
+- **Archivo:** `home-card-pizarra.jpg`.
+- La foto no lleva logos, texto, marcas ni personas.
+
 ## Estado de la foto del banner
 
 `home-banner-anillo.jpg` está **ACTIVA** desde la decisión (o) (2026-10-30); reemplazó a `clase-piernas.jpg` (provisional, ya eliminada; sigue en el historial de git). Una foto nueva se mide en contraste ANTES de activarla.
