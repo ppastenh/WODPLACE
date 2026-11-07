@@ -228,6 +228,30 @@ export const DEV_GROUPS: DevGroup[] = [
           d.nextBooked = bookedSession(NO_COACH_LABEL);
         },
       },
+      {
+        id: 'nombre-largo',
+        label: 'Con reserva, nombre de clase largo',
+        apply: (d) => {
+          d.nextClassState = 'booked';
+          d.nextBooked = { ...bookedSession('Andrés Vidal'), type: 'Entrenamiento funcional de fuerza y acondicionamiento' };
+        },
+      },
+      {
+        id: 'sin-duracion-nivel',
+        label: 'Con reserva sin duración ni nivel',
+        apply: (d) => {
+          d.nextClassState = 'booked';
+          d.nextBooked = { ...bookedSession('Andrés Vidal'), durationLabel: '', level: '' };
+        },
+      },
+      {
+        id: 'nivel-largo',
+        label: 'Con reserva, nivel "Todos los niveles"',
+        apply: (d) => {
+          d.nextClassState = 'booked';
+          d.nextBooked = { ...bookedSession('Andrés Vidal'), level: 'todos' };
+        },
+      },
     ],
   },
   {

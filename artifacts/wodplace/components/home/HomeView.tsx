@@ -16,15 +16,16 @@ import type {
 import { AutoFitImage } from '@/components/AutoFitImage';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { MedalBadge } from '@/components/MedalBadge';
+import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { getMedalIconColor } from '@/lib/medalColors';
 import { statusBarStyleFor } from '@/lib/theme';
-import { coachLine, type nextClassCardState } from '@/lib/nextClassCard';
+import type { nextClassCardState } from '@/lib/nextClassCard';
 import { monthlyCardParts, type PlanProgressView } from '@/lib/planProgress';
-import { formatClassDateShort, formatHM, MONTH_NAMES } from '@/lib/dateUtils';
+import { MONTH_NAMES } from '@/lib/dateUtils';
 import { FONT_SIZE } from '@/constants/typography';
 import { SPACING } from '@/constants/spacing';
 import { RADIUS } from '@/constants/radius';
@@ -193,16 +194,19 @@ export function HomeView({
   data,
   events,
   photoFails = false,
+  nextClassLook = NEXT_CLASS_LOOK,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
   /** Solo para la pantalla de desarrollo: simula que la foto no carga (se ve el color base). */
   photoFails?: boolean;
+  /** Solo para la pantalla de desarrollo: cápsula, cobre y textura de la tarjeta de próxima clase (por defecto, NEXT_CLASS_LOOK). */
+  nextClassLook?: NextClassLook;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} />
     </ThemeOverride>
   );
 }
@@ -239,7 +243,17 @@ function BarButton({
   );
 }
 
-function HomeViewInner({ data, events, photoFails }: { data: HomeViewData; events: HomeViewEvents; photoFails: boolean }) {
+function HomeViewInner({
+  data,
+  events,
+  photoFails,
+  nextClassLook,
+}: {
+  data: HomeViewData;
+  events: HomeViewEvents;
+  photoFails: boolean;
+  nextClassLook: NextClassLook;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [photoError, setPhotoError] = useState(false);
@@ -414,78 +428,15 @@ function HomeViewInner({ data, events, photoFails }: { data: HomeViewData; event
           </View>
         ) : null}
 
-        {hasBoxMembership && nextClassState === 'loading' ? (
-          // Cargando: ni invitación ni datos; esqueleto con la misma forma y altura de la tarjeta.
-          <View
-            accessibilityRole="progressbar"
-            accessibilityLabel="Cargando tu próxima clase"
-            style={[styles.nextClassCard, { backgroundColor: colors.nextClassCard }]}
-          >
-            <Skeleton width="40%" height={SPACING.xxl} />
-            <View style={styles.nextClassSkeletonBottom}>
-              <Skeleton width="85%" height={FONT_SIZE.hero} />
-              <Skeleton width="60%" height={FONT_SIZE.xs} />
-            </View>
-          </View>
-        ) : null}
-
-        {hasBoxMembership && nextClassState === 'invite' ? (
-          // Sin reserva (haya o no clases, o haya fallado la carga): solo la invitación.
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ir al Calendario para reservar una clase"
+        {hasBoxMembership && (nextClassState === 'loading' || nextClassState === 'invite' || (nextClassState === 'booked' && nextBooked)) ? (
+          // Cargando (esqueleto), sin reserva (invitación) o con reserva: tres estados con el mismo marco; ver NextClassCard.tsx.
+          <NextClassCard
+            state={nextClassState}
+            nextBooked={nextBooked}
+            levelLabel={nextBooked ? (CLASS_LEVEL_LABELS[nextBooked.level] ?? nextBooked.level) || null : null}
             onPress={() => events.onOpenCalendar()}
-            style={({ pressed }) => [
-              styles.nextClassCard,
-              { backgroundColor: pressed ? colors.nextClassCardPressed : colors.nextClassCard },
-            ]}
-          >
-            <View style={styles.nextClassTopEnd}>
-              <Feather name="arrow-up-right" size={18} color={colors.nextClassCardForeground} />
-            </View>
-            <Text style={[styles.nextClassName, { color: colors.nextClassCardForeground }]} numberOfLines={2}>
-              Reserva tu próxima clase
-            </Text>
-          </Pressable>
-        ) : null}
-
-        {hasBoxMembership && nextClassState === 'booked' && nextBooked ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ver próxima clase"
-            onPress={() => events.onOpenCalendar()}
-            style={({ pressed }) => [
-              styles.nextClassCard,
-              { backgroundColor: pressed ? colors.nextClassCardPressed : colors.nextClassCard },
-            ]}
-          >
-            <View style={styles.nextClassTop}>
-              <View style={[styles.timeChip, { backgroundColor: colors.navActive }]}>
-                <Feather name="calendar" size={13} color={colors.card} />
-                <Text style={[styles.timeChipText, { color: colors.card }]} numberOfLines={1}>
-                  {formatClassDateShort(nextBooked.startDate)} · {formatHM(nextBooked.startMinutes)}
-                </Text>
-              </View>
-              <Feather name="arrow-up-right" size={18} color={colors.nextClassCardForeground} />
-            </View>
-            <Text style={[styles.nextClassLabel, { color: colors.nextClassCardForeground }]}>Tu próxima clase</Text>
-            <Text style={[styles.nextClassName, { color: colors.nextClassCardForeground }]}>{nextBooked.type}</Text>
-            {coachLine(nextBooked.coach) ? (
-              <Text style={[styles.nextClassCoach, { color: colors.inactive }]}>{coachLine(nextBooked.coach)}</Text>
-            ) : null}
-            <View style={styles.nextClassMetaRow}>
-              <View style={styles.nextClassMetaChip}>
-                <Feather name="clock" size={12} color={colors.inactive} />
-                <Text style={[styles.nextClassMetaText, { color: colors.inactive }]}>{nextBooked.durationLabel}</Text>
-              </View>
-              <View style={styles.nextClassMetaChip}>
-                <Feather name="bar-chart-2" size={12} color={colors.inactive} />
-                <Text style={[styles.nextClassMetaText, { color: colors.inactive }]}>
-                  {CLASS_LEVEL_LABELS[nextBooked.level] ?? nextBooked.level}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
+            look={nextClassLook}
+          />
         ) : null}
 
         <LinearGradient
@@ -1008,17 +959,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontFamily: 'Inter_600SemiBold',
   },
-  nextClassCard: {
-    borderRadius: RADIUS.xl,
-    padding: 18,
-    minHeight: 170,
-    justifyContent: 'space-between',
-  },
-  nextClassTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   // Chip "Plan ilimitado" del mosaico "Clases del plan": mismos tokens que el resto (accent / accentForeground).
   planChip: {
     alignSelf: 'flex-start',
@@ -1030,51 +970,6 @@ const styles = StyleSheet.create({
   planChipText: {
     fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_700Bold',
-  },
-  // Invitación sin chip: la flecha va a la derecha.
-  nextClassTopEnd: { alignItems: 'flex-end' },
-  // Esqueleto: los dos renglones de abajo, separados como el título y la línea de la tarjeta real.
-  nextClassSkeletonBottom: { gap: SPACING.md },
-  timeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    borderRadius: RADIUS.full,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-  },
-  timeChipText: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_700Bold',
-  },
-  nextClassLabel: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_500Medium',
-    marginTop: SPACING.lg,
-  },
-  nextClassName: {
-    fontSize: FONT_SIZE.hero,
-    fontFamily: 'Anton_400Regular',
-    marginTop: 1,
-  },
-  nextClassCoach: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_500Medium',
-    marginTop: 3,
-  },
-  nextClassMetaRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginTop: SPACING.lg,
-  },
-  nextClassMetaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  nextClassMetaText: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_600SemiBold',
   },
   wodCard: {
     borderRadius: RADIUS.xl,

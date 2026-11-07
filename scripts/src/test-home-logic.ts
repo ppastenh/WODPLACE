@@ -52,6 +52,36 @@ describe('barra superior de Inicio (HomeView.tsx): el botón de menú recibe el 
   });
 });
 
+describe('tarjeta de próxima clase (NextClassCard.tsx): el toque llega a la tarjeta entera', () => {
+  // Comprobación ESTÁTICA del código (no dibuja nada), por la lección del logo de la barra superior: las capas decorativas no deben quitarle
+  // el toque a la tarjeta ni ponerse pointerEvents en un <Text> (Android lo ignora).
+  const source = readFileSync(new URL('../../artifacts/wodplace/components/home/NextClassCard.tsx', import.meta.url), 'utf8');
+  it('la textura y el velo van en un View con pointerEvents="none"', () => {
+    assert.match(source, /<View pointerEvents="none" style=\{styles\.layers\}>/);
+  });
+  it('la flecha decorativa y el contenido van en Views con pointerEvents="none" y ocultos a los lectores de pantalla', () => {
+    assert.match(source, /<View pointerEvents="none" importantForAccessibility="no-hide-descendants" style=\{styles\.arrowWrap\}>/);
+    assert.ok((source.match(/<View pointerEvents="none"/g) ?? []).length >= 4);
+    assert.match(source, /importantForAccessibility="no-hide-descendants"/);
+  });
+  it('ningún <Text> usa pointerEvents y no hay otro botón dentro de la tarjeta', () => {
+    assert.doesNotMatch(source, /<Text[^>]*pointerEvents=/);
+    assert.equal((source.match(/<Pressable/g) ?? []).length, 2, 'una sola tarjeta-botón por estado (invitación y con reserva)');
+    assert.equal((source.match(/<\/Pressable>/g) ?? []).length, 2);
+  });
+  it('la etiqueta de accesibilidad es una sola (nextClassA11yLabel) y la invitación conserva la suya', () => {
+    assert.match(source, /accessibilityLabel=\{nextClassA11yLabel\(nextBooked\.type, spoken\)\}/);
+    assert.match(source, /accessibilityLabel="Ir al Calendario para reservar una clase"/);
+  });
+  it('el estado presionado es sólido: ninguna línea mezcla "pressed" con opacity', () => {
+    for (const line of source.split('\n')) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
+  });
+  it('la textura por defecto sale de una sola constante y es la foto del aro', () => {
+    assert.match(source, /export const NEXT_CLASS_TEXTURE[\s\S]*?home-banner-anillo\.jpg/);
+    assert.match(source, /texture: NEXT_CLASS_TEXTURE/);
+  });
+});
+
 describe('tarjeta de próxima clase: estado', () => {
   it('cargando: esqueleto, nunca la invitación (aunque todavía no se sepa si hay reserva)', () => {
     assert.equal(nextClassCardState({ isLoading: true, hasUpcomingBooking: false }), 'loading');

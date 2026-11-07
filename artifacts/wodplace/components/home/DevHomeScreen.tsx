@@ -5,6 +5,14 @@ import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
 import {
+  NEXT_CLASS_LOOK,
+  NEXT_CLASS_TEXTURE,
+  type NextClassCapsule,
+  type NextClassCopper,
+  type NextClassLook,
+  type NextClassTexture,
+} from '@/components/home/NextClassCard';
+import {
   DEMO_ANNOUNCEMENT,
   DEV_GROUPS,
   buildDevState,
@@ -33,6 +41,35 @@ const EVENTS: HomeViewEvents = {
 };
 
 type Photo = 'ok' | 'falla';
+
+// Tarjeta "Tu próxima clase" (decisión (r)): cápsula de la fecha, cobre y textura. Las texturas 1 a 3 son copias preparadas de las candidatas
+// (textura-1.jpg, textura-2.jpg y textura-3.jpg, de banner-1, banner-3 y banner-8) que NO están en el repositorio: solo existen en el
+// computador de Pía; la textura por defecto, "aro", sí.
+type Texture = 'aro' | '1' | '2' | '3' | 'ninguna';
+const CENTER = { left: '50%', top: '50%' };
+const TEXTURES: Record<Texture, NextClassTexture> = {
+  aro: NEXT_CLASS_TEXTURE,
+  '1': { source: require('@/assets/images/home/textura-1.jpg'), position: CENTER },
+  '2': { source: require('@/assets/images/home/textura-2.jpg'), position: CENTER },
+  '3': { source: require('@/assets/images/home/textura-3.jpg'), position: CENTER },
+  ninguna: null,
+};
+const CAPSULE_CHIPS: { id: NextClassCapsule; label: string }[] = [
+  { id: 'A', label: 'Cápsula: A' },
+  { id: 'B', label: 'Cápsula: B' },
+  { id: 'C', label: 'Cápsula: C' },
+];
+const COPPER_CHIPS: { id: NextClassCopper; label: string }[] = [
+  { id: 'base', label: 'Cobre: #B98250' },
+  { id: 'claro', label: 'Cobre: #C79A6B' },
+];
+const TEXTURE_CHIPS: { id: Texture; label: string }[] = [
+  { id: 'aro', label: 'Textura: aro' },
+  { id: '1', label: 'Textura: 1' },
+  { id: '2', label: 'Textura: 2' },
+  { id: '3', label: 'Textura: 3' },
+  { id: 'ninguna', label: 'Textura: ninguna' },
+];
 
 // Menú inferior (decisión (p)): aquí se dibuja la parte de presentación de la barra real para probar sus estados, el ancho y la letra.
 type MenuWidth = 'real' | '360' | '320';
@@ -111,6 +148,10 @@ function DevHomeBody() {
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
   const [photo, setPhoto] = useState<Photo>('ok');
+  const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
+  const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
+  const [texture, setTexture] = useState<Texture>('aro');
+  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
   const [menuFont, setMenuFont] = useState<MenuFont>('sistema');
@@ -139,6 +180,9 @@ function DevHomeBody() {
       {chipsOpen ? (
         <ScrollView style={styles.chipsScroll} nestedScrollEnabled>
           <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
+          <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
+          <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
+          <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
           <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
           <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />
           <ChipGroup title="Menú: letra simulada" chips={MENU_FONT_CHIPS} selected={menuFont} onSelect={setMenuFont} />
@@ -179,7 +223,7 @@ function DevHomeBody() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.charcoal }]}>
-      <HomeView data={state} events={EVENTS} photoFails={photo === 'falla'} />
+      <HomeView data={state} events={EVENTS} photoFails={photo === 'falla'} nextClassLook={look} />
       {panel}
       {menuNode}
       {popup}
