@@ -213,23 +213,23 @@ export const PAIRS_LIGHT: Pair[] = [
   // de la tarjeta también pasaron al cobre claro (ver los pares de más arriba: marcador al 55 % y borde al 45 %).
   ui('charcoalAccentLight', 'charcoal', 'punto de la campana sobre la barra de carbón'),
   // Tarjeta "Tu próxima clase" rediseñada (decisión (r)): fondo grafito/carbón con textura a la derecha y velo negro (100 % hasta el 66 % del
-  // ancho, 20 % en el borde derecho; foto al 80 %). Peor caso = el punto más claro de cualquier foto (aro, 1, 2, 3) en 320, 360 y 412 dp; los
+  // ancho, 20 % en el borde derecho; foto al 80 %). Peor caso = el punto más claro de cualquier foto (la pizarra elegida, el aro y, como referencia, otras candidatas aclaradas con gamma 0,70; L máx. 0,991) en 320, 360 y 412 dp; los
   // patrones dibujados en código (rombos, líneas, puntos) son más oscuros que ese peor caso, así que quedan cubiertos por estos pares.
   t('nextClassCardForeground', 'charcoal', 'tarjeta de próxima clase: nombre y textos crema sobre el fondo plano'),
   t('nextClassCardForeground', 'nextClassCardPressed', 'tarjeta de próxima clase: textos crema, presionada'),
   t('charcoalMuted', 'nextClassCardPressed', 'tarjeta de próxima clase: gris cálido (etiqueta, coach, duración y nivel), presionada; el gris va siempre sobre el tramo 100 % negro'),
-  t('nextClassCardForeground', '#4E4E4E', 'tarjeta de próxima clase: nombre de la clase sobre la textura, peor caso (gris 78)'),
-  t('nextClassCardForeground', '#636363', 'tarjeta de próxima clase: nombre de la clase sobre la textura, presionada, peor caso (gris 99)'),
-  { ...ui('nextClassCardForeground', 'charcoal', 'tarjeta de próxima clase: flecha crema en su círculo de vidrio sobre la textura, peor caso'), bgLiteral: { hex: '#000000', over: '#808080', alpha: 0.6 } },
-  { ...ui('charcoalAccent', 'charcoal', 'tarjeta de próxima clase: borde cobre del círculo de la flecha, peor caso'), bgLiteral: { hex: '#000000', over: '#808080', alpha: 0.6 } },
-  { ...ui('charcoalAccentLight', 'charcoal', 'tarjeta de próxima clase: borde cobre claro del círculo de la flecha, peor caso'), bgLiteral: { hex: '#000000', over: '#808080', alpha: 0.6 } },
+  t('nextClassCardForeground', '#555555', 'tarjeta de próxima clase: nombre de la clase sobre la textura, peor caso (gris 85)'),
+  t('nextClassCardForeground', '#6A6A6A', 'tarjeta de próxima clase: nombre de la clase sobre la textura, presionada, peor caso (gris 106)'),
+  { ...ui('nextClassCardForeground', 'charcoal', 'tarjeta de próxima clase: flecha crema en su círculo de vidrio sobre la textura, peor caso'), bgLiteral: { hex: '#000000', over: '#8B8B8B', alpha: 0.6 } },
+  { ...ui('charcoalAccent', 'charcoal', 'tarjeta de próxima clase: borde cobre del círculo de la flecha, peor caso'), bgLiteral: { hex: '#000000', over: '#8B8B8B', alpha: 0.6 } },
+  { ...ui('charcoalAccentLight', 'charcoal', 'tarjeta de próxima clase: borde cobre claro del círculo de la flecha, peor caso'), bgLiteral: { hex: '#000000', over: '#8B8B8B', alpha: 0.6 } },
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),
   t('nextClassCardForeground', 'navActiveTextSmall', 'cápsula B: texto e ícono crema sobre cobre oscuro #8B5E34'),
-  { ...t('nextClassCardForeground', 'charcoal', 'cápsula C: texto crema sobre el vidrio negro al 60 % sobre la textura, peor caso'), bgLiteral: { hex: '#000000', over: '#2F2F2F', alpha: 0.6 } },
-  { ...ui('charcoalAccent', 'charcoal', 'cápsula C: borde e ícono cobre sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#2F2F2F', alpha: 0.6 } },
-  { ...ui('charcoalAccentLight', 'charcoal', 'cápsula C con cobre claro: borde e ícono sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#2F2F2F', alpha: 0.6 } },
+  { ...t('nextClassCardForeground', 'charcoal', 'cápsula C: texto crema sobre el vidrio negro al 60 % sobre la textura, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
+  { ...ui('charcoalAccent', 'charcoal', 'cápsula C: borde e ícono cobre sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
+  { ...ui('charcoalAccentLight', 'charcoal', 'cápsula C con cobre claro: borde e ícono sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),
   t('creamMuted', 'cream', 'gris de texto sobre la crema'),

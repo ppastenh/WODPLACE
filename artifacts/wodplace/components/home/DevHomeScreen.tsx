@@ -43,19 +43,15 @@ const EVENTS: HomeViewEvents = {
 
 type Photo = 'ok' | 'falla';
 
-// Tarjeta "Tu próxima clase" (decisión (r)): cápsula de la fecha, cobre y textura. Las texturas 1 a 3 son copias preparadas de las candidatas
-// (textura-1.jpg, textura-2.jpg y textura-3.jpg, de banner-1, banner-3 y banner-8) que NO están en el repositorio: solo existen en el
-// computador de Pía. Los patrones (rombos, líneas, puntos) se dibujan en código: no necesitan imágenes; el de rombos es el de por defecto.
-type Texture = 'rombos' | 'lineas' | 'puntos' | 'aro' | '1' | '2' | '3' | 'ninguna';
-const CENTER = { left: '50%', top: '50%' };
+// Tarjeta "Tu próxima clase" (decisión (r)): cápsula de la fecha, cobre y textura. La textura de por defecto es la pizarra elegida por Pía
+// (home-card-pizarra.jpg); los patrones (rombos, líneas, puntos) se dibujan en código y el aro es un recorte de la foto del banner.
+type Texture = 'pizarra' | 'rombos' | 'lineas' | 'puntos' | 'aro' | 'ninguna';
 const TEXTURES: Record<Texture, NextClassTexture> = {
-  rombos: NEXT_CLASS_TEXTURE,
+  pizarra: NEXT_CLASS_TEXTURE,
+  rombos: { kind: 'pattern', pattern: 'rombos' },
   lineas: { kind: 'pattern', pattern: 'lineas' },
   puntos: { kind: 'pattern', pattern: 'puntos' },
   aro: NEXT_CLASS_TEXTURE_ARO,
-  '1': { kind: 'image', source: require('@/assets/images/home/textura-1.jpg'), position: CENTER },
-  '2': { kind: 'image', source: require('@/assets/images/home/textura-2.jpg'), position: CENTER },
-  '3': { kind: 'image', source: require('@/assets/images/home/textura-3.jpg'), position: CENTER },
   ninguna: null,
 };
 const CAPSULE_CHIPS: { id: NextClassCapsule; label: string }[] = [
@@ -68,13 +64,11 @@ const COPPER_CHIPS: { id: NextClassCopper; label: string }[] = [
   { id: 'claro', label: 'Cobre: #C79A6B' },
 ];
 const TEXTURE_CHIPS: { id: Texture; label: string }[] = [
+  { id: 'pizarra', label: 'Textura: pizarra' },
   { id: 'rombos', label: 'Textura: rombos' },
   { id: 'lineas', label: 'Textura: líneas' },
   { id: 'puntos', label: 'Textura: puntos' },
   { id: 'aro', label: 'Textura: aro' },
-  { id: '1', label: 'Textura: 1' },
-  { id: '2', label: 'Textura: 2' },
-  { id: '3', label: 'Textura: 3' },
   { id: 'ninguna', label: 'Textura: ninguna' },
 ];
 
@@ -157,7 +151,7 @@ function DevHomeBody() {
   const [photo, setPhoto] = useState<Photo>('ok');
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
-  const [texture, setTexture] = useState<Texture>('rombos');
+  const [texture, setTexture] = useState<Texture>('pizarra');
   const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');

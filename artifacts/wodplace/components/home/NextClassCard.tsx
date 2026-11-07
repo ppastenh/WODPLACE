@@ -31,11 +31,16 @@ export type NextClassTexture =
 export type NextClassLook = { capsule: NextClassCapsule; copper: NextClassCopper; texture: NextClassTexture };
 
 /**
- * UNA sola constante decide la textura de la tarjeta (como BANNER_PHOTO): independiente del resto. Por defecto, el patrón "rombos" (el
- * entramado de un moleteado, dibujado con react-native-svg: no hay imagen ni licencia). La foto del aro (recorte de home-banner-anillo.jpg,
- * créditos en CREDITOS-IMAGENES.md) se ve demasiado oscura y queda como opción de la pantalla de desarrollo (NEXT_CLASS_TEXTURE_ARO).
+ * UNA sola constante decide la textura de la tarjeta (como BANNER_PHOTO): independiente del resto. Elegida por Pía: home-card-pizarra.jpg,
+ * una pizarra oscura con borrones de tiza (Noita Digital, Unsplash; créditos en CREDITOS-IMAGENES.md), espejada y aclarada (gamma 0,70) para
+ * que el remolino quede a la derecha. Para cambiarla solo cambian el require y la posición. Los patrones dibujados en código (rombos, líneas
+ * y puntos) y la foto del aro (NEXT_CLASS_TEXTURE_ARO) quedan como opciones de la pantalla de desarrollo.
  */
-export const NEXT_CLASS_TEXTURE: NextClassTexture = { kind: 'pattern', pattern: 'rombos' };
+export const NEXT_CLASS_TEXTURE: NextClassTexture = {
+  kind: 'image',
+  source: require('@/assets/images/home/home-card-pizarra.jpg'),
+  position: { left: '100%', top: '50%' },
+};
 export const NEXT_CLASS_TEXTURE_ARO: NextClassTexture = {
   kind: 'image',
   source: require('@/assets/images/home/home-banner-anillo.jpg'),
@@ -51,7 +56,7 @@ export const NEXT_CLASS_LOOK: NextClassLook = { capsule: 'C', copper: 'base', te
 
 // Textura: ocupa la mitad derecha de la tarjeta (52 %) a toda la altura; la foto va al 80 % de opacidad. El velo negro es 100 % hasta el 66 %
 // del ancho de la tarjeta (ahí va el texto gris, que mide como máximo el 66 % del ancho útil) y baja a 20 % (0x33) en el borde derecho. El peor
-// caso de contraste (el punto más claro de cualquier foto) está en scripts/src/dark-contrast-pairs.ts; los patrones son más oscuros que eso.
+// caso de contraste (el punto más claro de la foto, L 0,99 por unas motas blancas) está en scripts/src/dark-contrast-pairs.ts; los patrones son más oscuros.
 const TEXTURE_WIDTH = '52%';
 const TEXTURE_OPACITY = 0.8;
 const VEIL_PLATEAU = 0.66;
