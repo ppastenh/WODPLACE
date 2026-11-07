@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
-import { NO_COACH_LABEL, coachLine, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
+import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
 import {
   classesRemainingInPeriod,
@@ -62,6 +62,15 @@ describe('tarjeta de próxima clase: estado', () => {
   });
   it('terminó de cargar y no hay reserva (haya clases, no haya o haya fallado la carga): invitación', () => {
     assert.equal(nextClassCardState({ isLoading: false, hasUpcomingBooking: false }), 'invite');
+  });
+});
+
+describe('tarjeta de próxima clase: etiqueta de accesibilidad (una sola, la tarjeta es el único botón)', () => {
+  it('dice la clase, la fecha y hora, y a dónde lleva', () => {
+    assert.equal(nextClassA11yLabel('CrossFit', 'mar 28 oct, 07:00 AM'), 'Tu próxima clase: CrossFit, mar 28 oct, 07:00 AM. Ir al Calendario');
+  });
+  it('no deja espacios sobrantes', () => {
+    assert.equal(nextClassA11yLabel(' Open Gym ', ' vie 7 nov, 06:30 PM '), 'Tu próxima clase: Open Gym, vie 7 nov, 06:30 PM. Ir al Calendario');
   });
 });
 

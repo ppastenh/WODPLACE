@@ -21,6 +21,14 @@ export function nextClassCardState(input: { isLoading: boolean; hasUpcomingBooki
 }
 
 /**
+ * Etiqueta de accesibilidad de la tarjeta "Tu próxima clase" con reserva: la tarjeta entera es el único botón (los íconos y las capas
+ * decorativas se ocultan a los lectores de pantalla) y se anuncia con la clase, la fecha y la hora, y a dónde lleva.
+ */
+export function nextClassA11yLabel(className: string, when: string): string {
+  return `Tu próxima clase: ${className.trim()}, ${when.trim()}. Ir al Calendario`;
+}
+
+/**
  * Línea del coach: "Coach {nombre}" con la palabra una sola vez, o `null` (la línea se oculta) si la clase no
  * tiene coach asignado. Si el nombre ya empieza con "Coach" no se repite el prefijo.
  */
