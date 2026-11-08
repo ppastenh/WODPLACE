@@ -4,6 +4,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, G, Path } from 'react-native-svg';
+import { readLayout, readLines } from '@/components/home/layoutEvents';
 import { splitHighlight } from '@/components/home/splitHighlight';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -241,8 +242,10 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
     <View
       style={[styles.card, { borderColor: colors.border, backgroundColor: colors.charcoal }]}
       onLayout={(e) => {
-        setCardH(Math.round(e.nativeEvent.layout.height));
-        setCardW(Math.round(e.nativeEvent.layout.width));
+        const m = readLayout(e);
+        if (!m) return;
+        setCardH(Math.round(m.height));
+        setCardW(Math.round(m.width));
       }}
     >
       {/* Fondo: la foto en grises y un velo oscuro UNIFORME (misma opacidad en toda la tarjeta, nunca un degradado). */}
@@ -288,14 +291,24 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
                     {pc.pre !== '' ? (
                       <Text
                         style={[styles.text, textStyle]}
-                        onLayout={(e) => setWidths((w) => ({ ...w, [`${pc.li}p`]: e.nativeEvent.layout.width }))}
+                        onLayout={(e) => {
+                          const m = readLayout(e);
+                          if (!m) return;
+                          const width = m.width;
+                          setWidths((w) => ({ ...w, [`${pc.li}p`]: width }));
+                        }}
                       >
                         {nb(pc.pre)}
                       </Text>
                     ) : null}
                     <Text
                       style={[styles.text, textStyle]}
-                      onLayout={(e) => setWidths((w) => ({ ...w, [`${pc.li}s`]: e.nativeEvent.layout.width }))}
+                      onLayout={(e) => {
+                        const m = readLayout(e);
+                        if (!m) return;
+                        const width = m.width;
+                        setWidths((w) => ({ ...w, [`${pc.li}s`]: width }));
+                      }}
                     >
                       {nb(pc.seg)}
                     </Text>
@@ -310,8 +323,8 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
               onTextLayout={
                 marker && Platform.OS !== 'web'
                   ? (e) => {
-                      const next = e.nativeEvent.lines.map((l) => ({ x: l.x, y: l.y, w: l.width, h: l.height, text: l.text }));
-                      if (JSON.stringify(next) !== JSON.stringify(lines)) {
+                      const next = readLines(e);
+                      if (next && JSON.stringify(next) !== JSON.stringify(lines)) {
                         setLines(next);
                         setWidths({});
                       }

@@ -6,10 +6,11 @@
  * Corre con: pnpm --filter @workspace/scripts test:home-logic
  */
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
+import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
@@ -538,5 +539,71 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok(quote.includes("from 'react-native-svg'"));
     assert.match(quote, /const MARK_OPEN_H = 30;/);
     assert.match(quote, /const MARK_CLOSE_H = 18;/);
+  });
+});
+
+describe('eventos de layout (onLayout / onTextLayout): se leen de forma sincrónica', () => {
+  // Bug real (pedido 21, commit efa7b8c): setWidths((w) => ({ ...w, k: e.nativeEvent.layout.width })) leía el evento DENTRO del callback del setState, que
+  // React ejecuta después de liberar el evento sintético: "This synthetic event is reused..." y "Cannot read property 'layout' of null" (solo en nativo).
+  const findDeferredEventReads = (source: string): string[] => {
+    const found: string[] = [];
+    for (const line of source.split('\n')) {
+      const at = line.indexOf('nativeEvent');
+      if (at < 0) continue;
+      const arrows = [...line.matchAll(/=>/g)].map((m) => m.index ?? 0);
+      if (arrows.length >= 2 && arrows[1]! < at) found.push('segunda función dentro de la línea: ' + line.trim());
+    }
+    if (/(setTimeout|requestAnimationFrame|queueMicrotask|\.then)\s*\([\s\S]{0,300}?nativeEvent/.test(source)) found.push('nativeEvent dentro de setTimeout, requestAnimationFrame o una promesa');
+    if (/set[A-Z]\w*\(\s*\(?\w*\)?\s*=>[\s\S]{0,200}?nativeEvent/.test(source)) found.push('nativeEvent dentro del callback de un setState');
+    return found;
+  };
+  const walk = (dir: URL): URL[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+      d.isDirectory() ? (d.name === 'node_modules' ? [] : walk(new URL(d.name + '/', dir))) : /\.tsx?$/.test(d.name) ? [new URL(d.name, dir)] : [],
+    );
+  it('la prueba detecta el código con el bug (lectura diferida dentro de un setState con función)', () => {
+    const buggy = "<Text onLayout={(e) => setWidths((w) => ({ ...w, a: e.nativeEvent.layout.width }))} />";
+    assert.ok(findDeferredEventReads(buggy).length > 0);
+    assert.ok(findDeferredEventReads("setTimeout(() => { setW(e.nativeEvent.layout.width); }, 0);").length > 0);
+    assert.ok(findDeferredEventReads("const x = async (e) => { await p.then(() => e.nativeEvent.layout); }").length > 0);
+    const ok = "<View onLayout={(e) => setW(e.nativeEvent.layout.width)} />";
+    assert.deepEqual(findDeferredEventReads(ok), []);
+  });
+  it('ningún archivo de app/, components/ y context/ lee nativeEvent de forma diferida', () => {
+    const root = new URL('../../artifacts/wodplace/', import.meta.url);
+    for (const folder of ['app/', 'components/', 'context/']) {
+      for (const file of walk(new URL(folder, root))) {
+        const bad = findDeferredEventReads(readFileSync(file, 'utf8').replace(/\r\n/g, '\n'));
+        assert.deepEqual(bad, [], file.pathname);
+      }
+    }
+  });
+  it('en components/home solo layoutEvents.ts toca nativeEvent: los manejadores copian los números con readLayout / readLines al comienzo', () => {
+    const dir = new URL('../../artifacts/wodplace/components/home/', import.meta.url);
+    for (const name of readdirSync(dir).filter((f) => /\.tsx?$/.test(f) && f !== 'layoutEvents.ts')) {
+      const text = readFileSync(new URL(name, dir), 'utf8');
+      assert.ok(!/e\.nativeEvent|event\.nativeEvent/.test(text), name + ' lee nativeEvent directamente: usa readLayout o readLines');
+    }
+    const card = readFileSync(new URL('DailyQuoteCard.tsx', dir), 'utf8');
+    assert.ok(card.includes('const m = readLayout(e);'));
+    assert.ok(card.includes('const next = readLines(e);'));
+  });
+  it('con un evento ya liberado, nulo o incompleto, readLayout y readLines devuelven null y NO lanzan', () => {
+    for (const e of [null, undefined, {}, { nativeEvent: null }, { nativeEvent: {} }, { nativeEvent: { layout: null } }, { nativeEvent: { layout: { width: 10 } } }]) {
+      assert.equal(readLayout(e), null);
+    }
+    for (const e of [null, undefined, {}, { nativeEvent: null }, { nativeEvent: { lines: null } }]) assert.equal(readLines(e), null);
+  });
+  it('con un evento válido copian los números', () => {
+    assert.deepEqual(readLayout({ nativeEvent: { layout: { width: 320.5, height: 113 } } }), { width: 320.5, height: 113 });
+    assert.deepEqual(readLines({ nativeEvent: { lines: [{ x: 1, y: 2, width: 3, height: 4, text: 'a' }] } }), [{ x: 1, y: 2, w: 3, h: 4, text: 'a' }]);
+  });
+  it('un evento que se anula después de leerlo no afecta lo ya copiado (simula la liberación del evento sintético)', () => {
+    const ev: { nativeEvent: { layout: { width: number; height: number } } | null } = { nativeEvent: { layout: { width: 200, height: 50 } } };
+    const m = readLayout(ev); // lectura sincrónica al comienzo
+    ev.nativeEvent = null; // React libera el evento
+    const later = () => m?.width; // el callback diferido usa el número copiado
+    assert.equal(later(), 200);
+    assert.equal(readLayout(ev), null);
   });
 });
