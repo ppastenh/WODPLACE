@@ -163,13 +163,11 @@ const colors = {
     successBackgroundPressed: '#D3EDDB',
     // Presionado SÓLIDO del aviso importante (relleno warningBackground).
     warningBackgroundPressed: '#FFE2B0',
-    // Tarjeta de frases del día (decisión (s)), variantes en evaluación. Valen LO MISMO en el claro y en el oscuro (Inicio es de claro fijo).
-    // quoteInk: grafito suave del texto sobre crema. quoteCream: crema cálido (igual a background claro). quoteDark / quoteDarkEnd: grafito de la
-    // variante oscura y su extremo del degradado. quoteCopperText: cobre OSCURO para texto resaltado (4,66:1 sobre quoteCream).
+    // Tarjeta de frases del día (decisión (s)), opción C elegida. Valen LO MISMO en el claro y en el oscuro (Inicio es de claro fijo).
+    // quoteInk: grafito suave del texto sobre crema. quoteCream: crema cálido (igual a background claro). quoteCopperText: cobre OSCURO para
+    // el texto resaltado (4,66:1 sobre el beige del degradado y 4,98:1 sobre quoteCream).
     quoteInk: '#292724',
     quoteCream: '#F6F1E8',
-    quoteDark: '#18191A',
-    quoteDarkEnd: '#24262A',
     quoteCopperText: '#8B5E34',
   },
 

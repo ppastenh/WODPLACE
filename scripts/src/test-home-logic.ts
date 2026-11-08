@@ -384,90 +384,129 @@ describe('Tarjeta ancha "Progreso mensual": número, barra y "reservadas" por ti
   });
 });
 
-describe('splitHighlight (resaltado final de la frase, variante C)', () => {
-  const whole = (f: string) => {
-    const r = splitHighlight(f);
-    assert.equal(r.lead + r.mark + r.tail, f.trim(), 'lead + mark + tail reconstruye la frase');
-    return r;
+describe('splitHighlight (resaltado final de la frase, opción C)', () => {
+  const run = (f: string) => splitHighlight(f);
+  const shown = (f: string) => {
+    const r = run(f);
+    return r.lead + r.mark + r.tail;
   };
   it('las 5 frases reales: resalta la cláusula final o las últimas palabras', () => {
-    assert.equal(whole('La constancia de hoy construye la fuerza de mañana.').mark, 'fuerza de mañana');
-    assert.equal(whole('Cada repetición cuenta cuando eliges seguir avanzando.').mark, 'seguir avanzando');
-    assert.equal(whole('Entrenar también es una forma de cuidar tu mente.').mark, 'cuidar tu mente');
-    assert.equal(whole('No necesitas hacerlo perfecto; necesitas volver a intentarlo.').mark, 'necesitas volver a intentarlo');
-    assert.equal(whole('Tu progreso se mide en disciplina, no en comparación.').mark, 'no en comparación');
+    assert.equal(run('La constancia de hoy construye la fuerza de mañana.').mark, 'fuerza de mañana');
+    assert.equal(run('Cada repetición cuenta cuando eliges seguir avanzando.').mark, 'seguir avanzando');
+    assert.equal(run('Entrenar también es una forma de cuidar tu mente.').mark, 'cuidar tu mente');
+    assert.equal(run('No necesitas hacerlo perfecto; necesitas volver a intentarlo.').mark, 'necesitas volver a intentarlo');
+    assert.equal(run('Tu progreso se mide en disciplina, no en comparación.').mark, 'no en comparación');
+  });
+  it('sin marcado manual, lead + mark + tail es la frase tal cual', () => {
+    for (const f of ['La constancia de hoy construye la fuerza de mañana.', '¿Listo para entrenar hoy con todo tu corazón?', 'Hoy lo logras']) {
+      assert.equal(shown(f), f);
+    }
   });
   it('la puntuación final queda fuera del resaltado', () => {
-    assert.equal(whole('Tu progreso se mide en disciplina, no en comparación.').tail, '.');
-    assert.equal(whole('¿Listo para entrenar hoy con todo tu corazón?').tail, '?');
-    assert.equal(whole('Sigue adelante...').tail, '...');
+    assert.equal(run('Tu progreso se mide en disciplina, no en comparación.').tail, '.');
+    assert.equal(run('¿Listo para entrenar hoy con todo tu corazón?').tail, '?');
   });
-  it('1 a 3 palabras: sin resaltado', () => {
-    for (const f of ['Vamos', 'Hoy sí', 'Una pausa, final', '¡Vamos equipo!']) assert.equal(whole(f).mark, '', f);
+  it('(d) 1 a 3 palabras: sin resaltado', () => {
+    for (const f of ['Vamos', 'Hoy sí', 'Hoy lo logras', '¡Vamos equipo!']) assert.equal(run(f).mark, '', f);
   });
-  it('sin puntuación: las últimas palabras (≈ 30 %), sin cortar palabras', () => {
-    const r = whole('sin puntuacion alguna en esta frase de ejemplo para probar');
-    assert.equal(r.mark, 'ejemplo para probar');
-    assert.equal(whole('uno dos tres cuatro').mark, 'tres cuatro');
+  it('(a) no empieza con una palabra de relleno: se corre a la primera con contenido', () => {
+    const r = run('Primero llegas, después te mueves; luego sigues, y al final celebras lo logrado');
+    assert.equal(r.mark, 'final celebras lo logrado');
+    assert.ok(r.reason.includes('corrida'));
   });
-  it('con signos ¿ ¡ « »: no cuentan como palabras ni se cortan', () => {
-    assert.equal(whole('¿Listo para entrenar hoy con todo tu corazón?').mark, 'tu corazón');
-    assert.equal(whole('¡Hoy es un gran día para volver a empezar!').mark, 'volver a empezar');
+  it('nunca termina en una palabra de relleno: no se resalta nada', () => {
+    assert.equal(run('Esto es justo lo que hemos venido a buscar con').mark, '');
+    assert.equal(run('Nadie te regala el esfuerzo que haces por').mark, '');
   });
-  it('dos pausas: se resalta la última cláusula que cumpla (2 a 6 palabras)', () => {
-    assert.equal(whole('Primero llegas, después te mueves; luego sigues, y al final celebras lo logrado').mark, 'y al final celebras lo logrado');
+  it('(b)(c) largo mínimo: sin 2 palabras de contenido y 8 letras (o 1 de 6 tras pausa) no se resalta nada', () => {
+    assert.equal(run('Respira y vuelve a empezar').mark, '');
+    assert.equal(run('Hoy toca esforzarse más, para la meta').mark, '');
+    assert.equal(run('Entrena con ganas, siempre').mark, '');
   });
-  it('raya como pausa', () => {
-    assert.equal(whole('Hoy no es el día de rendirte — mañana te lo agradecerás mucho').mark, 'mañana te lo agradecerás mucho');
+  it('sin puntuación y con signos ¿ ¡ « »', () => {
+    assert.equal(run('sin puntuacion alguna en esta frase de ejemplo para probar').mark, 'ejemplo para probar');
+    assert.equal(run('¡Hoy es un gran día para volver a empezar!').mark, 'volver a empezar');
+    assert.equal(run('«Cada día cuenta», dice el entrenador al llegar la mañana').mark, 'llegar la mañana');
   });
-  it('frase muy larga: nunca más de la mitad y como máximo 4 palabras si no hay pausa útil', () => {
+  it('frase muy larga: como máximo 4 palabras y nunca más de la mitad', () => {
     const f = 'Cada mañana que llegas al box y eliges entrenar aunque no tengas ganas, estás construyendo una versión más fuerte, más paciente y más constante de ti, y eso vale más que cualquier marca.';
-    const r = whole(f);
+    const r = run(f);
     assert.equal(r.mark, 'más que cualquier marca');
     assert.ok(r.mark.split(' ').length <= f.split(' ').length / 2);
   });
-  it('si la cláusula final es muy larga (más de 6 palabras) no se usa la pausa', () => {
-    assert.equal(whole('Aunque cueste, sigue adelante cada día con todas tus ganas').mark, 'todas tus ganas');
+  it('(e) marcado manual *así*: se resalta exactamente ese fragmento y se quitan los asteriscos', () => {
+    const r = run('Tu constancia es *tu mejor entrenamiento* siempre.');
+    assert.deepEqual([r.lead, r.mark, r.tail], ['Tu constancia es ', 'tu mejor entrenamiento', ' siempre.']);
+    assert.ok(!shown('Tu constancia es *tu mejor entrenamiento* siempre.').includes('*'));
+  });
+  it('(e) el marcado manual tiene prioridad (también en frases de 3 palabras o con relleno)', () => {
+    assert.equal(run('Sigue *con todo*').mark, 'con todo');
+    assert.equal(run('*Respira hondo* y sigue adelante con calma.').lead, '');
+  });
+  it('(e) "~" al comienzo: sin resaltado y sin la marca', () => {
+    const r = run('~La constancia de hoy construye la fuerza de mañana.');
+    assert.equal(r.mark, '');
+    assert.equal(r.lead + r.tail, 'La constancia de hoy construye la fuerza de mañana.');
+  });
+  it('(e) asteriscos mal cerrados o vacíos: nunca se muestran y se aplican las reglas automáticas', () => {
+    for (const f of ['Tu constancia es *tu mejor entrenamiento siempre.', 'Tu constancia ** es tu mejor entrenamiento siempre.']) {
+      assert.ok(!shown(f).includes('*'), f);
+      assert.equal(run(f).mark, 'entrenamiento siempre');
+    }
+  });
+  it('con una cifra cuenta como palabra de contenido', () => {
+    assert.equal(run('Hazlo todos los días durante 30 minutos').mark, '30 minutos');
   });
 });
 
 describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
   const quote = readFileSync(new URL('../../artifacts/wodplace/components/home/DailyQuoteCard.tsx', import.meta.url), 'utf8');
   const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
-  const nuevas = quote.slice(quote.indexOf('function NewQuote('), quote.indexOf('const styles = StyleSheet.create'));
+  const editorial = quote.slice(quote.indexOf('function EditorialQuote('), quote.indexOf('const styles = StyleSheet.create'));
   const actual = quote.slice(quote.indexOf('function ActualQuote('), quote.indexOf('/** Siluetas de montañas'));
-  it('por defecto sigue la variante actual y HomeView la recibe de UNA constante', () => {
-    assert.match(quote, /export const QUOTE_VARIANT: QuoteVariant = 'actual';/);
+  it('la editorial (C) es la variante por defecto y HomeView la recibe de UNA constante', () => {
+    assert.ok(quote.includes("export const QUOTE_VARIANT: QuoteVariant = 'editorialCream';"));
     assert.ok(home.includes('quoteLook = QUOTE_LOOK'));
     assert.ok(home.includes('<DailyQuoteCard quote={quote} onShare={events.onShareQuote} look={quoteLook} />'));
   });
-  it('el botón de compartir sigue llamando a su evento en todas las variantes', () => {
+  it('las variantes A y B y la itálica de Inter se retiraron', () => {
+    assert.ok(!/minimalCream|minimalDark|Inter_500Medium_Italic|expo-font|quoteDark/.test(quote));
+    assert.ok(quote.includes("export type QuoteVariant = 'actual' | 'editorialCream';"));
+  });
+  it('el botón de compartir sigue llamando a su evento y tiene 48 × 48 dp con presionado sólido', () => {
     assert.ok(actual.includes('onPress={onShare}'));
-    assert.ok(nuevas.includes('onPress={onShare}'));
-    assert.ok(nuevas.includes('accessibilityLabel="Compartir frase"'));
-  });
-  it('la flecha ya no existe en las variantes nuevas (solo la actual conserva su chevron)', () => {
-    assert.ok(!nuevas.includes('chevron'));
-    assert.ok(actual.includes('chevron-right'));
-  });
-  it('el botón de compartir tiene 48 × 48 dp y el presionado es de color sólido', () => {
+    assert.ok(editorial.includes('onPress={onShare}'));
+    assert.ok(editorial.includes('accessibilityLabel="Compartir frase"'));
     assert.match(quote, /const SHARE_AREA = 48;/);
-    assert.ok(nuevas.includes('pressed && { backgroundColor: pressedBg }'));
+    assert.ok(editorial.includes('pressed && { backgroundColor: colors.border }'));
     for (const line of quote.split(String.fromCharCode(10))) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
   });
-  it('los adornos (montañas, líneas, comillas, separador) van en Views con pointerEvents none y ocultos; ningún Text lleva pointerEvents', () => {
-    assert.ok(nuevas.includes('<View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={styles.layers}>'));
-    assert.ok(nuevas.includes('style={styles.marksWrap}'));
-    assert.ok((nuevas.match(/pointerEvents="none"/g) ?? []).length >= 3);
+  it('la flecha ya no existe en la editorial (solo la actual conserva su chevron)', () => {
+    assert.ok(!editorial.includes('chevron'));
+    assert.ok(actual.includes('chevron-right'));
+  });
+  it('los adornos (montañas, comillas) van en Views con pointerEvents none y ocultos; ningún Text lleva pointerEvents', () => {
+    assert.ok(editorial.includes("pointerEvents: 'none', importantForAccessibility: 'no-hide-descendants', accessibilityElementsHidden: true"));
+    assert.ok((editorial.match(/\{\.\.\.hidden\}/g) ?? []).length >= 3, 'capas, comilla de apertura y de cierre');
     assert.doesNotMatch(quote, /<Text[^>]*pointerEvents=/);
   });
-  it('el resaltado es un Text anidado en el cobre oscuro quoteCopperText, solo en la editorial', () => {
-    assert.ok(nuevas.includes('<Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>'));
-    assert.ok(nuevas.includes("editorial && look.highlight ? splitHighlight(quote) : null"));
+  it('mismo alto mínimo en todas las frases (3 líneas) y la frase se centra en vertical', () => {
+    assert.match(quote, /export const EDITORIAL_MIN_LINES = 3;/);
+    assert.ok(quote.includes('export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V;'));
+    assert.ok(quote.includes("minHeight: EDITORIAL_MIN_H, justifyContent: 'center'"));
+    assert.ok(!editorial.includes('numberOfLines'), 'nunca se corta con "…"');
   });
-  it('la fuente editorial sale de una sola constante y la itálica de Inter se carga desde el componente', () => {
+  it('el resaltado es un Text anidado en el cobre oscuro quoteCopperText y el texto mostrado no lleva marcas', () => {
+    assert.ok(editorial.includes('<Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>'));
+    assert.ok(quote.includes('displayText(quote)'));
+  });
+  it('la fuente editorial sale de una sola constante', () => {
     assert.ok(quote.includes("export const EDITORIAL_FONT: string = Platform.select({ android: 'serif', default: 'Georgia' });"));
-    assert.ok(quote.includes("from '@expo-google-fonts/inter/500Medium_Italic'"));
-    assert.ok(quote.includes("from 'expo-font'"));
+    assert.ok(quote.includes('fontFamily: EDITORIAL_FONT'));
+  });
+  it('las tres comillas (glifo, dibujada, doble) existen y la dibujada usa react-native-svg', () => {
+    assert.ok(quote.includes("export type QuoteMark = 'glifo' | 'dibujada' | 'doble';"));
+    assert.ok(quote.includes('function DrawnMark('));
+    assert.ok(quote.includes("from 'react-native-svg'"));
   });
 });

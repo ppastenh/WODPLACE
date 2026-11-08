@@ -223,19 +223,14 @@ export const PAIRS_LIGHT: Pair[] = [
   { ...ui('nextClassCardForeground', 'charcoal', 'tarjeta de próxima clase: flecha crema en su círculo de vidrio sobre la textura, peor caso'), bgLiteral: { hex: '#000000', over: '#8B8B8B', alpha: 0.6 } },
   { ...ui('charcoalAccent', 'charcoal', 'tarjeta de próxima clase: borde cobre del círculo de la flecha, peor caso'), bgLiteral: { hex: '#000000', over: '#8B8B8B', alpha: 0.6 } },
   { ...ui('charcoalAccentLight', 'charcoal', 'tarjeta de próxima clase: borde cobre claro del círculo de la flecha, peor caso'), bgLiteral: { hex: '#000000', over: '#8B8B8B', alpha: 0.6 } },
-  // Tarjeta de frases del día (decisión (s)), variantes A, B y C. Los tokens quote* valen lo mismo en las dos paletas. El degradado de las crema va
-  // de quoteCream a cream y el de la oscura de quoteDark a quoteDarkEnd: se miden los dos extremos. Comillas, separador, montañas y líneas son
-  // decorativos (sin mínimo; sus razones se informan en ESTADO.md).
-  t('quoteInk', 'quoteCream', 'frase A y C: grafito suave sobre el crema (extremo claro del degradado)'),
-  t('quoteInk', 'cream', 'frase A y C: grafito suave sobre el beige (extremo oscuro del degradado)'),
-  ui('quoteInk', 'quoteCream', 'ícono de compartir A y C sobre el crema'),
-  ui('quoteInk', 'border', 'ícono de compartir A y C presionado (círculo sólido border)'),
-  t('quoteCream', 'quoteDark', 'frase B: crema sobre el grafito (extremo oscuro del degradado)'),
-  t('quoteCream', 'quoteDarkEnd', 'frase B: crema sobre el extremo claro del degradado oscuro'),
-  ui('quoteCream', 'quoteDarkEnd', 'ícono de compartir B sobre el degradado oscuro'),
-  ui('quoteCream', 'nextClassCardPressed', 'ícono de compartir B presionado (círculo sólido nextClassCardPressed)'),
-  t('quoteCopperText', 'quoteCream', 'C: resaltado final en cobre oscuro sobre el crema'),
-  t('quoteCopperText', 'cream', 'C: resaltado final en cobre oscuro sobre el beige (extremo oscuro del degradado)'),
+  // Tarjeta de frases del día (decisión (s)), opción C editorial. Los tokens quote* valen lo mismo en las dos paletas. El degradado va de quoteCream
+  // a cream: se miden los dos extremos. Comillas y montañas son decorativas (sin mínimo; sus razones se informan en ESTADO.md).
+  t('quoteInk', 'quoteCream', 'frase: grafito suave sobre el crema (extremo claro del degradado)'),
+  t('quoteInk', 'cream', 'frase: grafito suave sobre el beige (extremo oscuro del degradado)'),
+  ui('quoteInk', 'quoteCream', 'ícono de compartir sobre el crema'),
+  ui('quoteInk', 'border', 'ícono de compartir presionado (círculo sólido border)'),
+  t('quoteCopperText', 'quoteCream', 'resaltado final en cobre oscuro sobre el crema'),
+  t('quoteCopperText', 'cream', 'resaltado final en cobre oscuro sobre el beige (extremo oscuro del degradado)'),
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),
