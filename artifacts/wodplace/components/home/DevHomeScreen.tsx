@@ -12,7 +12,6 @@ import {
   type NextClassCapsule,
   type NextClassCopper,
   type NextClassLook,
-  type NextClassStripe,
   type NextClassTexture,
 } from '@/components/home/NextClassCard';
 import {
@@ -60,10 +59,6 @@ const CAPSULE_CHIPS: { id: NextClassCapsule; label: string }[] = [
   { id: 'A', label: 'Cápsula: A' },
   { id: 'B', label: 'Cápsula: B' },
   { id: 'C', label: 'Cápsula: C' },
-];
-const STRIPE_CHIPS: { id: NextClassStripe; label: string }[] = [
-  { id: 'invite', label: 'Franja izquierda: sin reserva' },
-  { id: 'both', label: 'Franja izquierda: ambos estados' },
 ];
 // Tarjeta de frases del día (decisión (s)): variante, largo de la frase, resaltado (solo C) e itálica de Inter (solo A y B).
 const QUOTE_VARIANT_CHIPS: { id: QuoteVariant; label: string }[] = [
@@ -191,14 +186,13 @@ function DevHomeBody() {
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
   const [texture, setTexture] = useState<Texture>('pizarra');
-  const [stripe, setStripe] = useState<NextClassStripe>('invite');
   const [bars, setBars] = useState<'si' | 'no'>('si');
   const [quoteVariant, setQuoteVariant] = useState<QuoteVariant>(QUOTE_LOOK.variant);
   const [quoteLength, setQuoteLength] = useState<QuoteLength>('media');
   const [quoteHighlight, setQuoteHighlight] = useState<'si' | 'no'>('si');
   const [quoteItalic, setQuoteItalic] = useState<QuoteItalic>('real');
   const quoteLook: QuoteLook = { variant: quoteVariant, highlight: quoteHighlight === 'si', italic: quoteItalic };
-  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture], stripe, bars: bars === 'si' };
+  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture], bars: bars === 'si' };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
   const [menuFont, setMenuFont] = useState<MenuFont>('sistema');
@@ -230,7 +224,6 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
-          <ChipGroup title="Tarjeta de próxima clase: franja izquierda" chips={STRIPE_CHIPS} selected={stripe} onSelect={setStripe} />
           <ChipGroup title="Tarjeta de próxima clase: barras //" chips={BARS_CHIPS} selected={bars} onSelect={setBars} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />

@@ -242,15 +242,9 @@ export const PAIRS_LIGHT: Pair[] = [
   t('nextClassCardForeground', 'navActiveTextSmall', 'cápsula B: texto e ícono crema sobre cobre oscuro #8B5E34'),
   { ...t('nextClassCardForeground', 'charcoal', 'cápsula C: texto crema sobre el vidrio negro al 60 % sobre la textura, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
   { ...ui('charcoalAccent', 'charcoal', 'cápsula C: borde e ícono cobre sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
-  // Estado sin reserva: franja de cobre de 4 dp en el borde izquierdo (junto a ella el velo es 100 % negro: carbón, o nextClassCardPressed al presionar;
-  // el grafito de la tarjeta, nextClassCard, queda de referencia) y título de 21 sp (antes 26) con el MISMO crema: el tamaño no cambia la razón de
-  // contraste, pero el título ya no es texto grande, así que se exige 4,5:1 en el peor caso (sobre la textura, hasta 80 % del ancho, antes de la flecha).
-  ui('charcoalAccent', 'charcoal', 'franja izquierda cobre #B98250 sobre el velo negro (sin reserva)'),
-  ui('charcoalAccent', 'nextClassCard', 'franja izquierda cobre #B98250 sobre el grafito de la tarjeta'),
-  ui('charcoalAccent', 'nextClassCardPressed', 'franja izquierda cobre #B98250 sobre el color presionado'),
-  ui('charcoalAccentLight', 'charcoal', 'franja izquierda cobre claro #C79A6B sobre el velo negro (chip de cobre)'),
-  ui('charcoalAccentLight', 'nextClassCardPressed', 'franja izquierda cobre claro #C79A6B sobre el color presionado'),
-  // Barras //: decorativas, del mismo cobre que la franja, sobre el velo negro (a la izquierda, antes del 66 % del ancho). Se exigen 3:1.
+  // Estado sin reserva: título de 21 sp (antes 26) con el MISMO crema: el tamaño no cambia la razón de contraste, pero el título ya no es texto
+  // grande, así que se exige 4,5:1 en el peor caso (sobre la textura, hasta 80 % del ancho, antes de la flecha).
+  // Barras //: decorativas, del cobre de la tarjeta, sobre el velo negro (a la izquierda, antes del 66 % del ancho). Se exigen 3:1.
   ui('charcoalAccent', 'charcoal', 'barras // cobre #B98250 sobre el velo negro'),
   ui('charcoalAccent', 'nextClassCardPressed', 'barras // cobre #B98250 sobre el color presionado'),
   ui('charcoalAccentLight', 'charcoal', 'barras // cobre claro #C79A6B sobre el velo negro'),

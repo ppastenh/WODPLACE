@@ -28,13 +28,10 @@ export type NextClassTexture =
   | { kind: 'image'; source: number; position: { left: string; top: string } }
   | { kind: 'pattern'; pattern: NextClassPattern }
   | null;
-/** Franja de cobre del lado izquierdo: solo en el estado sin reserva (por defecto) o también con reserva (solo la pantalla de desarrollo). */
-export type NextClassStripe = 'invite' | 'both';
 export type NextClassLook = {
   capsule: NextClassCapsule;
   copper: NextClassCopper;
   texture: NextClassTexture;
-  stripe?: NextClassStripe;
   /** Barras diagonales // a la izquierda del título sin reserva (por defecto sí; el chip de desarrollo las quita). */
   bars?: boolean;
 };
@@ -76,10 +73,9 @@ const CIRCLE = 32;
 const CAPSULE_H = 28;
 const ARROW = 32;
 const CARD_MIN_H = 124;
-// Estado sin reserva: el título baja de FONT_SIZE.hero (26 sp) a 21 sp (-19 %), con la misma fuente (Anton). Franja de cobre: 4 dp.
+// Estado sin reserva: el título baja de FONT_SIZE.hero (26 sp) a 21 sp (-19 %), con la misma fuente (Anton).
 const INVITE_NAME_SIZE = 21;
 const INVITE_NAME_LINE = 24;
-const STRIPE_W = 4;
 // Barras //: dos trazos paralelos de 2,5 dp con extremos rectos (butt), 18 dp de alto a 60° respecto de la horizontal (desplazamiento
 // horizontal 18 / tan 60° = 10,4 dp) y 5,5 dp de separación horizontal entre sí (4,8 dp medidos en perpendicular). El dibujo mide 20 × 20 dp
 // (1 dp de margen arriba y abajo para los cantos de los extremos) y va a 10 dp del título.
@@ -95,13 +91,10 @@ type Booked = NonNullable<HomeViewData['nextBooked']>;
 function Frame({
   pressed,
   texture,
-  stripe,
   children,
 }: {
   pressed: boolean;
   texture: NextClassTexture;
-  /** Color de la franja izquierda (cobre) o null si no lleva. */
-  stripe?: string | null;
   children: React.ReactNode;
 }) {
   const colors = useColors();
@@ -125,8 +118,6 @@ function Frame({
           end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
-        {/* Franja decorativa: dentro de `layers` (recorte redondeado), así sigue la curva de las esquinas y no sobresale; no ocupa espacio. */}
-        {stripe ? <View style={[styles.stripe, { backgroundColor: stripe }]} /> : null}
       </View>
       {children}
     </View>
@@ -248,7 +239,7 @@ export function NextClassCard({
         style={styles.pressable}
       >
         {({ pressed }) => (
-          <Frame pressed={pressed} texture={look.texture} stripe={copper}>
+          <Frame pressed={pressed} texture={look.texture}>
             <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={[styles.content, styles.inviteContent]}>
               <View style={styles.inviteRow}>
                 {look.bars !== false ? <Bars color={copper} /> : null}
@@ -295,7 +286,7 @@ export function NextClassCard({
       style={styles.pressable}
     >
       {({ pressed }) => (
-        <Frame pressed={pressed} texture={look.texture} stripe={look.stripe === 'both' ? copper : null}>
+        <Frame pressed={pressed} texture={look.texture}>
           <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.content}>
             <View style={styles.dateRow}>
               <View style={[styles.circle, { backgroundColor: cap.bg, borderColor: cap.border }]}>
@@ -362,7 +353,6 @@ const styles = StyleSheet.create({
   },
   layers: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.xl, overflow: 'hidden' },
   texture: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH, opacity: TEXTURE_OPACITY },
-  stripe: { position: 'absolute', top: 0, left: 0, bottom: 0, width: STRIPE_W },
   textureBox: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH },
   content: { padding: SPACING.lg, gap: SPACING.sm, justifyContent: 'center', flexGrow: 1 },
   inviteContent: { paddingRight: SPACING.lg + ARROW + SPACING.sm },

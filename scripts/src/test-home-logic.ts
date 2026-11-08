@@ -77,14 +77,8 @@ describe('tarjeta de próxima clase (NextClassCard.tsx): el toque llega a la tar
   it('el estado presionado es sólido: ninguna línea mezcla "pressed" con opacity', () => {
     for (const line of source.split('\n')) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
   });
-  it('la franja izquierda es decorativa (dentro de layers, sin Text), de 4 dp, y solo la lleva el estado sin reserva por defecto', () => {
-    assert.match(source, /const STRIPE_W = 4;/);
-    assert.ok(source.includes("stripe: { position: 'absolute', top: 0, left: 0, bottom: 0, width: STRIPE_W }"));
-    const layers = source.slice(source.indexOf('<View pointerEvents="none" style={styles.layers}>'), source.indexOf('{children}'));
-    assert.ok(layers.includes('styles.stripe'), 'la franja va dentro de las capas decorativas (recorte redondeado, sin pointerEvents en Text)');
-    assert.ok(source.includes('<Frame pressed={pressed} texture={look.texture} stripe={copper}>'), 'sin reserva: franja');
-    assert.ok(source.includes("stripe={look.stripe === 'both' ? copper : null}"), 'con reserva: solo si el chip de desarrollo lo pide');
-    assert.ok(!source.includes('<Frame pressed={false} texture={look.texture} stripe'), 'el esqueleto no lleva franja');
+  it('la tarjeta ya no lleva la franja izquierda (solo las barras //)', () => {
+    assert.ok(!/stripe|STRIPE/i.test(source));
   });
   it('las barras // son decorativas (View pointerEvents none, ocultas), de extremos rectos, y salen por defecto', () => {
     const bars = source.slice(source.indexOf('function Bars('), source.indexOf('function Arrow('));
