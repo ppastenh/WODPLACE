@@ -16,6 +16,7 @@ import type {
 import { AutoFitImage } from '@/components/AutoFitImage';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { MedalBadge } from '@/components/MedalBadge';
+import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { useBooking } from '@/context/BookingContext';
@@ -195,6 +196,7 @@ export function HomeView({
   events,
   photoFails = false,
   nextClassLook = NEXT_CLASS_LOOK,
+  quoteLook = QUOTE_LOOK,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -202,11 +204,13 @@ export function HomeView({
   photoFails?: boolean;
   /** Solo para la pantalla de desarrollo: cápsula, cobre y textura de la tarjeta de próxima clase (por defecto, NEXT_CLASS_LOOK). */
   nextClassLook?: NextClassLook;
+  /** Solo para la pantalla de desarrollo: variante de la tarjeta de frases (por defecto, QUOTE_LOOK: la actual). */
+  quoteLook?: QuoteLook;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} />
     </ThemeOverride>
   );
 }
@@ -248,11 +252,13 @@ function HomeViewInner({
   events,
   photoFails,
   nextClassLook,
+  quoteLook,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
   photoFails: boolean;
   nextClassLook: NextClassLook;
+  quoteLook: QuoteLook;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -439,36 +445,7 @@ function HomeViewInner({
           />
         ) : null}
 
-        <LinearGradient
-          colors={[colors.accent, colors.accentGradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.quoteRow}
-        >
-          <MaterialCommunityIcons
-            name="image-filter-hdr"
-            size={30}
-            color={colors.accentForeground}
-            style={styles.quoteIconLeft}
-          />
-          <View style={styles.quoteRowTextWrap}>
-            <Text style={[styles.quoteRowText, { color: colors.accentForeground }]} numberOfLines={3}>
-              {quote.toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.quoteRowActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Compartir frase motivacional"
-              onPress={events.onShareQuote}
-              hitSlop={10}
-              style={({ pressed }) => [styles.shareButton, pressed && { backgroundColor: colors.accentPressed }]}
-            >
-              <Feather name="share-2" size={16} color={colors.accentForeground} />
-            </Pressable>
-            <Feather name="chevron-right" size={20} color={colors.accentForeground} />
-          </View>
-        </LinearGradient>
+        <DailyQuoteCard quote={quote} onShare={events.onShareQuote} look={quoteLook} />
 
         {hasBoxMembership && hasPendingContract ? (
           <Pressable
@@ -873,7 +850,6 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxxl,
     gap: 11,
   },
-  shareButton: { padding: SPACING.xs, borderRadius: RADIUS.full },
 
   // Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/RADIUS.
   // Fase 2, paso 1 (2026-10-21): los 8/4 que eran gap/marginTop reales ya
@@ -1040,31 +1016,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontFamily: 'Inter_700Bold',
     marginTop: SPACING.sm2,
-  },
-  quoteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 104,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    gap: SPACING.lg,
-  },
-  quoteIconLeft: {
-    opacity: 0.8,
-  },
-  quoteRowTextWrap: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  quoteRowText: {
-    fontSize: FONT_SIZE.base,
-    lineHeight: 18,
-    fontFamily: 'Inter_700Bold',
-    fontStyle: 'italic',
-  },
-  quoteRowActions: {
-    alignItems: 'center',
-    gap: SPACING.sm2,
   },
   medalsWideCard: {
     flexDirection: 'row',

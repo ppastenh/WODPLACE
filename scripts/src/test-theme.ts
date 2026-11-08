@@ -51,7 +51,7 @@ describe('tema: modo oscuro', () => {
 describe('tema: tokens del diseño nuevo de Inicio (decisión (k))', () => {
   const dark = paletteFor('dark') as unknown as Record<string, string>;
   const light = paletteFor('light') as unknown as Record<string, string>;
-  const fijos = ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'charcoalAccentLight', 'cream', 'creamMuted', 'glassBackground', 'glassBorder'];
+  const fijos = ['charcoal', 'charcoalPressed', 'charcoalMuted', 'charcoalAccent', 'charcoalAccentLight', 'cream', 'creamMuted', 'glassBackground', 'glassBorder', 'quoteInk', 'quoteCream', 'quoteDark', 'quoteDarkEnd', 'quoteCopperText'];
   for (const key of fijos) {
     it(`${key} vale lo mismo en el claro y en el oscuro (diseño de claro fijo)`, () => assert.equal(dark[key], light[key]));
   }
@@ -157,6 +157,11 @@ const LIGHT_AGREGADOS_IGUAL_A: Record<string, string> = {
 // Tokens agregados que reemplazan un color escrito a mano: su valor claro es EXACTAMENTE el de antes.
 const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   imagePlaceholder: '#E0E0E0',
+  quoteInk: '#292724',
+  quoteCream: '#F6F1E8',
+  quoteDark: '#18191A',
+  quoteDarkEnd: '#24262A',
+  quoteCopperText: '#8B5E34',
   likeAccent: '#E0245E',
   inverseDivider: 'rgba(255,255,255,0.15)',
   // Diseño nuevo de Inicio (decisión (k))

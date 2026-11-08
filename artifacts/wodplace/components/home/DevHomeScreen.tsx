@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
+import { QUOTE_LOOK, type QuoteItalic, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
   NEXT_CLASS_LOOK,
   NEXT_CLASS_TEXTURE,
@@ -63,6 +64,35 @@ const CAPSULE_CHIPS: { id: NextClassCapsule; label: string }[] = [
 const STRIPE_CHIPS: { id: NextClassStripe; label: string }[] = [
   { id: 'invite', label: 'Franja izquierda: sin reserva' },
   { id: 'both', label: 'Franja izquierda: ambos estados' },
+];
+// Tarjeta de frases del día (decisión (s)): variante, largo de la frase, resaltado (solo C) e itálica de Inter (solo A y B).
+const QUOTE_VARIANT_CHIPS: { id: QuoteVariant; label: string }[] = [
+  { id: 'actual', label: 'Frase: actual' },
+  { id: 'minimalCream', label: 'Frase: A crema' },
+  { id: 'minimalDark', label: 'Frase: B oscura' },
+  { id: 'editorialCream', label: 'Frase: C editorial' },
+];
+type QuoteLength = 'corta' | 'media' | 'larga' | 'tres';
+const QUOTE_LENGTHS: Record<QuoteLength, string> = {
+  corta: 'Vuelve a intentarlo.',
+  media: 'La constancia de hoy construye la fuerza de mañana.',
+  larga: 'No necesitas hacerlo perfecto; necesitas volver a intentarlo.', // la más larga de las 5 reales (61 caracteres)
+  tres:
+    'Cada mañana que llegas al box y eliges entrenar aunque no tengas ganas, estás construyendo una versión más fuerte, más paciente y más constante de ti, y eso vale más que cualquier marca.',
+};
+const QUOTE_LENGTH_CHIPS: { id: QuoteLength; label: string }[] = [
+  { id: 'corta', label: 'Largo: corta' },
+  { id: 'media', label: 'Largo: media' },
+  { id: 'larga', label: 'Largo: la más larga de las reales' },
+  { id: 'tres', label: 'Largo: sintética de 3 líneas' },
+];
+const QUOTE_HIGHLIGHT_CHIPS: { id: 'si' | 'no'; label: string }[] = [
+  { id: 'si', label: 'Resaltado: sí' },
+  { id: 'no', label: 'Resaltado: no' },
+];
+const QUOTE_ITALIC_CHIPS: { id: QuoteItalic; label: string }[] = [
+  { id: 'real', label: 'Itálica: real' },
+  { id: 'sintetica', label: 'Itálica: sintética' },
 ];
 const BARS_CHIPS: { id: 'si' | 'no'; label: string }[] = [
   { id: 'si', label: 'Barras //: sí' },
@@ -163,6 +193,11 @@ function DevHomeBody() {
   const [texture, setTexture] = useState<Texture>('pizarra');
   const [stripe, setStripe] = useState<NextClassStripe>('invite');
   const [bars, setBars] = useState<'si' | 'no'>('si');
+  const [quoteVariant, setQuoteVariant] = useState<QuoteVariant>(QUOTE_LOOK.variant);
+  const [quoteLength, setQuoteLength] = useState<QuoteLength>('media');
+  const [quoteHighlight, setQuoteHighlight] = useState<'si' | 'no'>('si');
+  const [quoteItalic, setQuoteItalic] = useState<QuoteItalic>('real');
+  const quoteLook: QuoteLook = { variant: quoteVariant, highlight: quoteHighlight === 'si', italic: quoteItalic };
   const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture], stripe, bars: bars === 'si' };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
@@ -197,6 +232,10 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
           <ChipGroup title="Tarjeta de próxima clase: franja izquierda" chips={STRIPE_CHIPS} selected={stripe} onSelect={setStripe} />
           <ChipGroup title="Tarjeta de próxima clase: barras //" chips={BARS_CHIPS} selected={bars} onSelect={setBars} />
+          <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
+          <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
+          <ChipGroup title="Frase del día: resaltado (C)" chips={QUOTE_HIGHLIGHT_CHIPS} selected={quoteHighlight} onSelect={setQuoteHighlight} />
+          <ChipGroup title="Frase del día: itálica de Inter (A y B)" chips={QUOTE_ITALIC_CHIPS} selected={quoteItalic} onSelect={setQuoteItalic} />
           <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
           <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />
           <ChipGroup title="Menú: letra simulada" chips={MENU_FONT_CHIPS} selected={menuFont} onSelect={setMenuFont} />
@@ -237,7 +276,13 @@ function DevHomeBody() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.charcoal }]}>
-      <HomeView data={state} events={EVENTS} photoFails={photo === 'falla'} nextClassLook={look} />
+      <HomeView
+        data={{ ...state, quote: QUOTE_LENGTHS[quoteLength] }}
+        events={EVENTS}
+        photoFails={photo === 'falla'}
+        nextClassLook={look}
+        quoteLook={quoteLook}
+      />
       {panel}
       {menuNode}
       {popup}

@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
+import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
 import {
@@ -386,5 +387,93 @@ describe('Tarjeta ancha "Progreso mensual": número, barra y "reservadas" por ti
   it('sin plan y cargando: no hay tarjeta ancha (compacta o esqueleto)', () => {
     assert.equal(monthlyCardParts({ kind: 'none' }), null);
     assert.equal(monthlyCardParts({ kind: 'loading' }), null);
+  });
+});
+
+describe('splitHighlight (resaltado final de la frase, variante C)', () => {
+  const whole = (f: string) => {
+    const r = splitHighlight(f);
+    assert.equal(r.lead + r.mark + r.tail, f.trim(), 'lead + mark + tail reconstruye la frase');
+    return r;
+  };
+  it('las 5 frases reales: resalta la cláusula final o las últimas palabras', () => {
+    assert.equal(whole('La constancia de hoy construye la fuerza de mañana.').mark, 'fuerza de mañana');
+    assert.equal(whole('Cada repetición cuenta cuando eliges seguir avanzando.').mark, 'seguir avanzando');
+    assert.equal(whole('Entrenar también es una forma de cuidar tu mente.').mark, 'cuidar tu mente');
+    assert.equal(whole('No necesitas hacerlo perfecto; necesitas volver a intentarlo.').mark, 'necesitas volver a intentarlo');
+    assert.equal(whole('Tu progreso se mide en disciplina, no en comparación.').mark, 'no en comparación');
+  });
+  it('la puntuación final queda fuera del resaltado', () => {
+    assert.equal(whole('Tu progreso se mide en disciplina, no en comparación.').tail, '.');
+    assert.equal(whole('¿Listo para entrenar hoy con todo tu corazón?').tail, '?');
+    assert.equal(whole('Sigue adelante...').tail, '...');
+  });
+  it('1 a 3 palabras: sin resaltado', () => {
+    for (const f of ['Vamos', 'Hoy sí', 'Una pausa, final', '¡Vamos equipo!']) assert.equal(whole(f).mark, '', f);
+  });
+  it('sin puntuación: las últimas palabras (≈ 30 %), sin cortar palabras', () => {
+    const r = whole('sin puntuacion alguna en esta frase de ejemplo para probar');
+    assert.equal(r.mark, 'ejemplo para probar');
+    assert.equal(whole('uno dos tres cuatro').mark, 'tres cuatro');
+  });
+  it('con signos ¿ ¡ « »: no cuentan como palabras ni se cortan', () => {
+    assert.equal(whole('¿Listo para entrenar hoy con todo tu corazón?').mark, 'tu corazón');
+    assert.equal(whole('¡Hoy es un gran día para volver a empezar!').mark, 'volver a empezar');
+  });
+  it('dos pausas: se resalta la última cláusula que cumpla (2 a 6 palabras)', () => {
+    assert.equal(whole('Primero llegas, después te mueves; luego sigues, y al final celebras lo logrado').mark, 'y al final celebras lo logrado');
+  });
+  it('raya como pausa', () => {
+    assert.equal(whole('Hoy no es el día de rendirte — mañana te lo agradecerás mucho').mark, 'mañana te lo agradecerás mucho');
+  });
+  it('frase muy larga: nunca más de la mitad y como máximo 4 palabras si no hay pausa útil', () => {
+    const f = 'Cada mañana que llegas al box y eliges entrenar aunque no tengas ganas, estás construyendo una versión más fuerte, más paciente y más constante de ti, y eso vale más que cualquier marca.';
+    const r = whole(f);
+    assert.equal(r.mark, 'más que cualquier marca');
+    assert.ok(r.mark.split(' ').length <= f.split(' ').length / 2);
+  });
+  it('si la cláusula final es muy larga (más de 6 palabras) no se usa la pausa', () => {
+    assert.equal(whole('Aunque cueste, sigue adelante cada día con todas tus ganas').mark, 'todas tus ganas');
+  });
+});
+
+describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
+  const quote = readFileSync(new URL('../../artifacts/wodplace/components/home/DailyQuoteCard.tsx', import.meta.url), 'utf8');
+  const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
+  const nuevas = quote.slice(quote.indexOf('function NewQuote('), quote.indexOf('const styles = StyleSheet.create'));
+  const actual = quote.slice(quote.indexOf('function ActualQuote('), quote.indexOf('/** Siluetas de montañas'));
+  it('por defecto sigue la variante actual y HomeView la recibe de UNA constante', () => {
+    assert.match(quote, /export const QUOTE_VARIANT: QuoteVariant = 'actual';/);
+    assert.ok(home.includes('quoteLook = QUOTE_LOOK'));
+    assert.ok(home.includes('<DailyQuoteCard quote={quote} onShare={events.onShareQuote} look={quoteLook} />'));
+  });
+  it('el botón de compartir sigue llamando a su evento en todas las variantes', () => {
+    assert.ok(actual.includes('onPress={onShare}'));
+    assert.ok(nuevas.includes('onPress={onShare}'));
+    assert.ok(nuevas.includes('accessibilityLabel="Compartir frase"'));
+  });
+  it('la flecha ya no existe en las variantes nuevas (solo la actual conserva su chevron)', () => {
+    assert.ok(!nuevas.includes('chevron'));
+    assert.ok(actual.includes('chevron-right'));
+  });
+  it('el botón de compartir tiene 48 × 48 dp y el presionado es de color sólido', () => {
+    assert.match(quote, /const SHARE_AREA = 48;/);
+    assert.ok(nuevas.includes('pressed && { backgroundColor: pressedBg }'));
+    for (const line of quote.split(String.fromCharCode(10))) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
+  });
+  it('los adornos (montañas, líneas, comillas, separador) van en Views con pointerEvents none y ocultos; ningún Text lleva pointerEvents', () => {
+    assert.ok(nuevas.includes('<View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={styles.layers}>'));
+    assert.ok(nuevas.includes('style={styles.marksWrap}'));
+    assert.ok((nuevas.match(/pointerEvents="none"/g) ?? []).length >= 3);
+    assert.doesNotMatch(quote, /<Text[^>]*pointerEvents=/);
+  });
+  it('el resaltado es un Text anidado en el cobre oscuro quoteCopperText, solo en la editorial', () => {
+    assert.ok(nuevas.includes('<Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>'));
+    assert.ok(nuevas.includes("editorial && look.highlight ? splitHighlight(quote) : null"));
+  });
+  it('la fuente editorial sale de una sola constante y la itálica de Inter se carga desde el componente', () => {
+    assert.ok(quote.includes("export const EDITORIAL_FONT: string = Platform.select({ android: 'serif', default: 'Georgia' });"));
+    assert.ok(quote.includes("from '@expo-google-fonts/inter/500Medium_Italic'"));
+    assert.ok(quote.includes("from 'expo-font'"));
   });
 });
