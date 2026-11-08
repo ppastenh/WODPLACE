@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { splitHighlight } from '@/components/home/splitHighlight';
@@ -21,10 +22,13 @@ import { RADIUS } from '@/constants/radius';
 export type QuoteVariant = 'actual' | 'editorialCream';
 /** Frase corta: centrada solo en vertical (texto a la izquierda) o en vertical y horizontal. */
 export type QuoteCenter = 'vertical' | 'ambos';
+/** Resaltado: marcador de cobre con texto oscuro (por defecto), texto en cobre claro o subrayado en crema. */
+export type QuoteHighlight = 'marcador' | 'cobre' | 'subrayado';
 export type QuoteLook = {
   variant: QuoteVariant;
   highlight: boolean;
   center: QuoteCenter;
+  highlightStyle?: QuoteHighlight;
   /** Solo desarrollo: simula la letra del sistema (1; 1,1; 1,3). */
   fontScale?: number;
 };
@@ -39,6 +43,16 @@ export const QUOTE_LOOK: QuoteLook = { variant: QUOTE_VARIANT, highlight: true, 
  */
 export const EDITORIAL_FONT: string = Platform.select({ android: 'serif', default: 'Georgia' });
 
+// Fondo de la tarjeta: foto en grises (home-fondo-frase.jpg; créditos en CREDITOS-IMAGENES.md) y un velo oscuro #0D0F10 UNIFORME del 62 % (una sola
+// constante; sin degradado). Con el punto más claro de la foto (gris 255) el texto crema da 4,81:1 (a 60 % daba 4,48:1, bajo el mínimo de 4,5:1).
+const QUOTE_PHOTO = require('@/assets/images/home/home-fondo-frase.jpg');
+export const QUOTE_VEIL = 0.62;
+// Las dos comillas llevan el MISMO color (cobre claro, charcoalAccentLight #C79A6B) y la MISMA opacidad (50 %); son decorativas.
+const QUOTE_MARK_OPACITY = 0.5;
+// Marcador: esquinas de 4 dp, 4 dp de aire a los lados y 2 dp arriba y abajo (alrededor de la altura del tipo).
+const MARKER_PAD_H = 4;
+const MARKER_PAD_V = 2;
+const MARKER_R = 4;
 const SHARE_AREA = 48;
 const SHARE_ICON = 20;
 const TEXT_SIZE = 19;
@@ -107,16 +121,6 @@ function ActualQuote({ quote, onShare }: { quote: string; onShare: () => void })
   );
 }
 
-/** Siluetas de montañas (react-native-svg), en un solo color con opacidad baja: decorativas. */
-function Mountains({ color, opacity, width, height }: { color: string; opacity: number; width: number; height: number }) {
-  return (
-    <Svg width={width} height={height} viewBox="0 0 160 60" preserveAspectRatio="none">
-      <Path d="M0 60 L0 50 L26 26 L40 38 L70 6 L104 44 L122 30 L160 54 L160 60 Z" fill={color} fillOpacity={opacity} />
-      <Path d="M60 60 L92 30 L108 42 L132 22 L160 46 L160 60 Z" fill={color} fillOpacity={opacity} />
-    </Svg>
-  );
-}
-
 // Comilla dibujada (estilo clásico): un punto redondo y una cola curva que sube hacia la derecha, como un "6". La de cierre es la misma
 // girada 180° (como un "9"). Caja de 18 × 26; la doble repite la marca 12,5 dp más a la derecha (caja de 30,5 × 26).
 const MARK_BALL = { cx: 7, cy: 21, r: 5.2 };
@@ -138,77 +142,212 @@ function DrawnMark({ color, height, close }: { color: string; height: number; cl
   );
 }
 
+type Rect = { x: number; y: number; w: number; h: number };
+
+/** Espacios normales a espacios duros: así Text los cuenta en el ancho al medir. */
+const nb = (t: string) => t.replace(/ /g, ' ');
+
 function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () => void; look: QuoteLook }) {
   const colors = useColors();
-  const copper = colors.charcoalAccent;
   const parts = splitHighlight(quote);
   const showMark = look.highlight && parts.mark !== '';
-  // Solo __DEV__: alto real de la tarjeta (onLayout).
-  const [measured, setMeasured] = useState(0);
+  const style = look.highlightStyle ?? 'marcador';
+  const marker = showMark && style === 'marcador';
   // Solo desarrollo: simula la letra del sistema (el tope QUOTE_MAX_FONT_MULT también se aplica, como lo hace el sistema).
   const fs = Math.min(look.fontScale ?? 1, QUOTE_MAX_FONT_MULT);
   const textStyle = { fontSize: TEXT_SIZE * fs, lineHeight: TEXT_LINE * fs };
+  const glyphH = TEXT_SIZE * fs;
+  const plain = parts.lead + parts.mark + parts.tail;
+  const markStart = parts.lead.length;
+  const markEnd = markStart + parts.mark.length;
+
+  // Alto real de la tarjeta (onLayout); en __DEV__ también se muestra.
+  const [cardH, setCardH] = useState(0);
+  const [cardW, setCardW] = useState(0);
+  // MARCADOR de cobre: se dibuja por línea, DEBAJO del texto (no backgroundColor del Text anidado: en Android se pega a las letras). Nativo: cada línea
+  // llega con onTextLayout (x, y, ancho, alto, texto) y el ancho del tramo resaltado se mide con dos Text ocultos (lo anterior y lo resaltado).
+  // Web: react-native-web no trae onTextLayout; los rectángulos del tramo resaltado se leen del DOM con un Range.
+  const [lines, setLines] = useState<(Rect & { text: string })[] | null>(null);
+  const [widths, setWidths] = useState<Record<string, number>>({});
+  const [webRects, setWebRects] = useState<Rect[] | null>(null);
+  const markRef = useRef<unknown>(null);
+  const textRef = useRef<unknown>(null);
+  const resetKey = `${quote}|${look.fontScale}|${style}|${look.highlight}`;
+  useEffect(() => {
+    setLines(null);
+    setWidths({});
+    setWebRects(null);
+  }, [resetKey]);
+
+  // Tramos de cada línea: lo que va antes del resaltado y lo resaltado. Si los textos de las líneas no reconstruyen la frase, no se mide (queda el subrayado).
+  const pieces: { li: number; pre: string; seg: string }[] = [];
+  let consistent = false;
+  if (marker && lines) {
+    let at = 0;
+    lines.forEach((l, li) => {
+      const s = at;
+      const e = at + l.text.length;
+      at = e;
+      const a = Math.max(s, markStart);
+      const b = Math.min(e, markEnd);
+      if (b > a) pieces.push({ li, pre: plain.slice(s, a), seg: plain.slice(a, b).replace(/\s+$/, '') });
+    });
+    consistent = at >= plain.length - 1 && at <= plain.length + 1;
+  }
+  const measured = pieces.length > 0 && pieces.every((pc) => (pc.pre === '' || widths[`${pc.li}p`] !== undefined) && widths[`${pc.li}s`] !== undefined);
+  const nativeRects: Rect[] | null =
+    Platform.OS !== 'web' && consistent && measured && lines
+      ? pieces.map((pc) => {
+          const l = lines[pc.li]!;
+          return { x: l.x + (widths[`${pc.li}p`] ?? 0), y: l.y, w: widths[`${pc.li}s`] ?? 0, h: l.h };
+        })
+      : null;
+  const rects = Platform.OS === 'web' ? webRects : nativeRects;
+
+  useEffect(() => {
+    if (!marker || Platform.OS !== 'web') return;
+    type Dom = { getBoundingClientRect: () => { top: number; left: number } };
+    const base = (textRef.current as Dom | null)?.getBoundingClientRect?.();
+    const el = markRef.current as Dom | null;
+    const doc = (globalThis as { document?: { createRange: () => { selectNodeContents: (n: unknown) => void; getClientRects: () => ArrayLike<{ top: number; left: number; right: number; height: number }> } } }).document;
+    if (!base || !el || !doc) return;
+    const range = doc.createRange();
+    range.selectNodeContents(el);
+    const lineH = TEXT_LINE * fs;
+    setWebRects(
+      Array.from(range.getClientRects())
+        .filter((rc) => rc.right - rc.left > 1)
+        .map((rc) => ({ x: rc.left - base.left, y: rc.top - base.top + rc.height / 2 - lineH / 2, w: rc.right - rc.left, h: lineH })),
+    );
+  }, [marker, resetKey, fs, cardW]);
+
+  // Sobre la foto el resaltado va en un MARCADOR de cobre claro con texto oscuro; mientras se mide (o si no se puede medir) el texto va en crema subrayado,
+  // para que se lea desde el primer dibujo y la altura no salte.
+  const cream = colors.nextClassCardForeground;
+  const markerReady = marker && rects !== null && rects.length > 0;
+  const highlightStyle =
+    style === 'cobre'
+      ? { color: colors.charcoalAccentLight }
+      : style === 'marcador' && markerReady
+        ? { color: colors.charcoal }
+        : { color: cream, textDecorationLine: 'underline' as const };
+  // Las dos comillas: MISMO color (cobre claro #C79A6B) y MISMA opacidad (50 %).
+  const markColor = colors.charcoalAccentLight;
+  const hidden = { pointerEvents: 'none', importantForAccessibility: 'no-hide-descendants', accessibilityElementsHidden: true } as const;
   const textPadLeft = SPACING.xl + MARK_COL + SPACING.sm2;
   const textPadRight = SHARE_AREA - SPACING.xs2;
-  const hidden = { pointerEvents: 'none', importantForAccessibility: 'no-hide-descendants', accessibilityElementsHidden: true } as const;
 
   return (
     <View
-      style={[styles.card, { borderColor: colors.border, backgroundColor: colors.quoteCream }]}
-      onLayout={__DEV__ ? (e) => setMeasured(Math.round(e.nativeEvent.layout.height)) : undefined}
+      style={[styles.card, { borderColor: colors.border, backgroundColor: colors.charcoal }]}
+      onLayout={(e) => {
+        setCardH(Math.round(e.nativeEvent.layout.height));
+        setCardW(Math.round(e.nativeEvent.layout.width));
+      }}
     >
+      {/* Fondo: la foto en grises y un velo oscuro UNIFORME (misma opacidad en toda la tarjeta, nunca un degradado). */}
       <View {...hidden} style={styles.layers}>
-        <LinearGradient
-          colors={[colors.quoteCream, colors.cream]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.mountains}>
-          <Mountains color={colors.quoteInk} opacity={0.06} width={200} height={75} />
-        </View>
+        <Image source={QUOTE_PHOTO} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.charcoal, opacity: QUOTE_VEIL }]} />
       </View>
 
-      {/* Comilla de apertura: decorativa, arriba a la izquierda; el texto se sangra lo justo para no pisarla. */}
-      <View {...hidden} style={styles.markOpen}>
-        <DrawnMark color={copper} height={MARK_OPEN_H} />
+      <View {...hidden} style={[styles.markOpen, { opacity: QUOTE_MARK_OPACITY }]}>
+        <DrawnMark color={markColor} height={MARK_OPEN_H} />
       </View>
-      <View {...hidden} style={[styles.markClose, { opacity: 0.5 }]}>
-        <DrawnMark color={copper} height={MARK_CLOSE_H} close />
+      <View {...hidden} style={[styles.markClose, { opacity: QUOTE_MARK_OPACITY }]}>
+        <DrawnMark color={markColor} height={MARK_CLOSE_H} close />
       </View>
 
       <View style={[styles.textBox, { paddingLeft: textPadLeft, paddingRight: textPadRight }]}>
         <View style={styles.textSlot}>
-          <Text
-            style={[styles.text, textStyle, { color: colors.quoteInk }, look.center === 'ambos' && styles.textCentered]}
-            maxFontSizeMultiplier={QUOTE_MAX_FONT_MULT}
-          >
-            {showMark ? (
-              <>
-                {parts.lead}
-                <Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>
-                {parts.tail}
-              </>
-            ) : (
-              parts.lead + parts.mark + parts.tail
-            )}
-          </Text>
+          <View>
+            {markerReady ? (
+              <View {...hidden} style={StyleSheet.absoluteFill}>
+                {rects!.map((r, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.marker,
+                      {
+                        left: r.x - MARKER_PAD_H,
+                        top: r.y + (r.h - glyphH) / 2 - MARKER_PAD_V,
+                        width: r.w + MARKER_PAD_H * 2,
+                        height: glyphH + MARKER_PAD_V * 2,
+                        backgroundColor: colors.charcoalAccentLight,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+            ) : null}
+            {/* Medidores (solo nativo): Text ocultos que dan el ancho de lo que va antes del resaltado y del resaltado en cada línea. */}
+            {marker && Platform.OS !== 'web' && lines && consistent ? (
+              <View {...hidden} style={styles.measure}>
+                {pieces.map((pc) => (
+                  <View key={pc.li} style={styles.measureRow}>
+                    {pc.pre !== '' ? (
+                      <Text
+                        style={[styles.text, textStyle]}
+                        onLayout={(e) => setWidths((w) => ({ ...w, [`${pc.li}p`]: e.nativeEvent.layout.width }))}
+                      >
+                        {nb(pc.pre)}
+                      </Text>
+                    ) : null}
+                    <Text
+                      style={[styles.text, textStyle]}
+                      onLayout={(e) => setWidths((w) => ({ ...w, [`${pc.li}s`]: e.nativeEvent.layout.width }))}
+                    >
+                      {nb(pc.seg)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            <Text
+              ref={textRef as never}
+              style={[styles.text, textStyle, { color: cream }, look.center === 'ambos' && styles.textCentered]}
+              maxFontSizeMultiplier={QUOTE_MAX_FONT_MULT}
+              onTextLayout={
+                marker && Platform.OS !== 'web'
+                  ? (e) => {
+                      const next = e.nativeEvent.lines.map((l) => ({ x: l.x, y: l.y, w: l.width, h: l.height, text: l.text }));
+                      if (JSON.stringify(next) !== JSON.stringify(lines)) {
+                        setLines(next);
+                        setWidths({});
+                      }
+                    }
+                  : undefined
+              }
+            >
+              {showMark ? (
+                <>
+                  {parts.lead}
+                  <Text ref={markRef as never} style={highlightStyle}>
+                    {parts.mark}
+                  </Text>
+                  {parts.tail}
+                </>
+              ) : (
+                plain
+              )}
+            </Text>
+          </View>
         </View>
       </View>
 
       {__DEV__ ? (
         <View pointerEvents="none" style={styles.devBadge}>
-          <Text style={styles.devBadgeText}>{`Alto: ${measured} dp`}</Text>
+          <Text style={styles.devBadgeText}>{`Alto: ${cardH} dp`}</Text>
         </View>
       ) : null}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Compartir frase"
-        onPress={onShare}
-        style={({ pressed }) => [styles.share, pressed && { backgroundColor: colors.border }]}
-      >
-        <Feather name="share-2" size={SHARE_ICON} color={colors.quoteInk} />
+      {/* Compartir: área táctil de 48 × 48 dp; el ícono crema va sobre un círculo oscuro translúcido de 48 dp. */}
+      <Pressable accessibilityRole="button" accessibilityLabel="Compartir frase" onPress={onShare} style={styles.share}>
+        {({ pressed }) => (
+          <View style={[styles.shareDisc, { backgroundColor: pressed ? colors.charcoalPressed : colors.glassBackground }]}>
+            <Feather name="share-2" size={SHARE_ICON} color={cream} />
+          </View>
+        )}
       </Pressable>
     </View>
   );
@@ -233,7 +372,9 @@ const styles = StyleSheet.create({
   // ---- Editorial ----
   card: { borderRadius: RADIUS.xl, borderWidth: 1, minHeight: EDITORIAL_MIN_H, justifyContent: 'center' },
   layers: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.xl, overflow: 'hidden' },
-  mountains: { position: 'absolute', right: 0, bottom: 0 },
+  marker: { position: 'absolute', borderRadius: MARKER_R },
+  measure: { position: 'absolute', left: 0, top: 0, opacity: 0 },
+  measureRow: { flexDirection: 'row' },
   markOpen: { position: 'absolute', top: SPACING.lg, left: SPACING.xl },
   markClose: { position: 'absolute', right: SPACING.lg, bottom: SPACING.sm2 },
   // Centrado vertical: la tarjeta es un flex de una columna centrada y el texto va en una caja con el relleno justo (sangría a la izquierda por la
@@ -252,8 +393,9 @@ const styles = StyleSheet.create({
     right: SPACING.xs2,
     width: SHARE_AREA,
     height: SHARE_AREA,
-    borderRadius: SHARE_AREA / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Círculo oscuro translúcido de 48 dp (todo el área táctil) bajo el ícono.
+  shareDisc: { width: SHARE_AREA, height: SHARE_AREA, borderRadius: SHARE_AREA / 2, alignItems: 'center', justifyContent: 'center' },
 });

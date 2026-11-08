@@ -89,11 +89,11 @@ describe('tarjeta de próxima clase (NextClassCard.tsx): el toque llega a la tar
     assert.match(source, /texture: NEXT_CLASS_TEXTURE/);
   });
   it('ningún archivo de components/home pide imágenes que git no rastrea (banner-* y textura* están excluidas) y todas existen', () => {
-    for (const name of ['NextClassCard.tsx', 'HomeView.tsx', 'DevHomeScreen.tsx']) {
+    for (const name of ['NextClassCard.tsx', 'HomeView.tsx', 'DevHomeScreen.tsx', 'DailyQuoteCard.tsx']) {
       const text = readFileSync(new URL(`../../artifacts/wodplace/components/home/${name}`, import.meta.url), 'utf8');
       for (const m of text.matchAll(/require\('@\/assets\/images\/home\/([^']+)'\)/g)) {
         const file = m[1]!;
-        assert.doesNotMatch(file, /^(banner-|textura)/, `${name} pide ${file}, que está excluida del repositorio`);
+        assert.doesNotMatch(file, /^(banner-|textura|paisaje|prueba-fondos)/, `${name} pide ${file}, que está excluida del repositorio`);
         assert.ok(existsSync(new URL(`../../artifacts/wodplace/assets/images/home/${file}`, import.meta.url)), `${name}: falta ${file}`);
       }
     }
@@ -465,12 +465,12 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok(!/minimalCream|minimalDark|Inter_500Medium_Italic|expo-font|quoteDark/.test(quote));
     assert.ok(quote.includes("export type QuoteVariant = 'actual' | 'editorialCream';"));
   });
-  it('el botón de compartir sigue llamando a su evento y tiene 48 × 48 dp con presionado sólido', () => {
+  it('el botón de compartir sigue llamando a su evento, tiene 48 × 48 dp y su presionado es de color sólido', () => {
     assert.ok(actual.includes('onPress={onShare}'));
     assert.ok(editorial.includes('onPress={onShare}'));
     assert.ok(editorial.includes('accessibilityLabel="Compartir frase"'));
     assert.match(quote, /const SHARE_AREA = 48;/);
-    assert.ok(editorial.includes('pressed && { backgroundColor: colors.border }'));
+    assert.ok(editorial.includes('pressed ? colors.charcoalPressed : colors.glassBackground'));
     for (const line of quote.split(String.fromCharCode(10))) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
   });
   it('la flecha ya no existe en la editorial (solo la actual conserva su chevron)', () => {
@@ -501,9 +501,31 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok(editorial.includes('{__DEV__ ? ('));
     assert.ok(editorial.includes('Alto: '));
   });
-  it('el resaltado es un Text anidado en el cobre oscuro quoteCopperText y el texto mostrado no lleva marcas', () => {
-    assert.ok(editorial.includes('<Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>'));
+  it('el resaltado es un MARCADOR de cobre claro con texto oscuro (por defecto), medido por línea y dibujado DEBAJO del texto; sin marcas manuales en el texto mostrado', () => {
+    assert.ok(quote.includes("const style = look.highlightStyle ?? 'marcador';"));
+    assert.ok(editorial.includes('backgroundColor: colors.charcoalAccentLight'));
+    assert.ok(editorial.includes('{ color: colors.charcoal }'), 'texto oscuro sobre el marcador');
+    assert.match(quote, /const MARKER_PAD_H = 4;/);
+    assert.match(quote, /const MARKER_PAD_V = 2;/);
+    assert.match(quote, /const MARKER_R = 4;/);
+    assert.ok(editorial.includes('onTextLayout'));
+    assert.ok(editorial.includes('styles.marker'));
+    assert.ok(!/<Text[^>]*backgroundColor/.test(editorial), 'nunca backgroundColor en un Text');
     assert.ok(quote.includes('displayText(quote)'));
+    assert.match(quote, /export type QuoteHighlight = 'marcador' \| 'cobre' \| 'subrayado';/);
+  });
+  it('el fondo es la foto en grises con un velo oscuro UNIFORME del 62 % (una constante, sin degradado) y texto crema', () => {
+    assert.ok(quote.includes("require('@/assets/images/home/home-fondo-frase.jpg')"));
+    assert.match(quote, /export const QUOTE_VEIL = 0\.62;/);
+    assert.ok(editorial.includes('opacity: QUOTE_VEIL'));
+    assert.ok(!/LinearGradient/.test(editorial), 'ningún degradado en la editorial');
+    assert.ok(editorial.includes('colors.nextClassCardForeground'));
+  });
+  it('las dos comillas llevan el MISMO color y la MISMA opacidad', () => {
+    assert.match(quote, /const QUOTE_MARK_OPACITY = 0\.5;/);
+    assert.ok(editorial.includes('const markColor = colors.charcoalAccentLight;'));
+    assert.equal((editorial.match(/opacity: QUOTE_MARK_OPACITY/g) ?? []).length, 2);
+    assert.equal((editorial.match(/color=\{markColor\}/g) ?? []).length, 2);
   });
   it('la fuente editorial sale de una sola constante', () => {
     assert.ok(quote.includes("export const EDITORIAL_FONT: string = Platform.select({ android: 'serif', default: 'Georgia' });"));
@@ -511,7 +533,7 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
   });
   it('solo hay comillas dobles dibujadas con react-native-svg (apertura de 30 dp y cierre de 18 dp); el glifo y la comilla simple se retiraron', () => {
     assert.ok(!quote.includes('QuoteMark'));
-    assert.ok(!quote.includes('glyph'));
+    assert.ok(!quote.includes('styles.glyph'));
     assert.ok(quote.includes('function DrawnMark('));
     assert.ok(quote.includes("from 'react-native-svg'"));
     assert.match(quote, /const MARK_OPEN_H = 30;/);

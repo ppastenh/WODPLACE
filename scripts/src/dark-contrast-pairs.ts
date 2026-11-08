@@ -231,6 +231,11 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('quoteInk', 'border', 'ícono de compartir presionado (círculo sólido border)'),
   t('quoteCopperText', 'quoteCream', 'resaltado final en cobre oscuro sobre el crema'),
   t('quoteCopperText', 'cream', 'resaltado final en cobre oscuro sobre el beige (extremo oscuro del degradado)'),
+  // Tarjeta de frases con foto: velo oscuro #0D0F10 UNIFORME del 62 % sobre el punto más claro de la foto (gris 255); el texto va en crema, el resaltado en un
+  // marcador de cobre claro con texto oscuro y el ícono de compartir sobre un disco rgba(0,0,0,0.6) (a 60 % el crema daba 4,48:1, por eso 62 %).
+  { ...t('nextClassCardForeground', 'charcoal', 'frase con foto: texto crema sobre el velo del 62 % y el punto más claro de la foto'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 } },
+  t('charcoal', 'charcoalAccentLight', 'frase con foto: texto oscuro sobre el marcador de cobre claro'),
+  { ...ui('nextClassCardForeground', 'charcoal', 'frase con foto: ícono de compartir crema sobre su disco translúcido, peor caso'), bgLiteral: { hex: '#000000', over: '#696A6B', alpha: 0.6 } },
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),

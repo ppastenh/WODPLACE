@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
-import { QUOTE_LOOK, type QuoteCenter, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
+import { QUOTE_LOOK, type QuoteCenter, type QuoteHighlight, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
   NEXT_CLASS_LOOK,
   NEXT_CLASS_TEXTURE,
@@ -93,6 +93,11 @@ const QUOTE_LENGTH_CHIPS: { id: QuoteLength; label: string }[] = [
   { id: 'c105', label: 'Largo: 105 caracteres' },
   { id: 'c125', label: 'Largo: 125 caracteres' },
   { id: 'marcada', label: 'Largo: con marcado manual *…*' },
+];
+const QUOTE_HL_STYLE_CHIPS: { id: QuoteHighlight; label: string }[] = [
+  { id: 'marcador', label: 'Resaltado: marcador cobre' },
+  { id: 'cobre', label: 'Resaltado: texto cobre' },
+  { id: 'subrayado', label: 'Resaltado: subrayado' },
 ];
 type QuoteFont = '1' | '1.1' | '1.3';
 const QUOTE_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
@@ -206,7 +211,14 @@ function DevHomeBody() {
   const [quoteHighlight, setQuoteHighlight] = useState<'si' | 'no'>('si');
   const [quoteCenter, setQuoteCenter] = useState<QuoteCenter>(QUOTE_LOOK.center);
   const [quoteFont, setQuoteFont] = useState<QuoteFont>('1');
-  const quoteLook: QuoteLook = { variant: quoteVariant, highlight: quoteHighlight === 'si', center: quoteCenter, fontScale: Number(quoteFont) };
+  const [quoteHlStyle, setQuoteHlStyle] = useState<QuoteHighlight>('marcador');
+  const quoteLook: QuoteLook = {
+    variant: quoteVariant,
+    highlight: quoteHighlight === 'si',
+    center: quoteCenter,
+    fontScale: Number(quoteFont),
+    highlightStyle: quoteHlStyle,
+  };
   const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
@@ -242,6 +254,7 @@ function DevHomeBody() {
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
           <ChipGroup title="Frase del día: letra simulada" chips={QUOTE_FONT_CHIPS} selected={quoteFont} onSelect={setQuoteFont} />
+          <ChipGroup title="Frase del día: estilo del resaltado" chips={QUOTE_HL_STYLE_CHIPS} selected={quoteHlStyle} onSelect={setQuoteHlStyle} />
           <ChipGroup title="Frase del día: resaltado" chips={QUOTE_HIGHLIGHT_CHIPS} selected={quoteHighlight} onSelect={setQuoteHighlight} />
           <ChipGroup title="Frase del día: frase corta" chips={QUOTE_CENTER_CHIPS} selected={quoteCenter} onSelect={setQuoteCenter} />
           <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
