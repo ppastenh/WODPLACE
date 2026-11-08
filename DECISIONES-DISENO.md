@@ -110,8 +110,8 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 ## (s) Tarjeta de frases del día: elegida la opción C
 
 - **Fecha:** 2026-11-08
-- **Decisión:** "Tarjeta de frases del día: elegida la opción C editorialCream (serif cursiva, resaltado final por regla con marcado manual opcional). Comillas dobles, del mismo color; alto base de 113 dp con la frase centrada y límite de 214 dp. Fondo de paisaje en grises (foto de Snowscat, Unsplash) con velo oscuro uniforme (sin degradado) y texto crema; resaltado como marcador de cobre con texto oscuro (el cobre como texto no alcanza el contraste sobre la foto); comillas del mismo color; las disposiciones A, B, C y D1 quedan descartadas. Las variantes A y B anteriores descartadas; sin flecha; botón de compartir de 48 dp; la fuente definitiva se evalúa aparte."
-- **Estado:** VIGENTE. Elegida por Pía el 2026-11-08 (reemplaza la evaluación de tres variantes).
+- **Decisión:** "Tarjeta de frases del día: elegida la opción C editorialCream (serif cursiva, resaltado final por regla con marcado manual opcional); comillas dobles; alto base de 113 dp con la frase centrada y límite de 214 dp; sin flecha; la fuente definitiva se evalúa aparte. Fondo de paisaje en grises con velo oscuro uniforme del 62 % (sin degradado) y texto crema; resaltado en texto cobre claro (excepción consciente al contraste de 4,5:1, solo en las palabras resaltadas; medido: 2,13:1 en el peor caso, a 320, 360 y 412 dp); comillas del mismo color; ícono de compartir sin círculo visible, con área táctil de 48 dp y círculo sólido solo al presionar."
+- **Estado:** VIGENTE. Excepción al contraste aceptada por Pía el 2026-11-08 (texto cobre claro #C79A6B sobre la foto con velo, 2,13:1; solo las palabras resaltadas; el resto de la tarjeta cumple 4,5:1).
 
 ## (t) Tarjeta "Reserva tu próxima clase": barras //
 
