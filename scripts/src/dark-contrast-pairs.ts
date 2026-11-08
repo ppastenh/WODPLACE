@@ -229,6 +229,17 @@ export const PAIRS_LIGHT: Pair[] = [
   t('nextClassCardForeground', 'navActiveTextSmall', 'cápsula B: texto e ícono crema sobre cobre oscuro #8B5E34'),
   { ...t('nextClassCardForeground', 'charcoal', 'cápsula C: texto crema sobre el vidrio negro al 60 % sobre la textura, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
   { ...ui('charcoalAccent', 'charcoal', 'cápsula C: borde e ícono cobre sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
+  // Estado sin reserva: franja de cobre de 4 dp en el borde izquierdo (junto a ella el velo es 100 % negro: carbón, o nextClassCardPressed al presionar;
+  // el grafito de la tarjeta, nextClassCard, queda de referencia) y título de 21 sp (antes 26) con el MISMO crema: el tamaño no cambia la razón de
+  // contraste, pero el título ya no es texto grande, así que se exige 4,5:1 en el peor caso (sobre la textura, hasta 80 % del ancho, antes de la flecha).
+  ui('charcoalAccent', 'charcoal', 'franja izquierda cobre #B98250 sobre el velo negro (sin reserva)'),
+  ui('charcoalAccent', 'nextClassCard', 'franja izquierda cobre #B98250 sobre el grafito de la tarjeta'),
+  ui('charcoalAccent', 'nextClassCardPressed', 'franja izquierda cobre #B98250 sobre el color presionado'),
+  ui('charcoalAccentLight', 'charcoal', 'franja izquierda cobre claro #C79A6B sobre el velo negro (chip de cobre)'),
+  ui('charcoalAccentLight', 'nextClassCardPressed', 'franja izquierda cobre claro #C79A6B sobre el color presionado'),
+  t('nextClassCardForeground', 'charcoal', 'título "Reserva tu próxima clase" (21 sp) sobre el velo negro'),
+  t('nextClassCardForeground', '#555555', 'título "Reserva tu próxima clase" (21 sp) sobre la textura, peor caso (gris 85)'),
+  t('nextClassCardForeground', '#6A6A6A', 'título "Reserva tu próxima clase" (21 sp) sobre la textura presionada, peor caso (gris 106)'),
   { ...ui('charcoalAccentLight', 'charcoal', 'cápsula C con cobre claro: borde e ícono sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
   // Texto sobre la superficie crema y sobre las tarjetas
   t('foreground', 'cream', 'títulos y nombres sobre la crema'),

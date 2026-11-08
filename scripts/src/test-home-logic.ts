@@ -76,6 +76,19 @@ describe('tarjeta de próxima clase (NextClassCard.tsx): el toque llega a la tar
   it('el estado presionado es sólido: ninguna línea mezcla "pressed" con opacity', () => {
     for (const line of source.split('\n')) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
   });
+  it('la franja izquierda es decorativa (dentro de layers, sin Text), de 4 dp, y solo la lleva el estado sin reserva por defecto', () => {
+    assert.match(source, /const STRIPE_W = 4;/);
+    assert.ok(source.includes("stripe: { position: 'absolute', top: 0, left: 0, bottom: 0, width: STRIPE_W }"));
+    const layers = source.slice(source.indexOf('<View pointerEvents="none" style={styles.layers}>'), source.indexOf('{children}'));
+    assert.ok(layers.includes('styles.stripe'), 'la franja va dentro de las capas decorativas (recorte redondeado, sin pointerEvents en Text)');
+    assert.ok(source.includes('<Frame pressed={pressed} texture={look.texture} stripe={copper}>'), 'sin reserva: franja');
+    assert.ok(source.includes("stripe={look.stripe === 'both' ? copper : null}"), 'con reserva: solo si el chip de desarrollo lo pide');
+    assert.ok(!source.includes('<Frame pressed={false} texture={look.texture} stripe'), 'el esqueleto no lleva franja');
+  });
+  it('el título sin reserva es de 21 sp (antes 26) con la misma fuente Anton', () => {
+    assert.match(source, /const INVITE_NAME_SIZE = 21;/);
+    assert.match(source, /inviteName: { fontSize: INVITE_NAME_SIZE, lineHeight: INVITE_NAME_LINE }/);
+  });
   it('la textura por defecto sale de una sola constante y es la pizarra elegida (home-card-pizarra.jpg)', () => {
     assert.match(source, /export const NEXT_CLASS_TEXTURE: NextClassTexture = \{[\s\S]*?home-card-pizarra\.jpg/);
     assert.match(source, /texture: NEXT_CLASS_TEXTURE/);

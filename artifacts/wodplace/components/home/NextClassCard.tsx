@@ -28,7 +28,14 @@ export type NextClassTexture =
   | { kind: 'image'; source: number; position: { left: string; top: string } }
   | { kind: 'pattern'; pattern: NextClassPattern }
   | null;
-export type NextClassLook = { capsule: NextClassCapsule; copper: NextClassCopper; texture: NextClassTexture };
+/** Franja de cobre del lado izquierdo: solo en el estado sin reserva (por defecto) o también con reserva (solo la pantalla de desarrollo). */
+export type NextClassStripe = 'invite' | 'both';
+export type NextClassLook = {
+  capsule: NextClassCapsule;
+  copper: NextClassCopper;
+  texture: NextClassTexture;
+  stripe?: NextClassStripe;
+};
 
 /**
  * UNA sola constante decide la textura de la tarjeta (como BANNER_PHOTO): independiente del resto. Elegida por Pía: home-card-pizarra.jpg,
@@ -67,16 +74,23 @@ const CIRCLE = 32;
 const CAPSULE_H = 28;
 const ARROW = 32;
 const CARD_MIN_H = 124;
+// Estado sin reserva: el título baja de FONT_SIZE.hero (26 sp) a 21 sp (-19 %), con la misma fuente (Anton). Franja de cobre: 4 dp.
+const INVITE_NAME_SIZE = 21;
+const INVITE_NAME_LINE = 24;
+const STRIPE_W = 4;
 
 type Booked = NonNullable<HomeViewData['nextBooked']>;
 
 function Frame({
   pressed,
   texture,
+  stripe,
   children,
 }: {
   pressed: boolean;
   texture: NextClassTexture;
+  /** Color de la franja izquierda (cobre) o null si no lleva. */
+  stripe?: string | null;
   children: React.ReactNode;
 }) {
   const colors = useColors();
@@ -100,6 +114,8 @@ function Frame({
           end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
+        {/* Franja decorativa: dentro de `layers` (recorte redondeado), así sigue la curva de las esquinas y no sobresale; no ocupa espacio. */}
+        {stripe ? <View style={[styles.stripe, { backgroundColor: stripe }]} /> : null}
       </View>
       {children}
     </View>
@@ -198,10 +214,10 @@ export function NextClassCard({
         style={styles.pressable}
       >
         {({ pressed }) => (
-          <Frame pressed={pressed} texture={look.texture}>
+          <Frame pressed={pressed} texture={look.texture} stripe={copper}>
             <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={[styles.content, styles.inviteContent]}>
               <Text
-                style={[styles.name, { color: colors.nextClassCardForeground }]}
+                style={[styles.name, styles.inviteName, { color: colors.nextClassCardForeground }]}
                 numberOfLines={2}
                 maxFontSizeMultiplier={1.3}
               >
@@ -242,7 +258,7 @@ export function NextClassCard({
       style={styles.pressable}
     >
       {({ pressed }) => (
-        <Frame pressed={pressed} texture={look.texture}>
+        <Frame pressed={pressed} texture={look.texture} stripe={look.stripe === 'both' ? copper : null}>
           <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.content}>
             <View style={styles.dateRow}>
               <View style={[styles.circle, { backgroundColor: cap.bg, borderColor: cap.border }]}>
@@ -309,6 +325,7 @@ const styles = StyleSheet.create({
   },
   layers: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.xl, overflow: 'hidden' },
   texture: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH, opacity: TEXTURE_OPACITY },
+  stripe: { position: 'absolute', top: 0, left: 0, bottom: 0, width: STRIPE_W },
   textureBox: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH },
   content: { padding: SPACING.lg, gap: SPACING.sm, justifyContent: 'center', flexGrow: 1 },
   inviteContent: { paddingRight: SPACING.lg + ARROW + SPACING.sm },
@@ -334,6 +351,7 @@ const styles = StyleSheet.create({
   textCol: { paddingRight: ARROW + SPACING.sm, gap: 0 },
   label: { fontSize: FONT_SIZE.sm, lineHeight: 14, fontFamily: 'Inter_500Medium' },
   name: { fontSize: FONT_SIZE.hero, lineHeight: 30, fontFamily: 'Anton_400Regular' },
+  inviteName: { fontSize: INVITE_NAME_SIZE, lineHeight: INVITE_NAME_LINE },
   coach: { fontSize: FONT_SIZE.xs, lineHeight: 14, fontFamily: 'Inter_500Medium' },
   // Última línea: la duración y, al lado, el nivel. Como máximo el 66 % del ancho útil (todo el texto gris queda sobre el tramo 100 % negro
   // del velo); solo si no cabe (320 dp con "Todos los niveles" y letra grande) el nivel pasa a un segundo renglón.

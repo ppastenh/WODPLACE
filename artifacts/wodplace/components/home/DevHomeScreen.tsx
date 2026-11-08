@@ -11,6 +11,7 @@ import {
   type NextClassCapsule,
   type NextClassCopper,
   type NextClassLook,
+  type NextClassStripe,
   type NextClassTexture,
 } from '@/components/home/NextClassCard';
 import {
@@ -58,6 +59,10 @@ const CAPSULE_CHIPS: { id: NextClassCapsule; label: string }[] = [
   { id: 'A', label: 'Cápsula: A' },
   { id: 'B', label: 'Cápsula: B' },
   { id: 'C', label: 'Cápsula: C' },
+];
+const STRIPE_CHIPS: { id: NextClassStripe; label: string }[] = [
+  { id: 'invite', label: 'Franja izquierda: sin reserva' },
+  { id: 'both', label: 'Franja izquierda: ambos estados' },
 ];
 const COPPER_CHIPS: { id: NextClassCopper; label: string }[] = [
   { id: 'base', label: 'Cobre: #B98250' },
@@ -152,7 +157,8 @@ function DevHomeBody() {
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
   const [texture, setTexture] = useState<Texture>('pizarra');
-  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
+  const [stripe, setStripe] = useState<NextClassStripe>('invite');
+  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture], stripe };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
   const [menuFont, setMenuFont] = useState<MenuFont>('sistema');
@@ -184,6 +190,7 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
+          <ChipGroup title="Tarjeta de próxima clase: franja izquierda" chips={STRIPE_CHIPS} selected={stripe} onSelect={setStripe} />
           <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
           <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />
           <ChipGroup title="Menú: letra simulada" chips={MENU_FONT_CHIPS} selected={menuFont} onSelect={setMenuFont} />
