@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,15 +19,13 @@ import { RADIUS } from '@/constants/radius';
  * ocultos a los lectores de pantalla (pointerEvents NUNCA en un <Text>: Android lo ignora).
  */
 export type QuoteVariant = 'actual' | 'editorialCream';
-/** Comilla de apertura de la editorial: glifo de la serif, dibujada con react-native-svg, o dobles (apertura y cierre dibujadas). */
-export type QuoteMark = 'glifo' | 'dibujada' | 'doble';
 /** Frase corta: centrada solo en vertical (texto a la izquierda) o en vertical y horizontal. */
 export type QuoteCenter = 'vertical' | 'ambos';
-export type QuoteLook = { variant: QuoteVariant; highlight: boolean; mark: QuoteMark; center: QuoteCenter };
+export type QuoteLook = { variant: QuoteVariant; highlight: boolean; center: QuoteCenter };
 
 /** UNA sola constante decide la variante que ve Inicio. 'editorialCream' = la elegida; 'actual' = la tarjeta de antes. */
 export const QUOTE_VARIANT: QuoteVariant = 'editorialCream';
-export const QUOTE_LOOK: QuoteLook = { variant: QUOTE_VARIANT, highlight: true, mark: 'dibujada', center: 'vertical' };
+export const QUOTE_LOOK: QuoteLook = { variant: QUOTE_VARIANT, highlight: true, center: 'vertical' };
 
 /**
  * Fuente editorial del prototipo: una serif del sistema (Android 'serif', iOS y web Georgia). La definitiva sería Cormorant Garamond
@@ -40,13 +38,19 @@ const SHARE_ICON = 20;
 const TEXT_SIZE = 19;
 const TEXT_LINE = 27;
 const PAD_V = SPACING.xl;
-// Alto mínimo IGUAL para todas las frases: 3 líneas (la frase real más larga, "No necesitas hacerlo perfecto; necesitas volver a
-// intentarlo.", ocupa 3 líneas a 320 dp con letra 1,0) más el relleno de arriba y abajo. Solo crece si el texto no cabe.
+// Alto IGUAL para todas las frases. La tarjeta mide siempre lo que mide la frase real MÁS LARGA en ese teléfono (su ancho, su fuente y su
+// tamaño de letra): un texto invisible con esa frase (el "fantasma") se mide con onLayout y fija el alto de la caja del texto; la frase del día,
+// más corta, se centra dentro. Solo crece si la frase del día no cabe en ese alto (letra muy grande o una frase más larga que las reales),
+// nunca se corta ni lleva "…". Piso mientras se mide: 3 líneas + relleno + los 2 dp del borde (en la web medido: 115 dp).
+// IMPORTANTE: debe ser la más larga de DAILY_QUOTES en app/home.tsx (lo comprueba una prueba); si cambia el banco de frases, se actualiza aquí.
+export const LONGEST_REAL_QUOTE = 'No necesitas hacerlo perfecto; necesitas volver a intentarlo.';
 export const EDITORIAL_MIN_LINES = 3;
-export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V;
-// Ancho de la columna de la comilla de apertura (el texto se sangra lo justo para no pisarla) y alto del dibujo, por tipo de comilla.
-const MARK_COL: Record<QuoteMark, number> = { glifo: 26, dibujada: 28, doble: 42 };
-const MARK_H: Record<QuoteMark, number> = { glifo: 40, dibujada: 40, doble: 36 };
+export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V + 2;
+// Comillas dobles dibujadas: la de apertura mide 30 dp de alto (antes 36) y la de cierre 18 dp. MARK_COL es el ancho de la columna de la comilla
+// de apertura (30,5 / 26 × 30 = 35,2 dp, redondeado a 36): el texto se sangra esa columna más 8 dp para no pisarla.
+const MARK_OPEN_H = 30;
+const MARK_CLOSE_H = 18;
+const MARK_COL = 36;
 
 type Props = {
   quote: string;
@@ -113,8 +117,8 @@ const MARK_BALL = { cx: 7, cy: 21, r: 5.2 };
 const MARK_TAIL = 'M1.9 20.2 C1.6 11.6 6.6 5.2 15.6 2 L16.4 4.2 C11 6.8 7.9 11.2 8.9 18.4 Z';
 const MARK_STEP = 12.5;
 
-function DrawnMark({ color, height, double, close }: { color: string; height: number; double: boolean; close?: boolean }) {
-  const boxW = double ? 18 + MARK_STEP : 18;
+function DrawnMark({ color, height, close }: { color: string; height: number; close?: boolean }) {
+  const boxW = 18 + MARK_STEP;
   const one = (dx: number) => (
     <G key={dx} transform={`translate(${dx} 0)`}>
       <Circle cx={MARK_BALL.cx} cy={MARK_BALL.cy} r={MARK_BALL.r} fill={color} />
@@ -123,7 +127,7 @@ function DrawnMark({ color, height, double, close }: { color: string; height: nu
   );
   return (
     <Svg width={(boxW / 26) * height} height={height} viewBox={`0 0 ${boxW} 26`}>
-      <G transform={close ? `rotate(180 ${boxW / 2} 13)` : undefined}>{double ? [one(0), one(MARK_STEP)] : one(0)}</G>
+      <G transform={close ? `rotate(180 ${boxW / 2} 13)` : undefined}>{[one(0), one(MARK_STEP)]}</G>
     </Svg>
   );
 }
@@ -133,11 +137,19 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
   const copper = colors.charcoalAccent;
   const parts = splitHighlight(quote);
   const showMark = look.highlight && parts.mark !== '';
-  const markCol = MARK_COL[look.mark];
+  // Solo __DEV__: alto real de la tarjeta (onLayout) para comprobar que es igual con cualquier frase.
+  const [measured, setMeasured] = useState(0);
+  // Alto medido de la frase real más larga (el fantasma): fija el alto de la caja del texto, igual para todas las frases.
+  const [ghostH, setGhostH] = useState(0);
+  const textPadLeft = SPACING.xl + MARK_COL + SPACING.sm2;
+  const textPadRight = SHARE_AREA - SPACING.xs2;
   const hidden = { pointerEvents: 'none', importantForAccessibility: 'no-hide-descendants', accessibilityElementsHidden: true } as const;
 
   return (
-    <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.quoteCream }]}>
+    <View
+      style={[styles.card, { borderColor: colors.border, backgroundColor: colors.quoteCream }]}
+      onLayout={__DEV__ ? (e) => setMeasured(Math.round(e.nativeEvent.layout.height)) : undefined}
+    >
       <View {...hidden} style={styles.layers}>
         <LinearGradient
           colors={[colors.quoteCream, colors.cream]}
@@ -152,34 +164,46 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
 
       {/* Comilla de apertura: decorativa, arriba a la izquierda; el texto se sangra lo justo para no pisarla. */}
       <View {...hidden} style={styles.markOpen}>
-        {look.mark === 'glifo' ? (
-          <Text style={[styles.glyph, { color: copper, fontFamily: EDITORIAL_FONT }]}>{'“'}</Text>
-        ) : (
-          <DrawnMark color={copper} height={MARK_H[look.mark]} double={look.mark === 'doble'} />
-        )}
+        <DrawnMark color={copper} height={MARK_OPEN_H} />
       </View>
-      {look.mark === 'doble' ? (
-        <View {...hidden} style={[styles.markClose, { opacity: 0.5 }]}>
-          <DrawnMark color={copper} height={18} double close />
+      <View {...hidden} style={[styles.markClose, { opacity: 0.5 }]}>
+        <DrawnMark color={copper} height={MARK_CLOSE_H} close />
+      </View>
+
+      <View style={[styles.textBox, { paddingLeft: textPadLeft, paddingRight: textPadRight }]}>
+        <View style={[styles.textSlot, { minHeight: ghostH }]}>
+          <Text
+            style={[styles.text, { color: colors.quoteInk }, look.center === 'ambos' && styles.textCentered]}
+            maxFontSizeMultiplier={1.3}
+          >
+            {showMark ? (
+              <>
+                {parts.lead}
+                <Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>
+                {parts.tail}
+              </>
+            ) : (
+              parts.lead + parts.mark + parts.tail
+            )}
+          </Text>
+        </View>
+        {/* Fantasma: la frase real más larga, invisible y con el MISMO ancho y estilo; solo sirve para medir su alto. */}
+        <View
+          {...hidden}
+          style={[styles.ghost, { left: textPadLeft, right: textPadRight }]}
+          onLayout={(e) => setGhostH(Math.ceil(e.nativeEvent.layout.height))}
+        >
+          <Text style={styles.text} maxFontSizeMultiplier={1.3}>
+            {LONGEST_REAL_QUOTE}
+          </Text>
+        </View>
+      </View>
+
+      {__DEV__ ? (
+        <View pointerEvents="none" style={styles.devBadge}>
+          <Text style={styles.devBadgeText}>{`Alto: ${measured} dp`}</Text>
         </View>
       ) : null}
-
-      <View style={[styles.textBox, { paddingLeft: SPACING.xl + markCol + SPACING.sm2 }]}>
-        <Text
-          style={[styles.text, { color: colors.quoteInk }, look.center === 'ambos' && styles.textCentered]}
-          maxFontSizeMultiplier={1.3}
-        >
-          {showMark ? (
-            <>
-              {parts.lead}
-              <Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>
-              {parts.tail}
-            </>
-          ) : (
-            parts.lead + parts.mark + parts.tail
-          )}
-        </Text>
-      </View>
 
       <Pressable
         accessibilityRole="button"
@@ -214,14 +238,17 @@ const styles = StyleSheet.create({
   layers: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.xl, overflow: 'hidden' },
   mountains: { position: 'absolute', right: 0, bottom: 0 },
   markOpen: { position: 'absolute', top: SPACING.lg, left: SPACING.xl },
-  // El glifo se dibuja con una línea alta y se sube para que su parte visible quede arriba a la izquierda.
-  glyph: { fontSize: 110, lineHeight: 110, marginTop: -30, fontStyle: 'italic' },
   markClose: { position: 'absolute', right: SPACING.lg, bottom: SPACING.sm2 },
   // Centrado vertical: la tarjeta es un flex de una columna centrada y el texto va en una caja con el relleno justo (sangría a la izquierda por la
   // comilla; a la derecha, el hueco del botón de compartir, que flota arriba a la derecha).
-  textBox: { paddingVertical: PAD_V, paddingRight: SHARE_AREA - SPACING.xs2 },
+  textBox: { paddingVertical: PAD_V },
+  textSlot: { justifyContent: 'center' },
+  ghost: { position: 'absolute', top: PAD_V, opacity: 0 },
   text: { fontFamily: EDITORIAL_FONT, fontSize: TEXT_SIZE, lineHeight: TEXT_LINE, fontStyle: 'italic', fontWeight: '500' },
   textCentered: { textAlign: 'center' },
+  // Solo __DEV__ (texto de depuración con el alto medido).
+  devBadge: { position: 'absolute', left: SPACING.sm, bottom: 1 },
+  devBadgeText: { fontSize: 9, color: '#B00020', fontFamily: 'Inter_600SemiBold' },
   // Área táctil de 48 × 48 dp; el ícono (20 dp) se ve más chico.
   share: {
     position: 'absolute',

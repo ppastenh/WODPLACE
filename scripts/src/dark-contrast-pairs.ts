@@ -239,11 +239,6 @@ export const PAIRS_LIGHT: Pair[] = [
   { ...ui('charcoalAccent', 'charcoal', 'cápsula C: borde e ícono cobre sobre el vidrio, peor caso'), bgLiteral: { hex: '#000000', over: '#333333', alpha: 0.6 } },
   // Estado sin reserva: título de 21 sp (antes 26) con el MISMO crema: el tamaño no cambia la razón de contraste, pero el título ya no es texto
   // grande, así que se exige 4,5:1 en el peor caso (sobre la textura, hasta 80 % del ancho, antes de la flecha).
-  // Barras //: decorativas, del cobre de la tarjeta, sobre el velo negro (a la izquierda, antes del 66 % del ancho). Se exigen 3:1.
-  ui('charcoalAccent', 'charcoal', 'barras // cobre #B98250 sobre el velo negro'),
-  ui('charcoalAccent', 'nextClassCardPressed', 'barras // cobre #B98250 sobre el color presionado'),
-  ui('charcoalAccentLight', 'charcoal', 'barras // cobre claro #C79A6B sobre el velo negro'),
-  ui('charcoalAccentLight', 'nextClassCardPressed', 'barras // cobre claro #C79A6B sobre el color presionado'),
   t('nextClassCardForeground', 'charcoal', 'título "Reserva tu próxima clase" (21 sp) sobre el velo negro'),
   t('nextClassCardForeground', '#555555', 'título "Reserva tu próxima clase" (21 sp) sobre la textura, peor caso (gris 85)'),
   t('nextClassCardForeground', '#6A6A6A', 'título "Reserva tu próxima clase" (21 sp) sobre la textura presionada, peor caso (gris 106)'),

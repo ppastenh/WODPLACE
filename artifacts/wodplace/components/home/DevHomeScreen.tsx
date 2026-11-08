@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
-import { QUOTE_LOOK, type QuoteCenter, type QuoteLook, type QuoteMark, type QuoteVariant } from '@/components/home/DailyQuoteCard';
+import { QUOTE_LOOK, type QuoteCenter, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
   NEXT_CLASS_LOOK,
   NEXT_CLASS_TEXTURE,
@@ -60,43 +60,36 @@ const CAPSULE_CHIPS: { id: NextClassCapsule; label: string }[] = [
   { id: 'B', label: 'Cápsula: B' },
   { id: 'C', label: 'Cápsula: C' },
 ];
-// Tarjeta de frases del día (decisión (s)): variante, largo de la frase, resaltado, tipo de comilla y centrado de la frase corta.
+// Tarjeta de frases del día (decisión (s)): variante, largo de la frase, resaltado y centrado de la frase corta.
 const QUOTE_VARIANT_CHIPS: { id: QuoteVariant; label: string }[] = [
   { id: 'actual', label: 'Frase: actual' },
   { id: 'editorialCream', label: 'Frase: C editorial' },
 ];
-type QuoteLength = 'corta' | 'media' | 'larga' | 'tres' | 'marcada';
+type QuoteLength = 'corta' | 'media' | 'larga' | 'tres' | 'muy-larga' | 'marcada';
 const QUOTE_LENGTHS: Record<QuoteLength, string> = {
   corta: 'Vuelve a intentarlo.',
   media: 'La constancia de hoy construye la fuerza de mañana.',
   larga: 'No necesitas hacerlo perfecto; necesitas volver a intentarlo.', // la más larga de las 5 reales (61 caracteres)
   marcada: 'Tu constancia es *tu mejor entrenamiento* siempre.', // con marcado manual (*…*)
-  tres:
+  tres: 'Entrenar también es volver a empezar cada día, con paciencia y con ganas de mejorar un poco más.', // 97 caracteres: más larga que las reales
+  'muy-larga':
     'Cada mañana que llegas al box y eliges entrenar aunque no tengas ganas, estás construyendo una versión más fuerte, más paciente y más constante de ti, y eso vale más que cualquier marca.',
 };
 const QUOTE_LENGTH_CHIPS: { id: QuoteLength; label: string }[] = [
   { id: 'corta', label: 'Largo: corta' },
   { id: 'media', label: 'Largo: media' },
   { id: 'larga', label: 'Largo: la más larga de las reales' },
-  { id: 'tres', label: 'Largo: sintética de 3 líneas' },
+  { id: 'tres', label: 'Largo: sintética (97 caracteres)' },
+  { id: 'muy-larga', label: 'Largo: muy larga (más que las reales)' },
   { id: 'marcada', label: 'Largo: con marcado manual *…*' },
 ];
 const QUOTE_HIGHLIGHT_CHIPS: { id: 'si' | 'no'; label: string }[] = [
   { id: 'si', label: 'Resaltado: sí' },
   { id: 'no', label: 'Resaltado: no' },
 ];
-const QUOTE_MARK_CHIPS: { id: QuoteMark; label: string }[] = [
-  { id: 'glifo', label: 'Comilla: glifo' },
-  { id: 'dibujada', label: 'Comilla: dibujada' },
-  { id: 'doble', label: 'Comilla: doble' },
-];
 const QUOTE_CENTER_CHIPS: { id: QuoteCenter; label: string }[] = [
   { id: 'vertical', label: 'Frase corta: centrada vertical' },
   { id: 'ambos', label: 'Frase corta: centrada vertical y horizontal' },
-];
-const BARS_CHIPS: { id: 'si' | 'no'; label: string }[] = [
-  { id: 'si', label: 'Barras //: sí' },
-  { id: 'no', label: 'Barras //: no' },
 ];
 const COPPER_CHIPS: { id: NextClassCopper; label: string }[] = [
   { id: 'base', label: 'Cobre: #B98250' },
@@ -191,14 +184,12 @@ function DevHomeBody() {
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
   const [texture, setTexture] = useState<Texture>('pizarra');
-  const [bars, setBars] = useState<'si' | 'no'>('si');
   const [quoteVariant, setQuoteVariant] = useState<QuoteVariant>(QUOTE_LOOK.variant);
   const [quoteLength, setQuoteLength] = useState<QuoteLength>('media');
   const [quoteHighlight, setQuoteHighlight] = useState<'si' | 'no'>('si');
-  const [quoteMark, setQuoteMark] = useState<QuoteMark>(QUOTE_LOOK.mark);
   const [quoteCenter, setQuoteCenter] = useState<QuoteCenter>(QUOTE_LOOK.center);
-  const quoteLook: QuoteLook = { variant: quoteVariant, highlight: quoteHighlight === 'si', mark: quoteMark, center: quoteCenter };
-  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture], bars: bars === 'si' };
+  const quoteLook: QuoteLook = { variant: quoteVariant, highlight: quoteHighlight === 'si', center: quoteCenter };
+  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
   const [menuFont, setMenuFont] = useState<MenuFont>('sistema');
@@ -230,11 +221,9 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
-          <ChipGroup title="Tarjeta de próxima clase: barras //" chips={BARS_CHIPS} selected={bars} onSelect={setBars} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
           <ChipGroup title="Frase del día: resaltado" chips={QUOTE_HIGHLIGHT_CHIPS} selected={quoteHighlight} onSelect={setQuoteHighlight} />
-          <ChipGroup title="Frase del día: comilla" chips={QUOTE_MARK_CHIPS} selected={quoteMark} onSelect={setQuoteMark} />
           <ChipGroup title="Frase del día: frase corta" chips={QUOTE_CENTER_CHIPS} selected={quoteCenter} onSelect={setQuoteCenter} />
           <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
           <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />

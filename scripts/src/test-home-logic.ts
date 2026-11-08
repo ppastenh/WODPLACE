@@ -77,16 +77,8 @@ describe('tarjeta de próxima clase (NextClassCard.tsx): el toque llega a la tar
   it('el estado presionado es sólido: ninguna línea mezcla "pressed" con opacity', () => {
     for (const line of source.split('\n')) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
   });
-  it('la tarjeta ya no lleva la franja izquierda (solo las barras //)', () => {
-    assert.ok(!/stripe|STRIPE/i.test(source));
-  });
-  it('las barras // son decorativas (View pointerEvents none, ocultas), de extremos rectos, y salen por defecto', () => {
-    const bars = source.slice(source.indexOf('function Bars('), source.indexOf('function Arrow('));
-    assert.ok(bars.includes('<View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.bars}>'));
-    assert.ok(bars.includes('strokeLinecap="butt"'));
-    assert.ok(!/<Text/.test(bars));
-    assert.ok(source.includes('look.bars !== false'), 'por defecto sí');
-    assert.match(source, /const BARS_STROKE = 2.5;/);
+  it('la tarjeta sin reserva no lleva franja ni barras (solo título y flecha)', () => {
+    assert.ok(!/stripe|STRIPE|Bars|BARS|bars/.test(source));
   });
   it('el título sin reserva es de 21 sp (antes 26) con la misma fuente Anton', () => {
     assert.match(source, /const INVITE_NAME_SIZE = 21;/);
@@ -490,11 +482,27 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok((editorial.match(/\{\.\.\.hidden\}/g) ?? []).length >= 3, 'capas, comilla de apertura y de cierre');
     assert.doesNotMatch(quote, /<Text[^>]*pointerEvents=/);
   });
-  it('mismo alto mínimo en todas las frases (3 líneas) y la frase se centra en vertical', () => {
+  it('mismo alto en todas las frases: lo fija un fantasma con la frase real más larga, medido con onLayout; la frase se centra dentro', () => {
     assert.match(quote, /export const EDITORIAL_MIN_LINES = 3;/);
-    assert.ok(quote.includes('export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V;'));
+    assert.ok(quote.includes('export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V + 2;'));
     assert.ok(quote.includes("minHeight: EDITORIAL_MIN_H, justifyContent: 'center'"));
+    assert.ok(editorial.includes('minHeight: ghostH'));
+    assert.ok(editorial.includes('setGhostH(Math.ceil(e.nativeEvent.layout.height))'));
+    assert.ok(editorial.includes('{LONGEST_REAL_QUOTE}'));
+    assert.ok(quote.includes("textSlot: { justifyContent: 'center' }"));
     assert.ok(!editorial.includes('numberOfLines'), 'nunca se corta con "…"');
+  });
+  it('LONGEST_REAL_QUOTE es la frase más larga de DAILY_QUOTES (app/home.tsx, solo lectura)', () => {
+    const homeScreen = readFileSync(new URL('../../artifacts/wodplace/app/home.tsx', import.meta.url), 'utf8');
+    const block = homeScreen.slice(homeScreen.indexOf('const DAILY_QUOTES = ['), homeScreen.indexOf('];', homeScreen.indexOf('const DAILY_QUOTES = [')));
+    const quotes = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+    assert.ok(quotes.length >= 5);
+    const longest = quotes.reduce((a, b) => (b.length > a.length ? b : a));
+    assert.ok(quote.includes("export const LONGEST_REAL_QUOTE = '" + longest + "';"), 'actualiza LONGEST_REAL_QUOTE: la más larga ahora es: ' + longest);
+  });
+  it('el texto de depuración con el alto medido solo existe en __DEV__', () => {
+    assert.ok(editorial.includes('{__DEV__ ? ('));
+    assert.ok(editorial.includes('Alto: '));
   });
   it('el resaltado es un Text anidado en el cobre oscuro quoteCopperText y el texto mostrado no lleva marcas', () => {
     assert.ok(editorial.includes('<Text style={{ color: colors.quoteCopperText }}>{parts.mark}</Text>'));
@@ -504,9 +512,12 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok(quote.includes("export const EDITORIAL_FONT: string = Platform.select({ android: 'serif', default: 'Georgia' });"));
     assert.ok(quote.includes('fontFamily: EDITORIAL_FONT'));
   });
-  it('las tres comillas (glifo, dibujada, doble) existen y la dibujada usa react-native-svg', () => {
-    assert.ok(quote.includes("export type QuoteMark = 'glifo' | 'dibujada' | 'doble';"));
+  it('solo hay comillas dobles dibujadas con react-native-svg (apertura de 30 dp y cierre de 18 dp); el glifo y la comilla simple se retiraron', () => {
+    assert.ok(!quote.includes('QuoteMark'));
+    assert.ok(!quote.includes('glyph'));
     assert.ok(quote.includes('function DrawnMark('));
     assert.ok(quote.includes("from 'react-native-svg'"));
+    assert.match(quote, /const MARK_OPEN_H = 30;/);
+    assert.match(quote, /const MARK_CLOSE_H = 18;/);
   });
 });
