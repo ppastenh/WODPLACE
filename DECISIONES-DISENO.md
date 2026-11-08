@@ -104,5 +104,5 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 ## (r) Tarjeta "Tu próxima clase" rediseñada
 
 - **Fecha:** 2026-11-07
-- **Decisión:** "Tarjeta 'Tu próxima clase' rediseñada: fondo grafito con textura fotográfica a la derecha y degradado negro, círculo cobre con ícono de calendario y cápsula de fecha, nombre de la clase en Anton, duración y nivel con íconos, flecha decorativa en círculo translúcido; la textura es provisional (foto del aro) hasta que se elija otra con licencia."
-- **Estado:** VIGENTE. Se aplica a Inicio real (decisión (q)); la textura es PROVISIONAL.
+- **Decisión:** "Tarjeta 'Tu próxima clase' rediseñada: fondo grafito con la foto de pizarra de Noita Digital (Unsplash, licencia Unsplash) como textura a la derecha con velo negro de izquierda a derecha; cápsula de fecha C (vidrio oscuro con borde cobre y texto crema) con círculo cobre e ícono de calendario; cobre #B98250 en esta tarjeta; nombre de la clase en Anton; duración y nivel con íconos; flecha decorativa en círculo translúcido; formato rectangular de 126 a 140 dp. En el estado sin reserva ('Reserva tu próxima clase') el título es un poco más pequeño y la tarjeta lleva una franja de cobre en el lado izquierdo. Los patrones de rombos, líneas y puntos y la foto del aro quedan como alternativas solo de la pantalla de desarrollo."
+- **Estado:** VIGENTE. Se aplica a Inicio real (decisión (q)). Enmendada el 2026-11-07 con la aprobación explícita de Pía: la textura ya no es provisional (pizarra elegida).
