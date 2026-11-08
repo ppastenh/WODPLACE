@@ -65,23 +65,40 @@ const QUOTE_VARIANT_CHIPS: { id: QuoteVariant; label: string }[] = [
   { id: 'actual', label: 'Frase: actual' },
   { id: 'editorialCream', label: 'Frase: C editorial' },
 ];
-type QuoteLength = 'corta' | 'media' | 'larga' | 'tres' | 'muy-larga' | 'marcada';
+// Frases de largo exacto para medir el alto de la tarjeta (se cortan de un texto base y terminan en punto).
+const QUOTE_BASE =
+  'La constancia de hoy construye la fuerza de mañana, y cada repetición cuenta cuando eliges seguir avanzando, porque entrenar también es una forma de cuidar tu mente y tu cuerpo todos los días del año y de volver a intentarlo con calma.';
+const phraseOf = (n: number): string => {
+  let t = QUOTE_BASE.slice(0, n - 1);
+  if (t.endsWith(' ')) t = t.slice(0, -1) + 'o';
+  return t + '.';
+};
+type QuoteLength = 'corta' | 'media' | 'larga' | 'marcada' | 'c62' | 'c85' | 'c105' | 'c125';
 const QUOTE_LENGTHS: Record<QuoteLength, string> = {
   corta: 'Vuelve a intentarlo.',
   media: 'La constancia de hoy construye la fuerza de mañana.',
   larga: 'No necesitas hacerlo perfecto; necesitas volver a intentarlo.', // la más larga de las 5 reales (61 caracteres)
   marcada: 'Tu constancia es *tu mejor entrenamiento* siempre.', // con marcado manual (*…*)
-  tres: 'Entrenar también es volver a empezar cada día, con paciencia y con ganas de mejorar un poco más.', // 97 caracteres: más larga que las reales
-  'muy-larga':
-    'Cada mañana que llegas al box y eliges entrenar aunque no tengas ganas, estás construyendo una versión más fuerte, más paciente y más constante de ti, y eso vale más que cualquier marca.',
+  c62: phraseOf(62),
+  c85: phraseOf(85),
+  c105: phraseOf(105),
+  c125: phraseOf(125),
 };
 const QUOTE_LENGTH_CHIPS: { id: QuoteLength; label: string }[] = [
   { id: 'corta', label: 'Largo: corta' },
   { id: 'media', label: 'Largo: media' },
   { id: 'larga', label: 'Largo: la más larga de las reales' },
-  { id: 'tres', label: 'Largo: sintética (97 caracteres)' },
-  { id: 'muy-larga', label: 'Largo: muy larga (más que las reales)' },
+  { id: 'c62', label: 'Largo: 62 caracteres' },
+  { id: 'c85', label: 'Largo: 85 caracteres' },
+  { id: 'c105', label: 'Largo: 105 caracteres' },
+  { id: 'c125', label: 'Largo: 125 caracteres' },
   { id: 'marcada', label: 'Largo: con marcado manual *…*' },
+];
+type QuoteFont = '1' | '1.1' | '1.3';
+const QUOTE_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
+  { id: '1', label: 'Letra simulada: 1,0' },
+  { id: '1.1', label: 'Letra simulada: 1,1' },
+  { id: '1.3', label: 'Letra simulada: 1,3' },
 ];
 const QUOTE_HIGHLIGHT_CHIPS: { id: 'si' | 'no'; label: string }[] = [
   { id: 'si', label: 'Resaltado: sí' },
@@ -188,7 +205,8 @@ function DevHomeBody() {
   const [quoteLength, setQuoteLength] = useState<QuoteLength>('media');
   const [quoteHighlight, setQuoteHighlight] = useState<'si' | 'no'>('si');
   const [quoteCenter, setQuoteCenter] = useState<QuoteCenter>(QUOTE_LOOK.center);
-  const quoteLook: QuoteLook = { variant: quoteVariant, highlight: quoteHighlight === 'si', center: quoteCenter };
+  const [quoteFont, setQuoteFont] = useState<QuoteFont>('1');
+  const quoteLook: QuoteLook = { variant: quoteVariant, highlight: quoteHighlight === 'si', center: quoteCenter, fontScale: Number(quoteFont) };
   const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
@@ -223,6 +241,7 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
+          <ChipGroup title="Frase del día: letra simulada" chips={QUOTE_FONT_CHIPS} selected={quoteFont} onSelect={setQuoteFont} />
           <ChipGroup title="Frase del día: resaltado" chips={QUOTE_HIGHLIGHT_CHIPS} selected={quoteHighlight} onSelect={setQuoteHighlight} />
           <ChipGroup title="Frase del día: frase corta" chips={QUOTE_CENTER_CHIPS} selected={quoteCenter} onSelect={setQuoteCenter} />
           <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />

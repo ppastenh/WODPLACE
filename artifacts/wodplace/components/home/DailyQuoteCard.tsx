@@ -21,7 +21,13 @@ import { RADIUS } from '@/constants/radius';
 export type QuoteVariant = 'actual' | 'editorialCream';
 /** Frase corta: centrada solo en vertical (texto a la izquierda) o en vertical y horizontal. */
 export type QuoteCenter = 'vertical' | 'ambos';
-export type QuoteLook = { variant: QuoteVariant; highlight: boolean; center: QuoteCenter };
+export type QuoteLook = {
+  variant: QuoteVariant;
+  highlight: boolean;
+  center: QuoteCenter;
+  /** Solo desarrollo: simula la letra del sistema (1; 1,1; 1,3). */
+  fontScale?: number;
+};
 
 /** UNA sola constante decide la variante que ve Inicio. 'editorialCream' = la elegida; 'actual' = la tarjeta de antes. */
 export const QUOTE_VARIANT: QuoteVariant = 'editorialCream';
@@ -37,15 +43,15 @@ const SHARE_AREA = 48;
 const SHARE_ICON = 20;
 const TEXT_SIZE = 19;
 const TEXT_LINE = 27;
-const PAD_V = SPACING.xl;
-// Alto IGUAL para todas las frases. La tarjeta mide siempre lo que mide la frase real MÁS LARGA en ese teléfono (su ancho, su fuente y su
-// tamaño de letra): un texto invisible con esa frase (el "fantasma") se mide con onLayout y fija el alto de la caja del texto; la frase del día,
-// más corta, se centra dentro. Solo crece si la frase del día no cabe en ese alto (letra muy grande o una frase más larga que las reales),
-// nunca se corta ni lleva "…". Piso mientras se mide: 3 líneas + relleno + los 2 dp del borde (en la web medido: 115 dp).
-// IMPORTANTE: debe ser la más larga de DAILY_QUOTES en app/home.tsx (lo comprueba una prueba); si cambia el banco de frases, se actualiza aquí.
-export const LONGEST_REAL_QUOTE = 'No necesitas hacerlo perfecto; necesitas volver a intentarlo.';
+// Relleno de arriba y abajo: 15 dp (no 16) para que, con el borde de 1 dp, 3 líneas den EXACTAMENTE 113 dp en total (3 × 27 + 2 × 15 + 2 = 113).
+const PAD_V = 15;
+// TAMAÑO: la tarjeta mide 113 dp como mínimo (3 líneas), igual para todas las frases cortas y medianas, que se centran en vertical. Solo CRECE
+// cuando una frase necesita más líneas, sin "…" ni cortes. LÍMITE de diseño: 214 dp (ninguna frase del banco debe pasarlo con letra 1,0 a 320, 360 y
+// 412 dp; el largo máximo en caracteres está en ESTADO.md). QUOTE_MAX_FONT_MULT limita cuánto crece la letra del sistema para respetar ese límite.
 export const EDITORIAL_MIN_LINES = 3;
 export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V + 2;
+export const EDITORIAL_MAX_H = 214;
+export const QUOTE_MAX_FONT_MULT = 1.3;
 // Comillas dobles dibujadas: la de apertura mide 30 dp de alto (antes 36) y la de cierre 18 dp. MARK_COL es el ancho de la columna de la comilla
 // de apertura (30,5 / 26 × 30 = 35,2 dp, redondeado a 36): el texto se sangra esa columna más 8 dp para no pisarla.
 const MARK_OPEN_H = 30;
@@ -137,10 +143,11 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
   const copper = colors.charcoalAccent;
   const parts = splitHighlight(quote);
   const showMark = look.highlight && parts.mark !== '';
-  // Solo __DEV__: alto real de la tarjeta (onLayout) para comprobar que es igual con cualquier frase.
+  // Solo __DEV__: alto real de la tarjeta (onLayout).
   const [measured, setMeasured] = useState(0);
-  // Alto medido de la frase real más larga (el fantasma): fija el alto de la caja del texto, igual para todas las frases.
-  const [ghostH, setGhostH] = useState(0);
+  // Solo desarrollo: simula la letra del sistema (el tope QUOTE_MAX_FONT_MULT también se aplica, como lo hace el sistema).
+  const fs = Math.min(look.fontScale ?? 1, QUOTE_MAX_FONT_MULT);
+  const textStyle = { fontSize: TEXT_SIZE * fs, lineHeight: TEXT_LINE * fs };
   const textPadLeft = SPACING.xl + MARK_COL + SPACING.sm2;
   const textPadRight = SHARE_AREA - SPACING.xs2;
   const hidden = { pointerEvents: 'none', importantForAccessibility: 'no-hide-descendants', accessibilityElementsHidden: true } as const;
@@ -171,10 +178,10 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
       </View>
 
       <View style={[styles.textBox, { paddingLeft: textPadLeft, paddingRight: textPadRight }]}>
-        <View style={[styles.textSlot, { minHeight: ghostH }]}>
+        <View style={styles.textSlot}>
           <Text
-            style={[styles.text, { color: colors.quoteInk }, look.center === 'ambos' && styles.textCentered]}
-            maxFontSizeMultiplier={1.3}
+            style={[styles.text, textStyle, { color: colors.quoteInk }, look.center === 'ambos' && styles.textCentered]}
+            maxFontSizeMultiplier={QUOTE_MAX_FONT_MULT}
           >
             {showMark ? (
               <>
@@ -185,16 +192,6 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
             ) : (
               parts.lead + parts.mark + parts.tail
             )}
-          </Text>
-        </View>
-        {/* Fantasma: la frase real más larga, invisible y con el MISMO ancho y estilo; solo sirve para medir su alto. */}
-        <View
-          {...hidden}
-          style={[styles.ghost, { left: textPadLeft, right: textPadRight }]}
-          onLayout={(e) => setGhostH(Math.ceil(e.nativeEvent.layout.height))}
-        >
-          <Text style={styles.text} maxFontSizeMultiplier={1.3}>
-            {LONGEST_REAL_QUOTE}
           </Text>
         </View>
       </View>
@@ -243,7 +240,6 @@ const styles = StyleSheet.create({
   // comilla; a la derecha, el hueco del botón de compartir, que flota arriba a la derecha).
   textBox: { paddingVertical: PAD_V },
   textSlot: { justifyContent: 'center' },
-  ghost: { position: 'absolute', top: PAD_V, opacity: 0 },
   text: { fontFamily: EDITORIAL_FONT, fontSize: TEXT_SIZE, lineHeight: TEXT_LINE, fontStyle: 'italic', fontWeight: '500' },
   textCentered: { textAlign: 'center' },
   // Solo __DEV__ (texto de depuración con el alto medido).

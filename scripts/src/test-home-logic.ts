@@ -482,23 +482,20 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok((editorial.match(/\{\.\.\.hidden\}/g) ?? []).length >= 3, 'capas, comilla de apertura y de cierre');
     assert.doesNotMatch(quote, /<Text[^>]*pointerEvents=/);
   });
-  it('mismo alto en todas las frases: lo fija un fantasma con la frase real más larga, medido con onLayout; la frase se centra dentro', () => {
+  it('tamaño: 113 dp como mínimo (3 líneas de 27 + 2 × 15 + 2 de borde), igual para las frases cortas y medianas, que se centran; sin texto fantasma; solo crece, sin "…"', () => {
     assert.match(quote, /export const EDITORIAL_MIN_LINES = 3;/);
-    assert.ok(quote.includes('export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V + 2;'));
+    assert.match(quote, /const PAD_V = 15;/);
+    assert.match(quote, /const TEXT_LINE = 27;/);
+    assert.ok(quote.includes('export const EDITORIAL_MIN_H = EDITORIAL_MIN_LINES * TEXT_LINE + 2 * PAD_V + 2;')); // 3 × 27 + 30 + 2 = 113
     assert.ok(quote.includes("minHeight: EDITORIAL_MIN_H, justifyContent: 'center'"));
-    assert.ok(editorial.includes('minHeight: ghostH'));
-    assert.ok(editorial.includes('setGhostH(Math.ceil(e.nativeEvent.layout.height))'));
-    assert.ok(editorial.includes('{LONGEST_REAL_QUOTE}'));
     assert.ok(quote.includes("textSlot: { justifyContent: 'center' }"));
+    assert.ok(!/ghost|Ghost|fantasma|LONGEST_REAL_QUOTE|FIXED_HEIGHT/.test(quote), 'el texto fantasma se retiró');
     assert.ok(!editorial.includes('numberOfLines'), 'nunca se corta con "…"');
+    assert.match(quote, /export const EDITORIAL_MAX_H = 214;/);
   });
-  it('LONGEST_REAL_QUOTE es la frase más larga de DAILY_QUOTES (app/home.tsx, solo lectura)', () => {
-    const homeScreen = readFileSync(new URL('../../artifacts/wodplace/app/home.tsx', import.meta.url), 'utf8');
-    const block = homeScreen.slice(homeScreen.indexOf('const DAILY_QUOTES = ['), homeScreen.indexOf('];', homeScreen.indexOf('const DAILY_QUOTES = [')));
-    const quotes = [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
-    assert.ok(quotes.length >= 5);
-    const longest = quotes.reduce((a, b) => (b.length > a.length ? b : a));
-    assert.ok(quote.includes("export const LONGEST_REAL_QUOTE = '" + longest + "';"), 'actualiza LONGEST_REAL_QUOTE: la más larga ahora es: ' + longest);
+  it('el tope de crecimiento de la letra sale de una sola constante y se usa en el texto', () => {
+    assert.match(quote, /export const QUOTE_MAX_FONT_MULT = 1\.3;/);
+    assert.ok(editorial.includes('maxFontSizeMultiplier={QUOTE_MAX_FONT_MULT}'));
   });
   it('el texto de depuración con el alto medido solo existe en __DEV__', () => {
     assert.ok(editorial.includes('{__DEV__ ? ('));
