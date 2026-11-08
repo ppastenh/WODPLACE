@@ -23,13 +23,15 @@ import { RADIUS } from '@/constants/radius';
 export type QuoteVariant = 'actual' | 'editorialCream';
 /** Frase corta: centrada solo en vertical (texto a la izquierda) o en vertical y horizontal. */
 export type QuoteCenter = 'vertical' | 'ambos';
-/** Resaltado: marcador de cobre con texto oscuro (por defecto), texto en cobre claro o subrayado en crema. */
+/** Resaltado: texto en cobre claro #C79A6B (por defecto; excepción aceptada al contraste de 4,5:1), marcador de cobre con texto oscuro o subrayado en crema. */
 export type QuoteHighlight = 'marcador' | 'cobre' | 'subrayado';
 export type QuoteLook = {
   variant: QuoteVariant;
   highlight: boolean;
   center: QuoteCenter;
   highlightStyle?: QuoteHighlight;
+  /** Solo desarrollo (__DEV__): sombra de texto oscura suave detrás de las palabras resaltadas, para comparar la lectura. */
+  highlightShadow?: boolean;
   /** Solo desarrollo: simula la letra del sistema (1; 1,1; 1,3). */
   fontScale?: number;
 };
@@ -152,7 +154,7 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
   const colors = useColors();
   const parts = splitHighlight(quote);
   const showMark = look.highlight && parts.mark !== '';
-  const style = look.highlightStyle ?? 'marcador';
+  const style = look.highlightStyle ?? 'cobre';
   const marker = showMark && style === 'marcador';
   // Solo desarrollo: simula la letra del sistema (el tope QUOTE_MAX_FONT_MULT también se aplica, como lo hace el sistema).
   const fs = Math.min(look.fontScale ?? 1, QUOTE_MAX_FONT_MULT);
@@ -222,13 +224,21 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
     );
   }, [marker, resetKey, fs, cardW]);
 
-  // Sobre la foto el resaltado va en un MARCADOR de cobre claro con texto oscuro; mientras se mide (o si no se puede medir) el texto va en crema subrayado,
-  // para que se lea desde el primer dibujo y la altura no salte.
+  // Resaltado por defecto: texto en cobre claro #C79A6B. Da 2,13:1 sobre la foto con el velo en el peor caso: EXCEPCIÓN consciente al mínimo de 4,5:1
+  // (aceptada por Pía el 2026-11-08; solo las palabras resaltadas; registrada en las pruebas de contraste, ESTADO.md y DECISIONES-DISENO.md). Las otras dos
+  // opciones (marcador y subrayado) quedan para comparar en desarrollo; con el marcador, mientras se mide (o si no se puede medir) el texto va en crema
+  // subrayado, para que se lea desde el primer dibujo y la altura no salte.
   const cream = colors.nextClassCardForeground;
   const markerReady = marker && rects !== null && rects.length > 0;
   const highlightStyle =
     style === 'cobre'
-      ? { color: colors.charcoalAccentLight }
+      ? {
+          color: colors.charcoalAccentLight,
+          // Solo desarrollo: sombra suave #0D0F10, radio 3 dp, sin desplazamiento.
+          ...(__DEV__ && look.highlightShadow
+            ? { textShadowColor: colors.charcoal, textShadowRadius: 3, textShadowOffset: { width: 0, height: 0 } }
+            : null),
+        }
       : style === 'marcador' && markerReady
         ? { color: colors.charcoal }
         : { color: cream, textDecorationLine: 'underline' as const };
@@ -354,10 +364,11 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
         </View>
       ) : null}
 
-      {/* Compartir: área táctil de 48 × 48 dp; el ícono crema va sobre un círculo oscuro translúcido de 48 dp. */}
+      {/* Compartir: ícono crema SIN círculo visible; el área táctil de 48 × 48 dp es invisible y, mientras el dedo está apretado, aparece un círculo de color
+          SÓLIDO (nextClassCardPressed, sin opacidad). */}
       <Pressable accessibilityRole="button" accessibilityLabel="Compartir frase" onPress={onShare} style={styles.share}>
         {({ pressed }) => (
-          <View style={[styles.shareDisc, { backgroundColor: pressed ? colors.charcoalPressed : colors.glassBackground }]}>
+          <View style={[styles.shareDisc, pressed && { backgroundColor: colors.nextClassCardPressed }]}>
             <Feather name="share-2" size={SHARE_ICON} color={cream} />
           </View>
         )}
@@ -409,6 +420,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Círculo oscuro translúcido de 48 dp (todo el área táctil) bajo el ícono.
+  // Círculo de 48 dp (todo el área táctil), transparente; solo se pinta al presionar.
   shareDisc: { width: SHARE_AREA, height: SHARE_AREA, borderRadius: SHARE_AREA / 2, alignItems: 'center', justifyContent: 'center' },
 });

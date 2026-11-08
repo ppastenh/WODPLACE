@@ -20,8 +20,14 @@ const colorsLight = (((colorsModule as { default?: typeof colorsModule }).defaul
 describe('diseño nuevo de Inicio (claro fijo): contraste WCAG de los pares nuevos', () => {
   const light = measure(colorsLight, PAIRS_LIGHT);
   for (const { pair, ratio } of light) {
-    it(`${pair.text} sobre ${pair.bg}${pair.bgLiteral ? ` (vidrio sobre ${pair.bgLiteral.over})` : ''} (mín ${pair.min}:1)${pair.note ? ` — ${pair.note}` : ''}`, () => {
+    it(`${pair.text} sobre ${pair.bg}${pair.bgLiteral ? ` (vidrio sobre ${pair.bgLiteral.over})` : ''} (mín ${pair.min}:1${pair.accepted ? `; EXCEPCIÓN ACEPTADA ${pair.accepted.value}:1 el ${pair.accepted.date}` : ''})${pair.note ? ` — ${pair.note}` : ''}`, () => {
       assert.ok(ratio !== null, `falta un token: ${pair.text} / ${pair.bg}`);
+      if (pair.accepted) {
+        // No finge que cumple: comprueba que el valor medido sea el aceptado (si cambia el color o el velo, hay que volver a decidir).
+        assert.ok(ratio < pair.min, `${pair.text} sobre ${pair.bg} ya cumple ${pair.min}:1 (${ratio.toFixed(2)}:1): quita la excepción`);
+        assert.ok(Math.abs(ratio - pair.accepted.value) < 0.01, `${pair.text} sobre ${pair.bg} da ${ratio.toFixed(2)}:1 y la excepción aceptada era ${pair.accepted.value}:1`);
+        return;
+      }
       assert.ok(ratio >= pair.min, `${pair.text} sobre ${pair.bg} da ${ratio.toFixed(2)}:1, bajo el mínimo de ${pair.min}:1`);
     });
   }

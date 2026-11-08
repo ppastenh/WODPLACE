@@ -471,7 +471,9 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok(editorial.includes('onPress={onShare}'));
     assert.ok(editorial.includes('accessibilityLabel="Compartir frase"'));
     assert.match(quote, /const SHARE_AREA = 48;/);
-    assert.ok(editorial.includes('pressed ? colors.charcoalPressed : colors.glassBackground'));
+    assert.ok(editorial.includes('pressed && { backgroundColor: colors.nextClassCardPressed }'), 'círculo SÓLIDO solo al presionar');
+    assert.ok(!editorial.includes('glassBackground'), 'sin disco visible en reposo');
+    assert.ok(editorial.includes('size={SHARE_ICON} color={cream}'), 'ícono crema del mismo tamaño');
     for (const line of quote.split(String.fromCharCode(10))) assert.ok(!(/pressed/i.test(line) && /opacity/i.test(line)), line);
   });
   it('la flecha ya no existe en la editorial (solo la actual conserva su chevron)', () => {
@@ -502,8 +504,11 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok(editorial.includes('{__DEV__ ? ('));
     assert.ok(editorial.includes('Alto: '));
   });
-  it('el resaltado es un MARCADOR de cobre claro con texto oscuro (por defecto), medido por línea y dibujado DEBAJO del texto; sin marcas manuales en el texto mostrado', () => {
-    assert.ok(quote.includes("const style = look.highlightStyle ?? 'marcador';"));
+  it('el resaltado por defecto es TEXTO COBRE claro (excepción aceptada al contraste); el marcador (con texto oscuro) y el subrayado quedan para comparar, medidos por línea y dibujado DEBAJO del texto; sin marcas manuales en el texto mostrado', () => {
+    assert.ok(quote.includes("const style = look.highlightStyle ?? 'cobre';"));
+    assert.ok(editorial.includes('color: colors.charcoalAccentLight,'), 'texto cobre claro');
+    assert.ok(editorial.includes('__DEV__ && look.highlightShadow'), 'la sombra del resaltado solo existe en desarrollo');
+    assert.ok(editorial.includes('textShadowRadius: 3'));
     assert.ok(editorial.includes('backgroundColor: colors.charcoalAccentLight'));
     assert.ok(editorial.includes('{ color: colors.charcoal }'), 'texto oscuro sobre el marcador');
     assert.match(quote, /const MARKER_PAD_H = 4;/);

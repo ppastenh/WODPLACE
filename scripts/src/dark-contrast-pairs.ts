@@ -18,6 +18,11 @@ export type Pair = {
   bgOver?: Over;
   textOver?: Over;
   bgLiteral?: { hex: string; over: string; alpha: number };
+  /**
+   * EXCEPCIÓN ACEPTADA: el par NO cumple su mínimo y se acepta a propósito. La prueba NO finge que cumple ni falla el resto: comprueba que el valor medido siga
+   * siendo el registrado (si cambia el color o el velo, avisa) y deja constancia de la fecha y de quién la aceptó.
+   */
+  accepted?: { value: number; date: string; by: string };
 };
 
 const t = (text: string, bg: string, note: string): Pair => ({ text, bg, min: 4.5, note });
@@ -235,7 +240,11 @@ export const PAIRS_LIGHT: Pair[] = [
   // marcador de cobre claro con texto oscuro y el ícono de compartir sobre un disco rgba(0,0,0,0.6) (a 60 % el crema daba 4,48:1, por eso 62 %).
   { ...t('nextClassCardForeground', 'charcoal', 'frase con foto: texto crema sobre el velo del 62 % y el punto más claro de la foto'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 } },
   t('charcoal', 'charcoalAccentLight', 'frase con foto: texto oscuro sobre el marcador de cobre claro'),
-  { ...ui('nextClassCardForeground', 'charcoal', 'frase con foto: ícono de compartir crema sobre su disco translúcido, peor caso'), bgLiteral: { hex: '#000000', over: '#696A6B', alpha: 0.6 } },
+  // Ícono de compartir SIN círculo visible: crema directo sobre la foto con el velo del 62 % (peor caso: gris 255), mínimo 3:1; al presionar, sobre el círculo sólido nextClassCardPressed.
+  { ...ui('nextClassCardForeground', 'charcoal', 'frase con foto: ícono de compartir crema sin círculo, sobre el velo del 62 % y el punto más claro de la foto'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 } },
+  ui('nextClassCardForeground', 'nextClassCardPressed', 'frase con foto: ícono de compartir crema sobre el círculo sólido al presionar'),
+  // EXCEPCIÓN ACEPTADA (Pía, 2026-11-08): resaltado en texto cobre claro sobre la foto con el velo del 62 %, peor caso (gris 255, igual a 320, 360 y 412 dp): 2,13:1.
+  { ...t('charcoalAccentLight', 'charcoal', 'frase con foto: resaltado en texto cobre claro #C79A6B sobre el velo del 62 % y el punto más claro de la foto (EXCEPCIÓN ACEPTADA)'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 }, accepted: { value: 2.13, date: '2026-11-08', by: 'Pía' } },
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),

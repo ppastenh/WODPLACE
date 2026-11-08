@@ -94,9 +94,13 @@ const QUOTE_LENGTH_CHIPS: { id: QuoteLength; label: string }[] = [
   { id: 'c125', label: 'Largo: 125 caracteres' },
   { id: 'marcada', label: 'Largo: con marcado manual *…*' },
 ];
+const QUOTE_SHADOW_CHIPS: { id: 'no' | 'si'; label: string }[] = [
+  { id: 'no', label: 'Sombra del resaltado: no' },
+  { id: 'si', label: 'Sombra del resaltado: sí' },
+];
 const QUOTE_HL_STYLE_CHIPS: { id: QuoteHighlight; label: string }[] = [
-  { id: 'marcador', label: 'Resaltado: marcador cobre' },
   { id: 'cobre', label: 'Resaltado: texto cobre' },
+  { id: 'marcador', label: 'Resaltado: marcador cobre' },
   { id: 'subrayado', label: 'Resaltado: subrayado' },
 ];
 type QuoteFont = '1' | '1.1' | '1.3';
@@ -211,13 +215,15 @@ function DevHomeBody() {
   const [quoteHighlight, setQuoteHighlight] = useState<'si' | 'no'>('si');
   const [quoteCenter, setQuoteCenter] = useState<QuoteCenter>(QUOTE_LOOK.center);
   const [quoteFont, setQuoteFont] = useState<QuoteFont>('1');
-  const [quoteHlStyle, setQuoteHlStyle] = useState<QuoteHighlight>('marcador');
+  const [quoteHlStyle, setQuoteHlStyle] = useState<QuoteHighlight>('cobre');
+  const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
     highlight: quoteHighlight === 'si',
     center: quoteCenter,
     fontScale: Number(quoteFont),
     highlightStyle: quoteHlStyle,
+    highlightShadow: quoteShadow === 'si',
   };
   const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
@@ -254,6 +260,7 @@ function DevHomeBody() {
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
           <ChipGroup title="Frase del día: letra simulada" chips={QUOTE_FONT_CHIPS} selected={quoteFont} onSelect={setQuoteFont} />
+          <ChipGroup title="Frase del día: sombra del resaltado (solo desarrollo)" chips={QUOTE_SHADOW_CHIPS} selected={quoteShadow} onSelect={setQuoteShadow} />
           <ChipGroup title="Frase del día: estilo del resaltado" chips={QUOTE_HL_STYLE_CHIPS} selected={quoteHlStyle} onSelect={setQuoteHlStyle} />
           <ChipGroup title="Frase del día: resaltado" chips={QUOTE_HIGHLIGHT_CHIPS} selected={quoteHighlight} onSelect={setQuoteHighlight} />
           <ChipGroup title="Frase del día: frase corta" chips={QUOTE_CENTER_CHIPS} selected={quoteCenter} onSelect={setQuoteCenter} />
