@@ -28,6 +28,18 @@ Imágenes de terceros usadas en la app, con su origen y licencia.
 - **Archivo:** `home-card-pizarra.jpg`.
 - La foto no lleva logos, texto, marcas ni personas.
 
+## `artifacts/wodplace/assets/images/home/home-fondo-frase.jpg`
+
+- **Uso:** fondo de la tarjeta de frases del día de Inicio (decisión (s) de `DECISIONES-DISENO.md`), bajo un velo oscuro uniforme #0D0F10 del 62 % (constante `QUOTE_VEIL` en `components/home/DailyQuoteCard.tsx`; sin degradado).
+- **Foto:** "Cuerpo de agua y montaña" (texto alternativo de la página: "body of water and mountain"; etiquetas: azul, excursionismo, Patagonia, Chile, Torres del Paine, Parque Nacional Torres del Paine). Muestra los Cuernos del Paine sobre un lago turquesa; sin personas, logos, texto ni marcas visibles.
+- **Autor:** Snowscat, https://unsplash.com/es/@snowscat
+- **Página de origen:** https://unsplash.com/es/fotos/cuerpo-de-agua-y-montana-EnFQmcTtsjo (publicada el 2019-05-22; datos leídos en la página el 2026-11-08: autor, título, licencia y fecha; cámara indicada: NIKON D80; la página no indica las dimensiones del original).
+- **Licencia:** Licencia Unsplash (uso gratuito, comercial y modificación permitidos; no exige atribución, se agradece), https://unsplash.com/es/licencia
+- **Fecha de consulta:** 2026-11-08.
+- **Original:** el archivo que descargó Pía, 8688 × 5798 px (3:2). La página no permite confirmar las dimensiones (una Nikon D80 entrega 3872 × 2592 px, así que el archivo sería una versión ampliada por el autor); el contenido, la proporción y el lugar coinciden con el título y las etiquetas.
+- **Edición:** escala de grises por luminancia (Y = 0,2126 R + 0,7152 G + 0,0722 B sobre los valores sRGB, sin otros niveles), recorte centrado a 720 × 300 px (2,4:1) con reducción, sin metadatos
+- **Archivo:** `home-fondo-frase.jpg`, 720 × 300 px, JPEG calidad 85 sin metadatos (38.596 bytes).
+
 ## Estado de la foto del banner
 
 `home-banner-anillo.jpg` está **ACTIVA** desde la decisión (o) (2026-10-30); reemplazó a `clase-piernas.jpg` (provisional, ya eliminada; sigue en el historial de git). Una foto nueva se mide en contraste ANTES de activarla.
