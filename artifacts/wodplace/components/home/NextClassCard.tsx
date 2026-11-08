@@ -35,6 +35,8 @@ export type NextClassLook = {
   copper: NextClassCopper;
   texture: NextClassTexture;
   stripe?: NextClassStripe;
+  /** Barras diagonales // a la izquierda del título sin reserva (por defecto sí; el chip de desarrollo las quita). */
+  bars?: boolean;
 };
 
 /**
@@ -78,6 +80,15 @@ const CARD_MIN_H = 124;
 const INVITE_NAME_SIZE = 21;
 const INVITE_NAME_LINE = 24;
 const STRIPE_W = 4;
+// Barras //: dos trazos paralelos de 2,5 dp con extremos rectos (butt), 18 dp de alto a 60° respecto de la horizontal (desplazamiento
+// horizontal 18 / tan 60° = 10,4 dp) y 5,5 dp de separación horizontal entre sí (4,8 dp medidos en perpendicular). El dibujo mide 20 × 20 dp
+// (1 dp de margen arriba y abajo para los cantos de los extremos) y va a 10 dp del título.
+const BARS_W = 20;
+const BARS_H = 20;
+const BARS_STROKE = 2.5;
+const BARS_LEN = 18;
+const BARS_DX = BARS_LEN / Math.tan((60 * Math.PI) / 180);
+const BARS_GAP_X = 5.5;
 
 type Booked = NonNullable<HomeViewData['nextBooked']>;
 
@@ -150,6 +161,29 @@ function PatternLayer({ kind, color }: { kind: NextClassPattern; color: string }
   );
 }
 
+/** Dos barras diagonales // decorativas (react-native-svg), en un View sin toque y ocultas a los lectores de pantalla. */
+function Bars({ color }: { color: string }) {
+  const x0 = 2.5;
+  const yTop = (BARS_H - BARS_LEN) / 2;
+  const yBottom = yTop + BARS_LEN;
+  return (
+    <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.bars}>
+      <Svg width={BARS_W} height={BARS_H}>
+        {[0, BARS_GAP_X].map((dx) => (
+          <Path
+            key={dx}
+            d={`M${x0 + dx} ${yBottom} L${x0 + dx + BARS_DX} ${yTop}`}
+            stroke={color}
+            strokeWidth={BARS_STROKE}
+            strokeLinecap="butt"
+            fill="none"
+          />
+        ))}
+      </Svg>
+    </View>
+  );
+}
+
 /** Flecha DECORATIVA en un círculo translúcido con borde cobre, a la derecha y centrada en la altura. */
 function Arrow({ copper }: { copper: string }) {
   const colors = useColors();
@@ -216,13 +250,16 @@ export function NextClassCard({
         {({ pressed }) => (
           <Frame pressed={pressed} texture={look.texture} stripe={copper}>
             <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={[styles.content, styles.inviteContent]}>
-              <Text
-                style={[styles.name, styles.inviteName, { color: colors.nextClassCardForeground }]}
-                numberOfLines={2}
-                maxFontSizeMultiplier={1.3}
-              >
-                Reserva tu próxima clase
-              </Text>
+              <View style={styles.inviteRow}>
+                {look.bars !== false ? <Bars color={copper} /> : null}
+                <Text
+                  style={[styles.name, styles.inviteName, styles.inviteText, { color: colors.nextClassCardForeground }]}
+                  numberOfLines={2}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  Reserva tu próxima clase
+                </Text>
+              </View>
             </View>
             <Arrow copper={copper} />
           </Frame>
@@ -351,6 +388,9 @@ const styles = StyleSheet.create({
   textCol: { paddingRight: ARROW + SPACING.sm, gap: 0 },
   label: { fontSize: FONT_SIZE.sm, lineHeight: 14, fontFamily: 'Inter_500Medium' },
   name: { fontSize: FONT_SIZE.hero, lineHeight: 30, fontFamily: 'Anton_400Regular' },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  inviteText: { flexShrink: 1 },
+  bars: { width: BARS_W, height: BARS_H },
   inviteName: { fontSize: INVITE_NAME_SIZE, lineHeight: INVITE_NAME_LINE },
   coach: { fontSize: FONT_SIZE.xs, lineHeight: 14, fontFamily: 'Inter_500Medium' },
   // Última línea: la duración y, al lado, el nivel. Como máximo el 66 % del ancho útil (todo el texto gris queda sobre el tramo 100 % negro

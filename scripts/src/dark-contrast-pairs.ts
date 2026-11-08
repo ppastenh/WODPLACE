@@ -237,6 +237,11 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoalAccent', 'nextClassCardPressed', 'franja izquierda cobre #B98250 sobre el color presionado'),
   ui('charcoalAccentLight', 'charcoal', 'franja izquierda cobre claro #C79A6B sobre el velo negro (chip de cobre)'),
   ui('charcoalAccentLight', 'nextClassCardPressed', 'franja izquierda cobre claro #C79A6B sobre el color presionado'),
+  // Barras //: decorativas, del mismo cobre que la franja, sobre el velo negro (a la izquierda, antes del 66 % del ancho). Se exigen 3:1.
+  ui('charcoalAccent', 'charcoal', 'barras // cobre #B98250 sobre el velo negro'),
+  ui('charcoalAccent', 'nextClassCardPressed', 'barras // cobre #B98250 sobre el color presionado'),
+  ui('charcoalAccentLight', 'charcoal', 'barras // cobre claro #C79A6B sobre el velo negro'),
+  ui('charcoalAccentLight', 'nextClassCardPressed', 'barras // cobre claro #C79A6B sobre el color presionado'),
   t('nextClassCardForeground', 'charcoal', 'título "Reserva tu próxima clase" (21 sp) sobre el velo negro'),
   t('nextClassCardForeground', '#555555', 'título "Reserva tu próxima clase" (21 sp) sobre la textura, peor caso (gris 85)'),
   t('nextClassCardForeground', '#6A6A6A', 'título "Reserva tu próxima clase" (21 sp) sobre la textura presionada, peor caso (gris 106)'),

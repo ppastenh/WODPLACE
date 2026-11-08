@@ -85,6 +85,14 @@ describe('tarjeta de próxima clase (NextClassCard.tsx): el toque llega a la tar
     assert.ok(source.includes("stripe={look.stripe === 'both' ? copper : null}"), 'con reserva: solo si el chip de desarrollo lo pide');
     assert.ok(!source.includes('<Frame pressed={false} texture={look.texture} stripe'), 'el esqueleto no lleva franja');
   });
+  it('las barras // son decorativas (View pointerEvents none, ocultas), de extremos rectos, y salen por defecto', () => {
+    const bars = source.slice(source.indexOf('function Bars('), source.indexOf('function Arrow('));
+    assert.ok(bars.includes('<View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.bars}>'));
+    assert.ok(bars.includes('strokeLinecap="butt"'));
+    assert.ok(!/<Text/.test(bars));
+    assert.ok(source.includes('look.bars !== false'), 'por defecto sí');
+    assert.match(source, /const BARS_STROKE = 2.5;/);
+  });
   it('el título sin reserva es de 21 sp (antes 26) con la misma fuente Anton', () => {
     assert.match(source, /const INVITE_NAME_SIZE = 21;/);
     assert.match(source, /inviteName: { fontSize: INVITE_NAME_SIZE, lineHeight: INVITE_NAME_LINE }/);

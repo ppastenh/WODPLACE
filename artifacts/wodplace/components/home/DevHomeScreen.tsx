@@ -64,6 +64,10 @@ const STRIPE_CHIPS: { id: NextClassStripe; label: string }[] = [
   { id: 'invite', label: 'Franja izquierda: sin reserva' },
   { id: 'both', label: 'Franja izquierda: ambos estados' },
 ];
+const BARS_CHIPS: { id: 'si' | 'no'; label: string }[] = [
+  { id: 'si', label: 'Barras //: sí' },
+  { id: 'no', label: 'Barras //: no' },
+];
 const COPPER_CHIPS: { id: NextClassCopper; label: string }[] = [
   { id: 'base', label: 'Cobre: #B98250' },
   { id: 'claro', label: 'Cobre: #C79A6B' },
@@ -158,7 +162,8 @@ function DevHomeBody() {
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
   const [texture, setTexture] = useState<Texture>('pizarra');
   const [stripe, setStripe] = useState<NextClassStripe>('invite');
-  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture], stripe };
+  const [bars, setBars] = useState<'si' | 'no'>('si');
+  const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture], stripe, bars: bars === 'si' };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
   const [menuWidth, setMenuWidth] = useState<MenuWidth>('real');
   const [menuFont, setMenuFont] = useState<MenuFont>('sistema');
@@ -191,6 +196,7 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
           <ChipGroup title="Tarjeta de próxima clase: franja izquierda" chips={STRIPE_CHIPS} selected={stripe} onSelect={setStripe} />
+          <ChipGroup title="Tarjeta de próxima clase: barras //" chips={BARS_CHIPS} selected={bars} onSelect={setBars} />
           <ChipGroup title="Menú: opción seleccionada" chips={MENU_SELECTED_CHIPS} selected={menuSel} onSelect={setMenuSel} />
           <ChipGroup title="Menú: ancho simulado" chips={MENU_WIDTH_CHIPS} selected={menuWidth} onSelect={setMenuWidth} />
           <ChipGroup title="Menú: letra simulada" chips={MENU_FONT_CHIPS} selected={menuFont} onSelect={setMenuFont} />
