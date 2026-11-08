@@ -104,17 +104,17 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 ## (r) Tarjeta "Tu próxima clase" rediseñada
 
 - **Fecha:** 2026-11-07
-- **Decisión:** "Tarjeta 'Tu próxima clase' rediseñada: fondo grafito con la foto de pizarra de Noita Digital (Unsplash, licencia Unsplash) como textura a la derecha con velo negro de izquierda a derecha; cápsula de fecha C (vidrio oscuro con borde cobre y texto crema) con círculo cobre e ícono de calendario; cobre #B98250 en esta tarjeta; nombre de la clase en Anton; duración y nivel con íconos; flecha decorativa en círculo translúcido; formato rectangular de 126 a 140 dp. En el estado sin reserva ('Reserva tu próxima clase') el título es un poco más pequeño y lleva dos barras diagonales // de cobre como detalle decorativo a la izquierda del título. Los patrones de rombos, líneas y puntos y la foto del aro quedan como alternativas solo de la pantalla de desarrollo."
+- **Decisión:** "Tarjeta 'Tu próxima clase' rediseñada: fondo grafito con la foto de pizarra de Noita Digital (Unsplash, licencia Unsplash) como textura a la derecha con velo negro de izquierda a derecha; cápsula de fecha C (vidrio oscuro con borde cobre y texto crema) con círculo cobre e ícono de calendario; cobre #B98250 en esta tarjeta; nombre de la clase en Anton; duración y nivel con íconos; flecha decorativa en círculo translúcido; formato rectangular de 126 a 140 dp. En el estado sin reserva ('Reserva tu próxima clase') el título es un poco más pequeño; sin franja ni barras: solo título y flecha. Los patrones de rombos, líneas y puntos y la foto del aro quedan como alternativas solo de la pantalla de desarrollo."
 - **Estado:** VIGENTE. Se aplica a Inicio real (decisión (q)). Enmendada el 2026-11-07 con la aprobación explícita de Pía: la textura ya no es provisional (pizarra elegida).
 
 ## (s) Tarjeta de frases del día: elegida la opción C
 
 - **Fecha:** 2026-11-08
-- **Decisión:** "Tarjeta de frases del día: elegida la opción C editorialCream (serif cursiva, resaltado final por regla con marcado manual opcional, comillas grandes de cobre, mismo alto en todas las frases con la frase centrada verticalmente); las variantes A y B descartadas; sin flecha; botón de compartir de 48 dp; la fuente definitiva se evalúa aparte."
+- **Decisión:** "Tarjeta de frases del día: elegida la opción C editorialCream (serif cursiva, resaltado final por regla con marcado manual opcional). Comillas dobles, con la de apertura más pequeña; mismo alto en todas las frases, con la frase centrada verticalmente; fondo de la tarjeta de frases en evaluación (paisajes en grises o montañas dibujadas). Las variantes A y B descartadas; sin flecha; botón de compartir de 48 dp; la fuente definitiva se evalúa aparte."
 - **Estado:** VIGENTE. Elegida por Pía el 2026-11-08 (reemplaza la evaluación de tres variantes).
 
 ## (t) Tarjeta "Reserva tu próxima clase": barras //
 
 - **Fecha:** 2026-11-08
 - **Decisión:** "Tarjeta sin reserva: dos barras diagonales // de cobre como detalle decorativo a la izquierda del título."
-- **Estado:** VIGENTE. Complementa la decisión (r). Aprobada por Pía.
+- **Estado:** DESCARTADA el 2026-11-08 (pedido 18): la tarjeta sin reserva queda sin franja ni barras, ver (r).
