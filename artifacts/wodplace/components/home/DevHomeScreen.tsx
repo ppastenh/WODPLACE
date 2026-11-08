@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
+import { PROGRESS_VARIANT, type ProgressVariant } from '@/components/home/MonthlyProgressCard';
 import { QUOTE_LOOK, type QuoteCenter, type QuoteHighlight, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
   NEXT_CLASS_LOOK,
@@ -102,6 +103,17 @@ const QUOTE_HL_STYLE_CHIPS: { id: QuoteHighlight; label: string }[] = [
   { id: 'cobre', label: 'Resaltado: texto cobre' },
   { id: 'marcador', label: 'Resaltado: marcador cobre' },
   { id: 'subrayado', label: 'Resaltado: subrayado' },
+];
+// Tarjeta "Progreso mensual" (decisión (v)): versión oscura (por defecto), la anterior y la clara para comparar; letra simulada.
+const PROGRESS_CHIPS: { id: ProgressVariant; label: string }[] = [
+  { id: 'actual', label: 'Progreso: actual' },
+  { id: 'oscura', label: 'Progreso: oscura' },
+  { id: 'clara', label: 'Progreso: clara' },
+];
+const PROGRESS_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
+  { id: '1', label: 'Progreso, letra simulada: 1,0' },
+  { id: '1.1', label: 'Progreso, letra simulada: 1,1' },
+  { id: '1.3', label: 'Progreso, letra simulada: 1,3' },
 ];
 type QuoteFont = '1' | '1.1' | '1.3';
 const QUOTE_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
@@ -216,6 +228,8 @@ function DevHomeBody() {
   const [quoteCenter, setQuoteCenter] = useState<QuoteCenter>(QUOTE_LOOK.center);
   const [quoteFont, setQuoteFont] = useState<QuoteFont>('1');
   const [quoteHlStyle, setQuoteHlStyle] = useState<QuoteHighlight>('cobre');
+  const [progressVariant, setProgressVariant] = useState<ProgressVariant>(PROGRESS_VARIANT);
+  const [progressFont, setProgressFont] = useState<QuoteFont>('1');
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -257,6 +271,8 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
+          <ChipGroup title="Tarjeta Progreso mensual: variante" chips={PROGRESS_CHIPS} selected={progressVariant} onSelect={setProgressVariant} />
+          <ChipGroup title="Tarjeta Progreso mensual: letra simulada" chips={PROGRESS_FONT_CHIPS} selected={progressFont} onSelect={setProgressFont} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
           <ChipGroup title="Frase del día: letra simulada" chips={QUOTE_FONT_CHIPS} selected={quoteFont} onSelect={setQuoteFont} />
@@ -310,6 +326,8 @@ function DevHomeBody() {
         photoFails={photo === 'falla'}
         nextClassLook={look}
         quoteLook={quoteLook}
+        progressVariant={progressVariant}
+        progressFontScale={Number(progressFont)}
       />
       {panel}
       {menuNode}

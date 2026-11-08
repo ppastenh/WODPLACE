@@ -18,14 +18,14 @@ import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { MedalBadge } from '@/components/MedalBadge';
 import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { MonthlyProgressCard, PROGRESS_VARIANT, type ProgressVariant } from '@/components/home/MonthlyProgressCard';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { getMedalIconColor } from '@/lib/medalColors';
 import { statusBarStyleFor } from '@/lib/theme';
 import type { nextClassCardState } from '@/lib/nextClassCard';
-import { monthlyCardParts, type PlanProgressView } from '@/lib/planProgress';
+import type { PlanProgressView } from '@/lib/planProgress';
 import { MONTH_NAMES } from '@/lib/dateUtils';
 import { FONT_SIZE } from '@/constants/typography';
 import { SPACING } from '@/constants/spacing';
@@ -197,6 +197,8 @@ export function HomeView({
   photoFails = false,
   nextClassLook = NEXT_CLASS_LOOK,
   quoteLook = QUOTE_LOOK,
+  progressVariant = PROGRESS_VARIANT,
+  progressFontScale,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -206,11 +208,15 @@ export function HomeView({
   nextClassLook?: NextClassLook;
   /** Solo para la pantalla de desarrollo: variante de la tarjeta de frases (por defecto, QUOTE_LOOK: la actual). */
   quoteLook?: QuoteLook;
+  /** Solo para la pantalla de desarrollo: variante de la tarjeta "Progreso mensual" (por defecto, PROGRESS_VARIANT: la oscura). */
+  progressVariant?: ProgressVariant;
+  /** Solo para la pantalla de desarrollo: simula la letra del sistema en la tarjeta "Progreso mensual". */
+  progressFontScale?: number;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressVariant={progressVariant} progressFontScale={progressFontScale} />
     </ThemeOverride>
   );
 }
@@ -253,12 +259,16 @@ function HomeViewInner({
   photoFails,
   nextClassLook,
   quoteLook,
+  progressVariant,
+  progressFontScale,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
   photoFails: boolean;
   nextClassLook: NextClassLook;
   quoteLook: QuoteLook;
+  progressVariant: ProgressVariant;
+  progressFontScale?: number;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -286,7 +296,6 @@ function HomeViewInner({
     unreadCount = 0,
     menuOpen = false,
   } = data;
-  const monthly = monthlyCardParts(planView);
   const showPhoto = !photoFails && !photoError;
   // La barra fija (carbón sólido) mide la zona de la barra de estado más TOP_BAR_H; el banner empieza justo debajo.
   const barTotal = insets.top + TOP_BAR_H;
@@ -519,66 +528,7 @@ function HomeViewInner({
           </Pressable>
         ) : null}
 
-        {planView.kind === 'loading' ? (
-          <View style={[styles.wideCard, soft, { backgroundColor: colors.card }]}>
-            <Skeleton width="45%" height={FONT_SIZE.xs} />
-            <View style={styles.monthlySkeletonBottom}>
-              <Skeleton width="30%" height={FONT_SIZE.display} />
-              <Skeleton width="100%" height={7} />
-              <Skeleton width="55%" height={FONT_SIZE.xs} />
-            </View>
-          </View>
-        ) : planView.kind === 'none' ? (
-          <View style={[styles.monthlyEmptyCard, soft, { backgroundColor: colors.card }]}>
-            <View>
-              <Text style={[styles.smallCardLabel, styles.monthlyTitle, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-                Progreso mensual
-              </Text>
-              <Text style={[styles.statsValue, { color: colors.foreground }]} maxFontSizeMultiplier={1.3}>
-                —
-              </Text>
-            </View>
-            <Text style={[styles.statsDetail, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-              Sin plan activo
-            </Text>
-          </View>
-        ) : monthly ? (
-          <View style={[styles.wideCard, soft, { backgroundColor: colors.card }]}>
-            <View style={styles.monthlyHeader}>
-              <Text style={[styles.smallCardLabel, styles.monthlyTitle, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-                Progreso mensual
-              </Text>
-              <View style={styles.monthlyTopEnd}>
-                {monthly.chip ? (
-                  <View style={[styles.planChip, styles.monthlyChip, { backgroundColor: colors.accent }]}>
-                    <Text style={[styles.planChipText, { color: colors.accentForeground }]} maxFontSizeMultiplier={1.3}>
-                      {monthly.chip}
-                    </Text>
-                  </View>
-                ) : null}
-                {monthly.topRightReserved || monthly.chipReserved ? (
-                  <Text style={[styles.statsDetail, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-                    {monthly.topRightReserved ?? monthly.chipReserved}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-            <Text style={[styles.statsValue, { color: colors.foreground }]} maxFontSizeMultiplier={1.3}>
-              {monthly.value}
-              {monthly.totalSuffix ? (
-                <Text style={[styles.monthlyTotal, { color: colors.creamMuted }]}>{monthly.totalSuffix}</Text>
-              ) : null}
-            </Text>
-            {monthly.showBar ? (
-              <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: SPACING.sm }]}>
-                <View style={[styles.progressFill, { backgroundColor: colors.navActive, width: `${monthly.ratio * 100}%` }]} />
-              </View>
-            ) : null}
-            <Text style={[styles.statsDetail, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-              {monthly.legend}
-            </Text>
-          </View>
-        ) : null}
+        <MonthlyProgressCard view={planView} variant={progressVariant} fontScale={progressFontScale} />
 
         <View style={styles.twoColumnRow}>
           <Pressable
@@ -935,18 +885,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontFamily: 'Inter_600SemiBold',
   },
-  // Chip "Plan ilimitado" del mosaico "Clases del plan": mismos tokens que el resto (accent / accentForeground).
-  planChip: {
-    alignSelf: 'flex-start',
-    borderRadius: RADIUS.full,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    marginTop: SPACING.sm,
-  },
-  planChipText: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_700Bold',
-  },
   wodCard: {
     borderRadius: RADIUS.xl,
     padding: SPACING.lg,
@@ -965,27 +903,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     padding: SPACING.lg,
   },
-  monthlyEmptyCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-  },
-  monthlyHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: SPACING.md,
-  },
-  monthlyTitle: { marginTop: 0 },
-  monthlyTopEnd: { alignItems: 'flex-end' },
-  monthlyChip: { marginTop: 0, alignSelf: 'flex-end' },
-  monthlyTotal: {
-    fontSize: FONT_SIZE.base,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  monthlySkeletonBottom: { gap: SPACING.md, marginTop: SPACING.md },
   twoColumnRow: {
     flexDirection: 'row',
     gap: SPACING.lg,

@@ -11,6 +11,7 @@ import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
+import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
@@ -374,6 +375,88 @@ describe('Tarjeta ancha "Progreso mensual": número, barra y "reservadas" por ti
   it('sin plan y cargando: no hay tarjeta ancha (compacta o esqueleto)', () => {
     assert.equal(monthlyCardParts({ kind: 'none' }), null);
     assert.equal(monthlyCardParts({ kind: 'loading' }), null);
+  });
+});
+
+describe('Tarjeta "Progreso mensual" (MonthlyProgressCard.tsx, decisión (v))', () => {
+  const card = readFileSync(new URL('../../artifacts/wodplace/components/home/MonthlyProgressCard.tsx', import.meta.url), 'utf8');
+  const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
+  const refined = card.slice(card.indexOf('function RefinedCard('), card.indexOf('/** El diseño anterior'));
+  const view = (p: ReturnType<typeof plan>) => planProgressView({ hasActivePlan: true, planLoading: false, plan: p });
+
+  it('la oscura es la variante por defecto, HomeView la recibe de UNA constante y existe el chip de desarrollo', () => {
+    assert.ok(card.includes("export const PROGRESS_VARIANT: ProgressVariant = 'oscura';"));
+    assert.ok(card.includes("export type ProgressVariant = 'actual' | 'oscura' | 'clara';"));
+    assert.ok(home.includes('progressVariant = PROGRESS_VARIANT'));
+    assert.ok(home.includes('<MonthlyProgressCard view={planView} variant={progressVariant}'));
+    const dev = readFileSync(new URL('../../artifacts/wodplace/components/home/DevHomeScreen.tsx', import.meta.url), 'utf8');
+    for (const label of ['Progreso: actual', 'Progreso: oscura', 'Progreso: clara']) assert.ok(dev.includes(label), label);
+  });
+  it('usa tokens existentes de la tarjeta oscura (sin colores nuevos ni hex escritos a mano) y el radio de las otras tarjetas oscuras', () => {
+    for (const token of ['nextClassCard', 'nextClassCardForeground', 'charcoalMuted', 'charcoalAccentLight', 'nextClassCardPressed', 'glassBackground']) {
+      assert.ok(card.includes('c.' + token), token);
+    }
+    const hexes = (card.slice(card.indexOf('function useLook('), card.indexOf('export function MonthlyProgressCard(')).split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('//')).join(' ').match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []).filter((h) => h !== '#FFFFFF');
+    assert.deepEqual(hexes, [], 'colores escritos a mano en la tarjeta');
+    assert.ok(card.includes('borderRadius: RADIUS.xl'));
+  });
+  it('la barra mide 8 dp con extremos redondeados, es progressbar con valor y la tarjeta es UN grupo accesible; los adornos se ocultan', () => {
+    assert.ok(card.includes('const BAR_H = 8;'));
+    assert.ok(card.includes('borderRadius: BAR_H / 2'));
+    assert.ok(card.includes('accessibilityRole="progressbar"'));
+    assert.ok(card.includes('accessibilityValue={bar}'));
+    assert.ok(refined.includes('accessible accessibilityLabel={label}'));
+    assert.ok(refined.includes('importantForAccessibility="no-hide-descendants"'));
+    assert.ok(!/onPress|Pressable/.test(refined), 'la tarjeta no tiene interacción');
+  });
+  it('estado presionado inexistente y sin opacidad en la tarjeta nueva', () => {
+    for (const line of refined.split(String.fromCharCode(10))) assert.ok(!/opacity/i.test(line.replace(/shadowOpacity/g, '')), line);
+  });
+  it('el alto medido es solo de desarrollo y el evento se lee de forma sincrónica con readLayout', () => {
+    assert.ok(refined.includes('const onCardLayout = __DEV__'));
+    assert.ok(refined.includes('const m = readLayout(e);'));
+    assert.ok(refined.includes('if (!m) return;'));
+    assert.ok(refined.includes('{devBadge}'));
+    assert.ok(refined.includes('const devBadge = __DEV__ ?'));
+    assert.ok(!/e\.nativeEvent/.test(card));
+  });
+  it('los textos de la tarjeta respetan la letra del sistema (tope 1,3) y no se cortan con "…"', () => {
+    assert.ok(!/numberOfLines|ellipsizeMode/.test(refined));
+    assert.ok(card.includes('const MAX_MULT = 1.3;'));
+    assert.equal((refined.match(/<Text/g) ?? []).length, (refined.match(/maxFontSizeMultiplier=\{MAX_MULT\}/g) ?? []).length + 2, 'todos los Text, salvo el "/ M clases" anidado y la etiqueta de desarrollo, llevan el tope');
+  });
+
+  it('frase para lectores de pantalla: por cantidad', () => {
+    assert.equal(monthlyProgressA11yLabel(view(plan(12, 4, 1))), 'Progreso mensual: 4 de 12 clases realizadas, 1 reservada');
+    assert.equal(monthlyProgressA11yLabel(view(plan(12, 4, 0))), 'Progreso mensual: 4 de 12 clases realizadas');
+    assert.equal(monthlyProgressA11yLabel(view(plan(12, 0, 3))), 'Progreso mensual: 0 de 12 clases realizadas, 3 reservadas');
+    assert.equal(monthlyProgressA11yLabel(view(plan(8, 1, 0))), 'Progreso mensual: 1 de 8 clases realizadas');
+    assert.equal(monthlyProgressA11yLabel(view(plan(8, null, null))), 'Progreso mensual: aún sin dato de clases realizadas, de 8 clases');
+  });
+  it('frase para lectores de pantalla: ilimitado', () => {
+    assert.equal(monthlyProgressA11yLabel(view(plan(null, 4, 1))), 'Plan ilimitado: 4 clases realizadas este mes, 1 reservada');
+    assert.equal(monthlyProgressA11yLabel(view(plan(null, 1, 0))), 'Plan ilimitado: 1 clase realizada este mes');
+    assert.equal(monthlyProgressA11yLabel(view(plan(null, 4, 0, 90))), 'Plan ilimitado: 4 clases realizadas este período');
+    assert.equal(monthlyProgressA11yLabel(view(plan(null, null, 2))), 'Plan ilimitado: aún sin dato de clases realizadas, 2 reservadas');
+  });
+  it('sin plan y cargando no tienen frase de plan', () => {
+    assert.equal(monthlyProgressA11yLabel({ kind: 'none' }), null);
+    assert.equal(monthlyProgressA11yLabel({ kind: 'loading' }), null);
+  });
+  it('valor de la barra: mínimo 0, máximo el total, ahora = realizadas y NUNCA más que el total', () => {
+    assert.deepEqual(monthlyProgressBarValue(view(plan(12, 4, 1))), { min: 0, max: 12, now: 4 });
+    assert.deepEqual(monthlyProgressBarValue(view(plan(8, 0, 0))), { min: 0, max: 8, now: 0 });
+    assert.deepEqual(monthlyProgressBarValue(view(plan(8, 8, 0))), { min: 0, max: 8, now: 8 });
+    assert.deepEqual(monthlyProgressBarValue(view(plan(8, 11, 3))), { min: 0, max: 8, now: 8 });
+    assert.deepEqual(monthlyProgressBarValue(view(plan(8, null, null))), { min: 0, max: 8, now: 0 });
+    assert.equal(monthlyProgressBarValue(view(plan(null, 4, 0))), null);
+  });
+  it('la barra llena según las realizadas, con tope de 100 % (la lógica de planProgress no cambió)', () => {
+    assert.equal(monthlyCardParts(view(plan(8, 0, 0)))!.ratio, 0);
+    assert.equal(monthlyCardParts(view(plan(8, 8, 0)))!.ratio, 1);
+    assert.equal(monthlyCardParts(view(plan(8, 11, 3)))!.ratio, 1);
+    assert.equal(monthlyCardParts(view(plan(8, 11, 3)))!.topRightReserved, '3 reservadas');
+    assert.equal(monthlyCardParts(view(plan(30, 24, 2)))!.totalSuffix, ' / 30 clases');
   });
 });
 

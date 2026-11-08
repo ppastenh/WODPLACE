@@ -342,6 +342,13 @@ export const DEV_GROUPS: DevGroup[] = [
           d.nearPlanLimit = true;
         },
       },
+      { id: 'cero', label: 'Plan por cantidad: 0 realizadas', apply: (d) => withPlan(d, planDemo({ classesCompletedInPeriod: 0, classesReservedInPeriod: 0, classesUsedInPeriod: 0, classesRemaining: 8 })) },
+      { id: 'completo', label: 'Plan por cantidad: completo (8 de 8)', apply: (d) => withPlan(d, planDemo({ classesCompletedInPeriod: 8, classesReservedInPeriod: 0, classesUsedInPeriod: 8, classesRemaining: 0 })) },
+      { id: 'sobrepasado', label: 'Plan por cantidad: realizadas + reservadas sobre el total', apply: (d) => withPlan(d, planDemo({ classesCompletedInPeriod: 8, classesReservedInPeriod: 3, classesUsedInPeriod: 11, classesRemaining: 0 })) },
+      { id: 'total-30', label: 'Plan por cantidad: total de 30 clases', apply: (d) => withPlan(d, planDemo({ classesPerPeriod: 30, classesCompletedInPeriod: 24, classesReservedInPeriod: 2, classesUsedInPeriod: 26, classesRemaining: 4 })) },
+      { id: 'tres-digitos', label: 'Plan por cantidad: 3 dígitos (105 de 120)', apply: (d) => withPlan(d, planDemo({ classesPerPeriod: 120, classesCompletedInPeriod: 105, classesReservedInPeriod: 12, classesUsedInPeriod: 117, classesRemaining: 3 })) },
+      { id: 'ilimitado-3-digitos', label: 'Plan ilimitado: 3 dígitos y 12 reservadas', apply: (d) => withPlan(d, planDemo({ classesPerPeriod: null, classesUsedInPeriod: null, classesRemaining: null, classesCompletedInPeriod: 105, classesReservedInPeriod: 12 })) },
+      { id: 'ilimitado-trimestral', label: 'Plan ilimitado de 90 días ("este período")', apply: (d) => withPlan(d, planDemo({ classesPerPeriod: null, classesUsedInPeriod: null, classesRemaining: null, classesCompletedInPeriod: 4, classesReservedInPeriod: 0, durationDays: 90 })) },
       {
         id: 'cargando',
         label: 'Cargando plan',
