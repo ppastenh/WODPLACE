@@ -13,6 +13,20 @@ import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
 import { progressColors, progressMeasure, progressPasses } from '../../artifacts/wodplace/components/home/progressColors';
+import { levelStreakColors, levelStreakMeasure, levelStreakPasses } from '../../artifacts/wodplace/components/home/levelStreakColors';
+import {
+  LEVEL_DETAIL,
+  NO_RANK_LABEL,
+  SKILL_LEVEL_LABELS,
+  STREAK_DOTS,
+  levelA11yLabel,
+  levelText,
+  levelView,
+  rankFontSize,
+  streakA11yLabel,
+  streakSuffix,
+  streakView,
+} from '../../artifacts/wodplace/components/home/levelStreakModel';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
@@ -771,5 +785,168 @@ describe('Tarjeta "Progreso mensual": estado sin plan (decisión (v), pedido 24)
     const before = (fs: number) => 12 * 2 + Math.round(12 * 1.2 * fs) + 8 + Math.round(26 * fs); // sin plan de antes (70 / 75 / 83 medidos)
     for (const fs of [1, 1.1, 1.3]) assert.ok(height(fs) <= before(fs), `letra ${fs}: ${height(fs)} <= ${before(fs)}`);
     assert.ok(card.includes('const NONE_MESSAGE_MIN_H = 24;') && card.includes('{ paddingVertical: SPACING.lg }'));
+  });
+});
+
+// ───────────── Recuadros "Tu nivel" y "Racha de constancia" (decisión (w), pedido 25) ─────────────
+describe('Recuadros "Tu nivel" y "Racha de constancia": estado de la racha (función pura)', () => {
+  it('cargando (null): esqueleto, NUNCA "0 / Empieza hoy"', () => {
+    assert.deepEqual(streakView(null), { kind: 'loading' });
+    assert.equal(streakA11yLabel(streakView(null)), 'Racha de constancia: cargando');
+  });
+  it('racha 0, vacía o no válida: estado vacío ("Empieza hoy"), 0 indicadores pintados', () => {
+    for (const stats of [{ currentStreakDays: 0 }, {}, { currentStreakDays: null }, { currentStreakDays: -3 }, { currentStreakDays: Number.NaN }]) {
+      assert.deepEqual(streakView(stats), { kind: 'empty' });
+    }
+    assert.equal(streakA11yLabel({ kind: 'empty' }), 'Racha de constancia: empieza hoy');
+  });
+  it('con racha: los primeros N indicadores pintados, N = min(días, 7); con 7 o más, los siete llenos y el número real', () => {
+    assert.deepEqual(streakView({ currentStreakDays: 1 }), { kind: 'streak', days: 1, filled: 1 });
+    assert.deepEqual(streakView({ currentStreakDays: 3 }), { kind: 'streak', days: 3, filled: 3 });
+    assert.deepEqual(streakView({ currentStreakDays: 7 }), { kind: 'streak', days: 7, filled: 7 });
+    assert.deepEqual(streakView({ currentStreakDays: 12 }), { kind: 'streak', days: 12, filled: 7 });
+    assert.deepEqual(streakView({ currentStreakDays: 128 }), { kind: 'streak', days: 128, filled: STREAK_DOTS });
+    assert.equal(STREAK_DOTS, 7);
+  });
+  it('textos: "1 día seguido" / "N días seguidos" y la frase para lectores de pantalla (los siete indicadores no se leen sueltos)', () => {
+    assert.equal(streakSuffix(1), 'día seguido');
+    assert.equal(streakSuffix(3), 'días seguidos');
+    assert.equal(streakA11yLabel(streakView({ currentStreakDays: 3 })), 'Racha de constancia: 3 días seguidos');
+    assert.equal(streakA11yLabel(streakView({ currentStreakDays: 1 })), 'Racha de constancia: 1 día seguido');
+    assert.equal(streakA11yLabel(streakView({ currentStreakDays: 128 })), 'Racha de constancia: 128 días seguidos');
+  });
+});
+
+describe('Recuadros "Tu nivel" y "Racha de constancia": rango', () => {
+  it('los 6 valores y su texto exacto (el más largo es "Beginner")', () => {
+    assert.deepEqual(SKILL_LEVEL_LABELS, { beginner: 'Beginner', rookie: 'Rookie', scaled: 'Scaled', master: 'Master', rx: 'RX', elite: 'Elite' });
+    assert.equal(Math.max(...Object.values(SKILL_LEVEL_LABELS).map((l) => l.length)), 'Beginner'.length);
+  });
+  it('valores conocidos, desconocidos tal cual y vacío = "Sin rango"', () => {
+    assert.equal(levelText(levelView('rx')), 'RX');
+    assert.equal(levelText(levelView('experto')), 'experto');
+    assert.equal(levelText(levelView('')), NO_RANK_LABEL);
+    assert.equal(levelText(levelView(undefined)), NO_RANK_LABEL);
+  });
+  it('frase accesible: "Tu nivel: Beginner. Sigue avanzando"', () => {
+    assert.equal(levelA11yLabel(levelView('beginner')), 'Tu nivel: Beginner. Sigue avanzando');
+    assert.equal(LEVEL_DETAIL, 'Sigue avanzando');
+  });
+  it('tamaño por tramos según el largo (sin adjustsFontSizeToFit): hasta 6 letras completo, 7 a 9 un tramo menos, 10 o más otro', () => {
+    for (const l of ['RX', 'Elite', 'Rookie', 'Scaled', 'Master']) assert.equal(rankFontSize(l, 22), 22, l);
+    assert.equal(rankFontSize('Beginner', 22), 18);
+    assert.equal(rankFontSize(NO_RANK_LABEL, 22), 18);
+    assert.equal(rankFontSize('Experimentado', 22), 15);
+  });
+  it('la copia de SKILL_LEVEL_LABELS salió de HomeView (que ya no la declara) y el componente nuevo no importa valores de la librería de la API', () => {
+    const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
+    assert.ok(!home.includes('SKILL_LEVEL_LABELS'));
+    const model = readFileSync(new URL('../../artifacts/wodplace/components/home/levelStreakModel.ts', import.meta.url), 'utf8');
+    assert.ok(model.includes('DEBE MANTENERSE IGUAL'));
+    for (const f of ['levelStreakModel.ts', 'LevelStreakCards.tsx', 'levelStreakColors.ts']) {
+      const src = readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+      assert.ok(!new RegExp('^import (?!type)[^\\n]*' + '@workspace/' + ['api', 'client', 'react'].join('-'), 'm').test(src), f + ' importa valores de la API');
+    }
+  });
+});
+
+describe('Recuadros "Tu nivel" y "Racha de constancia": colores y contraste (tratamientos grafito y cobre)', () => {
+  const r = (n: number) => Math.round(n * 100) / 100;
+  const grafito = levelStreakColors(light, 'grafito');
+  const cobre = levelStreakColors(light, 'cobre');
+  const mg = levelStreakMeasure(grafito);
+  const mc = levelStreakMeasure(cobre);
+
+  it('ambos tratamientos cumplen los mínimos (4,5:1 texto y 3:1 gráficos); el que queda por defecto cumple', () => {
+    assert.ok(levelStreakPasses(mg), JSON.stringify(mg));
+    assert.ok(levelStreakPasses(mc), JSON.stringify(mc));
+  });
+  it('grafito: tokens existentes (nextClassCard, crema, gris cálido, cobre) y números exactos', () => {
+    assert.equal(grafito.background, light.nextClassCard);
+    assert.equal(grafito.primary, light.nextClassCardForeground);
+    assert.equal(grafito.secondary, light.charcoalMuted);
+    assert.equal(grafito.badgeBorder, light.charcoalAccent);
+    assert.equal(grafito.dotOutline, light.charcoalMuted);
+    assert.equal(r(mg.primaryText), 15.65);
+    assert.equal(r(mg.secondaryText), 6.59);
+    assert.equal(r(mg.divider), 3.29); // cobre #B98250 al 70 % sobre el grafito (con 60 % daría 2,74)
+    assert.equal(r(mg.badgeBorder), 5.34);
+    assert.equal(r(mg.dotFilled), 5.34);
+    assert.equal(r(mg.dotOutline), 6.59);
+    assert.ok(mg.dotOutline >= 3, 'los pendientes llevan contorno visible, no solo relleno');
+  });
+  it('cobre: fondo #8B5E34 sólido (navActiveTextSmall), todo el texto en crema, y por qué no se acerca a #B98250', () => {
+    assert.equal(cobre.background, light.navActiveTextSmall);
+    assert.equal(cobre.primary, light.nextClassCardForeground);
+    assert.equal(cobre.secondary, light.nextClassCardForeground);
+    assert.equal(r(mc.primaryText), 4.98);
+    assert.equal(r(mc.divider), 3.43);
+    assert.equal(r(mc.dotOutline), 4.98);
+    assert.ok(contrast(light.nextClassCardForeground, light.charcoalAccent) < 4.5, 'el crema sobre #B98250 no pasa 4,5:1');
+    assert.ok(contrast(light.charcoalMuted, light.navActiveTextSmall) < 4.5, 'el gris cálido sobre #8B5E34 no pasa: por eso el secundario va en crema');
+  });
+  it('el presionado es un color SÓLIDO (sin opacidad) y los textos siguen sobre 4,5:1', () => {
+    assert.equal(grafito.pressed, light.nextClassCardPressed);
+    assert.match(cobre.pressed, /^#[0-9a-f]{6}$/i);
+    assert.ok(mg.primaryPressed >= 4.5 && mg.secondaryPressed >= 4.5 && mc.primaryPressed >= 4.5 && mc.secondaryPressed >= 4.5);
+  });
+});
+
+describe('Recuadros "Tu nivel" y "Racha de constancia" (LevelStreakCards.tsx): estructura, toques y accesibilidad', () => {
+  const src = readFileSync(new URL('../../artifacts/wodplace/components/home/LevelStreakCards.tsx', import.meta.url), 'utf8');
+  const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
+  const unified = src.slice(src.indexOf('function UnifiedCard'), src.indexOf('/* ───────────── E:'));
+  const badges = src.slice(src.indexOf('function BadgeCards'), src.indexOf('/* Estilos del diseño ACTUAL'));
+
+  it('el valor por defecto es el diseño ACTUAL (Inicio real no cambia) y HomeView solo delega', () => {
+    assert.ok(src.includes("export const LEVEL_STREAK_LOOK: LevelStreakLook = { layout: 'actual', tone: 'grafito', valueFont: 'anton' };"));
+    assert.ok(home.includes('<LevelStreakCards'));
+    assert.ok(home.includes('onOpenProfile={() => events.onOpenProfile()}'));
+    assert.ok(!home.includes('Racha de constancia'), 'el recuadro ya no está duplicado en HomeView');
+  });
+  it('el diseño actual conserva su texto, su botón "Ver perfil", el presionado cardPressed y su adjustsFontSizeToFit (no cambia)', () => {
+    const actualSrc = src.slice(src.indexOf('function ActualCards'), src.indexOf('/* ───────────── Piezas compartidas'));
+    assert.ok(actualSrc.includes('accessibilityLabel="Ver perfil"'));
+    assert.ok(actualSrc.includes('colors.cardPressed'));
+    assert.ok(actualSrc.includes("stats?.currentStreakDays ? 'días seguidos' : 'Empieza hoy'"));
+    assert.ok(actualSrc.includes('adjustsFontSizeToFit'));
+  });
+  it('C y E: "Tu nivel" es un botón con presionado SÓLIDO y su frase; "Racha de constancia" NO es un botón (sin onPress, sin rol de botón, sin presionado)', () => {
+    for (const part of [unified, badges]) {
+      assert.equal((part.match(/accessibilityRole="button"/g) ?? []).length, 1);
+      assert.equal((part.match(/<Pressable/g) ?? []).length, 1);
+      assert.ok(part.includes('accessibilityLabel={levelA11yLabel(level)}'));
+      assert.ok(part.includes('onPress={onOpenProfile}'));
+      assert.ok(part.includes('accessible accessibilityLabel={streakA11yLabel(streak)}'));
+      assert.ok(/pressed \? c\.pressed/.test(part));
+    }
+    assert.ok(!/opacity/.test(src.replace(/shadowOpacity/g, '')), 'sin opacidad (ni para el presionado)');
+  });
+  it('íconos, insignias, esquinas y los siete indicadores: ocultos a lectores de pantalla y en contenedores con pointerEvents="none" (nunca en un Text)', () => {
+    assert.ok(src.includes('function Dots') && src.includes('function CircleIcon') && src.includes('function ShieldBadge') && src.includes('function CornerDetails'));
+    assert.ok((src.match(/pointerEvents="none"/g) ?? []).length >= 5);
+    assert.ok(!/<Text[^>]*pointerEvents/.test(src), 'pointerEvents en un Text');
+    assert.ok((src.match(/importantForAccessibility="no-hide-descendants"/g) ?? []).length >= 8);
+  });
+  it('la insignia de E se dibuja con react-native-svg (Path); el rango no usa adjustsFontSizeToFit en C ni en E y se corta sin "…"', () => {
+    assert.ok(badges.includes('<ShieldBadge') && src.includes("import Svg, { Path } from 'react-native-svg';"));
+    assert.ok(!/adjustsFontSizeToFit/.test(unified + badges + src.slice(src.indexOf('function RankValue'), src.indexOf('function StreakValue'))));
+    assert.ok(src.includes('rankFontSize(text, full)'));
+    assert.ok(src.includes('numberOfLines={1}') && src.includes('ellipsizeMode="clip"'));
+  });
+  it('el texto chico mide 12 sp (mínimo de Inicio: 11) y no hay hex escritos a mano salvo la etiqueta de desarrollo', () => {
+    assert.ok(src.includes('const LABEL = FONT_SIZE.sm;'));
+    const code = src.split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*'));
+    const hexes = (code.join(' ').match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []).filter((h) => h !== '#FFFFFF');
+    assert.deepEqual(hexes, []);
+  });
+  it('la lectura del alto usa readLayout (sincrónica) y solo en desarrollo', () => {
+    assert.ok(src.includes("import { readLayout } from '@/components/home/layoutEvents';"));
+    assert.ok(src.includes('__DEV__'));
+    assert.ok(src.indexOf('readLayout(e)') < src.indexOf('setBoxH(height)'));
+  });
+  it('en C el separador no llega a los bordes (relleno vertical); en E la etiqueta pasa bajo la insignia con letra grande', () => {
+    assert.ok(src.includes('dividerWrap: { width: 1, paddingVertical: SPACING.xl }'));
+    assert.ok(src.includes('const STACK_SCALE = 1.15;'));
   });
 });

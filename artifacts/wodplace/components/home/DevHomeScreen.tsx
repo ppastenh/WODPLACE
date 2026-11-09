@@ -21,6 +21,8 @@ import {
   defaultSelection,
   type DevSelection,
 } from '@/components/home/devHomeStates';
+import { LEVEL_STREAK_LOOK, type LevelStreakLayout, type LevelStreakLook, type ValueFont } from '@/components/home/LevelStreakCards';
+import type { Tone } from '@/components/home/levelStreakColors';
 import { ThemeOverride } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -110,6 +112,32 @@ const PROGRESS_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
   { id: '1.3', label: 'Progreso, letra simulada: 1,3' },
 ];
 type QuoteFont = '1' | '1.1' | '1.3';
+// Recuadros "Tu nivel" y "Racha de constancia" (decisión (w)): diseño, tratamiento, tipografía del valor, letra y ancho simulados. Solo desarrollo.
+const LEVEL_LAYOUT_CHIPS: { id: LevelStreakLayout; label: string }[] = [
+  { id: 'actual', label: 'Nivel y racha: actual' },
+  { id: 'C', label: 'Nivel y racha: C unificada' },
+  { id: 'E', label: 'Nivel y racha: E insignias' },
+];
+const LEVEL_TONE_CHIPS: { id: Tone; label: string }[] = [
+  { id: 'grafito', label: 'Tratamiento: grafito' },
+  { id: 'cobre', label: 'Tratamiento: cobre' },
+];
+const LEVEL_FONT_CHIPS: { id: ValueFont; label: string }[] = [
+  { id: 'anton', label: 'Tipografía: Anton' },
+  { id: 'inter', label: 'Tipografía: Inter Bold' },
+];
+type LevelWidth = 'real' | '412' | '360' | '320';
+const LEVEL_WIDTH_CHIPS: { id: LevelWidth; label: string }[] = [
+  { id: 'real', label: 'Nivel y racha, ancho: real' },
+  { id: '412', label: 'Nivel y racha, ancho: 412' },
+  { id: '360', label: 'Nivel y racha, ancho: 360' },
+  { id: '320', label: 'Nivel y racha, ancho: 320' },
+];
+const LEVEL_SCALE_CHIPS: { id: QuoteFont; label: string }[] = [
+  { id: '1', label: 'Nivel y racha, letra simulada: 1,0' },
+  { id: '1.1', label: 'Nivel y racha, letra simulada: 1,1' },
+  { id: '1.3', label: 'Nivel y racha, letra simulada: 1,3' },
+];
 const QUOTE_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
   { id: '1', label: 'Letra simulada: 1,0' },
   { id: '1.1', label: 'Letra simulada: 1,1' },
@@ -223,6 +251,12 @@ function DevHomeBody() {
   const [quoteFont, setQuoteFont] = useState<QuoteFont>('1');
   const [quoteHlStyle, setQuoteHlStyle] = useState<QuoteHighlight>('cobre');
   const [progressFont, setProgressFont] = useState<QuoteFont>('1');
+  const [levelLayout, setLevelLayout] = useState<LevelStreakLayout>(LEVEL_STREAK_LOOK.layout);
+  const [levelTone, setLevelTone] = useState<Tone>(LEVEL_STREAK_LOOK.tone);
+  const [levelFont, setLevelFont] = useState<ValueFont>(LEVEL_STREAK_LOOK.valueFont);
+  const [levelWidth, setLevelWidth] = useState<LevelWidth>('real');
+  const [levelScale, setLevelScale] = useState<QuoteFont>('1');
+  const levelLook: LevelStreakLook = { layout: levelLayout, tone: levelTone, valueFont: levelFont };
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -265,6 +299,11 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
           <ChipGroup title="Tarjeta Progreso mensual: letra simulada" chips={PROGRESS_FONT_CHIPS} selected={progressFont} onSelect={setProgressFont} />
+          <ChipGroup title="Nivel y racha: diseño" chips={LEVEL_LAYOUT_CHIPS} selected={levelLayout} onSelect={setLevelLayout} />
+          <ChipGroup title="Nivel y racha: tratamiento" chips={LEVEL_TONE_CHIPS} selected={levelTone} onSelect={setLevelTone} />
+          <ChipGroup title="Nivel y racha: tipografía del valor" chips={LEVEL_FONT_CHIPS} selected={levelFont} onSelect={setLevelFont} />
+          <ChipGroup title="Nivel y racha: ancho simulado" chips={LEVEL_WIDTH_CHIPS} selected={levelWidth} onSelect={setLevelWidth} />
+          <ChipGroup title="Nivel y racha: letra simulada" chips={LEVEL_SCALE_CHIPS} selected={levelScale} onSelect={setLevelScale} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
           <ChipGroup title="Frase del día: letra simulada" chips={QUOTE_FONT_CHIPS} selected={quoteFont} onSelect={setQuoteFont} />
@@ -319,6 +358,9 @@ function DevHomeBody() {
         nextClassLook={look}
         quoteLook={quoteLook}
         progressFontScale={Number(progressFont)}
+        levelStreakLook={levelLook}
+        levelStreakFontScale={Number(levelScale)}
+        levelStreakWidth={levelWidth === 'real' ? undefined : Number(levelWidth)}
       />
       {panel}
       {menuNode}

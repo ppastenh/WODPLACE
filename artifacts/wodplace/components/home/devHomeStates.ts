@@ -404,12 +404,67 @@ export const DEV_GROUPS: DevGroup[] = [
     options: [
       { id: 'cero', label: 'Racha 0', apply: () => {} },
       {
+        id: 'uno',
+        label: 'Racha 1',
+        apply: (d) => {
+          d.achievementStats = { currentStreakDays: 1 };
+        },
+      },
+      {
+        id: 'tres',
+        label: 'Racha 3',
+        apply: (d) => {
+          d.achievementStats = { currentStreakDays: 3 };
+        },
+      },
+      {
+        id: 'siete',
+        label: 'Racha 7',
+        apply: (d) => {
+          d.achievementStats = { currentStreakDays: 7 };
+        },
+      },
+      {
         id: 'doce',
         label: 'Racha 12',
         apply: (d) => {
           d.achievementStats = { currentStreakDays: 12 };
         },
       },
+      {
+        id: 'cien',
+        label: 'Racha 100',
+        apply: (d) => {
+          d.achievementStats = { currentStreakDays: 100 };
+        },
+      },
+      {
+        id: 'ciento-veintiocho',
+        label: 'Racha 128',
+        apply: (d) => {
+          d.achievementStats = { currentStreakDays: 128 };
+        },
+      },
+      {
+        id: 'cargando',
+        label: 'Cargando racha',
+        apply: (d) => {
+          d.achievementStats = null;
+        },
+      },
+    ],
+  },
+  {
+    id: 'rango',
+    title: 'Rango',
+    options: [
+      { id: 'rx', label: 'Rango RX', apply: () => {} },
+      { id: 'beginner', label: 'Rango Beginner (el más largo)', apply: (d) => { d.user = { ...d.user, rank: 'beginner' }; } },
+      { id: 'rookie', label: 'Rango Rookie', apply: (d) => { d.user = { ...d.user, rank: 'rookie' }; } },
+      { id: 'scaled', label: 'Rango Scaled', apply: (d) => { d.user = { ...d.user, rank: 'scaled' }; } },
+      { id: 'master', label: 'Rango Master', apply: (d) => { d.user = { ...d.user, rank: 'master' }; } },
+      { id: 'elite', label: 'Rango Elite', apply: (d) => { d.user = { ...d.user, rank: 'elite' }; } },
+      { id: 'sin-rango', label: 'Sin rango', apply: (d) => { d.user = { ...d.user, rank: '' as typeof d.user.rank }; } },
     ],
   },
   {

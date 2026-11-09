@@ -19,6 +19,7 @@ import { MedalBadge } from '@/components/MedalBadge';
 import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
 import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
+import { LEVEL_STREAK_LOOK, LevelStreakCards, type LevelStreakLook } from '@/components/home/LevelStreakCards';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
@@ -95,16 +96,6 @@ export type HomeViewEvents = {
   onBell?: () => void;
 };
 
-
-/** Copia local de SKILL_LEVEL_LABELS (lib/api-client-react/src/skillLevel.ts): un import de valores desde la API no pasa la frontera del diseño. */
-const SKILL_LEVEL_LABELS: Record<SkillLevel, string> = {
-  beginner: 'Beginner',
-  rookie: 'Rookie',
-  scaled: 'Scaled',
-  master: 'Master',
-  rx: 'RX',
-  elite: 'Elite',
-};
 
 /**
  * FOTO del banner (decisión (o) de DECISIONES-DISENO.md): home-banner-anillo.jpg, de Leon Mart (Pexels; créditos en CREDITOS-IMAGENES.md).
@@ -198,6 +189,9 @@ export function HomeView({
   nextClassLook = NEXT_CLASS_LOOK,
   quoteLook = QUOTE_LOOK,
   progressFontScale,
+  levelStreakLook = LEVEL_STREAK_LOOK,
+  levelStreakFontScale,
+  levelStreakWidth,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -209,11 +203,14 @@ export function HomeView({
   quoteLook?: QuoteLook;
   /** Solo para la pantalla de desarrollo: simula la letra del sistema en la tarjeta "Progreso mensual". */
   progressFontScale?: number;
+  levelStreakLook?: LevelStreakLook;
+  levelStreakFontScale?: number;
+  levelStreakWidth?: number;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakLook={levelStreakLook} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} />
     </ThemeOverride>
   );
 }
@@ -257,6 +254,9 @@ function HomeViewInner({
   nextClassLook,
   quoteLook,
   progressFontScale,
+  levelStreakLook = LEVEL_STREAK_LOOK,
+  levelStreakFontScale,
+  levelStreakWidth,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -264,6 +264,9 @@ function HomeViewInner({
   nextClassLook: NextClassLook;
   quoteLook: QuoteLook;
   progressFontScale?: number;
+  levelStreakLook?: LevelStreakLook;
+  levelStreakFontScale?: number;
+  levelStreakWidth?: number;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -525,64 +528,14 @@ function HomeViewInner({
 
         <MonthlyProgressCard view={planView} fontScale={progressFontScale} />
 
-        <View style={styles.twoColumnRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ver perfil"
-            onPress={() => events.onOpenProfile()}
-            style={({ pressed }) => [
-              styles.statsCard, soft,
-              { backgroundColor: pressed ? colors.cardPressed : colors.card },
-            ]}
-          >
-            <View style={styles.smallCardHeader}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
-                <Feather name="shield" size={17} color={colors.accentForeground} />
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.creamMuted} />
-            </View>
-            <Text style={[styles.smallCardLabel, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-              Tu nivel
-            </Text>
-            <Text
-              style={[styles.statsValue, { color: colors.foreground }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-              maxFontSizeMultiplier={1.3}
-            >
-              {SKILL_LEVEL_LABELS[user.rank] ?? user.rank}
-            </Text>
-            <Text
-              style={[styles.statsDetail, { color: colors.creamMuted }]}
-              maxFontSizeMultiplier={1.3}
-            >
-              Sigue avanzando
-            </Text>
-          </Pressable>
-          <View style={[styles.statsCard, soft, { backgroundColor: colors.card }]}>
-            <View style={styles.smallCardHeader}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.warningBackground }]}>
-                <MaterialCommunityIcons name="fire" size={18} color={colors.warning} />
-              </View>
-            </View>
-            <Text style={[styles.smallCardLabel, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-              Racha de constancia
-            </Text>
-            <Text
-              style={[styles.statsValue, { color: colors.foreground }]}
-              maxFontSizeMultiplier={1.3}
-            >
-              {achievementStats?.currentStreakDays ?? 0}
-            </Text>
-            <Text
-              style={[styles.statsDetail, { color: colors.creamMuted }]}
-              maxFontSizeMultiplier={1.3}
-            >
-              {achievementStats?.currentStreakDays ? 'días seguidos' : 'Empieza hoy'}
-            </Text>
-          </View>
-        </View>
+        <LevelStreakCards
+          rank={user.rank}
+          achievementStats={achievementStats}
+          onOpenProfile={() => events.onOpenProfile()}
+          look={levelStreakLook}
+          fontScale={levelStreakFontScale}
+          screenWidth={levelStreakWidth}
+        />
 
         <Pressable
           accessibilityRole="button"
