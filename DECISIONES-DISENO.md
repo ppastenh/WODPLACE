@@ -124,3 +124,4 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **Fecha:** 2026-11-08
 - **Decisión:** "Tarjeta 'Progreso mensual': diseño de barra refinada en versión oscura (grafito) con barra de cobre claro sobre pista oscura, número crema; plan ilimitado muestra solo el número con una cápsula de vidrio y sin barra; versión clara disponible solo para comparar en desarrollo."
 - **Estado:** VIGENTE. Aprobada por Pía el 2026-11-08 (incluida su aprobación explícita para editar este archivo). Solo presentación: la lógica de planProgress y los datos no cambian. La versión anterior queda disponible con una constante (variante 'actual').
+- **Estado sin plan (2026-11-09, aprobado por Pía, incluida su aprobación explícita para editar este archivo):** "Estado sin plan: el título arriba y el mensaje 'Sin plan activo' centrado, sin barra ni guion." Solo presentación; la lógica de planProgress no cambia.
