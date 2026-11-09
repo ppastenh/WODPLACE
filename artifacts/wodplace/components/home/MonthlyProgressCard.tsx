@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '@/components/home/monthlyProgressText';
+import { copperColors, PROGRESS_COPPER, type CopperChoice } from '@/components/home/copperLook';
 import { monthlyCardParts, type PlanProgressView } from '@/lib/planProgress';
 import { FONT_SIZE } from '@/constants/typography';
 import { SPACING } from '@/constants/spacing';
@@ -13,12 +14,13 @@ import { RADIUS } from '@/constants/radius';
  * TARJETA "PROGRESO MENSUAL" de Inicio (decisión (v) de DECISIONES-DISENO.md). Solo dibuja: qué mostrar lo decide lib/planProgress.ts
  * (planProgressView + monthlyCardParts), que NO cambió; los datos llegan de HomeView. La tarjeta no tiene toque.
  *
- * Tres variantes de la misma tarjeta (una sola lógica):
+ * Cuatro variantes de la misma tarjeta (una sola lógica):
  *  - 'oscura' (por defecto): tarjeta grafito como las de próxima clase y frases, número crema, barra de cobre claro sobre pista oscura.
  *  - 'actual': la tarjeta blanca de antes (para volver atrás: PROGRESS_VARIANT = 'actual').
  *  - 'clara': versión para comparar, solo se elige en la pantalla de desarrollo.
+ *  - 'cobre': tarjeta rellena de cobre (fondo y letra según CopperChoice, ver copperLook.ts), también solo para comparar en desarrollo.
  */
-export type ProgressVariant = 'actual' | 'oscura' | 'clara';
+export type ProgressVariant = 'actual' | 'oscura' | 'clara' | 'cobre';
 
 /** UNA constante decide la variante que se ve en Inicio. Para volver al diseño anterior, cámbiala a 'actual'. */
 export const PROGRESS_VARIANT: ProgressVariant = 'oscura';
@@ -45,8 +47,22 @@ type Look = {
   capsuleText: string;
 };
 
-function useLook(variant: Exclude<ProgressVariant, 'actual'>): Look {
+function useLook(variant: Exclude<ProgressVariant, 'actual'>, copper: CopperChoice): Look {
   const c = useColors();
+  if (variant === 'cobre') {
+    const k = copperColors(c, copper);
+    return {
+      background: k.background,
+      border: null,
+      muted: k.muted,
+      number: k.ink,
+      fill: k.fill,
+      track: k.track,
+      capsuleBg: k.capsuleBg,
+      capsuleBorder: k.capsuleBorder,
+      capsuleText: k.capsuleText,
+    };
+  }
   if (variant === 'clara') {
     return {
       background: c.card,
@@ -78,19 +94,43 @@ export function MonthlyProgressCard({
   view,
   variant = PROGRESS_VARIANT,
   fontScale,
+  copper = PROGRESS_COPPER,
 }: {
   view: PlanProgressView;
   variant?: ProgressVariant;
   /** Solo la pantalla de desarrollo: simula la letra del sistema (el tope de 1,3 también se aplica). */
   fontScale?: number;
+  /** Solo cuenta con variant 'cobre': fondo de cobre y color de la letra. */
+  copper?: CopperChoice;
 }) {
   if (variant === 'actual') return <ActualCard view={view} />;
-  return <RefinedCard view={view} variant={variant} fontScale={fontScale} />;
+  // Línea de depuración con el contraste real (solo desarrollo): se carga con require dentro de __DEV__, así que producción no lleva el archivo ni sus textos.
+  const DebugLine = __DEV__ && variant === 'cobre' ? (require('@/components/home/CopperDebugLine') as typeof import('@/components/home/CopperDebugLine')).CopperDebugLine : null;
+  const card = <RefinedCard view={view} variant={variant} fontScale={fontScale} copper={copper} />;
+  if (DebugLine) {
+    return (
+      <View>
+        {card}
+        <DebugLine copper={copper} />
+      </View>
+    );
+  }
+  return card;
 }
 
-function RefinedCard({ view, variant, fontScale }: { view: PlanProgressView; variant: 'oscura' | 'clara'; fontScale?: number }) {
+function RefinedCard({
+  view,
+  variant,
+  fontScale,
+  copper,
+}: {
+  view: PlanProgressView;
+  variant: Exclude<ProgressVariant, 'actual'>;
+  fontScale?: number;
+  copper: CopperChoice;
+}) {
   const colors = useColors();
-  const look = useLook(variant);
+  const look = useLook(variant, copper);
   const monthly = monthlyCardParts(view);
   // Alto medido de la tarjeta (solo desarrollo). El evento se lee de forma SINCRÓNICA (readLayout) y solo después se usa setState.
   const [cardH, setCardH] = useState(0);
@@ -106,7 +146,7 @@ function RefinedCard({ view, variant, fontScale }: { view: PlanProgressView; var
     : undefined;
   const frame = [
     styles.card,
-    variant === 'oscura' ? styles.shadowDark : styles.shadowSoft,
+    variant === 'oscura' || variant === 'cobre' ? styles.shadowDark : styles.shadowSoft,
     { backgroundColor: look.background, shadowColor: colors.charcoal },
     look.border ? { borderWidth: 1, borderColor: look.border } : null,
   ];
@@ -126,12 +166,26 @@ function RefinedCard({ view, variant, fontScale }: { view: PlanProgressView; var
         accessibilityRole="progressbar"
         accessibilityLabel="Cargando tu progreso mensual"
       >
-        <Skeleton width="45%" height={SMALL} />
-        <View style={styles.skeletonBody} importantForAccessibility="no-hide-descendants">
-          <Skeleton width="30%" height={NUMBER_CLASSES} />
-          <Skeleton width="100%" height={BAR_H} borderRadius={BAR_H / 2} />
-          <Skeleton width="55%" height={SMALL} />
-        </View>
+        {variant === 'cobre' ? (
+          // Sobre el cobre el esqueleto gris de siempre no se ve: barras fijas con el color de la pista (letra al 25 %), misma forma y alto.
+          <>
+            <View style={[styles.cobreBone, { width: '45%', height: SMALL, backgroundColor: look.track }]} />
+            <View style={styles.skeletonBody} importantForAccessibility="no-hide-descendants">
+              <View style={[styles.cobreBone, { width: '30%', height: NUMBER_CLASSES, backgroundColor: look.track }]} />
+              <View style={[styles.cobreBone, { width: '100%', height: BAR_H, borderRadius: BAR_H / 2, backgroundColor: look.track }]} />
+              <View style={[styles.cobreBone, { width: '55%', height: SMALL, backgroundColor: look.track }]} />
+            </View>
+          </>
+        ) : (
+          <>
+            <Skeleton width="45%" height={SMALL} />
+            <View style={styles.skeletonBody} importantForAccessibility="no-hide-descendants">
+              <Skeleton width="30%" height={NUMBER_CLASSES} />
+              <Skeleton width="100%" height={BAR_H} borderRadius={BAR_H / 2} />
+              <Skeleton width="55%" height={SMALL} />
+            </View>
+          </>
+        )}
         {devBadge}
       </View>
     );
@@ -334,6 +388,7 @@ const styles = StyleSheet.create({
   reservedBottom: { flexShrink: 1, textAlign: 'right' },
   empty: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: SPACING.md },
   dash: { fontFamily: 'Inter_500Medium', marginTop: SPACING.sm },
+  cobreBone: { borderRadius: 6 },
   skeletonBody: { gap: SPACING.md, marginTop: SPACING.md },
   devBadge: { position: 'absolute', right: 6, bottom: 4, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
   devBadgeText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'Inter_600SemiBold' },
