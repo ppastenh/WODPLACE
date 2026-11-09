@@ -32,6 +32,9 @@ const SMALL = 12; // título, "N reservada(s)" y leyenda: 12 sp (el pedido pedí
 const BAR_H = 8;
 const CAPSULE_MIN_H = 28;
 const PAD = 16;
+/** Estado sin plan: mensaje de 16 sp (peso medio) en un espacio de 24 dp bajo el título; con el relleno de 12 dp arriba y abajo la tarjeta mide ~64 dp (antes 70). */
+const NONE_SIZE = 16;
+const NONE_MESSAGE_MIN_H = 24;
 /** Tope de la letra del sistema, igual que el resto de Inicio. */
 const MAX_MULT = 1.3;
 
@@ -192,20 +195,20 @@ function RefinedCard({
   }
 
   if (view.kind === 'none' || !monthly) {
-    // Sin plan: la tarjeta compacta de siempre ("—" y "Sin plan activo") en el estilo oscuro; no ocupa más alto que antes.
+    // Sin plan (decisión (v)): el título arriba a la izquierda y "Sin plan activo" centrado, sin barra, pista, guion, reservadas ni cápsula. El mensaje se centra en el espacio
+    // que queda bajo el título (no en toda la tarjeta: así el título no choca con el mensaje en 320 dp ni con letra grande). Alto: ver NONE_MESSAGE_MIN_H.
     return (
-      <View style={[frame, styles.empty, { padding: SPACING.lg }]} onLayout={onCardLayout} accessible accessibilityLabel="Progreso mensual: sin plan activo">
+      <View style={[frame, { paddingVertical: SPACING.lg }]} onLayout={onCardLayout} accessible accessibilityLabel="Progreso mensual: sin plan activo">
         <View importantForAccessibility="no-hide-descendants">
           <Text style={[styles.small, size(SMALL), { color: look.muted }]} maxFontSizeMultiplier={MAX_MULT}>
             Progreso mensual
           </Text>
-          <Text style={[styles.dash, size(26), { lineHeight: 26 * fs, color: look.number }]} maxFontSizeMultiplier={MAX_MULT}>
-            —
-          </Text>
+          <View style={[styles.noneMessage, { minHeight: NONE_MESSAGE_MIN_H * fs }]}>
+            <Text style={[styles.noneText, size(NONE_SIZE), { color: look.number }]} maxFontSizeMultiplier={MAX_MULT}>
+              Sin plan activo
+            </Text>
+          </View>
         </View>
-        <Text style={[styles.small, size(SMALL), { color: look.muted, flexShrink: 1, textAlign: 'right' }]} maxFontSizeMultiplier={MAX_MULT}>
-          Sin plan activo
-        </Text>
         {devBadge}
       </View>
     );
@@ -386,8 +389,8 @@ const styles = StyleSheet.create({
   legendFlex: { flexShrink: 1, flexGrow: 1, marginTop: SPACING.xs2 },
   footerRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: SPACING.md },
   reservedBottom: { flexShrink: 1, textAlign: 'right' },
-  empty: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: SPACING.md },
-  dash: { fontFamily: 'Inter_500Medium', marginTop: SPACING.sm },
+  noneMessage: { marginTop: SPACING.xs, alignItems: 'center', justifyContent: 'center' },
+  noneText: { fontFamily: 'Inter_500Medium', textAlign: 'center' },
   cobreBone: { borderRadius: 6 },
   skeletonBody: { gap: SPACING.md, marginTop: SPACING.md },
   devBadge: { position: 'absolute', right: 6, bottom: 4, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },

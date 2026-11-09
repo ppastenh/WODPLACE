@@ -256,7 +256,7 @@ const plan = (classesPerPeriod: number | null, completed: number | null, reserve
 });
 
 describe('"Clases del plan": sin plan, plan ilimitado y plan por clases', () => {
-  it('sin plan activo: "—" y "Sin plan activo" (tenga o no datos de plan)', () => {
+  it('sin plan activo (tenga o no datos de plan)', () => {
     assert.deepEqual(planProgressView({ hasActivePlan: false, planLoading: false, plan: null }), { kind: 'none' });
     assert.deepEqual(planProgressView({ hasActivePlan: false, planLoading: false, plan: plan(8, 3, 1) }), { kind: 'none' });
   });
@@ -744,5 +744,47 @@ describe('Tarjeta "Progreso mensual", variante cobre (copperLook.ts, complemento
   });
   it('la tarjeta no gana interacción ni estado presionado', () => {
     assert.ok(!/onPress|Pressable|pressed/i.test(card.slice(card.indexOf('function RefinedCard('), card.indexOf('/** El diseño anterior'))));
+  });
+});
+
+describe('Tarjeta "Progreso mensual": estado sin plan (decisión (v), pedido 24)', () => {
+  const card = readFileSync(new URL('../../artifacts/wodplace/components/home/MonthlyProgressCard.tsx', import.meta.url), 'utf8');
+  const refined = card.slice(card.indexOf('function RefinedCard('), card.indexOf('/** El diseño anterior'));
+  const none = refined.slice(refined.indexOf("if (view.kind === 'none' || !monthly) {"), refined.indexOf('const label = monthlyProgressA11yLabel'));
+
+  it('el estado lo decide una función pura: cargando, sin plan, por cantidad o ilimitado (y cargando NUNCA es "sin plan")', () => {
+    assert.equal(planProgressView({ hasActivePlan: true, planLoading: true, plan: null }).kind, 'loading');
+    assert.equal(planProgressView({ hasActivePlan: true, planLoading: false, plan: null }).kind, 'none');
+    assert.equal(planProgressView({ hasActivePlan: false, planLoading: false, plan: null }).kind, 'none');
+    assert.equal(planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(8, 3, 1) }).kind, 'classes');
+    assert.equal(planProgressView({ hasActivePlan: true, planLoading: false, plan: plan(null, 3, 1) }).kind, 'unlimited');
+    // con datos del plan ya llegados, "cargando" no cambia el resultado; sin datos y cargando, nunca "sin plan"
+    assert.equal(planProgressView({ hasActivePlan: true, planLoading: true, plan: plan(8, 3, 1) }).kind, 'classes');
+  });
+  it('el esqueleto de cargando no dice "Sin plan activo" (ni la tarjeta con plan)', () => {
+    const loading = refined.slice(refined.indexOf("if (view.kind === 'loading') {"), refined.indexOf("if (view.kind === 'none'"));
+    assert.ok(loading.length > 100);
+    assert.ok(!/Sin plan activo/.test(loading));
+    assert.ok(!/Sin plan activo/.test(refined.slice(refined.indexOf('const label = monthlyProgressA11yLabel'))));
+  });
+  it('sin plan: título arriba, "Sin plan activo" centrado de 16 sp y peso medio, sin barra, pista, guion, reservadas ni cápsula', () => {
+    assert.ok(none.includes('Progreso mensual') && none.includes('Sin plan activo'));
+    assert.ok(card.includes('const NONE_SIZE = 16;'));
+    assert.ok(card.includes("noneText: { fontFamily: 'Inter_500Medium', textAlign: 'center' }"));
+    assert.ok(card.includes("noneMessage: { marginTop: SPACING.xs, alignItems: 'center', justifyContent: 'center' }"));
+    for (const banned of ['progressbar', 'styles.track', 'styles.fill', 'styles.capsule', 'reserved', '—', 'Skeleton', 'accessibilityValue']) assert.ok(!none.includes(banned), banned);
+  });
+  it('sin plan: un solo grupo accesible con la frase "Progreso mensual: sin plan activo" y tope de letra 1,3 sin "…"', () => {
+    assert.ok(none.includes('accessible accessibilityLabel="Progreso mensual: sin plan activo"'));
+    assert.ok(none.includes('importantForAccessibility="no-hide-descendants"'));
+    assert.ok(!/numberOfLines|ellipsizeMode/.test(none));
+    assert.equal((none.match(/<Text/g) ?? []).length, (none.match(/maxFontSizeMultiplier=\{MAX_MULT\}/g) ?? []).length);
+  });
+  it('alto: relleno de 12 arriba y abajo + título + hueco de 2 + mensaje de 24 dp (≈ 64 dp con letra 1,0; antes 70) y crece con la letra, nunca queda más alto que antes', () => {
+    const SMALL = 12, GAP = 2, MSG = 24, PADV = 12;
+    const height = (fs: number) => PADV * 2 + Math.round(SMALL * 1.2 * fs) + GAP + Math.max(MSG * fs, Math.round(16 * 1.2 * fs));
+    const before = (fs: number) => 12 * 2 + Math.round(12 * 1.2 * fs) + 8 + Math.round(26 * fs); // sin plan de antes (70 / 75 / 83 medidos)
+    for (const fs of [1, 1.1, 1.3]) assert.ok(height(fs) <= before(fs), `letra ${fs}: ${height(fs)} <= ${before(fs)}`);
+    assert.ok(card.includes('const NONE_MESSAGE_MIN_H = 24;') && card.includes('{ paddingVertical: SPACING.lg }'));
   });
 });
