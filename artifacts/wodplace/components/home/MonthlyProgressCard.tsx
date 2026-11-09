@@ -1,30 +1,18 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '@/components/home/monthlyProgressText';
-import { copperColors, PROGRESS_COPPER, type CopperChoice } from '@/components/home/copperLook';
+import { progressColors } from '@/components/home/progressColors';
 import { monthlyCardParts, type PlanProgressView } from '@/lib/planProgress';
-import { FONT_SIZE } from '@/constants/typography';
 import { SPACING } from '@/constants/spacing';
 import { RADIUS } from '@/constants/radius';
 
 /**
- * TARJETA "PROGRESO MENSUAL" de Inicio (decisión (v) de DECISIONES-DISENO.md). Solo dibuja: qué mostrar lo decide lib/planProgress.ts
- * (planProgressView + monthlyCardParts), que NO cambió; los datos llegan de HomeView. La tarjeta no tiene toque.
- *
- * Cuatro variantes de la misma tarjeta (una sola lógica):
- *  - 'oscura' (por defecto): tarjeta grafito como las de próxima clase y frases, número crema, barra de cobre claro sobre pista oscura.
- *  - 'actual': la tarjeta blanca de antes (para volver atrás: PROGRESS_VARIANT = 'actual').
- *  - 'clara': versión para comparar, solo se elige en la pantalla de desarrollo.
- *  - 'cobre': tarjeta rellena de cobre (fondo y letra según CopperChoice, ver copperLook.ts), también solo para comparar en desarrollo.
+ * TARJETA "PROGRESO MENSUAL" de Inicio (decisión (v) de DECISIONES-DISENO.md, enmendada el 2026-11-09): barra refinada sobre fondo de cobre claro con letra oscura
+ * (colores en progressColors.ts). Solo dibuja: qué mostrar lo decide lib/planProgress.ts (planProgressView + monthlyCardParts), que NO cambió; los datos llegan de HomeView.
+ * La tarjeta no tiene toque. Es una sola versión: las anteriores (blanca, grafito, clara y las otras combinaciones de cobre) quedaron descartadas.
  */
-export type ProgressVariant = 'actual' | 'oscura' | 'clara' | 'cobre';
-
-/** UNA constante decide la variante que se ve en Inicio. Para volver al diseño anterior, cámbiala a 'actual'. */
-export const PROGRESS_VARIANT: ProgressVariant = 'oscura';
-
 const NUMBER_CLASSES = 32;
 const NUMBER_UNLIMITED = 36;
 const TOTAL_SIZE = 15;
@@ -38,102 +26,16 @@ const NONE_MESSAGE_MIN_H = 24;
 /** Tope de la letra del sistema, igual que el resto de Inicio. */
 const MAX_MULT = 1.3;
 
-type Look = {
-  background: string;
-  border: string | null;
-  muted: string;
-  number: string;
-  fill: string;
-  track: string;
-  capsuleBg: string;
-  capsuleBorder: string;
-  capsuleText: string;
-};
-
-function useLook(variant: Exclude<ProgressVariant, 'actual'>, copper: CopperChoice): Look {
-  const c = useColors();
-  if (variant === 'cobre') {
-    const k = copperColors(c, copper);
-    return {
-      background: k.background,
-      border: null,
-      muted: k.muted,
-      number: k.ink,
-      fill: k.fill,
-      track: k.track,
-      capsuleBg: k.capsuleBg,
-      capsuleBorder: k.capsuleBorder,
-      capsuleText: k.capsuleText,
-    };
-  }
-  if (variant === 'clara') {
-    return {
-      background: c.card,
-      border: c.border,
-      muted: c.creamMuted,
-      number: c.quoteInk,
-      fill: c.navActiveTextSmall,
-      track: c.input,
-      capsuleBg: c.accent,
-      capsuleBorder: 'transparent',
-      capsuleText: c.accentForeground,
-    };
-  }
-  return {
-    background: c.nextClassCard,
-    border: null,
-    muted: c.charcoalMuted,
-    number: c.nextClassCardForeground,
-    fill: c.charcoalAccentLight,
-    // Pista: el token más cercano al borde de la paleta oscura (#2C2F34) en el claro es nextClassCardPressed (#2E2F35); no se crea un color nuevo.
-    track: c.nextClassCardPressed,
-    capsuleBg: c.glassBackground,
-    capsuleBorder: c.charcoalAccentLight,
-    capsuleText: c.nextClassCardForeground,
-  };
-}
-
 export function MonthlyProgressCard({
   view,
-  variant = PROGRESS_VARIANT,
   fontScale,
-  copper = PROGRESS_COPPER,
 }: {
   view: PlanProgressView;
-  variant?: ProgressVariant;
   /** Solo la pantalla de desarrollo: simula la letra del sistema (el tope de 1,3 también se aplica). */
   fontScale?: number;
-  /** Solo cuenta con variant 'cobre': fondo de cobre y color de la letra. */
-  copper?: CopperChoice;
-}) {
-  if (variant === 'actual') return <ActualCard view={view} />;
-  // Línea de depuración con el contraste real (solo desarrollo): se carga con require dentro de __DEV__, así que producción no lleva el archivo ni sus textos.
-  const DebugLine = __DEV__ && variant === 'cobre' ? (require('@/components/home/CopperDebugLine') as typeof import('@/components/home/CopperDebugLine')).CopperDebugLine : null;
-  const card = <RefinedCard view={view} variant={variant} fontScale={fontScale} copper={copper} />;
-  if (DebugLine) {
-    return (
-      <View>
-        {card}
-        <DebugLine copper={copper} />
-      </View>
-    );
-  }
-  return card;
-}
-
-function RefinedCard({
-  view,
-  variant,
-  fontScale,
-  copper,
-}: {
-  view: PlanProgressView;
-  variant: Exclude<ProgressVariant, 'actual'>;
-  fontScale?: number;
-  copper: CopperChoice;
 }) {
   const colors = useColors();
-  const look = useLook(variant, copper);
+  const look = progressColors(colors);
   const monthly = monthlyCardParts(view);
   // Alto medido de la tarjeta (solo desarrollo). El evento se lee de forma SINCRÓNICA (readLayout) y solo después se usa setState.
   const [cardH, setCardH] = useState(0);
@@ -149,9 +51,8 @@ function RefinedCard({
     : undefined;
   const frame = [
     styles.card,
-    variant === 'oscura' || variant === 'cobre' ? styles.shadowDark : styles.shadowSoft,
+    styles.shadow,
     { backgroundColor: look.background, shadowColor: colors.charcoal },
-    look.border ? { borderWidth: 1, borderColor: look.border } : null,
   ];
   const devBadge = __DEV__ ? (
     <View pointerEvents="none" style={styles.devBadge}>
@@ -160,7 +61,7 @@ function RefinedCard({
   ) : null;
 
   if (view.kind === 'loading') {
-    // Esqueleto con la misma forma y alto que la tarjeta con plan por cantidad (título, número, barra y leyenda), con el Skeleton de siempre.
+    // Esqueleto con la misma forma y alto que la tarjeta con plan por cantidad (título, número, barra y leyenda). Sobre el cobre el gris de siempre no se ve: barras fijas del color de la pista.
     return (
       <View
         style={frame}
@@ -169,26 +70,12 @@ function RefinedCard({
         accessibilityRole="progressbar"
         accessibilityLabel="Cargando tu progreso mensual"
       >
-        {variant === 'cobre' ? (
-          // Sobre el cobre el esqueleto gris de siempre no se ve: barras fijas con el color de la pista (letra al 25 %), misma forma y alto.
-          <>
-            <View style={[styles.cobreBone, { width: '45%', height: SMALL, backgroundColor: look.track }]} />
-            <View style={styles.skeletonBody} importantForAccessibility="no-hide-descendants">
-              <View style={[styles.cobreBone, { width: '30%', height: NUMBER_CLASSES, backgroundColor: look.track }]} />
-              <View style={[styles.cobreBone, { width: '100%', height: BAR_H, borderRadius: BAR_H / 2, backgroundColor: look.track }]} />
-              <View style={[styles.cobreBone, { width: '55%', height: SMALL, backgroundColor: look.track }]} />
-            </View>
-          </>
-        ) : (
-          <>
-            <Skeleton width="45%" height={SMALL} />
-            <View style={styles.skeletonBody} importantForAccessibility="no-hide-descendants">
-              <Skeleton width="30%" height={NUMBER_CLASSES} />
-              <Skeleton width="100%" height={BAR_H} borderRadius={BAR_H / 2} />
-              <Skeleton width="55%" height={SMALL} />
-            </View>
-          </>
-        )}
+        <View style={[styles.bone, { width: '45%', height: SMALL, backgroundColor: look.track }]} />
+        <View style={styles.skeletonBody} importantForAccessibility="no-hide-descendants">
+          <View style={[styles.bone, { width: '30%', height: NUMBER_CLASSES, backgroundColor: look.track }]} />
+          <View style={[styles.bone, { width: '100%', height: BAR_H, borderRadius: BAR_H / 2, backgroundColor: look.track }]} />
+          <View style={[styles.bone, { width: '55%', height: SMALL, backgroundColor: look.track }]} />
+        </View>
         {devBadge}
       </View>
     );
@@ -204,7 +91,7 @@ function RefinedCard({
             Progreso mensual
           </Text>
           <View style={[styles.noneMessage, { minHeight: NONE_MESSAGE_MIN_H * fs }]}>
-            <Text style={[styles.noneText, size(NONE_SIZE), { color: look.number }]} maxFontSizeMultiplier={MAX_MULT}>
+            <Text style={[styles.noneText, size(NONE_SIZE), { color: look.ink }]} maxFontSizeMultiplier={MAX_MULT}>
               Sin plan activo
             </Text>
           </View>
@@ -227,7 +114,7 @@ function RefinedCard({
           Progreso mensual
         </Text>
         {unlimited ? (
-          <View style={[styles.capsule, { backgroundColor: look.capsuleBg, borderColor: look.capsuleBorder, minHeight: CAPSULE_MIN_H * fs }]}>
+          <View style={[styles.capsule, { backgroundColor: look.capsuleBg, borderColor: look.capsuleBg, minHeight: CAPSULE_MIN_H * fs }]}>
             <Text style={[styles.capsuleText, size(SMALL), { color: look.capsuleText }]} maxFontSizeMultiplier={MAX_MULT}>
               {monthly.chip}
             </Text>
@@ -240,7 +127,7 @@ function RefinedCard({
       </View>
 
       <Text
-        style={[styles.number, size(unlimited ? NUMBER_UNLIMITED : NUMBER_CLASSES), { color: look.number }]}
+        style={[styles.number, size(unlimited ? NUMBER_UNLIMITED : NUMBER_CLASSES), { color: look.ink }]}
         maxFontSizeMultiplier={MAX_MULT}
         importantForAccessibility="no-hide-descendants"
       >
@@ -283,91 +170,10 @@ function RefinedCard({
 
 type Parameter0 = Parameters<typeof readLayout>[0];
 
-/** El diseño anterior (tarjeta blanca), sin cambios, para poder volver con PROGRESS_VARIANT = 'actual'. */
-function ActualCard({ view }: { view: PlanProgressView }) {
-  const colors = useColors();
-  const monthly = monthlyCardParts(view);
-  const soft = {
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.charcoal,
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  } as const;
-  if (view.kind === 'loading') {
-    return (
-      <View style={[old.wideCard, soft, { backgroundColor: colors.card }]}>
-        <Skeleton width="45%" height={FONT_SIZE.xs} />
-        <View style={old.skeletonBottom}>
-          <Skeleton width="30%" height={FONT_SIZE.display} />
-          <Skeleton width="100%" height={7} />
-          <Skeleton width="55%" height={FONT_SIZE.xs} />
-        </View>
-      </View>
-    );
-  }
-  if (view.kind === 'none') {
-    return (
-      <View style={[old.emptyCard, soft, { backgroundColor: colors.card }]}>
-        <View>
-          <Text style={[old.label, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-            Progreso mensual
-          </Text>
-          <Text style={[old.value, { color: colors.foreground }]} maxFontSizeMultiplier={1.3}>
-            —
-          </Text>
-        </View>
-        <Text style={[old.detail, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-          Sin plan activo
-        </Text>
-      </View>
-    );
-  }
-  if (!monthly) return null;
-  return (
-    <View style={[old.wideCard, soft, { backgroundColor: colors.card }]}>
-      <View style={old.header}>
-        <Text style={[old.label, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-          Progreso mensual
-        </Text>
-        <View style={old.topEnd}>
-          {monthly.chip ? (
-            <View style={[old.chip, { backgroundColor: colors.accent }]}>
-              <Text style={[old.chipText, { color: colors.accentForeground }]} maxFontSizeMultiplier={1.3}>
-                {monthly.chip}
-              </Text>
-            </View>
-          ) : null}
-          {monthly.topRightReserved || monthly.chipReserved ? (
-            <Text style={[old.detail, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-              {monthly.topRightReserved ?? monthly.chipReserved}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-      <Text style={[old.value, { color: colors.foreground }]} maxFontSizeMultiplier={1.3}>
-        {monthly.value}
-        {monthly.totalSuffix ? <Text style={[old.total, { color: colors.creamMuted }]}>{monthly.totalSuffix}</Text> : null}
-      </Text>
-      {monthly.showBar ? (
-        <View style={[old.track, { backgroundColor: colors.input, marginTop: SPACING.sm }]}>
-          <View style={[old.fill, { backgroundColor: colors.navActive, width: `${monthly.ratio * 100}%` }]} />
-        </View>
-      ) : null}
-      <Text style={[old.detail, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-        {monthly.legend}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  // Mismo radio (20) que las tarjetas de próxima clase y de frases; sombra suave como las otras tarjetas oscuras.
+  // Mismo radio (20) que las tarjetas de próxima clase y de frases; sombra suave.
   card: { borderRadius: RADIUS.xl, padding: PAD },
-  shadowDark: { shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 2 },
-  shadowSoft: { shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
+  shadow: { shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 2 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: SPACING.md },
   small: { fontFamily: 'Inter_500Medium' },
   titleFlex: { flexShrink: 1 },
@@ -391,25 +197,8 @@ const styles = StyleSheet.create({
   reservedBottom: { flexShrink: 1, textAlign: 'right' },
   noneMessage: { marginTop: SPACING.xs, alignItems: 'center', justifyContent: 'center' },
   noneText: { fontFamily: 'Inter_500Medium', textAlign: 'center' },
-  cobreBone: { borderRadius: 6 },
+  bone: { borderRadius: 6 },
   skeletonBody: { gap: SPACING.md, marginTop: SPACING.md },
   devBadge: { position: 'absolute', right: 6, bottom: 4, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
   devBadgeText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-});
-
-// Estilos del diseño anterior, copiados tal cual de HomeView.tsx.
-const old = StyleSheet.create({
-  wideCard: { minHeight: 112, borderRadius: RADIUS.xl, padding: SPACING.lg },
-  emptyCard: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', borderRadius: RADIUS.xl, padding: SPACING.lg },
-  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: SPACING.md },
-  topEnd: { alignItems: 'flex-end' },
-  label: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_600SemiBold', marginTop: 0 },
-  value: { fontSize: FONT_SIZE.display, lineHeight: 26, fontFamily: 'Anton_400Regular', marginTop: SPACING.sm2 },
-  detail: { fontSize: FONT_SIZE.xs, lineHeight: 15, fontFamily: 'Inter_500Medium', marginTop: 3 },
-  total: { fontSize: FONT_SIZE.base, fontFamily: 'Inter_600SemiBold' },
-  chip: { alignSelf: 'flex-end', borderRadius: RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs, marginTop: 0 },
-  chipText: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_700Bold' },
-  track: { height: 7, borderRadius: RADIUS.sm, overflow: 'hidden', marginTop: SPACING.xs },
-  fill: { height: '100%', borderRadius: RADIUS.sm },
-  skeletonBottom: { gap: SPACING.md, marginTop: SPACING.md },
 });

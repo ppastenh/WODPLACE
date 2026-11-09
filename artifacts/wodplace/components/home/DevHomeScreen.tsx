@@ -4,8 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
-import { PROGRESS_VARIANT, type ProgressVariant } from '@/components/home/MonthlyProgressCard';
-import { PROGRESS_COPPER, type CopperInk, type CopperTone } from '@/components/home/copperLook';
 import { QUOTE_LOOK, type QuoteCenter, type QuoteHighlight, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
   NEXT_CLASS_LOOK,
@@ -105,23 +103,7 @@ const QUOTE_HL_STYLE_CHIPS: { id: QuoteHighlight; label: string }[] = [
   { id: 'marcador', label: 'Resaltado: marcador cobre' },
   { id: 'subrayado', label: 'Resaltado: subrayado' },
 ];
-// Tarjeta "Progreso mensual" (decisión (v)): versión oscura (por defecto), la anterior y la clara para comparar; letra simulada.
-const PROGRESS_CHIPS: { id: ProgressVariant; label: string }[] = [
-  { id: 'actual', label: 'Progreso: actual' },
-  { id: 'oscura', label: 'Progreso: oscura' },
-  { id: 'clara', label: 'Progreso: clara' },
-  { id: 'cobre', label: 'Progreso: cobre' },
-];
-// Variante 'cobre': fondo (tres cobres existentes) y letra; la línea de depuración bajo la tarjeta muestra el contraste real.
-const COPPER_TONE_CHIPS: { id: CopperTone; label: string }[] = [
-  { id: 'medio', label: 'Cobre: medio #B98250' },
-  { id: 'oscuro', label: 'Cobre: oscuro #8B5E34' },
-  { id: 'claro', label: 'Cobre: claro #C79A6B' },
-];
-const COPPER_INK_CHIPS: { id: CopperInk; label: string }[] = [
-  { id: 'oscura', label: 'Letra: oscura' },
-  { id: 'clara', label: 'Letra: clara' },
-];
+// Tarjeta "Progreso mensual" (decisión (v)): letra simulada para probar el tope de 1,3 (la versión de la tarjeta es una sola).
 const PROGRESS_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
   { id: '1', label: 'Progreso, letra simulada: 1,0' },
   { id: '1.1', label: 'Progreso, letra simulada: 1,1' },
@@ -240,10 +222,7 @@ function DevHomeBody() {
   const [quoteCenter, setQuoteCenter] = useState<QuoteCenter>(QUOTE_LOOK.center);
   const [quoteFont, setQuoteFont] = useState<QuoteFont>('1');
   const [quoteHlStyle, setQuoteHlStyle] = useState<QuoteHighlight>('cobre');
-  const [progressVariant, setProgressVariant] = useState<ProgressVariant>(PROGRESS_VARIANT);
   const [progressFont, setProgressFont] = useState<QuoteFont>('1');
-  const [progressTone, setProgressTone] = useState<CopperTone>(PROGRESS_COPPER.tone);
-  const [progressInk, setProgressInk] = useState<CopperInk>(PROGRESS_COPPER.ink);
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -285,9 +264,6 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
           <ChipGroup title="Tarjeta de próxima clase: textura" chips={TEXTURE_CHIPS} selected={texture} onSelect={setTexture} />
-          <ChipGroup title="Tarjeta Progreso mensual: variante" chips={PROGRESS_CHIPS} selected={progressVariant} onSelect={setProgressVariant} />
-          <ChipGroup title="Tarjeta Progreso mensual (cobre): fondo" chips={COPPER_TONE_CHIPS} selected={progressTone} onSelect={setProgressTone} />
-          <ChipGroup title="Tarjeta Progreso mensual (cobre): letra" chips={COPPER_INK_CHIPS} selected={progressInk} onSelect={setProgressInk} />
           <ChipGroup title="Tarjeta Progreso mensual: letra simulada" chips={PROGRESS_FONT_CHIPS} selected={progressFont} onSelect={setProgressFont} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
@@ -342,9 +318,7 @@ function DevHomeBody() {
         photoFails={photo === 'falla'}
         nextClassLook={look}
         quoteLook={quoteLook}
-        progressVariant={progressVariant}
         progressFontScale={Number(progressFont)}
-        progressCopper={{ tone: progressTone, ink: progressInk }}
       />
       {panel}
       {menuNode}

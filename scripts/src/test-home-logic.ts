@@ -12,8 +12,7 @@ import { describe, it } from 'node:test';
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
-import { copperColors, copperMeasure, copperPasses, PROGRESS_COPPER } from '../../artifacts/wodplace/components/home/copperLook';
-import { copperDebugLines } from '../../artifacts/wodplace/components/home/copperDebugText';
+import { progressColors, progressMeasure, progressPasses } from '../../artifacts/wodplace/components/home/progressColors';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
@@ -383,22 +382,28 @@ describe('Tarjeta ancha "Progreso mensual": número, barra y "reservadas" por ti
 describe('Tarjeta "Progreso mensual" (MonthlyProgressCard.tsx, decisión (v))', () => {
   const card = readFileSync(new URL('../../artifacts/wodplace/components/home/MonthlyProgressCard.tsx', import.meta.url), 'utf8');
   const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
-  const refined = card.slice(card.indexOf('function RefinedCard('), card.indexOf('/** El diseño anterior'));
+  const refined = card.slice(card.indexOf('export function MonthlyProgressCard('), card.indexOf('type Parameter0'));
   const view = (p: ReturnType<typeof plan>) => planProgressView({ hasActivePlan: true, planLoading: false, plan: p });
 
-  it('la oscura es la variante por defecto, HomeView la recibe de UNA constante y existe el chip de desarrollo', () => {
-    assert.ok(card.includes("export const PROGRESS_VARIANT: ProgressVariant = 'oscura';"));
-    assert.ok(card.includes("export type ProgressVariant = 'actual' | 'oscura' | 'clara' | 'cobre';"));
-    assert.ok(home.includes('progressVariant = PROGRESS_VARIANT'));
-    assert.ok(home.includes('<MonthlyProgressCard view={planView} variant={progressVariant}'));
+  it('es UNA sola versión: sin variantes, sin chips de variante ni de cobre, sin línea de depuración, y HomeView solo pasa la letra simulada', () => {
+    assert.ok(!/ProgressVariant|PROGRESS_VARIANT|variant\b|ActualCard|PROGRESS_COPPER|CopperChoice|copperLook|CopperDebug/.test(card), 'restos de variantes en la tarjeta');
+    assert.ok(home.includes('<MonthlyProgressCard view={planView} fontScale={progressFontScale} />'));
+    assert.ok(!/progressVariant|progressCopper|ProgressVariant|PROGRESS_VARIANT|CopperChoice/.test(home), 'restos de variantes en HomeView');
     const dev = readFileSync(new URL('../../artifacts/wodplace/components/home/DevHomeScreen.tsx', import.meta.url), 'utf8');
-    for (const label of ['Progreso: actual', 'Progreso: oscura', 'Progreso: clara', 'Progreso: cobre', 'Cobre: medio #B98250', 'Cobre: oscuro #8B5E34', 'Cobre: claro #C79A6B', 'Letra: oscura', 'Letra: clara']) assert.ok(dev.includes(label), label);
+    for (const label of ['Progreso: actual', 'Progreso: oscura', 'Progreso: clara', 'Progreso: cobre', 'Cobre: medio', 'Cobre: oscuro', 'Cobre: claro #C79A6B', 'Letra: oscura', 'Letra: clara']) assert.ok(!dev.includes(label), 'chip retirado: ' + label);
+    assert.ok(dev.includes('Progreso, letra simulada: 1,3'), 'la letra simulada se mantiene');
+    for (const gone of ['copperLook.ts', 'copperDebugText.ts', 'CopperDebugLine.tsx']) assert.ok(!existsSync(new URL('../../artifacts/wodplace/components/home/' + gone, import.meta.url)), gone + ' ya no existe');
   });
-  it('usa tokens existentes de la tarjeta oscura (sin colores nuevos ni hex escritos a mano) y el radio de las otras tarjetas oscuras', () => {
-    for (const token of ['nextClassCard', 'nextClassCardForeground', 'charcoalMuted', 'charcoalAccentLight', 'nextClassCardPressed', 'glassBackground']) {
-      assert.ok(card.includes('c.' + token), token);
-    }
-    const hexes = (card.slice(card.indexOf('function useLook('), card.indexOf('export function MonthlyProgressCard(')).split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('//')).join(' ').match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []).filter((h) => h !== '#FFFFFF');
+  it('los estados de prueba de la tarjeta siguen en la pantalla de desarrollo (por cantidad, ilimitado, sin plan, cargando, 0, completo, sobrepasado, 30 clases)', () => {
+    const states = readFileSync(new URL('../../artifacts/wodplace/components/home/devHomeStates.ts', import.meta.url), 'utf8');
+    for (const label of ['Sin plan', 'Cargando plan', 'Plan por cantidad', 'Plan ilimitado', '0 realizadas', 'completo', 'sobre el total', 'total de 30 clases']) assert.ok(states.includes(label), label);
+  });
+  it('usa solo tokens existentes (cobre claro, carbón, crema; sin hex escritos a mano en la tarjeta ni en progressColors.ts) y el radio de las otras tarjetas oscuras', () => {
+    const colorsSrc = readFileSync(new URL('../../artifacts/wodplace/components/home/progressColors.ts', import.meta.url), 'utf8');
+    for (const token of ['charcoalAccentLight', 'charcoal', 'nextClassCardForeground']) assert.ok(colorsSrc.includes('p.' + token), token);
+    const code = (src: string) => src.split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).join(' ');
+    assert.deepEqual(code(colorsSrc).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'colores escritos a mano en progressColors.ts');
+    const hexes = (code(refined).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []).filter((h) => h !== '#FFFFFF');
     assert.deepEqual(hexes, [], 'colores escritos a mano en la tarjeta');
     assert.ok(card.includes('borderRadius: RADIUS.xl'));
   });
@@ -698,58 +703,38 @@ describe('eventos de layout (onLayout / onTextLayout): se leen de forma sincrón
   });
 });
 
-describe('Tarjeta "Progreso mensual", variante cobre (copperLook.ts, complemento del pedido 22)', () => {
-  const card = readFileSync(new URL('../../artifacts/wodplace/components/home/MonthlyProgressCard.tsx', import.meta.url), 'utf8');
-  const tones = ['medio', 'oscuro', 'claro'] as const;
-  const inks = ['oscura', 'clara'] as const;
-  const measureOf = (tone: (typeof tones)[number], ink: (typeof inks)[number]) => copperMeasure(copperColors(light, { tone, ink }));
+describe('Tarjeta "Progreso mensual": cobre claro con letra oscura (progressColors.ts, enmienda de la decisión (v))', () => {
+  const colors = progressColors(light);
+  const m = progressMeasure(colors);
+  const r = (n: number) => Math.round(n * 100) / 100;
 
-  it('la combinación activa (PROGRESS_COPPER) cumple los mínimos: 4,5:1 texto chico y 3:1 texto grande y gráficos', () => {
-    assert.ok(copperPasses(copperMeasure(copperColors(light, PROGRESS_COPPER))), JSON.stringify(PROGRESS_COPPER));
+  it('la combinación activa cumple los mínimos: 4,5:1 texto (número, "Sin plan activo", título, leyenda, cápsula) y 3:1 gráficos (barra contra pista y contra el cobre, cápsula contra el cobre)', () => {
+    assert.ok(progressPasses(m), JSON.stringify(m));
   });
-  it('Inicio real NO usa cobre: la variante por defecto sigue siendo la oscura, y una constante en cobre solo valdría si pasa', () => {
-    assert.ok(card.includes("export const PROGRESS_VARIANT: ProgressVariant = 'oscura';"));
-    if (/PROGRESS_VARIANT: ProgressVariant = 'cobre'/.test(card)) assert.ok(copperPasses(copperMeasure(copperColors(light, PROGRESS_COPPER))));
+  it('colores: fondo cobre claro #C79A6B (charcoalAccentLight), letra carbón (charcoal), cápsula de carbón con texto crema', () => {
+    assert.equal(colors.background, light.charcoalAccentLight);
+    assert.equal(colors.ink, light.charcoal);
+    assert.equal(colors.fill, light.charcoal);
+    assert.equal(colors.capsuleBg, light.charcoal);
+    assert.equal(colors.capsuleText, light.nextClassCardForeground);
   });
-  it('de las 6 combinaciones pasan exactamente las 3 esperadas (y las otras 3 existen en desarrollo pero no pueden ir en Inicio)', () => {
-    const passing: string[] = [];
-    for (const tone of tones) for (const ink of inks) if (copperPasses(measureOf(tone, ink))) passing.push(`${tone}+${ink}`);
-    assert.deepEqual(passing, ['medio+oscura', 'oscuro+clara', 'claro+oscura']);
-  });
-  it('números exactos de las 6 combinaciones (texto grande / texto chico / relleno vs pista)', () => {
-    const r = (n: number) => Math.round(n * 100) / 100;
-    const got = (tone: (typeof tones)[number], ink: (typeof inks)[number]) => {
-      const m = measureOf(tone, ink);
-      return [r(m.largeText), r(m.smallText), r(m.fillVsTrack)];
-    };
-    assert.deepEqual(got('medio', 'oscura'), [5.83, 4.87, 3.74]);
-    assert.deepEqual(got('medio', 'clara'), [2.93, 2.93, 2.17]);
-    assert.deepEqual(got('oscuro', 'oscura'), [3.43, 3.43, 2.43]);
-    assert.deepEqual(got('oscuro', 'clara'), [4.98, 4.98, 3.09]);
-    assert.deepEqual(got('claro', 'oscura'), [7.56, 6.05, 4.69]);
-    assert.deepEqual(got('claro', 'clara'), [2.26, 2.26, 1.8]);
-  });
-  it('la línea de depuración marca las que no pasan y las que pasan', () => {
-    const bad = copperDebugLines({ tone: 'medio', ink: 'clara' }, measureOf('medio', 'clara')).join('|');
-    assert.ok(bad.includes('NO pasa') && bad.includes('2,93:1'));
-    const good = copperDebugLines({ tone: 'medio', ink: 'oscura' }, measureOf('medio', 'oscura')).join('|');
-    assert.ok(good.includes('5,83:1 · pasa') && !good.includes('NO pasa'));
-  });
-  it('usa solo tokens existentes (sin hex escritos a mano en copperLook.ts) y la línea de depuración es solo de desarrollo', () => {
-    const look = readFileSync(new URL('../../artifacts/wodplace/components/home/copperLook.ts', import.meta.url), 'utf8');
-    const body = look.split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//')).join(String.fromCharCode(10));
-    assert.deepEqual(body.match(/#[0-9A-Fa-f]{6}\b/g) ?? [], []);
-    assert.ok(card.includes("__DEV__ && variant === 'cobre' ? (require('@/components/home/CopperDebugLine')"));
-    assert.ok(card.includes('<DebugLine copper={copper} />'));
+  it('contrastes finales (números exactos)', () => {
+    assert.equal(r(m.largeText), 7.56); // número y "Sin plan activo"
+    assert.equal(r(m.smallText), 6.05); // título, total, leyenda, reservadas
+    assert.equal(r(m.fillVsTrack), 4.69); // barra contra su pista
+    assert.equal(r(m.fillVsCard), 7.56); // barra contra el cobre
+    assert.equal(r(m.capsuleText), 17.08); // crema sobre carbón
+    assert.equal(r(m.capsuleVsCard), 7.56); // cápsula contra el cobre
   });
   it('la tarjeta no gana interacción ni estado presionado', () => {
-    assert.ok(!/onPress|Pressable|pressed/i.test(card.slice(card.indexOf('function RefinedCard('), card.indexOf('/** El diseño anterior'))));
+    const card = readFileSync(new URL('../../artifacts/wodplace/components/home/MonthlyProgressCard.tsx', import.meta.url), 'utf8');
+    assert.ok(!/onPress|Pressable|pressed/i.test(card));
   });
 });
 
 describe('Tarjeta "Progreso mensual": estado sin plan (decisión (v), pedido 24)', () => {
   const card = readFileSync(new URL('../../artifacts/wodplace/components/home/MonthlyProgressCard.tsx', import.meta.url), 'utf8');
-  const refined = card.slice(card.indexOf('function RefinedCard('), card.indexOf('/** El diseño anterior'));
+  const refined = card.slice(card.indexOf('export function MonthlyProgressCard('), card.indexOf('type Parameter0'));
   const none = refined.slice(refined.indexOf("if (view.kind === 'none' || !monthly) {"), refined.indexOf('const label = monthlyProgressA11yLabel'));
 
   it('el estado lo decide una función pura: cargando, sin plan, por cantidad o ilimitado (y cargando NUNCA es "sin plan")', () => {

@@ -18,8 +18,7 @@ import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { MedalBadge } from '@/components/MedalBadge';
 import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
-import { MonthlyProgressCard, PROGRESS_VARIANT, type ProgressVariant } from '@/components/home/MonthlyProgressCard';
-import type { CopperChoice } from '@/components/home/copperLook';
+import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
@@ -198,9 +197,7 @@ export function HomeView({
   photoFails = false,
   nextClassLook = NEXT_CLASS_LOOK,
   quoteLook = QUOTE_LOOK,
-  progressVariant = PROGRESS_VARIANT,
   progressFontScale,
-  progressCopper,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -210,17 +207,13 @@ export function HomeView({
   nextClassLook?: NextClassLook;
   /** Solo para la pantalla de desarrollo: variante de la tarjeta de frases (por defecto, QUOTE_LOOK: la actual). */
   quoteLook?: QuoteLook;
-  /** Solo para la pantalla de desarrollo: variante de la tarjeta "Progreso mensual" (por defecto, PROGRESS_VARIANT: la oscura). */
-  progressVariant?: ProgressVariant;
   /** Solo para la pantalla de desarrollo: simula la letra del sistema en la tarjeta "Progreso mensual". */
   progressFontScale?: number;
-  /** Solo para la pantalla de desarrollo: fondo y letra de la variante 'cobre'. */
-  progressCopper?: CopperChoice;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressVariant={progressVariant} progressFontScale={progressFontScale} progressCopper={progressCopper} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} />
     </ThemeOverride>
   );
 }
@@ -263,18 +256,14 @@ function HomeViewInner({
   photoFails,
   nextClassLook,
   quoteLook,
-  progressVariant,
   progressFontScale,
-  progressCopper,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
   photoFails: boolean;
   nextClassLook: NextClassLook;
   quoteLook: QuoteLook;
-  progressVariant: ProgressVariant;
   progressFontScale?: number;
-  progressCopper?: CopperChoice;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -534,7 +523,7 @@ function HomeViewInner({
           </Pressable>
         ) : null}
 
-        <MonthlyProgressCard view={planView} variant={progressVariant} fontScale={progressFontScale} copper={progressCopper} />
+        <MonthlyProgressCard view={planView} fontScale={progressFontScale} />
 
         <View style={styles.twoColumnRow}>
           <Pressable

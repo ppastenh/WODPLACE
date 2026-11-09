@@ -245,37 +245,16 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('nextClassCardForeground', 'nextClassCardPressed', 'frase con foto: ícono de compartir crema sobre el círculo sólido al presionar'),
   // EXCEPCIÓN ACEPTADA (Pía, 2026-11-08): resaltado en texto cobre claro sobre la foto con el velo del 62 %, peor caso (gris 255, igual a 320, 360 y 412 dp): 2,13:1.
   { ...t('charcoalAccentLight', 'charcoal', 'frase con foto: resaltado en texto cobre claro #C79A6B sobre el velo del 62 % y el punto más claro de la foto (EXCEPCIÓN ACEPTADA)'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 }, accepted: { value: 2.13, date: '2026-11-08', by: 'Pía' } },
-  // Tarjeta "Progreso mensual" oscura (decisión (v)): crema (número), gris cálido (título, reservadas, leyenda, "/ M clases") sobre la tarjeta #18191A; relleno de la
-  // barra (cobre claro) contra la pista (nextClassCardPressed, el token más cercano a #2C2F34) y contra la tarjeta; cápsula "Plan ilimitado" (vidrio rgba(0,0,0,0.6)
-  // sobre la tarjeta) con texto crema y borde de cobre claro. Vale igual a 320, 360 y 412 dp y con la letra al 1,0, 1,1 y 1,3: el contraste no depende del tamaño.
-  t('nextClassCardForeground', 'nextClassCard', 'progreso mensual oscura: número crema sobre la tarjeta'),
-  t('charcoalMuted', 'nextClassCard', 'progreso mensual oscura: gris cálido (título, reservadas, leyenda, total) sobre la tarjeta'),
-  ui('charcoalAccentLight', 'nextClassCardPressed', 'progreso mensual oscura: relleno de la barra (cobre claro) contra la pista'),
-  ui('charcoalAccentLight', 'nextClassCard', 'progreso mensual oscura: relleno de la barra (cobre claro) contra la tarjeta'),
-  { ...t('nextClassCardForeground', 'charcoal', 'progreso mensual oscura: texto crema de la cápsula "Plan ilimitado" sobre su vidrio'), bgLiteral: { hex: '#000000', over: 'nextClassCard', alpha: 0.6 } },
-  { ...ui('charcoalAccentLight', 'charcoal', 'progreso mensual oscura: borde de cobre claro de la cápsula contra su vidrio'), bgLiteral: { hex: '#000000', over: 'nextClassCard', alpha: 0.6 } },
-  ui('charcoalAccentLight', 'nextClassCard', 'progreso mensual oscura: borde de cobre claro de la cápsula contra la tarjeta'),
-  // Versión clara (solo para comparar en desarrollo): número grafito, gris, barra de cobre oscuro, cápsula de acento.
-  t('quoteInk', 'card', 'progreso mensual clara: número grafito sobre la tarjeta blanca'),
-  t('creamMuted', 'card', 'progreso mensual clara: gris sobre la tarjeta blanca'),
-  ui('navActiveTextSmall', 'input', 'progreso mensual clara: barra de cobre oscuro contra su pista'),
-  t('accentForeground', 'accent', 'progreso mensual clara: texto de la cápsula de acento'),
-  // Variante 'cobre' (solo para comparar en desarrollo; PROGRESS_COPPER = medio + letra oscura). Solo entran las combinaciones que PASAN: cobre medio + letra oscura,
-  // cobre claro + letra oscura y cobre oscuro + letra clara. Las otras tres (medio + clara 2,93; oscuro + oscura 3,43; claro + clara 2,26) NO pasan y no se activan.
-  // Pista = letra al 25 % sobre el cobre; texto secundario = letra al 85 % sobre el cobre (con cobre oscuro y letra clara queda la letra entera: al 85 % bajaba a 4,10).
-  t('charcoal', 'charcoalAccent', 'progreso cobre medio + letra oscura: número y texto sobre el cobre'),
-  { ...t('charcoal', 'charcoalAccent', 'progreso cobre medio + letra oscura: texto secundario (letra al 85 %) sobre el cobre'), textOver: { over: 'charcoalAccent', alpha: 0.85 } },
-  { ...ui('charcoal', 'charcoal', 'progreso cobre medio + letra oscura: relleno de la barra contra su pista (letra al 25 %)'), bgOver: { over: 'charcoalAccent', alpha: 0.25 } },
-  t('nextClassCardForeground', 'charcoal', 'progreso cobre medio / claro + letra oscura: texto crema de la cápsula de carbón'),
-  t('charcoal', 'charcoalAccentLight', 'progreso cobre claro + letra oscura: número y texto sobre el cobre'),
-  { ...t('charcoal', 'charcoalAccentLight', 'progreso cobre claro + letra oscura: texto secundario (letra al 85 %) sobre el cobre'), textOver: { over: 'charcoalAccentLight', alpha: 0.85 } },
-  { ...ui('charcoal', 'charcoal', 'progreso cobre claro + letra oscura: relleno de la barra contra su pista (letra al 25 %)'), bgOver: { over: 'charcoalAccentLight', alpha: 0.25 } },
-  t('nextClassCardForeground', 'navActiveTextSmall', 'progreso cobre oscuro + letra clara: número y texto (letra entera) sobre el cobre'),
-  { ...ui('nextClassCardForeground', 'nextClassCardForeground', 'progreso cobre oscuro + letra clara: relleno de la barra contra su pista (letra al 25 %)'), bgOver: { over: 'navActiveTextSmall', alpha: 0.25 } },
-  t('charcoal', 'nextClassCardForeground', 'progreso cobre oscuro + letra clara: texto oscuro de la cápsula de crema'),
-  ui('charcoal', 'charcoalAccent', 'progreso cobre medio + letra oscura: cápsula de carbón contra el cobre'),
-  ui('charcoal', 'charcoalAccentLight', 'progreso cobre claro + letra oscura: cápsula de carbón contra el cobre'),
-  ui('nextClassCardForeground', 'navActiveTextSmall', 'progreso cobre oscuro + letra clara: cápsula de crema contra el cobre'),
+  // Tarjeta "Progreso mensual" (decisión (v), enmienda del 2026-11-09): COBRE CLARO #C79A6B con letra OSCURA (carbón #0D0F10). Pista = letra al 25 % sobre el cobre;
+  // texto secundario (título, "/ M clases", leyenda, reservadas) = letra al 85 % sobre el cobre; cápsula "Plan ilimitado" de carbón con texto crema. Vale igual a 320,
+  // 360 y 412 dp y con la letra al 1,0, 1,1 y 1,3: el contraste no depende del tamaño. Las otras versiones (grafito, clara y las demás combinaciones de cobre) se descartaron.
+  t('charcoal', 'charcoalAccentLight', 'progreso mensual: número sobre el cobre claro'),
+  t('charcoal', 'charcoalAccentLight', 'progreso mensual, estado sin plan: "Sin plan activo" (carbón) sobre el cobre claro'),
+  { ...t('charcoal', 'charcoalAccentLight', 'progreso mensual: texto secundario (letra al 85 %) sobre el cobre claro'), textOver: { over: 'charcoalAccentLight', alpha: 0.85 } },
+  { ...ui('charcoal', 'charcoal', 'progreso mensual: relleno de la barra contra su pista (letra al 25 % sobre el cobre)'), bgOver: { over: 'charcoalAccentLight', alpha: 0.25 } },
+  ui('charcoal', 'charcoalAccentLight', 'progreso mensual: relleno de la barra contra el cobre claro'),
+  t('nextClassCardForeground', 'charcoal', 'progreso mensual: texto crema de la cápsula "Plan ilimitado" sobre su carbón'),
+  ui('charcoal', 'charcoalAccentLight', 'progreso mensual: cápsula de carbón contra el cobre claro'),
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),
