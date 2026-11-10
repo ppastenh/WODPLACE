@@ -16,6 +16,7 @@ import {
 } from '@workspace/api-client-react';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { HomeView, type HomeViewData } from '@/components/home/HomeView';
+import { streakStatusFrom } from '@/components/home/levelStreakModel';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
@@ -325,6 +326,7 @@ export default function HomeScreen() {
     todayWod,
     planView,
     achievementStats,
+    streakStatus: streakStatusFrom(achievementsQuery),
     rotatingFeaturedPr,
     medalsSummary,
     birthdays,
