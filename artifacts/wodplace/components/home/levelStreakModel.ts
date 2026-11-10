@@ -19,18 +19,30 @@ export const SKILL_LEVEL_LABELS = {
 /** Cantidad de indicadores de la racha: un progreso visual hasta siete (NO son días de la semana: el cliente solo recibe el número). */
 export const STREAK_DOTS = 7;
 
+/** Estado de la consulta de la racha (lo entrega app/home.tsx a partir de React Query): cargando, con error o lista. */
+export type StreakStatus = 'loading' | 'error' | 'ready';
+
 export type StreakView =
   | { kind: 'loading' }
+  | { kind: 'error' }
   | { kind: 'empty' }
   | { kind: 'streak'; days: number; filled: number };
 
+/** Lo que se muestra en lugar del número cuando no hay datos (error de red): un guion, con los siete indicadores vacíos. */
+export const STREAK_NO_DATA = '—';
+
+/** Letra efectiva (simulada x del sistema, con tope 1,3) desde la cual las tarjetas pasan a modo compacto. */
+export const COMPACT_SCALE = 1.15;
+
 /**
- * Estado del recuadro de racha. `null` = todavía cargando (HomeView entrega `achievementsQuery.data?.stats ?? null`): esqueleto, nunca "0 / Empieza hoy".
- * Sin racha (0, vacío o un valor no válido) = vacío; con racha, `filled` = min(días, 7).
+ * Estado del recuadro de racha. `status` lo entrega home.tsx: 'loading' = esqueleto, 'error' = guion "—" (sin "Empieza hoy" ni esqueleto), 'ready' = según los datos.
+ * Si no llega, se deduce de los datos (null = cargando), que es el comportamiento anterior. Sin racha (0, vacío o un valor no válido) = vacío; con racha, `filled` = min(días, 7).
  */
-export function streakView(stats: { currentStreakDays?: number | null } | null): StreakView {
-  if (stats === null) return { kind: 'loading' };
-  const days = stats.currentStreakDays;
+export function streakView(stats: { currentStreakDays?: number | null } | null, status?: StreakStatus): StreakView {
+  const st: StreakStatus = status ?? (stats === null ? 'loading' : 'ready');
+  if (st === 'loading') return { kind: 'loading' };
+  if (st === 'error') return { kind: 'error' };
+  const days = stats?.currentStreakDays;
   if (typeof days !== 'number' || !Number.isFinite(days) || days < 1) return { kind: 'empty' };
   const whole = Math.floor(days);
   return { kind: 'streak', days: whole, filled: Math.min(whole, STREAK_DOTS) };
@@ -44,6 +56,7 @@ export function streakSuffix(days: number): string {
 /** Frase completa del recuadro de racha para lectores de pantalla (incluye los siete indicadores, que no se leen sueltos). */
 export function streakA11yLabel(view: StreakView): string {
   if (view.kind === 'loading') return 'Racha de constancia: cargando';
+  if (view.kind === 'error') return 'Racha de constancia: sin datos';
   if (view.kind === 'empty') return 'Racha de constancia: empieza hoy';
   return `Racha de constancia: ${view.days} ${streakSuffix(view.days)}`;
 }
@@ -78,4 +91,13 @@ export function rankFontSize(text: string, full: number): number {
   if (len <= 6) return full;
   if (len <= 9) return Math.round(full * 0.82);
   return Math.round(full * 0.68);
+}
+
+/**
+ * Estado de la consulta de la racha a partir de lo que app/home.tsx ya sabe de React Query (si hay datos y si hubo error): con datos = lista (un refresco que falla no los borra),
+ * sin datos y con error = error, sin datos ni error = cargando.
+ */
+export function streakStatusFrom(query: { data: unknown; isError: boolean }): StreakStatus {
+  if (query.data) return 'ready';
+  return query.isError ? 'error' : 'loading';
 }

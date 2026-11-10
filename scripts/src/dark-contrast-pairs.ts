@@ -255,23 +255,16 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoal', 'charcoalAccentLight', 'progreso mensual: relleno de la barra contra el cobre claro'),
   t('nextClassCardForeground', 'charcoal', 'progreso mensual: texto crema de la cápsula "Plan ilimitado" sobre su carbón'),
   ui('charcoal', 'charcoalAccentLight', 'progreso mensual: cápsula de carbón contra el cobre claro'),
-  // Recuadros "Tu nivel" y "Racha de constancia" (decisión (w), en evaluación; componente LevelStreakCards.tsx, colores en levelStreakColors.ts). Tratamiento GRAFITO: fondo
-  // nextClassCard (#18191A); el separador de C es el cobre #B98250 al 70 % sobre el grafito; los círculos/insignias son de carbón con borde e ícono de cobre. Vale igual a 320, 360 y 412 dp y con la letra 1,0, 1,1 y 1,3.
-  t('nextClassCardForeground', 'nextClassCard', 'nivel y racha (grafito): rango y número de días en crema sobre el grafito'),
-  t('charcoalMuted', 'nextClassCard', 'nivel y racha (grafito): etiqueta y detalle en gris cálido sobre el grafito'),
-  t('nextClassCardForeground', 'nextClassCardPressed', 'nivel y racha (grafito): rango en crema sobre el grafito presionado (sólido)'),
-  t('charcoalMuted', 'nextClassCardPressed', 'nivel y racha (grafito): etiqueta y detalle en gris cálido sobre el grafito presionado'),
-  { ...ui('charcoalAccent', 'nextClassCard', 'nivel y racha (grafito): separador de C, cobre #B98250 al 70 % sobre el grafito'), textOver: { over: 'nextClassCard', alpha: 0.7 } },
-  ui('charcoalAccent', 'nextClassCard', 'nivel y racha (grafito): borde del círculo/insignia, íconos y indicadores completados en cobre sobre el grafito'),
-  ui('charcoalAccent', 'charcoal', 'nivel y racha (grafito): ícono de cobre sobre el círculo de carbón'),
-  ui('charcoalMuted', 'nextClassCard', 'nivel y racha (grafito): contorno de los indicadores pendientes (gris cálido) sobre el grafito'),
-  // Tratamiento COBRE: fondo cobre oscuro navActiveTextSmall (#8B5E34) SÓLIDO (sin degradado); todo el texto en crema (el gris cálido daría 2,10:1); círculos/insignias de grafito con borde crema;
-  // separador y detalles en carbón; indicadores completados en crema y pendientes con contorno crema. El crema sobre #B98250 daría 2,93:1: por eso el fondo NO se acerca a ese cobre.
-  t('nextClassCardForeground', 'navActiveTextSmall', 'nivel y racha (cobre): rango, número, etiqueta y detalle en crema sobre el cobre oscuro'),
-  { ...t('nextClassCardForeground', 'charcoal', 'nivel y racha (cobre): crema sobre el cobre oscuro presionado (carbón al 20 % encima)'), bgOver: { over: 'navActiveTextSmall', alpha: 0.2 } },
-  ui('nextClassCardForeground', 'navActiveTextSmall', 'nivel y racha (cobre): borde crema de la insignia, indicadores completados y contorno de los pendientes sobre el cobre oscuro'),
-  t('nextClassCardForeground', 'nextClassCard', 'nivel y racha (cobre): ícono crema sobre el círculo de grafito'),
-  ui('charcoal', 'navActiveTextSmall', 'nivel y racha (cobre): separador de C y detalles de E en carbón sobre el cobre oscuro'),
+  // Recuadros "Tu nivel" y "Racha de constancia" (decisión (w), VIGENTE: opción E en grafito; componente LevelStreakCards.tsx, colores en levelStreakColors.ts). Fondo
+  // nextClassCard (#18191A); las insignias de escudo son de carbón con borde e ícono de cobre #B98250; los indicadores completados son de cobre y los pendientes llevan contorno gris cálido.
+  // Vale igual a 320, 360 y 412 dp y con la letra 1,0, 1,1 y 1,3. Las opciones C, el diseño anterior y el tratamiento cobre se descartaron.
+  t('nextClassCardForeground', 'nextClassCard', 'nivel y racha: rango y número de días en crema sobre el grafito'),
+  t('charcoalMuted', 'nextClassCard', 'nivel y racha: etiqueta, detalle, "días seguidos" y flecha en gris cálido sobre el grafito'),
+  t('nextClassCardForeground', 'nextClassCardPressed', 'nivel y racha: rango en crema sobre el grafito presionado (sólido)'),
+  t('charcoalMuted', 'nextClassCardPressed', 'nivel y racha: etiqueta, detalle y flecha en gris cálido sobre el grafito presionado'),
+  ui('charcoalAccent', 'nextClassCard', 'nivel y racha: borde de la insignia y indicadores completados en cobre sobre el grafito'),
+  ui('charcoalAccent', 'charcoal', 'nivel y racha: ícono de cobre sobre el relleno de carbón de la insignia'),
+  ui('charcoalMuted', 'nextClassCard', 'nivel y racha: contorno de los indicadores pendientes (gris cálido) sobre el grafito'),
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),

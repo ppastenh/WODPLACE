@@ -19,7 +19,8 @@ import { MedalBadge } from '@/components/MedalBadge';
 import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
 import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
-import { LEVEL_STREAK_LOOK, LevelStreakCards, type LevelStreakLook } from '@/components/home/LevelStreakCards';
+import { LevelStreakCards } from '@/components/home/LevelStreakCards';
+import type { StreakStatus } from '@/components/home/levelStreakModel';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
@@ -66,6 +67,8 @@ export type HomeViewData = {
   todayWod: TodayWod | null;
   planView: PlanProgressView;
   achievementStats: { currentStreakDays?: number | null } | null;
+  /** Estado de la consulta de la racha (cargando, con error o lista). Si no llega, se deduce de achievementStats (null = cargando). */
+  streakStatus?: StreakStatus;
   rotatingFeaturedPr: { liftName: string; weightKg: number } | null;
   medalsSummary: {
     totalUnlocked: number;
@@ -189,7 +192,6 @@ export function HomeView({
   nextClassLook = NEXT_CLASS_LOOK,
   quoteLook = QUOTE_LOOK,
   progressFontScale,
-  levelStreakLook = LEVEL_STREAK_LOOK,
   levelStreakFontScale,
   levelStreakWidth,
 }: {
@@ -203,14 +205,15 @@ export function HomeView({
   quoteLook?: QuoteLook;
   /** Solo para la pantalla de desarrollo: simula la letra del sistema en la tarjeta "Progreso mensual". */
   progressFontScale?: number;
-  levelStreakLook?: LevelStreakLook;
+  /** Solo para la pantalla de desarrollo: simula la letra del sistema en "Tu nivel" y "Racha de constancia". */
   levelStreakFontScale?: number;
+  /** Solo para la pantalla de desarrollo: simula un ancho de pantalla en "Tu nivel" y "Racha de constancia". */
   levelStreakWidth?: number;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakLook={levelStreakLook} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} />
     </ThemeOverride>
   );
 }
@@ -254,7 +257,6 @@ function HomeViewInner({
   nextClassLook,
   quoteLook,
   progressFontScale,
-  levelStreakLook = LEVEL_STREAK_LOOK,
   levelStreakFontScale,
   levelStreakWidth,
 }: {
@@ -264,7 +266,6 @@ function HomeViewInner({
   nextClassLook: NextClassLook;
   quoteLook: QuoteLook;
   progressFontScale?: number;
-  levelStreakLook?: LevelStreakLook;
   levelStreakFontScale?: number;
   levelStreakWidth?: number;
 }) {
@@ -287,6 +288,7 @@ function HomeViewInner({
     todayWod,
     planView,
     achievementStats,
+    streakStatus,
     rotatingFeaturedPr,
     medalsSummary,
     birthdays,
@@ -531,8 +533,8 @@ function HomeViewInner({
         <LevelStreakCards
           rank={user.rank}
           achievementStats={achievementStats}
+          streakStatus={streakStatus}
           onOpenProfile={() => events.onOpenProfile()}
-          look={levelStreakLook}
           fontScale={levelStreakFontScale}
           screenWidth={levelStreakWidth}
         />
@@ -847,16 +849,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   wideCard: {
-    minHeight: 112,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-  },
-  twoColumnRow: {
-    flexDirection: 'row',
-    gap: SPACING.lg,
-  },
-  statsCard: {
-    flex: 1,
     minHeight: 112,
     borderRadius: RADIUS.xl,
     padding: SPACING.lg,

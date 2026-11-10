@@ -450,6 +450,15 @@ export const DEV_GROUPS: DevGroup[] = [
         label: 'Cargando racha',
         apply: (d) => {
           d.achievementStats = null;
+          d.streakStatus = 'loading';
+        },
+      },
+      {
+        id: 'error',
+        label: 'Error en la racha',
+        apply: (d) => {
+          d.achievementStats = null;
+          d.streakStatus = 'error';
         },
       },
     ],
