@@ -132,3 +132,9 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **Fecha:** 2026-11-09
 - **Decisión:** "Recuadros 'Tu nivel' y 'Racha de constancia': elegida la opción E (dos tarjetas independientes con insignias de escudo en cobre), tratamiento grafito, rango en Anton; las opciones C, el diseño anterior y el tratamiento cobre quedan descartados; los indicadores de racha son un progreso visual hasta siete, porque el cliente solo recibe el número de días seguidos, sin fechas."
 - **Estado:** VIGENTE. Elegida por Pía el 2026-11-09 (incluida su aprobación explícita para editar este archivo); antes estuvo en evaluación entre C y E. El diseño anterior (tarjetas blancas), la opción C, el tratamiento cobre y el chip de tipografía se guardan solo como parche local fuera del repositorio. Solo presentación: los datos, la navegación y la lógica no cambian. "Tu nivel" conserva su toque (lleva a Datos personales); "Racha de constancia" no es un botón.
+
+## (x) Tarjeta "PR destacado"
+
+- **Fecha:** 2026-11-11
+- **Decisión:** "Tarjeta 'PR destacado': concepto PR Champion en grafito con insignia hexagonal de cobre y barra olímpica, nombre del movimiento en Anton y marca en una cápsula con borde de cobre; el diseño anterior queda disponible en desarrollo; laureles descartados por defecto."
+- **Estado:** VIGENTE (por implementar en el commit de código siguiente). Aprobada por Pía el 2026-11-11 (incluida su aprobación explícita para editar este archivo). Solo presentación: la rotación diaria del PR destacado, los datos y la navegación (toca → RM) no cambian. Variantes 'actual' y 'clara', laureles y la insignia de escudo quedan solo en la pantalla de desarrollo.
