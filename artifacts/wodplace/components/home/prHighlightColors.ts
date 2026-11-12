@@ -1,46 +1,41 @@
 import { contrastRatio, mixHex } from './progressColors';
 
 /**
- * Colores PUROS de la tarjeta "PR destacado" (decisión (x)): 'champion' (grafito, el elegido) y 'clara' (solo para comparar en desarrollo).
- * Solo tokens existentes y mezclas de dos tokens (sin colores nuevos): el "#24262A" pedido NO es un token; se usa la mezcla 50 % de nextClassCard (#18191A)
- * y nextClassCardPressed (#2E2F35), que da #232427.
+ * Colores PUROS de la tarjeta "PR destacado" (decisión (x), concepto PR Champion en grafito). Solo tokens existentes y mezclas de dos tokens (sin colores nuevos).
+ * El cobre es el MISMO de las tarjetas "Tu nivel" y "Racha de constancia" (levelStreakColors.ts): charcoalAccent #B98250 en el borde de la insignia, el ícono y los
+ * indicadores; el relleno de la insignia es el mismo carbón (charcoal). El "#24262A" pedido en su día NO es un token: el extremo del degradado y el relleno de la cápsula son
+ * la mezcla 50 % de nextClassCard (#18191A) y nextClassCardPressed (#2E2F35), que da #232428.
  */
-export type PrVariant = 'actual' | 'champion' | 'clara';
-
 export type PrPalette = {
   nextClassCard: string;
   nextClassCardForeground: string;
   nextClassCardPressed: string;
-  charcoalAccentLight: string;
+  charcoal: string;
+  charcoalAccent: string;
   charcoalMuted: string;
-  card: string;
-  cardPressed: string;
-  border: string;
-  accent: string;
-  foreground: string;
-  creamMuted: string;
-  navActiveTextSmall: string;
 };
 
 export type PrColors = {
   background: string;
-  /** Extremo del degradado (el de la derecha). Igual a background en 'clara' (sin degradado). */
+  /** Extremo del degradado (el de la derecha). */
   gradientEnd: string;
   /** Presionado SÓLIDO (nunca opacidad). */
   pressed: string;
-  border: string;
   /** Nombre del movimiento y flecha. */
   primary: string;
-  /** Etiqueta "PR destacado". */
+  /** Etiqueta "PR destacado" (cobre). */
   label: string;
-  /** Texto de la cápsula y valor. */
+  /** Etiqueta mientras se presiona: crema (el cobre sobre el presionado da 4,05:1, menos de 4,5:1). */
+  labelPressed: string;
+  /** Texto, borde e ícono de la cápsula (cobre). */
   capsuleText: string;
   capsuleFill: string;
   capsuleBorder: string;
+  /** Insignia hexagonal: el mismo tratamiento que las insignias de "Tu nivel" y "Racha" (relleno de carbón, borde e ícono de cobre). */
   badgeFill: string;
   badgeBorder: string;
   icon: string;
-  /** Insignia y textos de los estados vacío (atenuados). */
+  /** Insignia y textos atenuados (cargando, error, vacío). */
   muted: string;
   /** Rombos de la textura. */
   texture: string;
@@ -53,44 +48,24 @@ export type PrColors = {
 /** Opacidad de la textura de rombos (casi imperceptible). */
 export const TEXTURE_OPACITY = 0.07;
 
-export function prColors(p: PrPalette, variant: 'champion' | 'clara'): PrColors {
-  if (variant === 'clara') {
-    return {
-      background: p.card,
-      gradientEnd: p.card,
-      pressed: p.cardPressed,
-      border: p.border,
-      primary: p.foreground,
-      label: p.creamMuted,
-      capsuleText: p.foreground,
-      capsuleFill: p.accent,
-      capsuleBorder: p.navActiveTextSmall,
-      badgeFill: p.accent,
-      badgeBorder: p.navActiveTextSmall,
-      icon: p.navActiveTextSmall,
-      muted: p.creamMuted,
-      texture: p.border,
-      accent: p.navActiveTextSmall,
-      bone: p.border,
-    };
-  }
-  const lift = mixHex(p.nextClassCardPressed, p.nextClassCard, 0.5); // #232427
+export function prColors(p: PrPalette): PrColors {
+  const lift = mixHex(p.nextClassCardPressed, p.nextClassCard, 0.5); // #232428
   return {
     background: p.nextClassCard,
     gradientEnd: lift,
     pressed: p.nextClassCardPressed,
-    border: p.nextClassCard,
     primary: p.nextClassCardForeground,
-    label: p.charcoalAccentLight,
-    capsuleText: p.charcoalAccentLight,
+    label: p.charcoalAccent,
+    labelPressed: p.nextClassCardForeground,
+    capsuleText: p.charcoalAccent,
     capsuleFill: lift,
-    capsuleBorder: p.charcoalAccentLight,
-    badgeFill: lift,
-    badgeBorder: p.charcoalAccentLight,
-    icon: p.charcoalAccentLight,
+    capsuleBorder: p.charcoalAccent,
+    badgeFill: p.charcoal,
+    badgeBorder: p.charcoalAccent,
+    icon: p.charcoalAccent,
     muted: p.charcoalMuted,
     texture: p.charcoalMuted,
-    accent: p.charcoalAccentLight,
+    accent: p.charcoalAccent,
     bone: mixHex(p.charcoalMuted, p.nextClassCard, 0.25),
   };
 }
@@ -100,9 +75,9 @@ export type PrMeasure = {
   nameWorst: number;
   /** Nombre sobre el fondo presionado (4,5:1). */
   namePressed: number;
-  /** Etiqueta sobre el peor punto del fondo (4,5:1). */
-  labelWorst: number;
-  /** Etiqueta sobre el fondo presionado (4,5:1). */
+  /** Etiqueta (cobre) sobre el punto medio del degradado: queda a la izquierda, antes de la textura (4,5:1). */
+  labelMid: number;
+  /** Etiqueta (crema) sobre el fondo presionado (4,5:1). */
   labelPressed: number;
   /** Texto de la cápsula sobre su fondo (4,5:1). */
   capsuleText: number;
@@ -114,28 +89,34 @@ export type PrMeasure = {
   icon: number;
   /** Flecha contra el peor punto del fondo (3:1). */
   chevron: number;
-  /** Texto atenuado (vacío) sobre el fondo (4,5:1). */
+  /** Texto atenuado (la sugerencia del vacío) sobre el punto medio del degradado (4,5:1). */
   muted: number;
 };
 
-/** Peor punto del fondo bajo el texto: el extremo claro del degradado con la textura (rombos al TEXTURE_OPACITY) encima. */
+/** Peor punto del fondo a la derecha: el extremo claro del degradado con la textura (rombos al TEXTURE_OPACITY) encima. */
 export function prWorstBackground(c: PrColors): string {
   return mixHex(c.texture, c.gradientEnd, TEXTURE_OPACITY);
 }
 
+/** Punto medio del degradado: el fondo bajo la etiqueta y la sugerencia, que quedan en la mitad izquierda (la textura empieza al 58 % del ancho). */
+export function prMidBackground(c: PrColors): string {
+  return mixHex(c.gradientEnd, c.background, 0.5);
+}
+
 export function prMeasure(c: PrColors): PrMeasure {
   const worst = prWorstBackground(c);
+  const mid = prMidBackground(c);
   return {
     nameWorst: contrastRatio(c.primary, worst),
     namePressed: contrastRatio(c.primary, c.pressed),
-    labelWorst: contrastRatio(c.label, worst),
-    labelPressed: contrastRatio(c.label, c.pressed),
+    labelMid: contrastRatio(c.label, mid),
+    labelPressed: contrastRatio(c.labelPressed, c.pressed),
     capsuleText: contrastRatio(c.capsuleText, c.capsuleFill),
     capsuleBorder: contrastRatio(c.capsuleBorder, c.background),
     badgeBorder: contrastRatio(c.badgeBorder, c.background),
     icon: contrastRatio(c.icon, c.badgeFill),
     chevron: contrastRatio(c.primary, worst),
-    muted: contrastRatio(c.muted, worst),
+    muted: contrastRatio(c.muted, mid),
   };
 }
 
@@ -144,7 +125,7 @@ export function prPasses(m: PrMeasure): boolean {
   return (
     m.nameWorst >= 4.5 &&
     m.namePressed >= 4.5 &&
-    m.labelWorst >= 4.5 &&
+    m.labelMid >= 4.5 &&
     m.labelPressed >= 4.5 &&
     m.capsuleText >= 4.5 &&
     m.capsuleBorder >= 3 &&

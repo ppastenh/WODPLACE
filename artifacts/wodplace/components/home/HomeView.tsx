@@ -20,7 +20,7 @@ import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/Da
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
 import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
 import { LevelStreakCards } from '@/components/home/LevelStreakCards';
-import { PR_LOOK, PrHighlightCard, type PrLook } from '@/components/home/PrHighlightCard';
+import { PrHighlightCard } from '@/components/home/PrHighlightCard';
 import type { PrStatus } from '@/components/home/prHighlightModel';
 import type { StreakStatus } from '@/components/home/levelStreakModel';
 import type { useBooking } from '@/context/BookingContext';
@@ -198,7 +198,6 @@ export function HomeView({
   progressFontScale,
   levelStreakFontScale,
   levelStreakWidth,
-  prLook = PR_LOOK,
   prFontScale,
   prWidth,
 }: {
@@ -216,15 +215,14 @@ export function HomeView({
   levelStreakFontScale?: number;
   /** Solo para la pantalla de desarrollo: simula un ancho de pantalla en "Tu nivel" y "Racha de constancia". */
   levelStreakWidth?: number;
-  /** Solo para la pantalla de desarrollo: variante de la tarjeta "PR destacado" (por defecto, PR_LOOK: el concepto PR Champion). */
-  prLook?: PrLook;
+  /** Solo para la pantalla de desarrollo: simula la letra del sistema en la tarjeta "PR destacado". */
   prFontScale?: number;
   prWidth?: number;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prLook={prLook} prFontScale={prFontScale} prWidth={prWidth} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prFontScale={prFontScale} prWidth={prWidth} />
     </ThemeOverride>
   );
 }
@@ -270,7 +268,6 @@ function HomeViewInner({
   progressFontScale,
   levelStreakFontScale,
   levelStreakWidth,
-  prLook = PR_LOOK,
   prFontScale,
   prWidth,
 }: {
@@ -282,7 +279,6 @@ function HomeViewInner({
   progressFontScale?: number;
   levelStreakFontScale?: number;
   levelStreakWidth?: number;
-  prLook?: PrLook;
   prFontScale?: number;
   prWidth?: number;
 }) {
@@ -561,7 +557,6 @@ function HomeViewInner({
           pr={rotatingFeaturedPr}
           prStatus={prStatus}
           onOpenRm={() => events.onOpenRm()}
-          look={prLook}
           fontScale={prFontScale}
           screenWidth={prWidth}
         />

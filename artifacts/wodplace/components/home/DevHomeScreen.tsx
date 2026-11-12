@@ -21,8 +21,6 @@ import {
   defaultSelection,
   type DevSelection,
 } from '@/components/home/devHomeStates';
-import { PR_LOOK, type PrBadgeShape, type PrLook } from '@/components/home/PrHighlightCard';
-import type { PrVariant } from '@/components/home/prHighlightColors';
 import { ThemeOverride } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -113,20 +111,7 @@ const PROGRESS_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
 ];
 type QuoteFont = '1' | '1.1' | '1.3';
 // Recuadros "Tu nivel" y "Racha de constancia" (decisión (w), opción E en grafito): ancho y letra simulados para probar el caso angosto. Solo desarrollo.
-// Tarjeta "PR destacado" (decisión (x)): variante, laureles, forma de la insignia, letra y ancho simulados. Solo desarrollo.
-const PR_VARIANT_CHIPS: { id: PrVariant; label: string }[] = [
-  { id: 'actual', label: 'PR: actual' },
-  { id: 'champion', label: 'PR: champion' },
-  { id: 'clara', label: 'PR: clara' },
-];
-const PR_LAUREL_CHIPS: { id: 'no' | 'si'; label: string }[] = [
-  { id: 'no', label: 'Laureles: no' },
-  { id: 'si', label: 'Laureles: sí' },
-];
-const PR_BADGE_CHIPS: { id: PrBadgeShape; label: string }[] = [
-  { id: 'hexagono', label: 'Insignia: hexágono' },
-  { id: 'escudo', label: 'Insignia: escudo' },
-];
+// Tarjeta "PR destacado" (decisión (x)): ancho y letra simulados para probar el caso angosto. Solo desarrollo.
 const PR_WIDTH_CHIPS: { id: LevelWidth; label: string }[] = [
   { id: 'real', label: 'PR, ancho: real' },
   { id: '412', label: 'PR, ancho: 412' },
@@ -265,12 +250,8 @@ function DevHomeBody() {
   const [progressFont, setProgressFont] = useState<QuoteFont>('1');
   const [levelWidth, setLevelWidth] = useState<LevelWidth>('real');
   const [levelScale, setLevelScale] = useState<QuoteFont>('1');
-  const [prVariant, setPrVariant] = useState<PrVariant>(PR_LOOK.variant);
-  const [prLaurels, setPrLaurels] = useState<'no' | 'si'>(PR_LOOK.laurels ? 'si' : 'no');
-  const [prBadge, setPrBadge] = useState<PrBadgeShape>(PR_LOOK.badge);
   const [prWidth, setPrWidth] = useState<LevelWidth>('real');
   const [prScale, setPrScale] = useState<QuoteFont>('1');
-  const prLook: PrLook = { variant: prVariant, laurels: prLaurels === 'si', badge: prBadge };
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -315,9 +296,6 @@ function DevHomeBody() {
           <ChipGroup title="Tarjeta Progreso mensual: letra simulada" chips={PROGRESS_FONT_CHIPS} selected={progressFont} onSelect={setProgressFont} />
           <ChipGroup title="Nivel y racha: ancho simulado" chips={LEVEL_WIDTH_CHIPS} selected={levelWidth} onSelect={setLevelWidth} />
           <ChipGroup title="Nivel y racha: letra simulada" chips={LEVEL_SCALE_CHIPS} selected={levelScale} onSelect={setLevelScale} />
-          <ChipGroup title="PR destacado: diseño" chips={PR_VARIANT_CHIPS} selected={prVariant} onSelect={setPrVariant} />
-          <ChipGroup title="PR destacado: laureles" chips={PR_LAUREL_CHIPS} selected={prLaurels} onSelect={setPrLaurels} />
-          <ChipGroup title="PR destacado: insignia" chips={PR_BADGE_CHIPS} selected={prBadge} onSelect={setPrBadge} />
           <ChipGroup title="PR destacado: ancho simulado" chips={PR_WIDTH_CHIPS} selected={prWidth} onSelect={setPrWidth} />
           <ChipGroup title="PR destacado: letra simulada" chips={PR_SCALE_CHIPS} selected={prScale} onSelect={setPrScale} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
@@ -376,7 +354,6 @@ function DevHomeBody() {
         progressFontScale={Number(progressFont)}
         levelStreakFontScale={Number(levelScale)}
         levelStreakWidth={levelWidth === 'real' ? undefined : Number(levelWidth)}
-        prLook={prLook}
         prFontScale={Number(prScale)}
         prWidth={prWidth === 'real' ? undefined : Number(prWidth)}
       />

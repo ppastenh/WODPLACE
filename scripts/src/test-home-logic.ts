@@ -1040,74 +1040,76 @@ describe('Tarjeta "PR destacado": estados y textos (función pura)', () => {
   });
 });
 
-describe('Tarjeta "PR destacado": colores y contraste (champion en grafito)', () => {
+describe('Tarjeta "PR destacado": colores y contraste (cobre de "Tu nivel" y "Racha" sobre grafito)', () => {
   const r = (n: number) => Math.round(n * 100) / 100;
-  const c = prColors(light, 'champion');
+  const c = prColors(light);
   const m = prMeasure(c);
+  const nivel = levelStreakColors(light);
   it('cumple los mínimos (4,5:1 texto, 3:1 gráficos) y usa solo tokens existentes y una mezcla de dos tokens', () => {
     assert.ok(prPasses(m), JSON.stringify(m));
     assert.equal(c.background, light.nextClassCard);
     assert.equal(c.primary, light.nextClassCardForeground);
-    assert.equal(c.label, light.charcoalAccentLight);
-    assert.equal(c.capsuleBorder, light.charcoalAccentLight);
-    assert.equal(c.badgeBorder, light.charcoalAccentLight);
-    assert.equal(c.icon, light.charcoalAccentLight);
     assert.equal(c.pressed, light.nextClassCardPressed);
     assert.equal(c.gradientEnd, '#232428', 'extremo del degradado = mezcla 50 % de nextClassCard y nextClassCardPressed (los pares de contraste lo citan literal)');
     assert.equal(c.capsuleFill, c.gradientEnd);
   });
-  it('números exactos: nombre 12,24; etiqueta 5,42; texto de la cápsula 6,10; bordes 6,93; barra 6,10; flecha 12,24', () => {
+  it('el cobre es el MISMO que el de "Tu nivel" y "Racha" (charcoalAccent #B98250) en insignia, ícono, etiqueta, cápsula y acento; el relleno de la insignia es el mismo carbón; sin cobre claro', () => {
+    assert.equal(light.charcoalAccent, '#B98250');
+    for (const v of [c.badgeBorder, c.icon, c.label, c.capsuleBorder, c.capsuleText, c.accent]) assert.equal(v, light.charcoalAccent);
+    assert.equal(c.badgeBorder, nivel.badgeBorder);
+    assert.equal(c.icon, nivel.icon);
+    assert.equal(c.badgeFill, nivel.badgeFill);
+    const colorsSrc = readFileSync(new URL('../../artifacts/wodplace/components/home/prHighlightColors.ts', import.meta.url), 'utf8');
+    assert.ok(!/charcoalAccentLight|C79A6B/i.test(colorsSrc), 'queda cobre claro');
+  });
+  it('números exactos: nombre 12,24; etiqueta 5,00; texto de la cápsula 4,70; bordes 5,34; barra 5,83; flecha 12,24; presionado: nombre 11,86 y etiqueta (crema) 11,86', () => {
     assert.equal(r(m.nameWorst), 12.24);
-    assert.equal(r(m.labelWorst), 5.42);
-    assert.equal(r(m.capsuleText), 6.1);
-    assert.equal(r(m.capsuleBorder), 6.93);
-    assert.equal(r(m.badgeBorder), 6.93);
-    assert.equal(r(m.icon), 6.1);
+    assert.equal(r(m.labelMid), 5);
+    assert.equal(r(m.capsuleText), 4.7);
+    assert.equal(r(m.capsuleBorder), 5.34);
+    assert.equal(r(m.badgeBorder), 5.34);
+    assert.equal(r(m.icon), 5.83);
     assert.equal(r(m.chevron), 12.24);
+    assert.equal(r(m.namePressed), 11.86);
+    assert.equal(r(m.labelPressed), 11.86);
     assert.equal(prWorstBackground(c), '#2c2d30', 'peor punto: degradado claro + textura al 7 %');
   });
-  it('el presionado es un color SÓLIDO de la paleta (sin opacidad) y los textos siguen sobre 4,5:1', () => {
+  it('el cobre sobre el presionado daría 4,05:1 (menos de 4,5:1): por eso la etiqueta pasa a crema mientras se presiona (color sólido, sin opacidad)', () => {
+    assert.ok(contrast(light.charcoalAccent, light.nextClassCardPressed) < 4.5);
+    assert.equal(c.labelPressed, light.nextClassCardForeground);
     assert.match(c.pressed, /^#[0-9a-f]{6}$/i);
-    assert.ok(m.namePressed >= 4.5 && m.labelPressed >= 4.5);
   });
-  it("la variante 'clara' (solo para comparar) también pasa y usa tokens existentes", () => {
-    const k = prColors(light, 'clara');
-    assert.ok(prPasses(prMeasure(k)), JSON.stringify(prMeasure(k)));
-    assert.equal(k.border, light.border);
-    assert.equal(k.badgeFill, light.accent);
+  it('la cápsula con el cobre medio sigue sobre 4,5:1 con su fondo #232428 (si bajara, el fondo pasaría a nextClassCard)', () => {
+    assert.ok(contrast(light.charcoalAccent, c.capsuleFill) >= 4.5);
   });
 });
 
-describe('Tarjeta "PR destacado" (PrHighlightCard.tsx): estructura, toque, accesibilidad y sin código muerto', () => {
+describe('Tarjeta "PR destacado" (PrHighlightCard.tsx): un solo diseño, toque, accesibilidad, alto estable y sin código muerto', () => {
   const src = readFileSync(new URL('../../artifacts/wodplace/components/home/PrHighlightCard.tsx', import.meta.url), 'utf8');
   const colorsSrc = readFileSync(new URL('../../artifacts/wodplace/components/home/prHighlightColors.ts', import.meta.url), 'utf8');
   const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
   const dev = readFileSync(new URL('../../artifacts/wodplace/components/home/DevHomeScreen.tsx', import.meta.url), 'utf8');
   const states = readFileSync(new URL('../../artifacts/wodplace/components/home/devHomeStates.ts', import.meta.url), 'utf8');
 
-  it("el valor por defecto es 'champion' (Inicio real cambia), sin laureles y con hexágono; para volver basta variant: 'actual'", () => {
-    assert.ok(src.includes("export const PR_LOOK: PrLook = { variant: 'champion', laurels: false, badge: 'hexagono' };"));
-    assert.ok(src.includes("function ActualCard"));
+  it('hay UN solo diseño: no quedan las variantes actual y clara, los laureles, la insignia de escudo, el cobre claro ni sus chips', () => {
+    for (const word of ['ActualCard', "'clara'", 'laurels', 'LEAVES', 'Ellipse', 'SHIELD_PATH', "'escudo'", 'PrLook', 'PR_LOOK', 'PrVariant', 'PrBadgeShape']) {
+      assert.ok(!src.includes(word) && !colorsSrc.includes(word) && !home.includes(word) && !dev.includes(word), 'queda: ' + word);
+    }
+    for (const w of ['charcoalAccentLight', 'successBackground']) assert.ok(!src.includes(w) && !colorsSrc.includes(w), 'queda: ' + w);
+    for (const chip of ['PR: actual', 'PR: champion', 'PR: clara', 'Laureles', 'Insignia:']) assert.ok(!dev.includes(chip), 'queda el chip: ' + chip);
   });
-  it('HomeView solo delega: la tarjeta salió de HomeView y conserva el toque a RM (onOpenRm)', () => {
+  it('HomeView no tiene restos de la tarjeta: solo la llama y le pasa el toque a RM, el estado y la letra/ancho de desarrollo', () => {
     assert.ok(home.includes('<PrHighlightCard'));
-    assert.ok(home.includes('onOpenRm={() => events.onOpenRm()}'));
-    assert.ok(home.includes('prStatus={prStatus}'));
-    assert.ok(!home.includes('Aún no hay PRs') && !home.includes('Ver progreso y PRs'), 'ya no está duplicada en HomeView');
-    assert.ok(!home.includes('prEmptyValue') && !/^\s*wideCard:/m.test(home), 'estilos sin uso');
+    assert.ok(home.includes('onOpenRm={() => events.onOpenRm()}') && home.includes('prStatus={prStatus}'));
+    for (const rest of ['Aún no hay PRs', 'Ver progreso y PRs', 'prEmptyValue', 'trophy-outline', 'rotatingFeaturedPr.liftName', 'successBackground']) assert.ok(!home.includes(rest), 'resto en HomeView: ' + rest);
+    assert.ok(!/^\s*wideCard:/m.test(home));
   });
-  it('el diseño actual conserva su texto, su toque, su flecha y su presionado verde sólido', () => {
-    const a = src.slice(src.indexOf('function ActualCard'), src.indexOf('/* ───────────── Piezas'));
-    assert.ok(a.includes('accessibilityLabel={PR_A11Y_LABEL}') && a.includes('onPress={onOpenRm}'));
-    assert.ok(a.includes('colors.successBackgroundPressed') && a.includes('name="chevron-right"'));
-  });
-  it('champion y clara: la tarjeta es UN botón con la etiqueta de siempre, presionado SÓLIDO, flecha lineal; sin opacidad en el presionado', () => {
-    const c = src.slice(src.indexOf('function ChampionCard'), src.indexOf('/* Estilos del diseño ACTUAL'));
-    assert.equal((c.match(/<Pressable/g) ?? []).length, 1);
-    assert.equal((c.match(/accessibilityRole="button"/g) ?? []).length, 1);
-    assert.ok(c.includes(': PR_A11Y_LABEL}') && c.includes('onPress={onOpenRm}'));
-    assert.ok(/pressed \? c\.pressed/.test(c));
-    assert.ok(c.includes('name="chevron-right"') && !c.includes('arrow-right'), 'flecha lineal, sin botón circular');
+  it('la tarjeta es UN botón con la etiqueta de siempre (o "sin datos" en error), presionado SÓLIDO y flecha lineal; el degradado se apaga al presionar', () => {
+    assert.equal((src.match(/<Pressable/g) ?? []).length, 1);
+    assert.equal((src.match(/accessibilityRole="button"/g) ?? []).length, 1);
+    assert.ok(src.includes(': PR_A11Y_LABEL}') && src.includes('onPress={onOpenRm}'));
+    assert.ok(/pressed \? c\.pressed/.test(src) && src.includes('{pressed ? null : ('));
+    assert.ok(src.includes('name="chevron-right"') && !src.includes('arrow-right'));
     assert.ok(!/opacity/i.test(src.replace(/shadowOpacity/g, '').replace(/TEXTURE_OPACITY|strokeOpacity/g, '')), 'solo la textura usa opacidad (decorativa)');
   });
   it('insignia, textura, acento y flecha: ocultos a lectores de pantalla y en contenedores con pointerEvents="none" (nunca en un Text)', () => {
@@ -1116,31 +1118,42 @@ describe('Tarjeta "PR destacado" (PrHighlightCard.tsx): estructura, toque, acces
     assert.ok(!/<Text[^>]*pointerEvents/.test(src), 'pointerEvents en un Text');
     assert.ok((src.match(/importantForAccessibility="no-hide-descendants"/g) ?? []).length >= 4);
   });
-  it('la insignia es un hexágono con barra olímpica dibujado con react-native-svg; el degradado es de expo-linear-gradient y se apaga al presionar', () => {
-    assert.ok(src.includes("import Svg, { Defs, Ellipse, G, Path, Pattern, Rect } from 'react-native-svg';"));
-    assert.ok(src.includes("import { LinearGradient } from 'expo-linear-gradient';"));
+  it('la insignia hexagonal tiene el mismo tratamiento que las de "Tu nivel" y "Racha": borde de 1,6 dp, relleno oscuro y barra de cobre; el degradado es de expo-linear-gradient', () => {
     assert.ok(src.includes('const HEX_PATH') && src.includes('const BAR_PATH'));
-    assert.ok(src.includes('clara || pressed ? null'), 'el degradado no se pinta presionado (el presionado es un color sólido)');
+    assert.ok(src.includes('fill={c.badgeFill} stroke={border} strokeWidth={1.6}'));
+    const nivelSrc = readFileSync(new URL('../../artifacts/wodplace/components/home/LevelStreakCards.tsx', import.meta.url), 'utf8');
+    assert.ok(nivelSrc.includes('fill={c.badgeFill} stroke={c.badgeBorder} strokeWidth={1.6}'));
+    assert.ok(src.includes("import { LinearGradient } from 'expo-linear-gradient';"));
+  });
+  it('ALTO ESTABLE: el nombre y la cápsula van en casillas de alto fijo que usan los cuatro estados (cargando, error, vacío, con marca)', () => {
+    assert.ok(src.includes('minHeight: nameSlotH') && src.includes('minHeight: capsuleH'));
+    assert.ok(src.includes('const NAME_SLOT = 26;'));
+    const cap = src.slice(src.indexOf('function CapsuleSlot'), src.indexOf('const styles = StyleSheet.create'));
+    assert.ok(cap.includes("view.kind === 'loading'") && cap.includes('height={height}'), 'el esqueleto de la cápsula mide lo mismo que la cápsula');
+    assert.ok(cap.includes("view.kind === 'error') return null"), 'el error reserva el alto sin dibujar nada nuevo');
+    assert.ok((cap.match(/minHeight: height/g) ?? []).length === 2, 'la marca y la sugerencia del vacío miden lo mismo');
   });
   it('el nombre va en Anton por tramos, sin adjustsFontSizeToFit ni numberOfLines (pasa a dos líneas, sin "…" ni cortes)', () => {
-    const c = src.slice(src.indexOf('function ChampionCard'), src.indexOf('/* Estilos del diseño ACTUAL'));
-    assert.ok(c.includes('prNameFontSize(view.name)'));
-    assert.ok(!/^\s*adjustsFontSizeToFit/m.test(c) && !c.includes('numberOfLines') && !c.includes('ellipsizeMode'));
+    assert.ok(src.includes('prNameFontSize(view.name)'));
+    assert.ok(!/^\s*adjustsFontSizeToFit/m.test(src) && !src.includes('numberOfLines') && !src.includes('ellipsizeMode'));
     assert.ok(src.includes("name: { fontFamily: 'Anton_400Regular'"));
+  });
+  it('estados de error y vacío: el error usa guion y el borde del vacío es de cobre punteado', () => {
+    assert.ok(src.includes("view.kind === 'error' ? PR_NO_DATA : PR_EMPTY_TITLE"));
+    assert.ok(src.includes("kind === 'empty' ? '3 3'") && src.includes('borderColor: c.capsuleBorder'));
   });
   it('sin código muerto: cada función y constante del componente se usa, y cada color de prHighlightColors se lee en el componente', () => {
     const decls = [...src.matchAll(/^(?:export )?(?:function|const) (\w+)/gm)].map((x) => x[1]);
     assert.ok(decls.length >= 10);
-    for (const name of decls.filter((d) => d !== 'PrHighlightCard' && d !== 'PR_LOOK')) assert.ok((src.match(new RegExp('\\b' + name + '\\b', 'g')) ?? []).length >= 2, 'sin uso: ' + name);
+    for (const name of decls.filter((d) => d !== 'PrHighlightCard')) assert.ok((src.match(new RegExp('\\b' + name + '\\b', 'g')) ?? []).length >= 2, 'sin uso: ' + name);
     const fields = [...colorsSrc.slice(colorsSrc.indexOf('export type PrColors'), colorsSrc.indexOf('/** Opacidad de la textura')).matchAll(/^  (\w+): string;/gm)].map((x) => x[1]);
     assert.ok(fields.length >= 15);
-    for (const f of fields.filter((x) => !['bone', 'border'].includes(x))) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src), 'color sin uso: ' + f);
-    assert.ok(/\bc\.bone\b/.test(src) && /\bc\.border\b/.test(src));
+    for (const f of fields) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src), 'color sin uso: ' + f);
   });
-  it('en desarrollo: chips de diseño, laureles, insignia, ancho y letra, y los estados (marcas, vacío, cargando)', () => {
-    for (const chip of ['PR: actual', 'PR: champion', 'PR: clara', 'Laureles: no', 'Laureles: sí', 'Insignia: hexágono', 'Insignia: escudo', 'PR, ancho: 320', 'PR, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
-    for (const label of ['PR vacío', 'PR con marca', 'PR Sentadilla trasera', 'PR Clean & Jerk', 'PR marca de 3 dígitos', 'PR con decimales', 'PR cargando']) assert.ok(states.includes(`'${label}'`), label);
-    assert.ok(states.includes("d.prStatus = 'loading'"));
+  it('en desarrollo se conservan el ancho, la letra y los estados (nombres corto y largo, marcas de 2 y 3 dígitos, decimales, vacío, cargando y error)', () => {
+    for (const chip of ['PR, ancho: 320', 'PR, ancho: 360', 'PR, ancho: 412', 'PR, letra simulada: 1,0', 'PR, letra simulada: 1,1', 'PR, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
+    for (const label of ['PR vacío', 'PR con marca', 'PR Sentadilla trasera', 'PR Clean & Jerk', 'PR marca de 3 dígitos', 'PR con decimales', 'PR cargando', 'PR error']) assert.ok(states.includes(`'${label}'`), label);
+    assert.ok(states.includes("d.prStatus = 'loading'") && states.includes("d.prStatus = 'error'"));
   });
   it('el texto chico mide 12 sp (mínimo de Inicio: 11), sin hex escritos a mano salvo la etiqueta de desarrollo, y el alto se lee con readLayout (sincrónico)', () => {
     assert.ok(src.includes('const LABEL = FONT_SIZE.sm;'));
@@ -1184,7 +1197,7 @@ describe('Tarjeta "PR destacado": estados cargando, error, vacío y con marca (f
   it('el componente dibuja el error con guion y su frase accesible, sin texto nuevo, y la tarjeta sigue tocable hacia RM (RM carga sus propias marcas)', () => {
     const src = readFileSync(new URL('../../artifacts/wodplace/components/home/PrHighlightCard.tsx', import.meta.url), 'utf8');
     assert.ok(src.includes("view.kind === 'error' ? PR_A11Y_NO_DATA : PR_A11Y_LABEL"));
-    assert.ok(src.includes('{PR_NO_DATA}'));
+    assert.ok(src.includes('PR_NO_DATA'));
     assert.ok(src.includes('onPress={onOpenRm}'));
     const states = readFileSync(new URL('../../artifacts/wodplace/components/home/devHomeStates.ts', import.meta.url), 'utf8');
     assert.ok(states.includes("'PR error'") && states.includes("d.prStatus = 'error'"));
