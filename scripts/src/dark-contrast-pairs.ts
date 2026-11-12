@@ -265,6 +265,18 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoalAccent', 'nextClassCard', 'nivel y racha: borde de la insignia y indicadores completados en cobre sobre el grafito'),
   ui('charcoalAccent', 'charcoal', 'nivel y racha: ícono de cobre sobre el relleno de carbón de la insignia'),
   ui('charcoalMuted', 'nextClassCard', 'nivel y racha: contorno de los indicadores pendientes (gris cálido) sobre el grafito'),
+  // Tarjeta "PR destacado" (decisión (x), concepto PR Champion; componente PrHighlightCard.tsx, colores en prHighlightColors.ts). Fondo grafito nextClassCard (#18191A) con un degradado
+  // MUY sutil hacia #232428 (mezcla 50 % de nextClassCard y nextClassCardPressed; el #24262A pedido no es un token). El peor punto bajo el texto es ese extremo claro con la textura de rombos
+  // (charcoalMuted al 7 %, solo el trazo, no todo el píxel) encima. Cápsula e insignia: relleno #232428, borde y barra olímpica en cobre claro #C79A6B. Vale igual a 320, 360 y 412 dp y con la letra 1,0, 1,1 y 1,3.
+  { ...t('nextClassCardForeground', '#232428', 'PR destacado: nombre del movimiento (crema) sobre el peor punto del degradado con la textura'), bgLiteral: { hex: '#A29E94', over: '#232428', alpha: 0.07 } },
+  { ...t('charcoalAccentLight', '#232428', 'PR destacado: etiqueta "PR destacado" (cobre claro) sobre el peor punto del degradado con la textura'), bgLiteral: { hex: '#A29E94', over: '#232428', alpha: 0.07 } },
+  { ...t('charcoalMuted', '#232428', 'PR destacado: textos atenuados del estado vacío sobre el peor punto del degradado con la textura'), bgLiteral: { hex: '#A29E94', over: '#232428', alpha: 0.07 } },
+  { ...ui('nextClassCardForeground', '#232428', 'PR destacado: flecha lineal en crema sobre el peor punto del degradado con la textura'), bgLiteral: { hex: '#A29E94', over: '#232428', alpha: 0.07 } },
+  t('nextClassCardForeground', 'nextClassCardPressed', 'PR destacado: nombre en crema sobre el grafito presionado (sólido)'),
+  t('charcoalAccentLight', 'nextClassCardPressed', 'PR destacado: etiqueta en cobre claro sobre el grafito presionado'),
+  t('charcoalAccentLight', '#232428', 'PR destacado: valor de la marca (cobre claro, Inter Bold) sobre el relleno de la cápsula'),
+  ui('charcoalAccentLight', 'nextClassCard', 'PR destacado: borde de la cápsula y de la insignia hexagonal en cobre claro sobre el grafito'),
+  ui('charcoalAccentLight', '#232428', 'PR destacado: barra olímpica en cobre claro sobre el relleno de la insignia'),
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),

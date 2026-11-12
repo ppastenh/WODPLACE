@@ -20,6 +20,8 @@ import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/Da
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
 import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
 import { LevelStreakCards } from '@/components/home/LevelStreakCards';
+import { PR_LOOK, PrHighlightCard, type PrLook } from '@/components/home/PrHighlightCard';
+import type { PrStatus } from '@/components/home/prHighlightModel';
 import type { StreakStatus } from '@/components/home/levelStreakModel';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
@@ -70,6 +72,8 @@ export type HomeViewData = {
   /** Estado de la consulta de la racha (cargando, con error o lista). Si no llega, se deduce de achievementStats (null = cargando). */
   streakStatus?: StreakStatus;
   rotatingFeaturedPr: { liftName: string; weightKg: number } | null;
+  /** Estado de la consulta de las marcas (cargando o lista). Si no llega, se asume 'ready' (null = sin marcas, como hasta ahora). */
+  prStatus?: PrStatus;
   medalsSummary: {
     totalUnlocked: number;
     totalAchievements: number;
@@ -194,6 +198,9 @@ export function HomeView({
   progressFontScale,
   levelStreakFontScale,
   levelStreakWidth,
+  prLook = PR_LOOK,
+  prFontScale,
+  prWidth,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -209,11 +216,15 @@ export function HomeView({
   levelStreakFontScale?: number;
   /** Solo para la pantalla de desarrollo: simula un ancho de pantalla en "Tu nivel" y "Racha de constancia". */
   levelStreakWidth?: number;
+  /** Solo para la pantalla de desarrollo: variante de la tarjeta "PR destacado" (por defecto, PR_LOOK: el concepto PR Champion). */
+  prLook?: PrLook;
+  prFontScale?: number;
+  prWidth?: number;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prLook={prLook} prFontScale={prFontScale} prWidth={prWidth} />
     </ThemeOverride>
   );
 }
@@ -259,6 +270,9 @@ function HomeViewInner({
   progressFontScale,
   levelStreakFontScale,
   levelStreakWidth,
+  prLook = PR_LOOK,
+  prFontScale,
+  prWidth,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -268,6 +282,9 @@ function HomeViewInner({
   progressFontScale?: number;
   levelStreakFontScale?: number;
   levelStreakWidth?: number;
+  prLook?: PrLook;
+  prFontScale?: number;
+  prWidth?: number;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -289,6 +306,7 @@ function HomeViewInner({
     planView,
     achievementStats,
     streakStatus,
+    prStatus,
     rotatingFeaturedPr,
     medalsSummary,
     birthdays,
@@ -539,57 +557,14 @@ function HomeViewInner({
           screenWidth={levelStreakWidth}
         />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Ver progreso y PRs"
-          onPress={() => events.onOpenRm()}
-          style={({ pressed }) => [
-            styles.wideCard, soft,
-            { backgroundColor: pressed ? colors.successBackgroundPressed : colors.successBackground },
-          ]}
-        >
-          <View style={styles.smallCardHeader}>
-            <View style={[styles.iconBadge, { backgroundColor: colors.card }]}>
-              <MaterialCommunityIcons name="trophy-outline" size={18} color={colors.success} />
-            </View>
-            <Feather name="chevron-right" size={18} color={colors.creamMuted} />
-          </View>
-          <Text style={[styles.smallCardLabel, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-            PR destacado
-          </Text>
-          {rotatingFeaturedPr ? (
-            <>
-              <Text
-                style={[styles.statsValue, { color: colors.foreground }]}
-                numberOfLines={2}
-                maxFontSizeMultiplier={1.3}
-              >
-                {rotatingFeaturedPr.liftName}
-              </Text>
-              <Text
-                style={[styles.statsDetail, { color: colors.creamMuted }]}
-                maxFontSizeMultiplier={1.3}
-              >
-                {rotatingFeaturedPr.weightKg} kg
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text
-                style={[styles.prEmptyValue, { color: colors.foreground }]}
-                maxFontSizeMultiplier={1.3}
-              >
-                Aún no hay PRs
-              </Text>
-              <Text
-                style={[styles.statsDetail, { color: colors.creamMuted }]}
-                maxFontSizeMultiplier={1.3}
-              >
-                Registra tu primera marca
-              </Text>
-            </>
-          )}
-        </Pressable>
+        <PrHighlightCard
+          pr={rotatingFeaturedPr}
+          prStatus={prStatus}
+          onOpenRm={() => events.onOpenRm()}
+          look={prLook}
+          fontScale={prFontScale}
+          screenWidth={prWidth}
+        />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Ver medallas"
@@ -848,11 +823,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs2,
     lineHeight: 16,
   },
-  wideCard: {
-    minHeight: 112,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-  },
   statsValue: {
     fontSize: FONT_SIZE.display,
     lineHeight: 26,
@@ -864,15 +834,6 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontFamily: 'Inter_500Medium',
     marginTop: 3,
-  },
-  // "PR destacado" empty state only — deliberately smaller than statsValue
-  // so "Aún no hay PRs" fits the card's width without truncating (statsValue
-  // is 22px Anton, too wide for that string in a 2-column card).
-  prEmptyValue: {
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 16,
-    fontFamily: 'Inter_700Bold',
-    marginTop: SPACING.sm2,
   },
   medalsWideCard: {
     flexDirection: 'row',

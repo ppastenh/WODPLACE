@@ -396,6 +396,63 @@ export const DEV_GROUPS: DevGroup[] = [
           d.rotatingFeaturedPr = { liftName: 'Peso muerto', weightKg: 140 };
         },
       },
+      {
+        id: 'corto',
+        label: 'PR nombre corto (Snatch, 2 dígitos)',
+        apply: (d) => {
+          d.rotatingFeaturedPr = { liftName: 'Snatch', weightKg: 85 };
+        },
+      },
+      {
+        id: 'sentadilla',
+        label: 'PR Sentadilla trasera',
+        apply: (d) => {
+          d.rotatingFeaturedPr = { liftName: 'Sentadilla trasera', weightKg: 120 };
+        },
+      },
+      {
+        id: 'cleanjerk',
+        label: 'PR Clean & Jerk',
+        apply: (d) => {
+          d.rotatingFeaturedPr = { liftName: 'Clean & Jerk', weightKg: 95 };
+        },
+      },
+      {
+        id: 'largo-real',
+        label: 'PR Overhead Squat (el más largo de fábrica)',
+        apply: (d) => {
+          d.rotatingFeaturedPr = { liftName: 'Overhead Squat', weightKg: 70 };
+        },
+      },
+      {
+        id: 'tres-digitos',
+        label: 'PR marca de 3 dígitos',
+        apply: (d) => {
+          d.rotatingFeaturedPr = { liftName: 'Deadlift', weightKg: 205 };
+        },
+      },
+      {
+        id: 'decimales',
+        label: 'PR con decimales',
+        apply: (d) => {
+          d.rotatingFeaturedPr = { liftName: 'Back Squat', weightKg: 142.5 };
+        },
+      },
+      {
+        id: 'nombre-largo',
+        label: 'PR nombre personalizado muy largo',
+        apply: (d) => {
+          d.rotatingFeaturedPr = { liftName: 'Sentadilla frontal con pausa y rodillas afuera', weightKg: 100 };
+        },
+      },
+      {
+        id: 'cargando',
+        label: 'PR cargando',
+        apply: (d) => {
+          d.rotatingFeaturedPr = null;
+          d.prStatus = 'loading';
+        },
+      },
     ],
   },
   {
