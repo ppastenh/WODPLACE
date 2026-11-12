@@ -547,14 +547,84 @@ export const DEV_GROUPS: DevGroup[] = [
     options: [
       { id: 'cero', label: 'Medallas 0', apply: () => {} },
       {
+        id: 'cero-122',
+        label: 'Medallas 0 de 122',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 0, totalAchievements: 122, recent: [] };
+        },
+      },
+      {
+        id: 'una',
+        label: 'Medallas 1 de 122',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 1, totalAchievements: 122, recent: [{ id: 'pr_first', icon: 'award', name: 'Primer PR registrado' }] };
+        },
+      },
+      {
         id: 'varias',
         label: 'Medallas varias',
         apply: (d) => {
-          d.medalsSummary = {
-            totalUnlocked: 6,
-            totalAchievements: 30,
-            recent: [{ id: 'pr_first', icon: 'award', name: 'Primer PR' }],
-          };
+          d.medalsSummary = { totalUnlocked: 6, totalAchievements: 30, recent: [{ id: 'pr_first', icon: 'award', name: 'Primer PR' }] };
+        },
+      },
+      {
+        id: 'seis-122',
+        label: 'Medallas 6 de 122',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 6, totalAchievements: 122, recent: [{ id: 'entreno_first', icon: 'activity', name: 'Primer entrenamiento' }] };
+        },
+      },
+      {
+        id: 'todas',
+        label: 'Medallas 122 de 122 (nombre más largo)',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 122, totalAchievements: 122, recent: [{ id: 'constancia_legend', icon: 'zap', name: 'Leyenda de la constancia' }] };
+        },
+      },
+      {
+        id: 'nombre-corto',
+        label: 'Medallas nombre corto',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 6, totalAchievements: 122, recent: [{ id: 'box_first', icon: 'home', name: 'Box' }] };
+        },
+      },
+      {
+        id: 'podio',
+        label: 'Medallas podio (trofeo)',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 6, totalAchievements: 122, recent: [{ id: 'competencia_first_place', icon: 'trophy', name: 'Primer lugar' }] };
+        },
+      },
+      {
+        id: 'bronce',
+        label: 'Medallas podio bronce',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 6, totalAchievements: 122, recent: [{ id: 'competencia_third_place', icon: 'trophy', name: 'Tercer lugar' }] };
+        },
+      },
+      {
+        id: 'no-identificable',
+        label: 'Medallas última no identificable',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 6, totalAchievements: 122, recent: [] };
+        },
+      },
+      {
+        id: 'cargando',
+        label: 'Medallas cargando',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 0, totalAchievements: 0, recent: [] };
+          d.achievementStats = null;
+          d.streakStatus = 'loading';
+        },
+      },
+      {
+        id: 'error',
+        label: 'Medallas error',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 0, totalAchievements: 0, recent: [] };
+          d.achievementStats = null;
+          d.streakStatus = 'error';
         },
       },
     ],

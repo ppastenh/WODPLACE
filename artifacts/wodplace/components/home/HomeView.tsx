@@ -21,12 +21,13 @@ import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components
 import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
 import { LevelStreakCards } from '@/components/home/LevelStreakCards';
 import { PrHighlightCard } from '@/components/home/PrHighlightCard';
+import { MEDALS_LOOK, MedalsCard, type MedalsLook } from '@/components/home/MedalsCard';
+import { medalsStatusOf } from '@/components/home/medalsModel';
 import type { PrStatus } from '@/components/home/prHighlightModel';
 import type { StreakStatus } from '@/components/home/levelStreakModel';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
-import { getMedalIconColor } from '@/lib/medalColors';
 import { statusBarStyleFor } from '@/lib/theme';
 import type { nextClassCardState } from '@/lib/nextClassCard';
 import type { PlanProgressView } from '@/lib/planProgress';
@@ -200,6 +201,9 @@ export function HomeView({
   levelStreakWidth,
   prFontScale,
   prWidth,
+  medalsLook = MEDALS_LOOK,
+  medalsFontScale,
+  medalsWidth,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -218,11 +222,15 @@ export function HomeView({
   /** Solo para la pantalla de desarrollo: simula la letra del sistema en la tarjeta "PR destacado". */
   prFontScale?: number;
   prWidth?: number;
+  /** Solo para la pantalla de desarrollo: variante de la tarjeta "Medallas" (por defecto, MEDALS_LOOK: Copper Achievement), letra y ancho simulados. */
+  medalsLook?: MedalsLook;
+  medalsFontScale?: number;
+  medalsWidth?: number;
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prFontScale={prFontScale} prWidth={prWidth} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prFontScale={prFontScale} prWidth={prWidth} medalsLook={medalsLook} medalsFontScale={medalsFontScale} medalsWidth={medalsWidth} />
     </ThemeOverride>
   );
 }
@@ -270,6 +278,9 @@ function HomeViewInner({
   levelStreakWidth,
   prFontScale,
   prWidth,
+  medalsLook = MEDALS_LOOK,
+  medalsFontScale,
+  medalsWidth,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -281,6 +292,9 @@ function HomeViewInner({
   levelStreakWidth?: number;
   prFontScale?: number;
   prWidth?: number;
+  medalsLook?: MedalsLook;
+  medalsFontScale?: number;
+  medalsWidth?: number;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -314,15 +328,6 @@ function HomeViewInner({
   // La barra fija (carbón sólido) mide la zona de la barra de estado más TOP_BAR_H; el banner empieza justo debajo.
   const barTotal = insets.top + TOP_BAR_H;
   // Tarjetas blancas: sombra muy suave y borde discreto.
-  const soft = {
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.charcoal,
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  } as const;
   const firstName = getFirstName(user.name);
   const glassLabel = myBox ? `${myBox.name}. Hola, ${firstName}` : `Hola, ${firstName}`;
 
@@ -560,74 +565,14 @@ function HomeViewInner({
           fontScale={prFontScale}
           screenWidth={prWidth}
         />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Ver medallas"
-          onPress={() => events.onOpenMedals()}
-          style={({ pressed }) => [
-            styles.medalsWideCard, soft,
-            { backgroundColor: pressed ? colors.cardPressed : colors.card, marginTop: 12 },
-          ]}
-        >
-          <View style={styles.medalsWideLeft}>
-            <View style={styles.smallCardHeader}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
-                <Feather name="award" size={17} color={colors.accentForeground} />
-              </View>
-            </View>
-            <Text style={[styles.smallCardLabel, { color: colors.creamMuted }]} maxFontSizeMultiplier={1.3}>
-              Medallas
-            </Text>
-            <Text
-              style={[styles.statsValue, { color: colors.foreground }]}
-              maxFontSizeMultiplier={1.3}
-            >
-              {medalsSummary.totalUnlocked} de {medalsSummary.totalAchievements}
-            </Text>
-            <View style={[styles.progressTrack, { backgroundColor: colors.input, marginTop: 6 }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: colors.navActive,
-                    width: `${
-                      medalsSummary.totalAchievements > 0
-                        ? (medalsSummary.totalUnlocked / medalsSummary.totalAchievements) * 100
-                        : 0
-                    }%`,
-                  },
-                ]}
-              />
-            </View>
-          </View>
-          <View style={styles.medalsWideRight}>
-            {medalsSummary.recent[0] ? (
-              <>
-                <MedalBadge
-                  icon={medalsSummary.recent[0].icon}
-                  unlocked
-                  size={40}
-                  showRibbon={false}
-                  iconColor={getMedalIconColor(medalsSummary.recent[0].id)}
-                />
-                <Text
-                  style={[styles.medalsRecentName, { color: colors.creamMuted }]}
-                  numberOfLines={2}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  {medalsSummary.recent[0].name}
-                </Text>
-              </>
-            ) : (
-              <Text
-                style={[styles.statsDetail, { color: colors.creamMuted }]}
-                maxFontSizeMultiplier={1.3}
-              >
-                Desbloquea tu primera
-              </Text>
-            )}
-          </View>
-        </Pressable>
+        <MedalsCard
+          summary={medalsSummary}
+          status={medalsStatusOf(streakStatus, achievementStats === null)}
+          onOpenMedals={() => events.onOpenMedals()}
+          look={medalsLook}
+          fontScale={medalsFontScale}
+          screenWidth={medalsWidth}
+        />
 
         {hasBoxMembership && birthdays.length > 0 ? (
           <View style={styles.birthdaySection}>
@@ -756,16 +701,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
     fontFamily: 'Inter_600SemiBold',
   },
-  progressTrack: {
-    height: 7,
-    borderRadius: RADIUS.sm,
-    overflow: 'hidden',
-    marginTop: SPACING.xs,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: RADIUS.sm,
-  },
   noticeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -817,37 +752,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     marginTop: SPACING.xs2,
     lineHeight: 16,
-  },
-  statsValue: {
-    fontSize: FONT_SIZE.display,
-    lineHeight: 26,
-    fontFamily: 'Anton_400Regular',
-    marginTop: SPACING.sm2,
-  },
-  statsDetail: {
-    fontSize: FONT_SIZE.xs,
-    lineHeight: 15,
-    fontFamily: 'Inter_500Medium',
-    marginTop: 3,
-  },
-  medalsWideCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-  },
-  medalsWideLeft: {
-    flex: 1,
-  },
-  medalsWideRight: {
-    alignItems: 'center',
-    gap: SPACING.sm,
-    width: 72,
-  },
-  medalsRecentName: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_600SemiBold',
-    textAlign: 'center',
   },
   smallCardHeader: {
     flexDirection: 'row',

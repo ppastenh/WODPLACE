@@ -278,6 +278,20 @@ export const PAIRS_LIGHT: Pair[] = [
   t('charcoalAccent', '#232428', 'PR destacado: valor de la marca (cobre, Inter Bold) sobre el relleno de la cápsula'),
   ui('charcoalAccent', 'nextClassCard', 'PR destacado: borde de la cápsula y de la insignia hexagonal en cobre sobre el grafito'),
   ui('charcoalAccent', 'charcoal', 'PR destacado: barra olímpica en cobre sobre el relleno de carbón de la insignia'),
+  // Tarjeta "Medallas" (decisión (y), Copper Achievement; componente MedalsCard.tsx, colores en medalsColors.ts). Degradado LEGIBLE horizontal de medalCopperDeep #754522 (izquierda) a
+  // navActiveTextSmall #8B5E34 (derecha); brillo difuso de cobre claro al 14 % en la esquina superior izquierda. Peor fondo del lado izquierdo: el brillo sobre el extremo izquierdo (#85552f)
+  // o el punto medio del degradado (#80522b); lado derecho (etiqueta, nombre, flecha): el extremo derecho. El degradado "como lo pedí" (de #B98250 a #754522) NO pasa y no es el de Inicio.
+  t('nextClassCardForeground', '#85552f', 'medallas: título "Medallas" (crema) sobre el brillo del extremo izquierdo'),
+  t('nextClassCardForeground', '#80522b', 'medallas: título "Medallas" (crema) sobre el punto medio del degradado'),
+  t('nextClassCardForeground', 'navActiveTextSmall', 'medallas: etiqueta "ÚLTIMO LOGRO" y nombre del logro (crema) sobre el extremo derecho'),
+  ui('nextClassCardForeground', '#85552f', 'medallas: contador "N de M" en Anton (crema, texto grande) sobre el brillo del extremo izquierdo'),
+  ui('nextClassCardForeground', 'navActiveTextSmall', 'medallas: flecha lineal (crema) sobre el extremo derecho'),
+  t('nextClassCardForeground', '#472f1e', 'medallas: texto (crema) sobre el cobre presionado (mezcla sólida de nextClassCard y medalCopperDeep)'),
+  ui('medalProgress', '#472f1e', 'medallas: relleno de la barra (crema dorado) contra su pista'),
+  ui('medalProgress', '#85552f', 'medallas: relleno de la barra contra la tarjeta (brillo del extremo izquierdo)'),
+  ui('medalProgress', '#80522b', 'medallas: relleno de la barra contra la tarjeta (punto medio del degradado)'),
+  ui('medalCopperLight', 'navActiveTextSmall', 'medallas: borde fino de la medalla (cobre claro) contra el extremo derecho'),
+  ui('nextClassCardForeground', 'medalCopperDeep', 'medallas: ícono real del logro (crema) dentro de la medalla de cobre profundo'),
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),

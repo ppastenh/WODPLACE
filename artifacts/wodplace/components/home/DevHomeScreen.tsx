@@ -21,6 +21,8 @@ import {
   defaultSelection,
   type DevSelection,
 } from '@/components/home/devHomeStates';
+import { MEDALS_LOOK, type MedalsLook, type MedalsVariant } from '@/components/home/MedalsCard';
+import type { MedalsGradient } from '@/components/home/medalsColors';
 import { ThemeOverride } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -112,6 +114,30 @@ const PROGRESS_FONT_CHIPS: { id: QuoteFont; label: string }[] = [
 type QuoteFont = '1' | '1.1' | '1.3';
 // Recuadros "Tu nivel" y "Racha de constancia" (decisión (w), opción E en grafito): ancho y letra simulados para probar el caso angosto. Solo desarrollo.
 // Tarjeta "PR destacado" (decisión (x)): ancho y letra simulados para probar el caso angosto. Solo desarrollo.
+// Tarjeta "Medallas" (decisión (y)): diseño, degradado, corona de laurel, ancho y letra simulados. Solo desarrollo.
+const MEDALS_VARIANT_CHIPS: { id: MedalsVariant; label: string }[] = [
+  { id: 'actual', label: 'Medallas: actual' },
+  { id: 'cobre', label: 'Medallas: cobre' },
+];
+const MEDALS_GRADIENT_CHIPS: { id: MedalsGradient; label: string }[] = [
+  { id: 'legible', label: 'Degradado: legible' },
+  { id: 'pedido', label: 'Degradado: como lo pedí' },
+];
+const MEDALS_LAUREL_CHIPS: { id: 'si' | 'no'; label: string }[] = [
+  { id: 'si', label: 'Laurel: sí' },
+  { id: 'no', label: 'Laurel: no' },
+];
+const MEDALS_WIDTH_CHIPS: { id: LevelWidth; label: string }[] = [
+  { id: 'real', label: 'Medallas, ancho: real' },
+  { id: '412', label: 'Medallas, ancho: 412' },
+  { id: '360', label: 'Medallas, ancho: 360' },
+  { id: '320', label: 'Medallas, ancho: 320' },
+];
+const MEDALS_SCALE_CHIPS: { id: QuoteFont; label: string }[] = [
+  { id: '1', label: 'Medallas, letra simulada: 1,0' },
+  { id: '1.1', label: 'Medallas, letra simulada: 1,1' },
+  { id: '1.3', label: 'Medallas, letra simulada: 1,3' },
+];
 const PR_WIDTH_CHIPS: { id: LevelWidth; label: string }[] = [
   { id: 'real', label: 'PR, ancho: real' },
   { id: '412', label: 'PR, ancho: 412' },
@@ -252,6 +278,12 @@ function DevHomeBody() {
   const [levelScale, setLevelScale] = useState<QuoteFont>('1');
   const [prWidth, setPrWidth] = useState<LevelWidth>('real');
   const [prScale, setPrScale] = useState<QuoteFont>('1');
+  const [medalsVariant, setMedalsVariant] = useState<MedalsVariant>(MEDALS_LOOK.variant);
+  const [medalsGradient, setMedalsGradient] = useState<MedalsGradient>(MEDALS_LOOK.gradient);
+  const [medalsLaurel, setMedalsLaurel] = useState<'si' | 'no'>(MEDALS_LOOK.laurel ? 'si' : 'no');
+  const [medalsWidth, setMedalsWidth] = useState<LevelWidth>('real');
+  const [medalsScale, setMedalsScale] = useState<QuoteFont>('1');
+  const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient, laurel: medalsLaurel === 'si' };
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -298,6 +330,11 @@ function DevHomeBody() {
           <ChipGroup title="Nivel y racha: letra simulada" chips={LEVEL_SCALE_CHIPS} selected={levelScale} onSelect={setLevelScale} />
           <ChipGroup title="PR destacado: ancho simulado" chips={PR_WIDTH_CHIPS} selected={prWidth} onSelect={setPrWidth} />
           <ChipGroup title="PR destacado: letra simulada" chips={PR_SCALE_CHIPS} selected={prScale} onSelect={setPrScale} />
+          <ChipGroup title="Medallas: diseño" chips={MEDALS_VARIANT_CHIPS} selected={medalsVariant} onSelect={setMedalsVariant} />
+          <ChipGroup title="Medallas: degradado" chips={MEDALS_GRADIENT_CHIPS} selected={medalsGradient} onSelect={setMedalsGradient} />
+          <ChipGroup title="Medallas: corona de laurel" chips={MEDALS_LAUREL_CHIPS} selected={medalsLaurel} onSelect={setMedalsLaurel} />
+          <ChipGroup title="Medallas: ancho simulado" chips={MEDALS_WIDTH_CHIPS} selected={medalsWidth} onSelect={setMedalsWidth} />
+          <ChipGroup title="Medallas: letra simulada" chips={MEDALS_SCALE_CHIPS} selected={medalsScale} onSelect={setMedalsScale} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
           <ChipGroup title="Frase del día: letra simulada" chips={QUOTE_FONT_CHIPS} selected={quoteFont} onSelect={setQuoteFont} />
@@ -356,6 +393,9 @@ function DevHomeBody() {
         levelStreakWidth={levelWidth === 'real' ? undefined : Number(levelWidth)}
         prFontScale={Number(prScale)}
         prWidth={prWidth === 'real' ? undefined : Number(prWidth)}
+        medalsLook={medalsLook}
+        medalsFontScale={Number(medalsScale)}
+        medalsWidth={medalsWidth === 'real' ? undefined : Number(medalsWidth)}
       />
       {panel}
       {menuNode}
