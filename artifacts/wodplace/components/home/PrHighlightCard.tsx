@@ -10,7 +10,9 @@ import {
   PR_A11Y_LABEL,
   PR_EMPTY_HINT,
   PR_EMPTY_TITLE,
+  PR_A11Y_NO_DATA,
   PR_LABEL,
+  PR_NO_DATA,
   prNameFontSize,
   prValueText,
   prView,
@@ -27,7 +29,7 @@ import { RADIUS } from '@/constants/radius';
  * Qué decide qué: prHighlightModel.ts (estados, textos y tramos del nombre, puro) y prHighlightColors.ts (colores y contraste, puro). Aquí solo se dibuja.
  *
  * variant 'champion' (por defecto) = grafito con insignia hexagonal y barra olímpica; 'actual' = el diseño de siempre (solo desarrollo); 'clara' = para comparar (solo desarrollo).
- * La tarjeta entera es UN botón (etiqueta "Ver progreso y PRs", presionado SÓLIDO); insignia, textura, acento y flecha son decorativos: ocultos a lectores de pantalla y sin tapar el toque.
+ * La tarjeta entera es UN botón (etiqueta "Ver progreso y PRs", presionado SÓLIDO; con error de la consulta sigue tocable hacia RM, que carga sus propias marcas, y su frase es "PR destacado: sin datos"); insignia, textura, acento y flecha son decorativos: ocultos a lectores de pantalla y sin tapar el toque.
  */
 export type PrBadgeShape = 'hexagono' | 'escudo';
 export type PrLook = { variant: PrVariant; laurels: boolean; badge: PrBadgeShape };
@@ -255,7 +257,8 @@ function ChampionCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={PR_A11Y_LABEL}
+      accessibilityLabel={view.kind === 'error' ? PR_A11Y_NO_DATA : PR_A11Y_LABEL}
+      accessibilityHint={view.kind === 'error' ? PR_A11Y_LABEL : undefined}
       onPress={onOpenRm}
       style={({ pressed }) => [
         styles.card,
@@ -298,6 +301,10 @@ function ChampionCard({
                     </Text>
                   </View>
                 </>
+              ) : view.kind === 'error' ? (
+                <Text style={[styles.name, sizeOf(EMPTY_TITLE, fs, 1.15), { color: c.primary }]} maxFontSizeMultiplier={MAX_MULT}>
+                  {PR_NO_DATA}
+                </Text>
               ) : view.kind === 'empty' ? (
                 <>
                   <Text style={[styles.name, sizeOf(EMPTY_TITLE, fs, 1.15), { color: c.primary }]} maxFontSizeMultiplier={MAX_MULT}>

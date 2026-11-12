@@ -3,14 +3,18 @@
  * No decide nada nuevo: la rotación diaria entre las marcas la sigue haciendo app/home.tsx (rotatingFeaturedPr); aquí solo se da forma a lo que llega.
  */
 
-/** Estado de la consulta de las marcas. Si HomeView no lo recibe, se asume 'ready' (como hasta ahora: null = sin marcas). */
-export type PrStatus = 'loading' | 'ready';
+/** Estado de la consulta de las marcas (lo entrega app/home.tsx a partir de React Query). Si HomeView no lo recibe, se asume 'ready' (null = sin marcas, como antes). */
+export type PrStatus = 'loading' | 'error' | 'ready';
 
-export type PrView = { kind: 'loading' } | { kind: 'empty' } | { kind: 'pr'; name: string; weightKg: number };
+export type PrView = { kind: 'loading' } | { kind: 'error' } | { kind: 'empty' } | { kind: 'pr'; name: string; weightKg: number };
 
-/** Cargando = esqueleto (nunca "Aún no hay PRs" mientras llegan las marcas); sin marca = vacío; con marca = nombre y valor. */
+/**
+ * Cargando = esqueleto (nunca "Aún no hay PRs" mientras llegan las marcas); error = guion (ni esqueleto ni vacío); sin marca = vacío; con marca = nombre y valor.
+ * El estado explícito manda sobre los datos.
+ */
 export function prView(pr: { liftName: string; weightKg: number } | null, status: PrStatus = 'ready'): PrView {
   if (status === 'loading') return { kind: 'loading' };
+  if (status === 'error') return { kind: 'error' };
   if (!pr) return { kind: 'empty' };
   return { kind: 'pr', name: pr.liftName, weightKg: pr.weightKg };
 }
@@ -37,4 +41,18 @@ export function prNameFontSize(name: string): number {
   if (len <= 14) return 22;
   if (len <= 20) return 19;
   return 17;
+}
+
+/** Lo que se muestra en lugar del nombre y la marca cuando la consulta falla: un guion, sin texto nuevo. */
+export const PR_NO_DATA = '—';
+/** Etiqueta accesible del estado de error. */
+export const PR_A11Y_NO_DATA = 'PR destacado: sin datos';
+
+/**
+ * Estado de la consulta de las marcas a partir de lo que app/home.tsx ya sabe de React Query (si hay datos y si hubo error): con datos = lista (un refresco que falla no los borra;
+ * una lista vacía también es "lista"), sin datos y con error = error, sin datos ni error = cargando.
+ */
+export function prStatusFrom(query: { data: unknown; isError: boolean }): PrStatus {
+  if (query.data) return 'ready';
+  return query.isError ? 'error' : 'loading';
 }

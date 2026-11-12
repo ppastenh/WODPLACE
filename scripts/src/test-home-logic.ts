@@ -33,6 +33,9 @@ import {
 import { prColors, prMeasure, prPasses, prWorstBackground } from '../../artifacts/wodplace/components/home/prHighlightColors';
 import {
   PR_A11Y_LABEL,
+  PR_A11Y_NO_DATA,
+  PR_NO_DATA,
+  prStatusFrom,
   PR_EMPTY_HINT,
   PR_EMPTY_TITLE,
   PR_LABEL,
@@ -1102,7 +1105,7 @@ describe('Tarjeta "PR destacado" (PrHighlightCard.tsx): estructura, toque, acces
     const c = src.slice(src.indexOf('function ChampionCard'), src.indexOf('/* Estilos del diseño ACTUAL'));
     assert.equal((c.match(/<Pressable/g) ?? []).length, 1);
     assert.equal((c.match(/accessibilityRole="button"/g) ?? []).length, 1);
-    assert.ok(c.includes('accessibilityLabel={PR_A11Y_LABEL}') && c.includes('onPress={onOpenRm}'));
+    assert.ok(c.includes(': PR_A11Y_LABEL}') && c.includes('onPress={onOpenRm}'));
     assert.ok(/pressed \? c\.pressed/.test(c));
     assert.ok(c.includes('name="chevron-right"') && !c.includes('arrow-right'), 'flecha lineal, sin botón circular');
     assert.ok(!/opacity/i.test(src.replace(/shadowOpacity/g, '').replace(/TEXTURE_OPACITY|strokeOpacity/g, '')), 'solo la textura usa opacidad (decorativa)');
@@ -1144,5 +1147,46 @@ describe('Tarjeta "PR destacado" (PrHighlightCard.tsx): estructura, toque, acces
     const code = src.split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*'));
     assert.deepEqual((code.join(' ').match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []).filter((h) => h !== '#FFFFFF'), []);
     assert.ok(src.indexOf('readLayout(e)') < src.indexOf('setBoxH(height)'));
+  });
+});
+
+// ───────────── Tarjeta "PR destacado": estados de la consulta (pedido 28) ─────────────
+describe('Tarjeta "PR destacado": estados cargando, error, vacío y con marca (función pura)', () => {
+  const pr = { liftName: 'Deadlift', weightKg: 140 };
+  it('error: guion, ni esqueleto ni "Aún no hay PRs"; el estado explícito manda sobre los datos', () => {
+    assert.deepEqual(prView(null, 'error'), { kind: 'error' });
+    assert.deepEqual(prView(pr, 'error'), { kind: 'error' });
+    assert.equal(PR_NO_DATA, '—');
+    assert.equal(PR_A11Y_NO_DATA, 'PR destacado: sin datos');
+    for (const k of ['loading', 'empty', 'pr']) assert.notEqual(prView(null, 'error').kind, k);
+  });
+  it('los cuatro estados: cargando, error, vacío (sin marcas) y con marca', () => {
+    assert.equal(prView(null, 'loading').kind, 'loading');
+    assert.equal(prView(null, 'error').kind, 'error');
+    assert.equal(prView(null, 'ready').kind, 'empty');
+    assert.equal(prView(pr, 'ready').kind, 'pr');
+  });
+  it('prStatusFrom (lo que app/home.tsx ya sabe de la consulta): con datos = lista aunque un refresco falle (incluida una lista vacía), sin datos y con error = error, sin datos ni error = cargando', () => {
+    assert.equal(prStatusFrom({ data: undefined, isError: false }), 'loading');
+    assert.equal(prStatusFrom({ data: undefined, isError: true }), 'error');
+    assert.equal(prStatusFrom({ data: [], isError: false }), 'ready');
+    assert.equal(prStatusFrom({ data: [{ id: 1 }], isError: false }), 'ready');
+    assert.equal(prStatusFrom({ data: [{ id: 1 }], isError: true }), 'ready');
+  });
+  it('con error de red la tarjeta muestra el estado error, y no el esqueleto ni el vacío (de punta a punta)', () => {
+    const status = prStatusFrom({ data: undefined, isError: true });
+    assert.equal(prView(null, status).kind, 'error');
+    const cargando = prStatusFrom({ data: undefined, isError: false });
+    assert.equal(prView(null, cargando).kind, 'loading');
+    const sinMarcas = prStatusFrom({ data: [], isError: false });
+    assert.equal(prView(null, sinMarcas).kind, 'empty');
+  });
+  it('el componente dibuja el error con guion y su frase accesible, sin texto nuevo, y la tarjeta sigue tocable hacia RM (RM carga sus propias marcas)', () => {
+    const src = readFileSync(new URL('../../artifacts/wodplace/components/home/PrHighlightCard.tsx', import.meta.url), 'utf8');
+    assert.ok(src.includes("view.kind === 'error' ? PR_A11Y_NO_DATA : PR_A11Y_LABEL"));
+    assert.ok(src.includes('{PR_NO_DATA}'));
+    assert.ok(src.includes('onPress={onOpenRm}'));
+    const states = readFileSync(new URL('../../artifacts/wodplace/components/home/devHomeStates.ts', import.meta.url), 'utf8');
+    assert.ok(states.includes("'PR error'") && states.includes("d.prStatus = 'error'"));
   });
 });

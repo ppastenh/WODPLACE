@@ -453,6 +453,14 @@ export const DEV_GROUPS: DevGroup[] = [
           d.prStatus = 'loading';
         },
       },
+      {
+        id: 'error',
+        label: 'PR error',
+        apply: (d) => {
+          d.rotatingFeaturedPr = null;
+          d.prStatus = 'error';
+        },
+      },
     ],
   },
   {
