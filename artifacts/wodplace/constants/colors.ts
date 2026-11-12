@@ -149,6 +149,11 @@ const colors = {
     // Enmienda de (p): la opción seleccionada y el borde de Agenda usan el cobre más claro (el #B98250 se veía naranjo): 7,56:1 sobre carbón,
     // 5,76:1 sobre charcoalPressed. charcoalAccent queda sin uso por ahora (no se borra).
     charcoalAccentLight: '#C79A6B',
+    // Tarjeta "Medallas" de Inicio (decisión (y), Copper Achievement). Tokens NUEVOS: no cambian ningún valor existente y valen lo mismo en las dos paletas (Inicio es de claro fijo).
+    medalCopper: '#A86C3C', // cobre base (borde fino de la tarjeta)
+    medalCopperDeep: '#754522', // cobre profundo (extremo izquierdo del degradado, medalla y pista de la barra)
+    medalCopperLight: '#E8B781', // cobre claro (borde de la medalla, separador y corona de laurel)
+    medalProgress: '#FFE2B7', // crema dorado (relleno de la barra de progreso)
     // Crema: superficie de contenido y texto/íconos sobre carbón o sobre el vidrio.
     cream: '#F2E9DB',
     // Gris de texto sobre crema, tarjetas blancas y rellenos de tarjeta (#706B63 da 4,39:1 sobre crema y #8C8574 3,05:1).

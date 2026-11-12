@@ -169,6 +169,11 @@ const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   charcoalMuted: '#A29E94',
   charcoalAccent: '#B98250',
   charcoalAccentLight: '#C79A6B',
+  // Tarjeta Medallas (decisión (y))
+  medalCopper: '#A86C3C',
+  medalCopperDeep: '#754522',
+  medalCopperLight: '#E8B781',
+  medalProgress: '#FFE2B7',
   cream: '#F2E9DB',
   creamMuted: '#665F55',
   glassBackground: 'rgba(0,0,0,0.6)',
@@ -192,5 +197,30 @@ describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {
   it('no hay otros tokens claros nuevos', () => {
     const extra = Object.keys(light).filter((k) => !(k in LIGHT_ANTES) && !(k in LIGHT_AGREGADOS_IGUAL_A) && !(k in LIGHT_AGREGADOS_VALOR));
     assert.deepEqual(extra, []);
+  });
+});
+
+describe('tema: tokens nuevos de la tarjeta "Medallas" (decisión (y))', () => {
+  const dark = paletteFor('dark') as unknown as Record<string, string>;
+  const light = paletteFor('light') as unknown as Record<string, string>;
+  const nuevos: Record<string, string> = { medalCopper: '#A86C3C', medalCopperDeep: '#754522', medalCopperLight: '#E8B781', medalProgress: '#FFE2B7' };
+  for (const [key, hex] of Object.entries(nuevos)) {
+    it(`${key} vale ${hex} en el claro y en el oscuro`, () => {
+      assert.equal(light[key], hex);
+      assert.equal(dark[key], hex);
+    });
+  }
+  it('no cambia ningún valor existente: los tokens que usan las otras tarjetas de Inicio siguen iguales', () => {
+    const esperados: Record<string, string> = {
+      nextClassCard: '#18191A',
+      nextClassCardForeground: '#F6F1E8',
+      nextClassCardPressed: '#2E2F35',
+      charcoal: '#0D0F10',
+      charcoalAccent: '#B98250',
+      charcoalAccentLight: '#C79A6B',
+      charcoalMuted: '#A29E94',
+      navActiveTextSmall: '#8B5E34',
+    };
+    for (const [key, hex] of Object.entries(esperados)) assert.equal(light[key], hex, key);
   });
 });
