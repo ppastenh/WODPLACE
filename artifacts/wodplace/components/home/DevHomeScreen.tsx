@@ -22,7 +22,7 @@ import {
   type DevSelection,
 } from '@/components/home/devHomeStates';
 import { MEDALS_LOOK, type MedalsLook, type MedalsVariant } from '@/components/home/MedalsCard';
-import type { MedalsGradient } from '@/components/home/medalsColors';
+import type { MedalsGradient, MedalsRibbon } from '@/components/home/medalsColors';
 import { ThemeOverride } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -122,6 +122,10 @@ const MEDALS_VARIANT_CHIPS: { id: MedalsVariant; label: string }[] = [
 const MEDALS_GRADIENT_CHIPS: { id: MedalsGradient; label: string }[] = [
   { id: 'legible', label: 'Degradado: legible' },
   { id: 'pedido', label: 'Degradado: como lo pedí' },
+];
+const MEDALS_RIBBON_CHIPS: { id: MedalsRibbon; label: string }[] = [
+  { id: 'cafe', label: 'Cinta: café #5E3A1A' },
+  { id: 'profundo', label: 'Cinta: café profundo #4A2E17' },
 ];
 const MEDALS_LAUREL_CHIPS: { id: 'si' | 'no'; label: string }[] = [
   { id: 'si', label: 'Laurel: sí' },
@@ -281,9 +285,10 @@ function DevHomeBody() {
   const [medalsVariant, setMedalsVariant] = useState<MedalsVariant>(MEDALS_LOOK.variant);
   const [medalsGradient, setMedalsGradient] = useState<MedalsGradient>(MEDALS_LOOK.gradient);
   const [medalsLaurel, setMedalsLaurel] = useState<'si' | 'no'>(MEDALS_LOOK.laurel ? 'si' : 'no');
+  const [medalsRibbon, setMedalsRibbon] = useState<MedalsRibbon>(MEDALS_LOOK.ribbon);
   const [medalsWidth, setMedalsWidth] = useState<LevelWidth>('real');
   const [medalsScale, setMedalsScale] = useState<QuoteFont>('1');
-  const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient, laurel: medalsLaurel === 'si' };
+  const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient, laurel: medalsLaurel === 'si', ribbon: medalsRibbon };
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -332,6 +337,7 @@ function DevHomeBody() {
           <ChipGroup title="PR destacado: letra simulada" chips={PR_SCALE_CHIPS} selected={prScale} onSelect={setPrScale} />
           <ChipGroup title="Medallas: diseño" chips={MEDALS_VARIANT_CHIPS} selected={medalsVariant} onSelect={setMedalsVariant} />
           <ChipGroup title="Medallas: degradado" chips={MEDALS_GRADIENT_CHIPS} selected={medalsGradient} onSelect={setMedalsGradient} />
+          <ChipGroup title="Medallas: cinta" chips={MEDALS_RIBBON_CHIPS} selected={medalsRibbon} onSelect={setMedalsRibbon} />
           <ChipGroup title="Medallas: corona de laurel" chips={MEDALS_LAUREL_CHIPS} selected={medalsLaurel} onSelect={setMedalsLaurel} />
           <ChipGroup title="Medallas: ancho simulado" chips={MEDALS_WIDTH_CHIPS} selected={medalsWidth} onSelect={setMedalsWidth} />
           <ChipGroup title="Medallas: letra simulada" chips={MEDALS_SCALE_CHIPS} selected={medalsScale} onSelect={setMedalsScale} />

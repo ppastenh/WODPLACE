@@ -45,11 +45,8 @@ export function medalsStatusOf(streakStatus: MedalsStatus | undefined, statsAreN
 }
 
 export const MEDALS_TITLE = 'Medallas';
-export const LAST_ACHIEVEMENT_LABEL = 'ÚLTIMO LOGRO';
 export const FIRST_MEDAL_HINT = 'Desbloquea tu primera';
 export const NO_DATA = '—';
-/** Letra de la etiqueta "ÚLTIMO LOGRO": 10 sp con 0,8 de espaciado (mínimo pedido: 9 sp; el mínimo de Inicio es 11 sp para texto corriente, aquí es una etiqueta de apoyo). */
-export const LABEL_SIZE = 10;
 
 /** Contadores "N de M": hasta 3 caracteres numéricos en total el tamaño completo; más largos bajan por tramos (sin adjustsFontSizeToFit). */
 export function counterSizes(unlocked: number, total: number): { number: number; of: number } {
@@ -65,8 +62,8 @@ export function barFraction(unlocked: number, total: number): number {
   return Math.min(1, unlocked / total);
 }
 
-/** Ancho mínimo visual del relleno (dp) cuando N > 0: con N/M muy pequeño el relleno nunca desaparece. Con N = 0 no hay relleno. */
-export const MIN_FILL_PX = 4;
+/** Ancho mínimo visual del relleno (dp) cuando N > 0 (proporcional al grosor de la barra, 7 dp): con N/M muy pequeño el relleno nunca desaparece. Con N = 0 no hay relleno. */
+export const MIN_FILL_PX = 6;
 
 /** Tamaño del nombre del logro por tramos según el largo (sin adjustsFontSizeToFit): hasta 14 letras 13 sp, de 15 a 20 12 sp, más largo 11 sp; pasa a dos líneas, sin "…". */
 export function nameFontSize(name: string): number {
@@ -93,7 +90,7 @@ export function medalIconColor(override: string | undefined, medalFill: string, 
   return fallback;
 }
 
-/** Frase completa de la tarjeta para lectores de pantalla (la tarjeta es UN botón que abre Medallas). */
+/** Frase completa de la tarjeta para lectores de pantalla (la tarjeta es UN botón que abre Medallas). El texto "Último logro" ya no se ve en la tarjeta, pero la frase lo conserva. */
 export function medalsA11yLabel(view: MedalsView): string {
   switch (view.kind) {
     case 'loading':

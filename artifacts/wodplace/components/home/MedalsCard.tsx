@@ -16,12 +16,11 @@ import {
   medalsMeasure,
   type MedalsColors,
   type MedalsGradient,
+  type MedalsRibbon,
 } from '@/components/home/medalsColors';
 import {
   FIRST_MEDAL_HINT,
   GENERIC_ICON,
-  LABEL_SIZE,
-  LAST_ACHIEVEMENT_LABEL,
   MEDALS_TITLE,
   NO_DATA,
   MIN_FILL_PX,
@@ -52,17 +51,18 @@ import { RADIUS } from '@/constants/radius';
  * ALTO ESTABLE: cargando, error, sin medallas y con medalla miden lo mismo (el nombre y la etiqueta van en casillas de alto fijo).
  */
 export type MedalsVariant = 'actual' | 'cobre';
-export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; laurel: boolean };
+export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; laurel: boolean; ribbon: MedalsRibbon };
 
 /** Valor por defecto: el diseño Copper Achievement con el degradado legible y la corona. Para volver al diseño anterior basta poner variant: 'actual'. */
-export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurel: true };
+export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurel: true, ribbon: 'cafe' };
 
 const MAX_MULT = 1.3;
-const LABEL_MAX_MULT = 1.1; // la etiqueta de 10 sp con letra espaciada no crece más que esto: con más no cabría en una línea
 const TITLE = FONT_SIZE.sm + 1; // 13 sp
 const MEDAL = 42; // diámetro de la medalla (dp)
-const RIBBON = { w: 26, h: 38 };
-const BAR_H = 5;
+// Cinta: 30 x 46 dp en total, con 12 dp ocultos sobre el borde superior de la tarjeta (se ven 34 dp de alto, con la muesca abajo); ícono de 18 dp.
+const RIBBON = { w: 30, h: 46 };
+const RIBBON_ICON = 18;
+const BAR_H = 7;
 const PAD_V = 12;
 const PAD_H = 14;
 const RIGHT_W = 108;
@@ -109,7 +109,7 @@ export function MedalsCard({ summary, status, onOpenMedals, look = MEDALS_LOOK, 
     </View>
   ) : null;
   // Línea de depuración (solo desarrollo, solo con el degradado "como lo pedí"): marca lo que NO pasa el contraste. En Inicio real nunca se dibuja.
-  const c = medalsColors(colors, look.gradient);
+  const c = medalsColors(colors, look.gradient, look.ribbon);
   const debugLine = __DEV__ && look.variant === 'cobre' && look.gradient === 'pedido' ? <DebugLine c={c} /> : null;
 
   return (
@@ -201,12 +201,12 @@ function Ribbon({ c, icon }: { c: MedalsColors; icon: boolean }) {
       importantForAccessibility="no-hide-descendants"
       style={[styles.ribbon, { width: RIBBON.w, height: RIBBON.h }]}
     >
-      <Svg width={RIBBON.w} height={RIBBON.h} viewBox="0 0 26 38">
-        <Path d="M0 0 H26 V38 L13 30 L0 38 Z" fill={c.ribbon} />
+      <Svg width={RIBBON.w} height={RIBBON.h} viewBox="0 0 30 46">
+        <Path d="M0 0 H30 V46 L15 37 L0 46 Z" fill={c.ribbon} />
       </Svg>
       {icon ? (
         <View style={styles.ribbonIcon}>
-          <Feather name="award" size={14} color={c.medalIcon} />
+          <Feather name="award" size={RIBBON_ICON} color={c.ribbonIcon} />
         </View>
       ) : null}
     </View>
@@ -306,14 +306,14 @@ function CopperCard({ c, view, onOpenMedals, laurel, fs }: { c: MedalsColors; vi
                   </Text>
                 </View>
                 {view.kind === 'loading' ? (
-                  <View style={[styles.counterRow, { minHeight: counterSlotH }]}>
+                  <View style={[styles.counterRow, { height: counterSlotH }]}>
                     <Bone c={c} width={72} height={Math.round(sizes.number * 0.7 * fs)} />
                   </View>
                 ) : (
-                  <View style={[styles.counterRow, { minHeight: counterSlotH }]}>
+                  <View style={[styles.counterRow, { height: counterSlotH }]}>
                     <Text style={[styles.counter, { fontSize: sizes.number * fs, lineHeight: Math.round(sizes.number * 1.15 * fs) }, text]} maxFontSizeMultiplier={MAX_MULT}>
                       {view.kind === 'error' ? NO_DATA : unlocked}
-                      {view.kind === 'error' ? null : <Text style={{ fontSize: sizes.of * fs }}>{` de ${total}`}</Text>}
+                      {view.kind === 'error' ? null : <Text style={{ fontSize: sizes.of * fs, lineHeight: Math.round(sizes.number * 1.15 * fs) }}>{` de ${total}`}</Text>}
                     </Text>
                   </View>
                 )}
@@ -330,13 +330,6 @@ function CopperCard({ c, view, onOpenMedals, laurel, fs }: { c: MedalsColors; vi
                   {laurel ? <LaurelWreath size={MEDAL} color={c.laurel} opacity={view.kind === 'loading' ? 0.2 : laurelOpacity} /> : null}
                   <Medal c={c} view={view} />
                 </View>
-                <Text
-                  style={[styles.label, { fontSize: LABEL_SIZE * Math.min(fs, LABEL_MAX_MULT), lineHeight: Math.round(LABEL_SIZE * 1.3 * Math.min(fs, LABEL_MAX_MULT)) }, text]}
-                  maxFontSizeMultiplier={LABEL_MAX_MULT}
-                >
-                  {/* Sin una última identificable la etiqueta se omite, pero la línea conserva su alto (un espacio) para que la tarjeta no cambie de alto. */}
-                  {view.kind === 'unidentified' ? ' ' : LAST_ACHIEVEMENT_LABEL}
-                </Text>
                 <View style={[styles.nameSlot, { minHeight: nameSlotH }]}>
                   {view.kind === 'loading' ? (
                     <Bone c={c} width={70} height={12} round />
@@ -403,8 +396,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'stretch' },
   left: { flex: 1, paddingRight: SPACING.md },
   ribbon: { position: 'absolute', top: -PAD_V, left: 0 },
-  ribbonIcon: { position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' },
-  titleRow: { marginLeft: RIBBON.w + SPACING.sm2, minHeight: RIBBON.h - PAD_V + 2, justifyContent: 'center' },
+  ribbonIcon: { position: 'absolute', top: PAD_V + 4, left: 0, right: 0, alignItems: 'center' },
+  // El título queda a la altura del ícono de la cinta; el contador empieza debajo de las puntas de la cinta (34 dp desde el borde superior de la columna).
+  titleRow: { marginLeft: RIBBON.w + SPACING.sm2, minHeight: 26, justifyContent: 'center', marginBottom: SPACING.sm },
   title: { fontFamily: 'Inter_500Medium' },
   counter: { fontFamily: 'Anton_400Regular', includeFontPadding: false },
   counterRow: { justifyContent: 'center', marginTop: 2 },
@@ -412,10 +406,9 @@ const styles = StyleSheet.create({
   fill: { height: BAR_H, borderRadius: BAR_H / 2 },
   separatorWrap: { width: 1, paddingVertical: SPACING.sm },
   separator: { flex: 1, width: 1 },
-  right: { width: RIGHT_W, alignItems: 'center', paddingLeft: SPACING.sm },
+  right: { width: RIGHT_W, alignItems: 'center', justifyContent: 'center', paddingLeft: SPACING.sm },
   slot: { width: MEDAL, height: SLOT_H, alignItems: 'center', justifyContent: 'center' },
   medal: { width: MEDAL, height: MEDAL, borderRadius: MEDAL / 2, borderWidth: 1.2, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
-  label: { fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8, textAlign: 'center', marginTop: 2 },
   nameSlot: { alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 },
   name: { fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   arrow: { position: 'absolute', top: 10, right: 8 },

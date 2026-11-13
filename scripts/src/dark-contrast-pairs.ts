@@ -292,6 +292,10 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('medalProgress', '#80522b', 'medallas: relleno de la barra contra la tarjeta (punto medio del degradado)'),
   ui('medalCopperLight', 'navActiveTextSmall', 'medallas: borde fino de la medalla (cobre claro) contra el extremo derecho'),
   ui('nextClassCardForeground', 'medalCopperDeep', 'medallas: ícono real del logro (crema) dentro de la medalla de cobre profundo'),
+  // Medallas, cinta del ícono (ajuste de la decisión (y)): café #5E3A1A (o café profundo #4A2E17 solo para comparar); el ícono de cobre claro #E8B781 sobre la cinta. La silueta de la cinta
+  // contra el fondo de la tarjeta NO llega a 3:1 (1,51:1 con el café): un filo fino de cobre claro daría 3,45:1 (propuesta, no aplicada).
+  ui('medalCopperLight', 'medalRibbon', 'medallas: ícono de medalla (cobre claro) sobre la cinta de café'),
+  ui('medalCopperLight', 'medalRibbonDeep', 'medallas: ícono de medalla (cobre claro) sobre la cinta de café profundo'),
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),

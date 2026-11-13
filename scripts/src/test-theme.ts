@@ -174,6 +174,8 @@ const LIGHT_AGREGADOS_VALOR: Record<string, string> = {
   medalCopperDeep: '#754522',
   medalCopperLight: '#E8B781',
   medalProgress: '#FFE2B7',
+  medalRibbon: '#5E3A1A',
+  medalRibbonDeep: '#4A2E17',
   cream: '#F2E9DB',
   creamMuted: '#665F55',
   glassBackground: 'rgba(0,0,0,0.6)',
@@ -203,7 +205,7 @@ describe('tema: el claro NO cambió (valores de antes del modo oscuro)', () => {
 describe('tema: tokens nuevos de la tarjeta "Medallas" (decisión (y))', () => {
   const dark = paletteFor('dark') as unknown as Record<string, string>;
   const light = paletteFor('light') as unknown as Record<string, string>;
-  const nuevos: Record<string, string> = { medalCopper: '#A86C3C', medalCopperDeep: '#754522', medalCopperLight: '#E8B781', medalProgress: '#FFE2B7' };
+  const nuevos: Record<string, string> = { medalCopper: '#A86C3C', medalCopperDeep: '#754522', medalCopperLight: '#E8B781', medalProgress: '#FFE2B7', medalRibbon: '#5E3A1A', medalRibbonDeep: '#4A2E17' };
   for (const [key, hex] of Object.entries(nuevos)) {
     it(`${key} vale ${hex} en el claro y en el oscuro`, () => {
       assert.equal(light[key], hex);

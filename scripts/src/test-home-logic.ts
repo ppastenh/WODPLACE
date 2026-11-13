@@ -62,7 +62,6 @@ import {
 import { medalsColors, medalsMeasure, medalsPasses } from '../../artifacts/wodplace/components/home/medalsColors';
 import {
   GENERIC_ICON,
-  LABEL_SIZE,
   MIN_FILL_PX,
   NO_DATA,
   barFraction,
@@ -1348,13 +1347,13 @@ describe('Tarjeta "Medallas": estados, barra, contador y textos (función pura)'
     assert.equal(medalsView(s(0, 0), medalsStatusOf('loading', true)).kind, 'loading');
     assert.equal(medalsView(s(0, 30), medalsStatusOf('ready', false)).kind, 'empty');
   });
-  it('barra: proporcional N/M con tope 100 %, vacía con N = 0, y con N > 0 el relleno nunca desaparece (mínimo de 4 dp)', () => {
+  it('barra: proporcional N/M con tope 100 %, vacía con N = 0, y con N > 0 el relleno nunca desaparece (mínimo de 6 dp, proporcional a la barra de 7 dp)', () => {
     assert.equal(barFraction(0, 122), 0);
     assert.equal(barFraction(6, 122), 6 / 122);
     assert.equal(barFraction(122, 122), 1);
     assert.equal(barFraction(130, 122), 1, 'tope 100 %');
     assert.equal(barFraction(5, 0), 0, 'sin total no hay relleno');
-    assert.equal(MIN_FILL_PX, 4);
+    assert.equal(MIN_FILL_PX, 6);
     assert.ok(barFraction(1, 122) > 0, 'con N > 0 el porcentaje es positivo y el estilo aplica minWidth 4');
   });
   it('contador "N de M": hasta 3 caracteres numéricos en total 36/20 sp ("6 de 30"), 4 a 5 caracteres 32/18 sp ("6 de 122"), 6 o más 28/16 sp ("122 de 122")', () => {
@@ -1395,7 +1394,8 @@ describe('Tarjeta "Medallas": colores y contraste (degradado legible de cobre pr
     assert.equal(c.gradientStart, light.medalCopperDeep);
     assert.equal(c.gradientEnd, light.navActiveTextSmall);
     assert.equal(c.text, light.nextClassCardForeground);
-    assert.equal(c.ribbon, light.nextClassCard);
+    assert.equal(c.ribbon, light.medalRibbon);
+    assert.equal(c.ribbonIcon, light.medalCopperLight);
     assert.equal(c.border, light.medalCopper);
     assert.equal(c.medalFill, light.medalCopperDeep);
     assert.equal(c.medalBorder, light.medalCopperLight);
@@ -1422,6 +1422,22 @@ describe('Tarjeta "Medallas": colores y contraste (degradado legible de cobre pr
     assert.equal(p.gradientStart, light.charcoalAccent);
     assert.equal(p.gradientEnd, light.medalCopperDeep);
   });
+  it('cinta en café #5E3A1A (o café profundo #4A2E17 solo para comparar): el ícono de cobre claro #E8B781 se distingue sobre ella (≥ 3:1) y el color es más oscuro que el fondo de la tarjeta', () => {
+    assert.equal(light.medalRibbon, '#5E3A1A');
+    assert.equal(light.medalRibbonDeep, '#4A2E17');
+    assert.notEqual(light.medalRibbon, light.medalCopperDeep, 'no es el mismo tono del fondo: la cinta desaparecería');
+    assert.equal(r(m.ribbonIcon), 5.5);
+    assert.equal(r(medalsMeasure(medalsColors(light, 'legible', 'profundo')).ribbonIcon), 6.8);
+    assert.ok(medalsMeasure(medalsColors(light, 'legible', 'profundo')).ribbonIcon >= 3);
+    assert.equal(medalsColors(light, 'legible', 'profundo').ribbon, light.medalRibbonDeep);
+  });
+  it('la silueta de la cinta contra el fondo NO llega a 3:1 (café 1,51:1 a 1,59:1; café profundo 1,86:1 a 1,97:1): es informativo y no entra en medalsPasses; un filo fino de cobre claro #E8B781 contra el fondo daría 3,45:1 (propuesta, no aplicada)', () => {
+    assert.equal(r(m.ribbonVsCard), 1.51);
+    assert.equal(r(medalsMeasure(medalsColors(light, 'legible', 'profundo')).ribbonVsCard), 1.86);
+    assert.ok(m.ribbonVsCard < 3);
+    assert.ok(contrast(light.medalCopperLight, '#85552f') >= 3);
+    assert.ok(medalsPasses(m), 'la silueta no cuenta para los mínimos');
+  });
   it('el presionado es un color SÓLIDO (mezcla de nextClassCard y medalCopperDeep, sin opacidad) y el texto sigue sobre 4,5:1', () => {
     assert.match(c.pressed, /^#[0-9a-f]{6}$/i);
     assert.equal(c.pressed, '#472f1e');
@@ -1438,7 +1454,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
   const copper = src.slice(src.indexOf('function CopperCard'), src.indexOf('const sizeOf = '));
 
   it("el valor por defecto es 'cobre' con degradado legible y corona (Inicio real cambia); para volver basta variant: 'actual'; el diseño anterior se movió tal cual", () => {
-    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurel: true };"));
+    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurel: true, ribbon: 'cafe' };"));
     const a = src.slice(src.indexOf('function ActualCard'), src.indexOf('/* ───────────── Piezas'));
     assert.ok(a.includes('accessibilityLabel="Ver medallas"') && a.includes('onPress={onOpenMedals}') && a.includes('colors.cardPressed') && a.includes('MedalBadge'));
   });
@@ -1463,20 +1479,23 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     assert.ok(copper.includes('<View style={styles.row} importantForAccessibility="no-hide-descendants">'), 'el contenido se lee solo por la frase de la tarjeta');
   });
   it('la cinta es una silueta de react-native-svg con muesca; el contador va en Anton; el degradado es de expo-linear-gradient; la corona LaurelWreath rodea la medalla', () => {
-    assert.ok(src.includes('M0 0 H26 V38 L13 30 L0 38 Z'));
+    assert.ok(src.includes('M0 0 H30 V46 L15 37 L0 46 Z') && src.includes('const RIBBON = { w: 30, h: 46 };') && src.includes('const RIBBON_ICON = 18;'));
     assert.ok(src.includes("counter: { fontFamily: 'Anton_400Regular'"));
     assert.ok(src.includes("import { LinearGradient } from 'expo-linear-gradient';"));
     assert.ok(copper.includes('<LaurelWreath size={MEDAL}') && src.includes('const MEDAL = 42;'));
   });
-  it('la barra mide 5 dp con extremos redondeados; el relleno tiene ancho mínimo de 4 dp solo con N > 0; la etiqueta mide 10 sp con letra espaciada', () => {
-    assert.ok(src.includes('const BAR_H = 5;') && src.includes('borderRadius: BAR_H / 2'));
+  it('la barra mide 7 dp con extremos redondeados; el relleno tiene ancho mínimo (6 dp) solo con N > 0', () => {
+    assert.ok(src.includes('const BAR_H = 7;') && src.includes('borderRadius: BAR_H / 2'));
     assert.ok(src.includes('{pct > 0 ? <View') && src.includes('minWidth: MIN_FILL_PX'));
-    assert.equal(LABEL_SIZE, 10);
-    assert.ok(src.includes('letterSpacing: 0.8'));
+  });
+  it('el texto "ÚLTIMO LOGRO" ya no se ve en la tarjeta (la frase para lectores de pantalla sigue diciendo "Último logro") y el conjunto medalla + nombre se centra verticalmente en la mitad derecha', () => {
+    assert.ok(!src.includes('ÚLTIMO LOGRO') && !src.includes('LAST_ACHIEVEMENT_LABEL') && !src.includes('LABEL_SIZE') && !src.includes('letterSpacing'));
+    assert.ok(medalsA11yLabel({ kind: 'medals', unlocked: 6, total: 122, last: { id: 'a', icon: 'award', name: 'Primer PR' } }).includes('Último logro: Primer PR'));
+    assert.ok(src.includes("right: { width: RIGHT_W, alignItems: 'center', justifyContent: 'center'"));
   });
   it('ALTO ESTABLE: la etiqueta y el nombre van en casillas de alto fijo que usan todos los estados; el contador y el esqueleto miden lo mismo', () => {
     assert.ok(copper.includes('minHeight: nameSlotH') && src.includes('slot: { width: MEDAL, height: SLOT_H'));
-    assert.ok(copper.includes("view.kind === 'loading' ? (") && copper.includes('minHeight: counterSlotH'));
+    assert.ok(copper.includes("view.kind === 'loading' ? (") && copper.includes('height: counterSlotH'));
   });
   it('el nombre va por tramos, sin adjustsFontSizeToFit ni numberOfLines (hasta dos líneas, sin "…" ni cortes)', () => {
     assert.ok(copper.includes('nameFontSize(view.last.name)'));
@@ -1491,7 +1510,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     for (const f of fields) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src), 'color sin uso: ' + f);
   });
   it('en desarrollo: chips de diseño, degradado, corona, ancho y letra, y los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable)', () => {
-    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí', 'Laurel: sí', 'Laurel: no', 'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
+    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí', 'Laurel: sí', 'Laurel: no', 'Cinta: café #5E3A1A', 'Cinta: café profundo #4A2E17', 'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
     for (const label of ['Medallas 0 de 122', 'Medallas 1 de 122', 'Medallas 6 de 122', 'Medallas 122 de 122 (nombre más largo)', 'Medallas nombre corto', 'Medallas cargando', 'Medallas error', 'Medallas última no identificable']) assert.ok(states.includes(`'${label}'`), label);
   });
   it('la línea de depuración del degradado "como lo pedí" solo existe en desarrollo y solo con ese degradado (no se activa en Inicio real)', () => {

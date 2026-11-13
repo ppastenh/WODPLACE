@@ -7,6 +7,8 @@ import { contrastRatio, mixHex } from './progressColors';
  * Degradado 'pedido' (solo para comparar en desarrollo): de charcoalAccent #B98250 a medalCopperDeep #754522; el crema del lado izquierdo no llega a 4,5:1 sobre #B98250 (2,9:1).
  */
 export type MedalsGradient = 'legible' | 'pedido';
+/** Color de la cinta del ícono: café #5E3A1A (el de Inicio) o café profundo #4A2E17 (solo para comparar en desarrollo). */
+export type MedalsRibbon = 'cafe' | 'profundo';
 
 export type MedalsPalette = {
   nextClassCard: string;
@@ -17,6 +19,8 @@ export type MedalsPalette = {
   medalCopperDeep: string;
   medalCopperLight: string;
   medalProgress: string;
+  medalRibbon: string;
+  medalRibbonDeep: string;
 };
 
 export type MedalsColors = {
@@ -28,8 +32,9 @@ export type MedalsColors = {
   border: string;
   /** Título, contador, etiqueta, nombre y flecha. */
   text: string;
-  /** Cinta vertical (grafito). */
+  /** Cinta vertical (café oscuro, más oscuro que el fondo de la tarjeta) y el ícono de medalla que lleva (cobre claro). */
   ribbon: string;
+  ribbonIcon: string;
   /** Relleno de la medalla (cobre profundo) y su borde (cobre claro). */
   medalFill: string;
   medalBorder: string;
@@ -57,7 +62,7 @@ export const SEPARATOR_OPACITY = 0.45;
 export const LAUREL_OPACITY = 0.75;
 export const LAUREL_OPACITY_DIM = 0.35;
 
-export function medalsColors(p: MedalsPalette, gradient: MedalsGradient = 'legible'): MedalsColors {
+export function medalsColors(p: MedalsPalette, gradient: MedalsGradient = 'legible', ribbon: MedalsRibbon = 'cafe'): MedalsColors {
   const start = gradient === 'legible' ? p.medalCopperDeep : p.charcoalAccent;
   const end = gradient === 'legible' ? p.navActiveTextSmall : p.medalCopperDeep;
   const mid = mixHex(end, start, 0.5);
@@ -67,7 +72,8 @@ export function medalsColors(p: MedalsPalette, gradient: MedalsGradient = 'legib
     pressed: mixHex(p.nextClassCard, p.medalCopperDeep, 0.5),
     border: p.medalCopper,
     text: p.nextClassCardForeground,
-    ribbon: p.nextClassCard,
+    ribbon: ribbon === 'cafe' ? p.medalRibbon : p.medalRibbonDeep,
+    ribbonIcon: p.medalCopperLight,
     medalFill: p.medalCopperDeep,
     medalBorder: p.medalCopperLight,
     medalIcon: p.nextClassCardForeground,
@@ -104,6 +110,10 @@ export type MedalsMeasure = {
   arrow: number;
   /** Ícono (crema) contra el relleno de la medalla (3:1). */
   medalIcon: number;
+  /** Ícono de la cinta (cobre claro) contra la cinta (3:1). */
+  ribbonIcon: number;
+  /** Silueta de la cinta contra el peor fondo del lado izquierdo. SOLO INFORMATIVO (no entra en medalsPasses): con el café no llega a 3:1; si hiciera falta, un filo fino de cobre claro da 3,45:1. */
+  ribbonVsCard: number;
 };
 
 export function medalsMeasure(c: MedalsColors): MedalsMeasure {
@@ -119,6 +129,8 @@ export function medalsMeasure(c: MedalsColors): MedalsMeasure {
     medalBorder: contrastRatio(c.medalBorder, c.gradientEnd),
     arrow: contrastRatio(c.text, c.gradientEnd),
     medalIcon: contrastRatio(c.medalIcon, c.medalFill),
+    ribbonIcon: contrastRatio(c.ribbonIcon, c.ribbon),
+    ribbonVsCard: Math.min(contrastRatio(c.ribbon, glow), contrastRatio(c.ribbon, mid)),
   };
 }
 
@@ -133,6 +145,7 @@ export function medalsPasses(m: MedalsMeasure): boolean {
     m.barFillVsCard >= 3 &&
     m.medalBorder >= 3 &&
     m.arrow >= 3 &&
-    m.medalIcon >= 3
+    m.medalIcon >= 3 &&
+    m.ribbonIcon >= 3
   );
 }

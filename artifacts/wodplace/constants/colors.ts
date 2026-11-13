@@ -154,6 +154,8 @@ const colors = {
     medalCopperDeep: '#754522', // cobre profundo (extremo izquierdo del degradado, medalla y pista de la barra)
     medalCopperLight: '#E8B781', // cobre claro (borde de la medalla, separador y corona de laurel)
     medalProgress: '#FFE2B7', // crema dorado (relleno de la barra de progreso)
+    medalRibbon: '#5E3A1A', // café oscuro de la cinta del ícono (más oscuro que el fondo #754522, para que la cinta se distinga)
+    medalRibbonDeep: '#4A2E17', // café profundo (alternativa de la cinta, solo para comparar en desarrollo)
     // Crema: superficie de contenido y texto/íconos sobre carbón o sobre el vidrio.
     cream: '#F2E9DB',
     // Gris de texto sobre crema, tarjetas blancas y rellenos de tarjeta (#706B63 da 4,39:1 sobre crema y #8C8574 3,05:1).
