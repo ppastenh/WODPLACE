@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
+import { PHOTO_GRAYS, QUOTE_COPPER_DEFAULT, minVeilFor, quoteContrast, quoteCopperHex } from '../../artifacts/wodplace/components/home/quoteCopper';
 import { progressColors, progressMeasure, progressPasses } from '../../artifacts/wodplace/components/home/progressColors';
 import { levelStreakColors, levelStreakMeasure, levelStreakPasses } from '../../artifacts/wodplace/components/home/levelStreakColors';
 import {
@@ -649,9 +650,11 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
     assert.ok(editorial.includes('{__DEV__ ? ('));
     assert.ok(editorial.includes('Alto: '));
   });
-  it('el resaltado por defecto es TEXTO COBRE claro (excepción aceptada al contraste); el marcador (con texto oscuro) y el subrayado quedan para comparar, medidos por línea y dibujado DEBAJO del texto; sin marcas manuales en el texto mostrado', () => {
+  it('por defecto la frase y las comillas van en COBRE y las palabras resaltadas en CREMA (excepción aceptada al contraste); el marcador (con texto oscuro) y el subrayado quedan para comparar, medidos por línea y dibujado DEBAJO del texto; sin marcas manuales en el texto mostrado', () => {
     assert.ok(quote.includes("const style = look.highlightStyle ?? 'cobre';"));
-    assert.ok(editorial.includes('color: colors.charcoalAccentLight,'), 'texto cobre claro');
+    assert.ok(editorial.includes("const bodyColor = style === 'cobre' ? copperHex : cream;"), 'la frase en cobre');
+    const hl = editorial.slice(editorial.indexOf('const highlightStyle ='), editorial.indexOf('const markColor ='));
+    assert.ok(hl.includes('color: cream,') && !hl.slice(0, hl.indexOf(': style ===')).includes('textDecorationLine'), 'las palabras resaltadas en crema, sin subrayado ni marcador');
     assert.ok(editorial.includes('__DEV__ && look.highlightShadow'), 'la sombra del resaltado solo existe en desarrollo');
     assert.ok(editorial.includes('textShadowRadius: 3'));
     assert.ok(editorial.includes('backgroundColor: colors.charcoalAccentLight'));
@@ -674,7 +677,7 @@ describe('tarjeta de frases del día (DailyQuoteCard.tsx)', () => {
   });
   it('las dos comillas llevan el MISMO color y la MISMA opacidad', () => {
     assert.match(quote, /const QUOTE_MARK_OPACITY = 0\.5;/);
-    assert.ok(editorial.includes('const markColor = colors.charcoalAccentLight;'));
+    assert.ok(editorial.includes("const markColor = style === 'cobre' ? copperHex : colors.charcoalAccentLight;"));
     assert.equal((editorial.match(/opacity: QUOTE_MARK_OPACITY/g) ?? []).length, 2);
     assert.equal((editorial.match(/color=\{markColor\}/g) ?? []).length, 2);
   });
@@ -1680,5 +1683,46 @@ describe('Flechas pequeñas: la MISMA posición y el MISMO margen en "Tu nivel",
   it('la flecha de "Tu próxima clase" NO se mueve: sigue centrada en la altura, a 16 dp de la derecha, y no usa la constante de la esquina', () => {
     assert.ok(next.includes("arrowWrap: { position: 'absolute', top: 0, bottom: 0, right: SPACING.lg, justifyContent: 'center' }"));
     assert.ok(!next.includes('arrowBadgeCorner'));
+  });
+});
+
+describe('Frase del día: letra y comillas en cobre (quoteCopper.ts, ajuste de la decisión (s), 2026-11-15)', () => {
+  const r = (n: number | null) => (n === null ? null : Math.round(n * 100) / 100);
+  const veil = light.charcoal;
+  const src = readFileSync(new URL('../../artifacts/wodplace/components/home/DailyQuoteCard.tsx', import.meta.url), 'utf8');
+  const dev = readFileSync(new URL('../../artifacts/wodplace/components/home/DevHomeScreen.tsx', import.meta.url), 'utf8');
+  it('el cobre por defecto es charcoalAccent #B98250 y el fondo NO cambió: foto y velo del 62 %, sin chip de velo', () => {
+    assert.equal(quoteCopperHex(light, QUOTE_COPPER_DEFAULT), '#B98250');
+    assert.equal(quoteCopperHex(light, 'claro'), '#C79A6B');
+    assert.equal(quoteCopperHex(light, 'brillante'), '#E8B781');
+    assert.match(src, /export const QUOTE_VEIL = 0.62;/);
+    assert.ok(!/Velo:|veilChip|VEIL_CHIPS/i.test(dev), 'no hay chip de velo');
+    assert.ok(!src.includes('minVeilFor') && !src.includes('look.veil'), 'el componente no cambia nada del fondo (el velo es la constante QUOTE_VEIL)');
+  });
+  it('el chip de desarrollo ofrece los tres cobres y solo existen en desarrollo (línea de depuración con el contraste del peor punto)', () => {
+    for (const label of ['Cobre de la frase: #B98250', 'Cobre de la frase: #C79A6B', 'Cobre de la frase: #E8B781']) assert.ok(dev.includes(label), label);
+    const before = src.slice(0, src.indexOf('style={styles.devCopper}'));
+    assert.ok(/__DEV__ \? \(\s*<View pointerEvents="none" $/.test(before), 'la línea del cobre solo existe en desarrollo');
+    assert.ok(src.includes('quoteContrast(copperHex, colors.charcoal, QUOTE_VEIL, PHOTO_GRAYS.claro)'), 'la línea usa el peor punto (foto más clara) con el velo vigente');
+    assert.equal(r(quoteContrast('#B98250', veil, 0.62, PHOTO_GRAYS.claro)), 1.64);
+  });
+  it('el ícono de compartir sigue en crema', () => {
+    assert.ok(src.includes('<Feather name="share-2" size={SHARE_ICON} color={cream} />'));
+  });
+  it('tabla de contraste con el velo del 62 % (peor punto = gris 255 de la foto; medio = 128; más oscuro = 0)', () => {
+    const row = (hex: string) => (['claro', 'medio', 'oscuro'] as const).map((g) => r(quoteContrast(hex, veil, 0.62, PHOTO_GRAYS[g])));
+    assert.deepEqual(row('#B98250'), [1.64, 3.46, 6.05]);
+    assert.deepEqual(row('#C79A6B'), [2.13, 4.49, 7.84]);
+    assert.deepEqual(row('#E8B781'), [2.97, 6.25, 10.93]);
+    assert.equal(r(quoteContrast(light.nextClassCardForeground, veil, 0.62, '#FFFFFF')), 4.82, 'las palabras resaltadas en crema');
+  });
+  it('velo mínimo por cobre (sobre el punto más claro de la foto) para 3:1 y 4,5:1', () => {
+    const need = (hex: string, t: number) => minVeilFor(hex, veil, '#FFFFFF', t);
+    assert.equal(need('#B98250', 3), 0.79);
+    assert.equal(need('#B98250', 4.5), 0.9);
+    assert.equal(need('#C79A6B', 3), 0.72);
+    assert.equal(need('#C79A6B', 4.5), 0.83);
+    assert.equal(need('#E8B781', 3), 0.63);
+    assert.equal(need('#E8B781', 4.5), 0.74);
   });
 });

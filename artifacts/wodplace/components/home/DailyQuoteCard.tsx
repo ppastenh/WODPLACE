@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { readLayout, readLines } from '@/components/home/layoutEvents';
+import { PHOTO_GRAYS, QUOTE_COPPER_DEFAULT, quoteContrast, quoteCopperHex, type QuoteCopperChoice } from '@/components/home/quoteCopper';
 import { splitHighlight } from '@/components/home/splitHighlight';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -23,7 +24,7 @@ import { RADIUS } from '@/constants/radius';
 export type QuoteVariant = 'actual' | 'editorialCream';
 /** Frase corta: centrada solo en vertical (texto a la izquierda) o en vertical y horizontal. */
 export type QuoteCenter = 'vertical' | 'ambos';
-/** Resaltado: texto en cobre claro #C79A6B (por defecto; excepción aceptada al contraste de 4,5:1), marcador de cobre con texto oscuro o subrayado en crema. */
+/** Resaltado: 'cobre' (por defecto) = la frase y las comillas en cobre y las palabras resaltadas en crema; 'marcador' = marcador de cobre con texto oscuro; 'subrayado' = crema subrayado. */
 export type QuoteHighlight = 'marcador' | 'cobre' | 'subrayado';
 export type QuoteLook = {
   variant: QuoteVariant;
@@ -34,6 +35,8 @@ export type QuoteLook = {
   highlightShadow?: boolean;
   /** Solo desarrollo: simula la letra del sistema (1; 1,1; 1,3). */
   fontScale?: number;
+  /** Solo desarrollo: cobre de la letra de la frase y las comillas (medio #B98250 por defecto, claro #C79A6B o brillante #E8B781). Solo afecta a la letra, nunca al fondo. */
+  copper?: QuoteCopperChoice;
 };
 
 /** UNA sola constante decide la variante que ve Inicio. 'editorialCream' = la elegida; 'actual' = la tarjeta de antes. */
@@ -50,7 +53,7 @@ export const EDITORIAL_FONT: string = Platform.select({ android: 'serif', defaul
 // constante; sin degradado). Con el punto más claro de la foto (gris 255) el texto crema da 4,81:1 (a 60 % daba 4,48:1, bajo el mínimo de 4,5:1).
 const QUOTE_PHOTO = require('@/assets/images/home/home-fondo-frase.jpg');
 export const QUOTE_VEIL = 0.62;
-// Las dos comillas llevan el MISMO color (cobre claro, charcoalAccentLight #C79A6B) y la MISMA opacidad (50 %); son decorativas.
+// Las dos comillas llevan el MISMO color que la letra de la frase (cobre medio charcoalAccent #B98250 por defecto) y la MISMA opacidad (50 %); son decorativas.
 const QUOTE_MARK_OPACITY = 0.5;
 // Marcador: esquinas de 4 dp, 4 dp de aire a los lados y 2 dp arriba y abajo (alrededor de la altura del tipo).
 const MARKER_PAD_H = 4;
@@ -224,16 +227,17 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
     );
   }, [marker, resetKey, fs, cardW]);
 
-  // Resaltado por defecto: texto en cobre claro #C79A6B. Da 2,13:1 sobre la foto con el velo en el peor caso: EXCEPCIÓN consciente al mínimo de 4,5:1
-  // (aceptada por Pía el 2026-11-08; solo las palabras resaltadas; registrada en las pruebas de contraste, ESTADO.md y DECISIONES-DISENO.md). Las otras dos
-  // opciones (marcador y subrayado) quedan para comparar en desarrollo; con el marcador, mientras se mide (o si no se puede medir) el texto va en crema
-  // subrayado, para que se lea desde el primer dibujo y la altura no salte.
+  // Letra por defecto: la frase y las dos comillas en cobre medio #B98250 (charcoalAccent) y las palabras resaltadas en crema, sin subrayado ni marcador. El cobre da 1,64:1 sobre
+  // el punto más claro de la foto con el velo del 62 % (3,46:1 con una foto media, 6,05:1 con la más oscura): EXCEPCIÓN consciente al mínimo de 4,5:1, aceptada por Pía y registrada en
+  // las pruebas de contraste, ESTADO.md y DECISIONES-DISENO.md. El fondo (foto y velo) no cambia. Las otras dos opciones de resaltado (marcador y subrayado) quedan para comparar en desarrollo.
   const cream = colors.nextClassCardForeground;
+  const copperHex = quoteCopperHex(colors, look.copper ?? QUOTE_COPPER_DEFAULT);
   const markerReady = marker && rects !== null && rects.length > 0;
+  const bodyColor = style === 'cobre' ? copperHex : cream;
   const highlightStyle =
     style === 'cobre'
       ? {
-          color: colors.charcoalAccentLight,
+          color: cream,
           // Solo desarrollo: sombra suave #0D0F10, radio 3 dp, sin desplazamiento.
           ...(__DEV__ && look.highlightShadow
             ? { textShadowColor: colors.charcoal, textShadowRadius: 3, textShadowOffset: { width: 0, height: 0 } }
@@ -242,8 +246,8 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
       : style === 'marcador' && markerReady
         ? { color: colors.charcoal }
         : { color: cream, textDecorationLine: 'underline' as const };
-  // Las dos comillas: MISMO color (cobre claro #C79A6B) y MISMA opacidad (50 %).
-  const markColor = colors.charcoalAccentLight;
+  // Las dos comillas: MISMO color que la letra (en el resaltado 'cobre') y MISMA opacidad (50 %).
+  const markColor = style === 'cobre' ? copperHex : colors.charcoalAccentLight;
   const hidden = { pointerEvents: 'none', importantForAccessibility: 'no-hide-descendants', accessibilityElementsHidden: true } as const;
   const textPadLeft = SPACING.xl + MARK_COL + SPACING.sm2;
   const textPadRight = SHARE_AREA - SPACING.xs2;
@@ -328,7 +332,7 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
             ) : null}
             <Text
               ref={textRef as never}
-              style={[styles.text, textStyle, { color: cream }, look.center === 'ambos' && styles.textCentered]}
+              style={[styles.text, textStyle, { color: bodyColor }, look.center === 'ambos' && styles.textCentered]}
               maxFontSizeMultiplier={QUOTE_MAX_FONT_MULT}
               onTextLayout={
                 marker && Platform.OS !== 'web'
@@ -361,6 +365,11 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
       {__DEV__ ? (
         <View pointerEvents="none" style={styles.devBadge}>
           <Text style={styles.devBadgeText}>{`Alto: ${cardH} dp`}</Text>
+        </View>
+      ) : null}
+      {__DEV__ ? (
+        <View pointerEvents="none" style={styles.devCopper}>
+          <Text style={styles.devCopperText}>{`Cobre ${copperHex}: ${quoteContrast(copperHex, colors.charcoal, QUOTE_VEIL, PHOTO_GRAYS.claro).toFixed(2).replace('.', ',')}:1 en el peor punto`}</Text>
         </View>
       ) : null}
 
@@ -410,6 +419,9 @@ const styles = StyleSheet.create({
   // Solo __DEV__ (texto de depuración con el alto medido).
   devBadge: { position: 'absolute', left: SPACING.sm, bottom: 1 },
   devBadgeText: { fontSize: 9, color: '#B00020', fontFamily: 'Inter_600SemiBold' },
+  // Solo __DEV__: el contraste del peor punto de la foto con el cobre elegido (no cambia ningún alto: va flotando abajo a la derecha).
+  devCopper: { position: 'absolute', right: SPACING.sm, bottom: 1 },
+  devCopperText: { fontSize: 9, color: '#B00020', fontFamily: 'Inter_600SemiBold' },
   // Área táctil de 48 × 48 dp; el ícono (20 dp) se ve más chico.
   share: {
     position: 'absolute',

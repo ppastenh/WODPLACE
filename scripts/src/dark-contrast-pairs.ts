@@ -243,8 +243,10 @@ export const PAIRS_LIGHT: Pair[] = [
   // Ícono de compartir SIN círculo visible: crema directo sobre la foto con el velo del 62 % (peor caso: gris 255), mínimo 3:1; al presionar, sobre el círculo sólido nextClassCardPressed.
   { ...ui('nextClassCardForeground', 'charcoal', 'frase con foto: ícono de compartir crema sin círculo, sobre el velo del 62 % y el punto más claro de la foto'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 } },
   ui('nextClassCardForeground', 'nextClassCardPressed', 'frase con foto: ícono de compartir crema sobre el círculo sólido al presionar'),
-  // EXCEPCIÓN ACEPTADA (Pía, 2026-11-08): resaltado en texto cobre claro sobre la foto con el velo del 62 %, peor caso (gris 255, igual a 320, 360 y 412 dp): 2,13:1.
-  { ...t('charcoalAccentLight', 'charcoal', 'frase con foto: resaltado en texto cobre claro #C79A6B sobre el velo del 62 % y el punto más claro de la foto (EXCEPCIÓN ACEPTADA)'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 }, accepted: { value: 2.13, date: '2026-11-08', by: 'Pía' } },
+  // EXCEPCIÓN ACEPTADA (Pía, 2026-11-15; reemplaza a la del resaltado en cobre claro, 2,13:1 del 2026-11-08): la frase y sus dos comillas en cobre medio #B98250 (charcoalAccent) sobre la foto con el velo
+  // del 62 %. Peor punto (gris 255, igual a 320, 360 y 412 dp): 1,64:1; con la foto media (gris 128) 3,46:1; con la más oscura (gris 0) 6,05:1. Las palabras resaltadas van en crema (4,82:1, el par de arriba).
+  { ...t('charcoalAccent', 'charcoal', 'frase con foto: letra y comillas en cobre #B98250 sobre el velo del 62 % y el punto más claro de la foto (EXCEPCIÓN ACEPTADA)'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 }, accepted: { value: 1.64, date: '2026-11-15', by: 'Pía' } },
+  { ...t('charcoalAccent', 'charcoal', 'frase con foto: letra en cobre #B98250 sobre el velo del 62 % y el punto MÁS OSCURO de la foto (gris 0)'), bgLiteral: { hex: '#0D0F10', over: '#000000', alpha: 0.62 } },
   // Tarjeta "Progreso mensual" (decisión (v), ajuste del 2026-11-15): el MISMO fondo de cobre oscuro de Medallas (degradado #754522 → #8B5E34 con brillo) con TODO el texto en crema; barra como la
   // de Medallas (relleno medalProgress sobre la pista café); cápsula "Plan ilimitado" de carbón con texto crema y borde de cobre claro. Reemplaza al cobre claro con letra oscura. Vale igual a 320, 360 y 412 dp.
   t('nextClassCardForeground', '#85552f', 'progreso mensual: título y número (crema) sobre el brillo del extremo izquierdo'),

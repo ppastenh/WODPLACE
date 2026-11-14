@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
+import type { QuoteCopperChoice } from '@/components/home/quoteCopper';
 import { QUOTE_LOOK, type QuoteCenter, type QuoteHighlight, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
   NEXT_CLASS_LOOK,
@@ -96,6 +97,12 @@ const QUOTE_LENGTH_CHIPS: { id: QuoteLength; label: string }[] = [
   { id: 'c105', label: 'Largo: 105 caracteres' },
   { id: 'c125', label: 'Largo: 125 caracteres' },
   { id: 'marcada', label: 'Largo: con marcado manual *…*' },
+];
+// Solo letra y comillas de la frase (el fondo no cambia): el cobre por defecto es #B98250.
+const QUOTE_COPPER_CHIPS: { id: QuoteCopperChoice; label: string }[] = [
+  { id: 'medio', label: 'Cobre de la frase: #B98250' },
+  { id: 'claro', label: 'Cobre de la frase: #C79A6B' },
+  { id: 'brillante', label: 'Cobre de la frase: #E8B781' },
 ];
 const QUOTE_SHADOW_CHIPS: { id: 'no' | 'si'; label: string }[] = [
   { id: 'no', label: 'Sombra del resaltado: no' },
@@ -281,6 +288,7 @@ function DevHomeBody() {
   const [medalsScale, setMedalsScale] = useState<QuoteFont>('1');
   const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient };
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
+  const [quoteCopper, setQuoteCopper] = useState<QuoteCopperChoice>('medio');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
     highlight: quoteHighlight === 'si',
@@ -288,6 +296,7 @@ function DevHomeBody() {
     fontScale: Number(quoteFont),
     highlightStyle: quoteHlStyle,
     highlightShadow: quoteShadow === 'si',
+    copper: quoteCopper,
   };
   const look: NextClassLook = { capsule, copper, texture: TEXTURES[texture] };
   const [menuSel, setMenuSel] = useState<NavKey>('inicio');
@@ -334,6 +343,7 @@ function DevHomeBody() {
           <ChipGroup title="Frase del día: largo" chips={QUOTE_LENGTH_CHIPS} selected={quoteLength} onSelect={setQuoteLength} />
           <ChipGroup title="Frase del día: letra simulada" chips={QUOTE_FONT_CHIPS} selected={quoteFont} onSelect={setQuoteFont} />
           <ChipGroup title="Frase del día: sombra del resaltado (solo desarrollo)" chips={QUOTE_SHADOW_CHIPS} selected={quoteShadow} onSelect={setQuoteShadow} />
+          <ChipGroup title="Frase del día: cobre de la letra y las comillas" chips={QUOTE_COPPER_CHIPS} selected={quoteCopper} onSelect={setQuoteCopper} />
           <ChipGroup title="Frase del día: estilo del resaltado" chips={QUOTE_HL_STYLE_CHIPS} selected={quoteHlStyle} onSelect={setQuoteHlStyle} />
           <ChipGroup title="Frase del día: resaltado" chips={QUOTE_HIGHLIGHT_CHIPS} selected={quoteHighlight} onSelect={setQuoteHighlight} />
           <ChipGroup title="Frase del día: frase corta" chips={QUOTE_CENTER_CHIPS} selected={quoteCenter} onSelect={setQuoteCenter} />
