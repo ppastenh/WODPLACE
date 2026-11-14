@@ -124,10 +124,11 @@ const MEDALS_GRADIENT_CHIPS: { id: MedalsGradient; label: string }[] = [
   { id: 'legible', label: 'Degradado: legible' },
   { id: 'pedido', label: 'Degradado: como lo pedí' },
 ];
-const MEDALS_SCALE_LAUREL_CHIPS: { id: '1' | '0.9' | '0.85'; label: string }[] = [
-  { id: '1', label: 'Escala del laurel: 100 %' },
-  { id: '0.9', label: 'Escala del laurel: 90 %' },
+const MEDALS_SCALE_LAUREL_CHIPS: { id: '1' | '0.95' | '0.9' | '0.85'; label: string }[] = [
   { id: '0.85', label: 'Escala del laurel: 85 %' },
+  { id: '0.9', label: 'Escala del laurel: 90 %' },
+  { id: '0.95', label: 'Escala del laurel: 95 %' },
+  { id: '1', label: 'Escala del laurel: 100 %' },
 ];
 const MEDALS_WIDTH_CHIPS: { id: LevelWidth; label: string }[] = [
   { id: 'real', label: 'Medallas, ancho: real' },
@@ -282,7 +283,7 @@ function DevHomeBody() {
   const [prScale, setPrScale] = useState<QuoteFont>('1');
   const [medalsVariant, setMedalsVariant] = useState<MedalsVariant>(MEDALS_LOOK.variant);
   const [medalsGradient, setMedalsGradient] = useState<MedalsGradient>(MEDALS_LOOK.gradient);
-  const [medalsLaurelScale, setMedalsLaurelScale] = useState<'1' | '0.9' | '0.85'>(String(MEDALS_LOOK.laurelScale) as '1' | '0.9' | '0.85');
+  const [medalsLaurelScale, setMedalsLaurelScale] = useState<'1' | '0.95' | '0.9' | '0.85'>(String(MEDALS_LOOK.laurelScale) as '1' | '0.95' | '0.9' | '0.85');
   const [medalsWidth, setMedalsWidth] = useState<LevelWidth>('real');
   const [medalsScale, setMedalsScale] = useState<QuoteFont>('1');
   const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient, laurelScale: Number(medalsLaurelScale) };

@@ -47,10 +47,10 @@ import { RADIUS } from '@/constants/radius';
  * ALTO ESTABLE: cargando, error, sin medallas y con medalla miden lo mismo (el nombre y la etiqueta van en casillas de alto fijo).
  */
 export type MedalsVariant = 'actual' | 'cobre';
-/** laurelScale: escala del bloque derecho (laurel + medalla): 1, 0,9 o 0,85 (por defecto: con 0,9 la tarjeta mide 129 dp, sobre el máximo de 128). */
+/** laurelScale: escala del bloque derecho (laurel + medalla): 1, 0,95 (por defecto), 0,9 o 0,85. */
 export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; laurelScale: number };
 
-/** Valor por defecto: el diseño Copper Achievement con el degradado legible y el bloque derecho al 85 %. Para volver al diseño anterior basta poner variant: 'actual'. */
+/** Valor por defecto: el diseño Copper Achievement con el degradado legible y el bloque derecho al 95 %. Para volver al diseño anterior basta poner variant: 'actual'. */
 export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurelScale: DEFAULT_SCALE };
 
 const MAX_MULT = 1.3;

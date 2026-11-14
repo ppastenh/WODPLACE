@@ -6,8 +6,8 @@ import { DEFAULT_SCALE, NAME_GAP, nameSlotHeight, nameStyleFor, showcaseGeometry
 
 /**
  * BLOQUE DERECHO de la tarjeta de Medallas (decisión (y)): el laurel 'relieve' de fondo, la medalla del logro centrada encima (su centro a 31 dp desde arriba del laurel, con escala 1) y,
- * debajo del borde inferior del laurel con 4 dp de separación, el NOMBRE del logro centrado en crema #F6F1E8, Inter SemiBold 14 con interlineado 17 (13/16 con 20 o más letras), en una o
- * dos líneas según el largo, sin "…" ni cortes y sin adjustsFontSizeToFit. Todo escala con `scale` (0,85 por defecto: laurel de 75 x 61 dp y medalla de 32 dp). Sin sombras ni opacidad al presionar.
+ * debajo del borde inferior del laurel con 4 dp de separación, el NOMBRE del logro centrado en crema #F6F1E8, Inter SemiBold 14 con interlineado 20 (13/19 con 20 o más letras), en una o
+ * dos líneas según el largo, sin "…" ni cortes y sin adjustsFontSizeToFit. Todo escala con `scale` (0,95 por defecto: laurel de 84 x 68 dp y medalla de 36 dp). Sin sombras ni opacidad al presionar.
  * La casilla del nombre tiene un alto fijo (dos líneas), así que el bloque mide lo mismo con nombre, sin nombre, con esqueleto o con un guion.
  * Estados: `muted` (medalla atenuada y laurel más tenue), `skeletonColor` (esqueleto: medalla y barra del nombre de ese color, laurel muy tenue). Decorativo salvo el nombre: la tarjeta lo lee en su frase.
  */
