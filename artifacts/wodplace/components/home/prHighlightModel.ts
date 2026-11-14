@@ -56,3 +56,7 @@ export function prStatusFrom(query: { data: unknown; isError: boolean }): PrStat
   if (query.data) return 'ready';
   return query.isError ? 'error' : 'loading';
 }
+
+/** Nombres de 20 o más letras: pueden ocupar toda la fila bajo la etiqueta, hasta donde llega la flecha de la esquina; reciben un relleno derecho para no tocarla. */
+export const PR_LONG_NAME_LETTERS = 20;
+export const prNameNeedsArrowRoom = (name: string): boolean => name.trim().length >= PR_LONG_NAME_LETTERS;

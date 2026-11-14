@@ -34,6 +34,7 @@ import { prColors, prMeasure, prPasses, prWorstBackground } from '../../artifact
 import {
   PR_A11Y_LABEL,
   PR_A11Y_NO_DATA,
+  prNameNeedsArrowRoom,
   PR_NO_DATA,
   prStatusFrom,
   PR_EMPTY_HINT,
@@ -66,7 +67,7 @@ import {
   medalsStatusOf,
   medalsView,
 } from '../../artifacts/wodplace/components/home/medalsModel';
-import { ARROW_BADGE_BORDER, ARROW_BADGE_GLASS_ALPHA, ARROW_BADGE_ICON_RATIO, ARROW_BADGE_SIZE, ARROW_BADGE_SMALL, arrowBadgeBorder, arrowBadgeIconSize } from '../../artifacts/wodplace/components/home/arrowBadgeSpec';
+import { ARROW_BADGE_BORDER, ARROW_BADGE_CORNER_MARGIN, ARROW_BADGE_GLASS_ALPHA, arrowBadgeCorner, ARROW_BADGE_ICON_RATIO, ARROW_BADGE_SIZE, ARROW_BADGE_SMALL, arrowBadgeBorder, arrowBadgeIconSize } from '../../artifacts/wodplace/components/home/arrowBadgeSpec';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
@@ -1597,7 +1598,7 @@ describe('Flecha compartida (ArrowBadge): la de "Tu próxima clase" y su versió
   });
   it('"Tu nivel" usa ArrowBadge pequeño (22,4 dp) con borde de cobre medio #B98250, relleno translúcido oscuro y flecha crema, decorativa (contenedor con pointerEvents="none", oculto a lectores de pantalla) en la esquina superior derecha; "Racha de constancia" NO lleva flecha', () => {
     assert.ok(level.includes('<ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.primary} />'));
-    assert.ok(level.includes("arrow: { position: 'absolute', top: 8, right: 8 }"));
+    assert.ok(level.includes('style={arrowBadgeCorner}'), 'va en la esquina con el margen compartido');
     assert.equal((level.match(/<ArrowBadge/g) ?? []).length, 1, 'una sola flecha: la de Tu nivel');
     const racha = level.slice(level.indexOf('accessible accessibilityLabel={streakA11yLabel(streak)}'), level.indexOf('/** Insignia: escudo'));
     assert.ok(!racha.includes('ArrowBadge') && !racha.includes('arrow'), 'Racha no lleva flecha');
@@ -1624,5 +1625,36 @@ describe('Flecha compartida (ArrowBadge): la de "Tu próxima clase" y su versió
       assert.ok(code.includes('ARROW_BADGE_GLASS_ALPHA') && !/GLASS_ALPHA = /.test(code), f);
     }
     assert.equal(light.glassBackground, 'rgba(0,0,0,0.6)');
+  });
+});
+
+describe('Flechas pequeñas: la MISMA posición y el MISMO margen en "Tu nivel", "PR destacado" y "Medallas"', () => {
+  const read = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const level = read('LevelStreakCards.tsx');
+  const pr = read('PrHighlightCard.tsx');
+  const medals = read('MedalsCard.tsx');
+  const next = read('NextClassCard.tsx');
+  it('una sola constante decide el margen: 8 dp arriba y 8 dp a la derecha, en la esquina superior derecha (antes: Tu nivel 8/8, Medallas 10/8 y PR dentro de la fila a 16/16)', () => {
+    assert.equal(ARROW_BADGE_CORNER_MARGIN, 8);
+    assert.deepEqual(arrowBadgeCorner, { position: 'absolute', top: 8, right: 8 });
+  });
+  it('las tres tarjetas usan arrowBadgeCorner y ninguna tiene su propio top/right para la flecha ni el chevron o la flecha dentro de la fila', () => {
+    for (const [name, src] of [['Tu nivel', level], ['PR', pr], ['Medallas', medals]] as const) {
+      assert.ok(src.includes('style={arrowBadgeCorner}'), name + ' no usa la constante compartida');
+      assert.equal((src.match(/style={arrowBadgeCorner}/g) ?? []).length, 1, name + ': un solo uso');
+      assert.ok(src.includes('arrowBadgeCorner } from'), name + ' importa la constante compartida');
+      assert.ok(!/^\s*(arrow|chevron): \{/m.test(src), name + ' conserva un estilo propio para la flecha');
+    }
+    assert.ok(pr.indexOf('style={arrowBadgeCorner}') < pr.indexOf('style={styles.col}'), 'en PR la flecha va fuera de la fila, en la esquina de la tarjeta');
+  });
+  it('en PR, los nombres de 20 o más letras llevan un relleno derecho (la flecha de la esquina entra 14,4 dp en la fila); los normales no cambian de ancho ni de alto (110 / 112 / 124 dp con letra 1,0 / 1,1 / 1,3)', () => {
+    assert.equal(prNameNeedsArrowRoom('Sentadilla frontal con pausa y rodillas afuera'), true);
+    assert.equal(prNameNeedsArrowRoom('Overhead Squat'), false);
+    assert.equal(prNameNeedsArrowRoom('Clean & Jerk'), false);
+    assert.ok(pr.includes('const ARROW_ROOM = ARROW_BADGE_SMALL + ARROW_BADGE_CORNER_MARGIN - PAD + 4;') && pr.includes('prNameNeedsArrowRoom(view.name) && { paddingRight: ARROW_ROOM }'));
+  });
+  it('la flecha de "Tu próxima clase" NO se mueve: sigue centrada en la altura, a 16 dp de la derecha, y no usa la constante de la esquina', () => {
+    assert.ok(next.includes("arrowWrap: { position: 'absolute', top: 0, bottom: 0, right: SPACING.lg, justifyContent: 'center' }"));
+    assert.ok(!next.includes('arrowBadgeCorner'));
   });
 });

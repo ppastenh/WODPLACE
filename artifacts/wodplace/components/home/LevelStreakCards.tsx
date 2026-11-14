@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { ArrowBadge } from '@/components/home/ArrowBadge';
-import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
+import { ARROW_BADGE_SMALL, arrowBadgeCorner } from '@/components/home/arrowBadgeSpec';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { levelStreakColors, type LevelStreakColors } from '@/components/home/levelStreakColors';
@@ -126,7 +126,7 @@ export function LevelStreakCards({ rank, achievementStats, streakStatus, onOpenP
               {LEVEL_DETAIL}
             </Text>
           </View>
-          <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.arrow}>
+          <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={arrowBadgeCorner}>
             <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.primary} />
           </View>
         </Pressable>
@@ -284,8 +284,7 @@ const styles = StyleSheet.create({
   headerCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: SPACING.xs2 },
   label: { flex: 1, fontFamily: 'Inter_600SemiBold' },
   labelCompact: { flex: 0, flexGrow: 0 },
-  // Flecha pequeña de "Tu nivel" en la esquina superior derecha (decorativa). Sin modo compacto, la fila de la etiqueta le deja su lugar a la derecha.
-  arrow: { position: 'absolute', top: 8, right: 8 },
+  // Flecha pequeña de "Tu nivel" en la esquina superior derecha, con el margen compartido (arrowBadgeCorner; decorativa). Sin modo compacto, la fila de la etiqueta le deja su lugar a la derecha.
   headerArrowRoom: { paddingRight: ARROW_BADGE_SMALL },
   detail: { fontFamily: 'Inter_500Medium', marginTop: 2 },
   value: { fontFamily: 'Anton_400Regular', includeFontPadding: false },

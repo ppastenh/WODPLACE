@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, G, Path, Pattern, Rect } from 'react-native-svg';
 import { ArrowBadge } from '@/components/home/ArrowBadge';
-import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
+import { ARROW_BADGE_CORNER_MARGIN, ARROW_BADGE_SMALL, arrowBadgeCorner } from '@/components/home/arrowBadgeSpec';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { prColors, TEXTURE_OPACITY, type PrColors } from '@/components/home/prHighlightColors';
@@ -15,6 +15,7 @@ import {
   PR_LABEL,
   PR_NO_DATA,
   prNameFontSize,
+  prNameNeedsArrowRoom,
   prValueText,
   prView,
   type PrStatus,
@@ -41,6 +42,8 @@ const CAPSULE_TEXT = 13;
 const EMPTY_TITLE = 18; // "Aún no hay PRs" (14 letras) en una línea a 320 dp con letra 1,3, para que el vacío mida lo mismo que los demás estados
 const NAME_SLOT = 26; // el nombre más grande de los tramos: la casilla del nombre mide una línea de este tamaño en todos los estados
 const PAD = 16;
+// Relleno derecho de los nombres largos: la flecha de la esquina entra ARROW + margen - PAD dp en la fila (más 4 dp de aire).
+const ARROW_ROOM = ARROW_BADGE_SMALL + ARROW_BADGE_CORNER_MARGIN - PAD + 4;
 const HEX = { w: 44, h: 48 };
 const HEX_PATH = 'M22 2 L40.5 12.5 V35.5 L22 46 L3.5 35.5 V12.5 Z';
 // Barra olímpica: barra horizontal con dos discos a cada lado, trazo uniforme y extremos redondeados (centrada en 22,24).
@@ -109,6 +112,9 @@ export function PrHighlightCard({ pr, prStatus, onOpenRm, fontScale, screenWidth
               />
             )}
             <Decor c={c} />
+            <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={arrowBadgeCorner}>
+              <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.primary} />
+            </View>
             <View style={styles.col} importantForAccessibility="no-hide-descendants">
               <View style={styles.row}>
                 <Badge c={c} kind={view.kind} />
@@ -119,9 +125,6 @@ export function PrHighlightCard({ pr, prStatus, onOpenRm, fontScale, screenWidth
                   <View style={[styles.nameSlot, { minHeight: nameSlotH }]}>
                     <NameSlot c={c} view={view} fs={fs} />
                   </View>
-                </View>
-                <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.chevron}>
-                  <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.primary} />
                 </View>
               </View>
               <View style={[styles.capsuleSlot, { minHeight: capsuleH }]}>
@@ -194,7 +197,10 @@ function NameSlot({ c, view, fs }: { c: PrColors; view: PrView; fs: number }) {
   if (view.kind === 'pr') {
     const n = prNameFontSize(view.name);
     return (
-      <Text style={[styles.name, { color: c.primary, fontSize: n * fs, lineHeight: Math.round(n * 1.15 * fs) }]} maxFontSizeMultiplier={MAX_MULT}>
+      <Text
+        style={[styles.name, { color: c.primary, fontSize: n * fs, lineHeight: Math.round(n * 1.15 * fs) }, prNameNeedsArrowRoom(view.name) && { paddingRight: ARROW_ROOM }]}
+        maxFontSizeMultiplier={MAX_MULT}
+      >
         {view.name}
       </Text>
     );
@@ -250,7 +256,6 @@ const styles = StyleSheet.create({
   },
   capsuleDashed: { borderStyle: 'dashed' },
   capsuleText: { fontFamily: 'Inter_700Bold' },
-  chevron: { alignSelf: 'flex-start' },
   bone: { borderRadius: 6 },
   texture: { position: 'absolute', top: 0, bottom: 0, right: 0, width: '42%' },
   accent: { position: 'absolute', right: 0, bottom: 0, width: 48, height: 48 },

@@ -8,7 +8,7 @@ import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { AchievementShowcase } from '@/components/home/AchievementShowcase';
 import { ArrowBadge } from '@/components/home/ArrowBadge';
-import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
+import { ARROW_BADGE_SMALL, arrowBadgeCorner } from '@/components/home/arrowBadgeSpec';
 import {
   GLOW_OPACITY,
   LAUREL_OPACITY_DIM,
@@ -302,7 +302,7 @@ function CopperCard({ c, view, onOpenMedals, fs }: { c: MedalsColors; view: Meda
                 />
               </View>
             </View>
-            <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.arrow}>
+            <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={arrowBadgeCorner}>
               <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.text} />
             </View>
           </>
@@ -364,7 +364,6 @@ const styles = StyleSheet.create({
   separatorWrap: { width: 1, paddingVertical: SPACING.sm },
   separator: { flex: 1, width: 1 },
   right: { width: RIGHT_W, alignItems: 'center', justifyContent: 'center', paddingLeft: RIGHT_PAD },
-  arrow: { position: 'absolute', top: 10, right: 8 },
   debug: { color: '#B42318', fontSize: 10, fontFamily: 'Inter_600SemiBold', marginTop: 4 },
   // Solo desarrollo
   devBadge: { position: 'absolute', right: 6, bottom: 4, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },

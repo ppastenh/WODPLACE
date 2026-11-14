@@ -12,3 +12,9 @@ export const arrowBadgeBorder = (size: number) => ARROW_BADGE_BORDER * (size / A
 export const arrowBadgeIconSize = (size: number) => size * ARROW_BADGE_ICON_RATIO;
 /** Opacidad del relleno translúcido de la flecha (glassBackground = negro al 60 %): la misma en las cuatro tarjetas. */
 export const ARROW_BADGE_GLASS_ALPHA = 0.6;
+/**
+ * POSICIÓN de la flecha pequeña en "Tu nivel", "PR destacado" y "Medallas": la esquina superior derecha, con UN solo margen compartido para arriba y para la derecha (8 dp, el de "Tu nivel").
+ * Antes: Tu nivel 8 dp arriba y 8 a la derecha; Medallas 10 y 8; PR dentro de la fila, en el extremo derecho y arriba del contenido (16 y 16). La flecha de "Tu próxima clase" NO usa esto: va centrada.
+ */
+export const ARROW_BADGE_CORNER_MARGIN = 8;
+export const arrowBadgeCorner = { position: 'absolute', top: ARROW_BADGE_CORNER_MARGIN, right: ARROW_BADGE_CORNER_MARGIN } as const;
