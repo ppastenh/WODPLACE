@@ -124,11 +124,6 @@ const MEDALS_GRADIENT_CHIPS: { id: MedalsGradient; label: string }[] = [
   { id: 'legible', label: 'Degradado: legible' },
   { id: 'pedido', label: 'Degradado: como lo pedí' },
 ];
-const MEDALS_LEADING_CHIPS: { id: '20' | '19' | '18'; label: string }[] = [
-  { id: '20', label: 'Interlineado del nombre: 20' },
-  { id: '19', label: 'Interlineado del nombre: 19' },
-  { id: '18', label: 'Interlineado del nombre: 18' },
-];
 const MEDALS_WIDTH_CHIPS: { id: LevelWidth; label: string }[] = [
   { id: 'real', label: 'Medallas, ancho: real' },
   { id: '412', label: 'Medallas, ancho: 412' },
@@ -282,10 +277,9 @@ function DevHomeBody() {
   const [prScale, setPrScale] = useState<QuoteFont>('1');
   const [medalsVariant, setMedalsVariant] = useState<MedalsVariant>(MEDALS_LOOK.variant);
   const [medalsGradient, setMedalsGradient] = useState<MedalsGradient>(MEDALS_LOOK.gradient);
-  const [medalsLeading, setMedalsLeading] = useState<'20' | '19' | '18'>(String(MEDALS_LOOK.nameLeading) as '20' | '19' | '18');
   const [medalsWidth, setMedalsWidth] = useState<LevelWidth>('real');
   const [medalsScale, setMedalsScale] = useState<QuoteFont>('1');
-  const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient, nameLeading: Number(medalsLeading) };
+  const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient };
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -334,7 +328,6 @@ function DevHomeBody() {
           <ChipGroup title="PR destacado: letra simulada" chips={PR_SCALE_CHIPS} selected={prScale} onSelect={setPrScale} />
           <ChipGroup title="Medallas: diseño" chips={MEDALS_VARIANT_CHIPS} selected={medalsVariant} onSelect={setMedalsVariant} />
           <ChipGroup title="Medallas: degradado" chips={MEDALS_GRADIENT_CHIPS} selected={medalsGradient} onSelect={setMedalsGradient} />
-          <ChipGroup title="Medallas: interlineado del nombre" chips={MEDALS_LEADING_CHIPS} selected={medalsLeading} onSelect={setMedalsLeading} />
           <ChipGroup title="Medallas: ancho simulado" chips={MEDALS_WIDTH_CHIPS} selected={medalsWidth} onSelect={setMedalsWidth} />
           <ChipGroup title="Medallas: letra simulada" chips={MEDALS_SCALE_CHIPS} selected={medalsScale} onSelect={setMedalsScale} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />

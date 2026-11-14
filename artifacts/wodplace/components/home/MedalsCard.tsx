@@ -9,7 +9,6 @@ import { readLayout } from '@/components/home/layoutEvents';
 import { AchievementShowcase } from '@/components/home/AchievementShowcase';
 import { ArrowBadge } from '@/components/home/ArrowBadge';
 import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
-import { DEFAULT_LEADING } from '@/components/home/achievementShowcaseLayout';
 import {
   GLOW_OPACITY,
   LAUREL_OPACITY_DIM,
@@ -49,11 +48,10 @@ import { RADIUS } from '@/constants/radius';
  * ALTO ESTABLE: cargando, error, sin medallas y con medalla miden lo mismo (el nombre y la etiqueta van en casillas de alto fijo).
  */
 export type MedalsVariant = 'actual' | 'cobre';
-/** nameLeading: interlineado del nombre del logro (20 por defecto; 19 y 18 solo para comparar en desarrollo). */
-export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; nameLeading: number };
+export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient };
 
 /** Valor por defecto: el diseño Copper Achievement con el degradado legible y el bloque derecho al 100 %. Para volver al diseño anterior basta poner variant: 'actual'. */
-export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', nameLeading: DEFAULT_LEADING };
+export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible' };
 
 const MAX_MULT = 1.3;
 const TITLE = FONT_SIZE.sm + 1; // 13 sp
@@ -115,7 +113,7 @@ export function MedalsCard({ summary, status, onOpenMedals, look = MEDALS_LOOK, 
         {look.variant === 'actual' ? (
           <ActualCard view={view} summary={summary} onOpenMedals={onOpenMedals} />
         ) : (
-          <CopperCard c={c} view={view} onOpenMedals={onOpenMedals} leading={look.nameLeading} fs={fs} />
+          <CopperCard c={c} view={view} onOpenMedals={onOpenMedals} fs={fs} />
         )}
         {devBadge}
       </View>
@@ -231,7 +229,7 @@ function Bone({ c, width, height, round }: { c: MedalsColors; width: number | `$
   return <View style={{ width, height, borderRadius: round ? height / 2 : 6, backgroundColor: c.bone }} />;
 }
 
-function CopperCard({ c, view, onOpenMedals, leading, fs }: { c: MedalsColors; view: MedalsView; onOpenMedals: () => void; leading: number; fs: number }) {
+function CopperCard({ c, view, onOpenMedals, fs }: { c: MedalsColors; view: MedalsView; onOpenMedals: () => void; fs: number }) {
   const colors = useColors();
   const unlocked = view.kind === 'medals' || view.kind === 'unidentified' ? view.unlocked : 0;
   const total = view.kind === 'loading' || view.kind === 'error' ? 0 : view.total;
@@ -296,7 +294,6 @@ function CopperCard({ c, view, onOpenMedals, leading, fs }: { c: MedalsColors; v
                   icon={view.kind === 'medals' ? view.last.icon : GENERIC_ICON}
                   name={view.kind === 'medals' ? view.last.name : view.kind === 'empty' ? FIRST_MEDAL_HINT : undefined}
                   fontScale={fs}
-                  nameLeading={leading}
                   textWidth={RIGHT_W - RIGHT_PAD}
                   laurelOpacity={view.kind === 'medals' || view.kind === 'unidentified' ? undefined : LAUREL_OPACITY_DIM}
                   muted={view.kind === 'empty' || view.kind === 'error'}

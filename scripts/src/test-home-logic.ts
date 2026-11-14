@@ -43,7 +43,7 @@ import {
   prValueText,
   prView,
 } from '../../artifacts/wodplace/components/home/prHighlightModel';
-import { DEFAULT_LEADING, DEFAULT_SCALE, LONG_NAME_LETTERS, NAME_GAP, NAME_LEADINGS, NAME_MAX_SCALE, NAME_STYLE, NAME_STYLE_LONG, nameSlotHeight, nameStyleFor, showcaseGeometry, showcaseHeight } from '../../artifacts/wodplace/components/home/achievementShowcaseLayout';
+import { DEFAULT_SCALE, LONG_NAME_LETTERS, NAME_BOTTOM_ROOM, NAME_GAP, NAME_MAX_SCALE, NAME_STYLE, NAME_STYLE_LONG, androidLineHeight, lineDeficit, nameSlotHeight, nameStyleFor, showcaseGeometry, showcaseHeight } from '../../artifacts/wodplace/components/home/achievementShowcaseLayout';
 import { LAUREL_DATA, LAUREL_GROUP_OPACITY, LAUREL_MIRROR, LAUREL_VIEWBOX } from '../../artifacts/wodplace/components/ui/laurelData';
 import {
   MEDAL_DEFAULT_SIZE,
@@ -1284,10 +1284,8 @@ describe('Bloque derecho de Medallas (achievementShowcaseLayout.ts y Achievement
       const k = showcaseGeometry(s);
       assert.ok(Math.abs(k.boxW / 88 - s) < 1e-9 && Math.abs(k.boxH / 72 - s) < 1e-9 && Math.abs(k.medal / 38 - s) < 1e-9, 'proporcional: ' + s);
     }
-    assert.deepEqual([...NAME_LEADINGS], [20, 19, 18]);
-    assert.equal(DEFAULT_LEADING, 20);
   });
-  it('el nombre empieza 2 dp bajo el borde inferior del laurel y su casilla mide dos líneas fijas de 20 dp: alto del bloque 114 dp con la escala 100 % y letra 1,0 (118 con letra 1,1; 120 con 1,3, porque la letra del nombre tiene tope 1,15)', () => {
+  it('el nombre empieza 2 dp bajo el borde inferior del laurel y su casilla mide dos líneas fijas de 18 dp más 4 dp de espacio bajo la última línea: alto del bloque 114 dp con la escala 100 % y letra 1,0 (118 con letra 1,1; 120 con 1,3, porque la letra del nombre tiene tope 1,15)', () => {
     assert.equal(NAME_GAP, 2);
     assert.ok(Math.abs(showcaseHeight(1, 1) - 114) < 1e-9);
     assert.ok(Math.abs(showcaseHeight(1, 1.1) - 118) < 1e-9);
@@ -1299,22 +1297,30 @@ describe('Bloque derecho de Medallas (achievementShowcaseLayout.ts y Achievement
     assert.equal(nameSlotHeight(1.3), 46);
   });
   it('nombre en Inter SemiBold 14 con interlineado 20 (13/19 solo con 20 o más letras: el interlineado no baja del alto de línea de Android de Inter, 1,43 em), sin adjustsFontSizeToFit, y cabe en dos líneas sin "…"', () => {
-    assert.deepEqual(nameStyleFor('Racha de 7 días'), { fontSize: 14, lineHeight: 20 });
-    assert.deepEqual(nameStyleFor('Primer comentario'), { fontSize: 14, lineHeight: 20 });
-    assert.deepEqual(nameStyleFor('Primer entrenamiento'), { fontSize: 13, lineHeight: 19 });
-    assert.deepEqual(nameStyleFor('Competidor recurrente'), { fontSize: 13, lineHeight: 19 });
-    assert.deepEqual(nameStyleFor('Leyenda de la constancia'), { fontSize: 13, lineHeight: 19 });
-    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.3), { fontSize: 14 * 1.15, lineHeight: 23 });
-    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.1), { fontSize: 14 * 1.1, lineHeight: 22 });
-    // Interlineado de comparación (solo desarrollo): 20 / 19 / 18 para 14 sp y uno menos para 13 sp.
-    assert.deepEqual(nameStyleFor('Racha de 7 días', 1, 19), { fontSize: 14, lineHeight: 19 });
-    assert.deepEqual(nameStyleFor('Leyenda de la constancia', 1, 18), { fontSize: 13, lineHeight: 17 });
-    assert.equal(nameSlotHeight(1, 18), 36);
-    // Evidencia del recorte: el alto de línea de Inter en Android (usWinAscent + usWinDescent = 2269 + 660 sobre 2048 = 1,43 em) es 20,0 dp con 14 sp; el interlineado debe cubrirlo.
-    const androidLine = (2269 + 660) / 2048;
-    assert.ok(NAME_STYLE.lineHeight >= Math.floor(androidLine * NAME_STYLE.fontSize), 'interlineado 14 sp bajo el alto de línea de Android');
-    assert.ok(NAME_STYLE_LONG.lineHeight >= Math.floor(androidLine * NAME_STYLE_LONG.fontSize), 'interlineado 13 sp bajo el alto de línea de Android');
-    assert.ok(17 < androidLine * 14, 'con 17 (el valor anterior) la última línea quedaba recortada');
+    assert.deepEqual(nameStyleFor('Racha de 7 días'), { fontSize: 14, lineHeight: 18, paddingBottom: 4 });
+    assert.deepEqual(nameStyleFor('Primer comentario'), { fontSize: 14, lineHeight: 18, paddingBottom: 4 });
+    assert.deepEqual(nameStyleFor('Primer entrenamiento'), { fontSize: 13, lineHeight: 17, paddingBottom: 4 });
+    assert.deepEqual(nameStyleFor('Competidor recurrente'), { fontSize: 13, lineHeight: 17, paddingBottom: 4 });
+    assert.deepEqual(nameStyleFor('Leyenda de la constancia'), { fontSize: 13, lineHeight: 17, paddingBottom: 4 });
+    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.3), { fontSize: 14 * 1.15, lineHeight: 21, paddingBottom: 4 });
+    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.1), { fontSize: 14 * 1.1, lineHeight: 20, paddingBottom: 4 });
+    assert.equal(nameSlotHeight(1), 40);
+    assert.equal(nameSlotHeight(1.1), 44);
+    assert.equal(nameSlotHeight(1.3), 46);
+    // CÓMO SE EVITA EL RECORTE: el alto de línea real de Inter en Android (usWinAscent + usWinDescent = 2269 + 660 sobre 2048 = 1,43 em) es 20,0 dp con 14 sp y 18,6 dp con 13 sp, o sea 2,0 y 1,6 dp
+    // más que el interlineado (18 y 17). Ese exceso es lo que se sale por abajo en la última línea; el Text lleva 4 dp de relleno inferior (NAME_BOTTOM_ROOM) y el recorte de TextView incluye su relleno.
+    assert.ok(Math.abs(androidLineHeight(14) - 20.02) < 0.01);
+    for (const k of [1, 1.1, 1.15]) {
+      for (const base of [NAME_STYLE, NAME_STYLE_LONG]) {
+        const st = { fontSize: base.fontSize * k, lineHeight: Math.round(base.lineHeight * k) };
+        assert.ok(lineDeficit(st.fontSize, st.lineHeight) <= NAME_BOTTOM_ROOM - 1, 'el espacio propio no cubre el exceso con holgura de 1 dp: letra x' + k + ' ' + base.fontSize + ' sp');
+      }
+    }
+    assert.ok(lineDeficit(14, 18) > 0 && lineDeficit(14, 18) < 2.1 && lineDeficit(13, 17) < 1.7, 'exceso de 2,0 dp (14 sp) y 1,6 dp (13 sp) con el interlineado 18 y 17');
+    assert.equal(NAME_BOTTOM_ROOM, 4);
+    const show = readFileSync(new URL('../../artifacts/wodplace/components/home/AchievementShowcase.tsx', import.meta.url), 'utf8');
+    assert.ok(!/overflow/.test(show.replace(/\/\*[\s\S]*?\*\//g, '')), 'sin overflow hidden en el bloque del nombre');
+    assert.ok(show.includes('nameStyleFor(name, fontScale)'), 'el Text recibe paddingBottom de nameStyleFor');
     assert.equal(LONG_NAME_LETTERS, 20);
     const src = readFileSync(new URL('../../artifacts/wodplace/components/home/AchievementShowcase.tsx', import.meta.url), 'utf8');
     assert.ok(!/^\s*adjustsFontSizeToFit/m.test(src) && !src.includes('numberOfLines') && !src.includes('ellipsizeMode'));
@@ -1454,7 +1460,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
   const copper = src.slice(src.indexOf('function CopperCard'), src.indexOf('const sizeOf = '));
 
   it("el valor por defecto es 'cobre' con degradado legible y bloque derecho al 100 % (Inicio real cambia); para volver basta variant: 'actual'; el diseño anterior se movió tal cual", () => {
-    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', nameLeading: DEFAULT_LEADING };"));
+    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible' };"));
     const a = src.slice(src.indexOf('function ActualCard'), src.indexOf('/* ───────────── Piezas'));
     assert.ok(a.includes('accessibilityLabel="Ver medallas"') && a.includes('onPress={onOpenMedals}') && a.includes('colors.cardPressed') && a.includes('MedalBadge'));
   });
@@ -1511,7 +1517,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
   });
   it('ALTO FIJO: el contador tiene alto fijo, la casilla del nombre mide dos líneas fijas y el lado izquierdo reparte (título arriba, contador y barra abajo) con el alto del bloque derecho', () => {
     assert.ok(copper.includes('height: counterSlotH'));
-    assert.ok(showcase.includes('height: slot') && showcase.includes('const slot = nameSlotHeight(fontScale, nameLeading);'));
+    assert.ok(showcase.includes('height: slot') && showcase.includes('const slot = nameSlotHeight(fontScale);'));
     assert.ok(src.includes("left: { flex: 1, paddingRight: SPACING.md, justifyContent: 'space-between' }"));
     assert.ok(src.includes('const RIGHT_W = 120;'));
   });
@@ -1527,8 +1533,8 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     assert.ok(fields.length >= 12);
     for (const f of fields) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src), 'color sin uso: ' + f);
   });
-  it('en desarrollo: chips de diseño, degradado, interlineado del nombre (20 / 19 / 18), ancho y letra, los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable) y el estudio con los 6 ejemplos', () => {
-    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí', 'Interlineado del nombre: 20', 'Interlineado del nombre: 19', 'Interlineado del nombre: 18', 'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
+  it('en desarrollo: chips de diseño, degradado, ancho y letra, los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable) y el estudio con los 6 ejemplos', () => {
+    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí',  'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
     for (const label of ['Medallas 0 de 122', 'Medallas 1 de 122', 'Medallas 6 de 122', 'Medallas 122 de 122 (nombre más largo)', 'Medallas nombre corto', 'Medallas cargando', 'Medallas error', 'Medallas última no identificable']) assert.ok(states.includes(`'${label}'`), label);
     assert.ok(dev.includes('<LaurelStudy />') && (study.match(/icon: '/g) ?? []).length === 7);
   });
