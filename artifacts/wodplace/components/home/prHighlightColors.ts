@@ -1,3 +1,4 @@
+import { ARROW_BADGE_GLASS_ALPHA } from './arrowBadgeSpec';
 import { contrastRatio, mixHex } from './progressColors';
 
 /**
@@ -49,8 +50,6 @@ export type PrColors = {
   bone: string;
 };
 
-/** Opacidad del relleno translúcido de la flecha (glassBackground = negro al 60 %). */
-export const GLASS_ALPHA = 0.6;
 /** Opacidad de la textura de rombos (casi imperceptible). */
 export const TEXTURE_OPACITY = 0.07;
 
@@ -127,7 +126,7 @@ export function prMeasure(c: PrColors): PrMeasure {
     icon: contrastRatio(c.icon, c.badgeFill),
     arrowBorder: contrastRatio(c.arrowBorder, c.gradientEnd),
     arrowBorderPressed: contrastRatio(c.arrowBorder, c.pressed),
-    arrowVsFill: Math.min(contrastRatio(c.primary, mixHex('#000000', c.gradientEnd, GLASS_ALPHA)), contrastRatio(c.primary, mixHex('#000000', c.pressed, GLASS_ALPHA))),
+    arrowVsFill: Math.min(contrastRatio(c.primary, mixHex('#000000', c.gradientEnd, ARROW_BADGE_GLASS_ALPHA)), contrastRatio(c.primary, mixHex('#000000', c.pressed, ARROW_BADGE_GLASS_ALPHA))),
     muted: contrastRatio(c.muted, mid),
   };
 }

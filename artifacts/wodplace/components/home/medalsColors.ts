@@ -1,3 +1,4 @@
+import { ARROW_BADGE_GLASS_ALPHA } from './arrowBadgeSpec';
 import { contrastRatio, mixHex } from './progressColors';
 import { MEDAL_FROM, MEDAL_ICON, MEDAL_RING, MEDAL_RING_OPACITY, MEDAL_TO } from '../ui/achievementMedalSpec';
 
@@ -53,8 +54,6 @@ export type MedalsColors = {
 
 /** Opacidad del brillo difuso del lado izquierdo (decorativo; el peor punto del texto se mide con él puesto). */
 export const GLOW_OPACITY = 0.14;
-/** Opacidad del relleno translúcido de la flecha (glassBackground = negro al 60 %). */
-export const GLASS_ALPHA = 0.6;
 /** Opacidad del separador vertical (moderada). */
 export const SEPARATOR_OPACITY = 0.45;
 /** Opacidad del laurel más tenue: sin medallas, con error o cargando (con medalla es la del dibujo, 0,5). */
@@ -127,7 +126,7 @@ export function medalsMeasure(c: MedalsColors): MedalsMeasure {
     medalRing: contrastRatio(mixHex(MEDAL_RING, MEDAL_TO, MEDAL_RING_OPACITY), c.gradientEnd),
     arrowBorder: contrastRatio(c.arrowBorder, c.gradientEnd),
     arrowBorderPressed: contrastRatio(c.arrowBorder, c.pressed),
-    arrowVsFill: Math.min(contrastRatio(c.text, mixHex('#000000', c.gradientEnd, GLASS_ALPHA)), contrastRatio(c.text, mixHex('#000000', c.pressed, GLASS_ALPHA))),
+    arrowVsFill: Math.min(contrastRatio(c.text, mixHex('#000000', c.gradientEnd, ARROW_BADGE_GLASS_ALPHA)), contrastRatio(c.text, mixHex('#000000', c.pressed, ARROW_BADGE_GLASS_ALPHA))),
     medalIcon: contrastRatio(MEDAL_ICON, MEDAL_FROM),
     ribbonIcon: contrastRatio(c.ribbonIcon, c.ribbon),
     ribbonVsCard: Math.min(contrastRatio(c.ribbon, glow), contrastRatio(c.ribbon, mid)),

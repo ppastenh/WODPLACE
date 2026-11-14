@@ -1,3 +1,4 @@
+import { ARROW_BADGE_GLASS_ALPHA } from './arrowBadgeSpec';
 import { contrastRatio, mixHex } from './progressColors';
 
 /**
@@ -13,6 +14,7 @@ export type LevelStreakPalette = {
   navActiveTextSmall: string;
   charcoal: string;
   nextClassCardPressed: string;
+  glassBackground: string;
 };
 
 export type LevelStreakColors = {
@@ -33,6 +35,9 @@ export type LevelStreakColors = {
   dotFilled: string;
   /** Contorno del indicador pendiente (el relleno de los pendientes es transparente: el contorno es lo que se ve). */
   dotOutline: string;
+  /** Flecha en círculo de "Tu nivel" (la de "Tu próxima clase" en versión pequeña): borde de cobre medio (#B98250, el mismo del modelo), relleno translúcido oscuro y flecha en crema (primary). */
+  arrowBorder: string;
+  arrowFill: string;
   /** Detalles geométricos (esquinas, líneas finas). */
   detail: string;
   /** Barras del esqueleto. */
@@ -50,6 +55,8 @@ export function levelStreakColors(p: LevelStreakPalette): LevelStreakColors {
     icon: p.charcoalAccent,
     dotFilled: p.charcoalAccent,
     dotOutline: p.charcoalMuted,
+    arrowBorder: p.charcoalAccent,
+    arrowFill: p.glassBackground,
     detail: p.navActiveTextSmall,
     bone: mixHex(p.charcoalMuted, p.nextClassCard, 0.25),
   };
@@ -72,6 +79,10 @@ export type LevelStreakMeasure = {
   dotFilled: number;
   /** Contorno del indicador pendiente contra el fondo (3:1). */
   dotOutline: number;
+  /** Flecha en círculo: borde contra el fondo y contra el presionado (3:1) y la flecha (crema) contra su relleno translúcido (3:1). */
+  arrowBorder: number;
+  arrowBorderPressed: number;
+  arrowVsFill: number;
 };
 
 export function levelStreakMeasure(c: LevelStreakColors): LevelStreakMeasure {
@@ -84,6 +95,9 @@ export function levelStreakMeasure(c: LevelStreakColors): LevelStreakMeasure {
     badgeBorder: contrastRatio(c.badgeBorder, c.background),
     dotFilled: contrastRatio(c.dotFilled, c.background),
     dotOutline: contrastRatio(c.dotOutline, c.background),
+    arrowBorder: contrastRatio(c.arrowBorder, c.background),
+    arrowBorderPressed: contrastRatio(c.arrowBorder, c.pressed),
+    arrowVsFill: Math.min(contrastRatio(c.primary, mixHex('#000000', c.background, ARROW_BADGE_GLASS_ALPHA)), contrastRatio(c.primary, mixHex('#000000', c.pressed, ARROW_BADGE_GLASS_ALPHA))),
   };
 }
 
@@ -97,6 +111,9 @@ export function levelStreakPasses(m: LevelStreakMeasure): boolean {
     m.iconVsBadge >= 3 &&
     m.badgeBorder >= 3 &&
     m.dotFilled >= 3 &&
-    m.dotOutline >= 3
+    m.dotOutline >= 3 &&
+    m.arrowBorder >= 3 &&
+    m.arrowBorderPressed >= 3 &&
+    m.arrowVsFill >= 3
   );
 }

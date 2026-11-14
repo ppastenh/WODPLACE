@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import { ArrowBadge } from '@/components/home/ArrowBadge';
+import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { levelStreakColors, type LevelStreakColors } from '@/components/home/levelStreakColors';
@@ -95,7 +97,7 @@ export function LevelStreakCards({ rank, achievementStats, streakStatus, onOpenP
 
   const pad = compact ? PAD_COMPACT : PAD;
   const frame = [styles.card, compact && styles.cardCompact, { padding: pad, backgroundColor: c.background, borderColor: c.detail, shadowColor: colors.charcoal }];
-  const headerStyle = [styles.header, compact && styles.headerCompact];
+  const headerStyle = [styles.header, compact ? styles.headerCompact : styles.headerArrowRoom];
   const line = compact ? LINE_COMPACT : LINE;
   const labelStyle = [styles.label, compact && styles.labelCompact, sizeOf(LABEL, fs, line), { color: c.secondary }];
 
@@ -117,20 +119,15 @@ export function LevelStreakCards({ rank, achievementStats, streakStatus, onOpenP
             <Text style={labelStyle} maxFontSizeMultiplier={MAX_MULT}>
               Tu nivel
             </Text>
-            <View
-              pointerEvents="none"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              style={compact ? styles.chevronCompact : undefined}
-            >
-              <Feather name="chevron-right" size={16} color={c.secondary} />
-            </View>
           </View>
           <View importantForAccessibility="no-hide-descendants">
             <RankValue c={c} level={level} fs={fs} line={line} />
             <Text style={[styles.detail, sizeOf(LABEL, fs, line), { color: c.secondary }]} maxFontSizeMultiplier={MAX_MULT}>
               {LEVEL_DETAIL}
             </Text>
+          </View>
+          <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.arrow}>
+            <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.primary} />
           </View>
         </Pressable>
         <View style={frame} accessible accessibilityLabel={streakA11yLabel(streak)}>
@@ -287,7 +284,9 @@ const styles = StyleSheet.create({
   headerCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: SPACING.xs2 },
   label: { flex: 1, fontFamily: 'Inter_600SemiBold' },
   labelCompact: { flex: 0, flexGrow: 0 },
-  chevronCompact: { position: 'absolute', top: 0, right: 0 },
+  // Flecha pequeña de "Tu nivel" en la esquina superior derecha (decorativa). Sin modo compacto, la fila de la etiqueta le deja su lugar a la derecha.
+  arrow: { position: 'absolute', top: 8, right: 8 },
+  headerArrowRoom: { paddingRight: ARROW_BADGE_SMALL },
   detail: { fontFamily: 'Inter_500Medium', marginTop: 2 },
   value: { fontFamily: 'Anton_400Regular', includeFontPadding: false },
   suffix: { fontFamily: 'Inter_500Medium' },

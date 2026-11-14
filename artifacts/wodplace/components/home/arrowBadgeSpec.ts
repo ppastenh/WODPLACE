@@ -10,3 +10,5 @@ export const ARROW_BADGE_SMALL = ARROW_BADGE_SIZE * ARROW_BADGE_SMALL_RATIO;
 
 export const arrowBadgeBorder = (size: number) => ARROW_BADGE_BORDER * (size / ARROW_BADGE_SIZE);
 export const arrowBadgeIconSize = (size: number) => size * ARROW_BADGE_ICON_RATIO;
+/** Opacidad del relleno translúcido de la flecha (glassBackground = negro al 60 %): la misma en las cuatro tarjetas. */
+export const ARROW_BADGE_GLASS_ALPHA = 0.6;

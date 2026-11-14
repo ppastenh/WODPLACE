@@ -66,7 +66,7 @@ import {
   medalsStatusOf,
   medalsView,
 } from '../../artifacts/wodplace/components/home/medalsModel';
-import { ARROW_BADGE_BORDER, ARROW_BADGE_ICON_RATIO, ARROW_BADGE_SIZE, ARROW_BADGE_SMALL, arrowBadgeBorder, arrowBadgeIconSize } from '../../artifacts/wodplace/components/home/arrowBadgeSpec';
+import { ARROW_BADGE_BORDER, ARROW_BADGE_GLASS_ALPHA, ARROW_BADGE_ICON_RATIO, ARROW_BADGE_SIZE, ARROW_BADGE_SMALL, arrowBadgeBorder, arrowBadgeIconSize } from '../../artifacts/wodplace/components/home/arrowBadgeSpec';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
@@ -989,7 +989,7 @@ describe('Recuadros "Tu nivel" y "Racha de constancia" (LevelStreakCards.tsx): u
     assert.ok(src.includes('onPress={onOpenProfile}'));
     assert.ok(src.includes('accessible accessibilityLabel={streakA11yLabel(streak)}'));
     assert.ok(/pressed \? c\.pressed/.test(src));
-    assert.ok(src.includes('name="chevron-right"'));
+    assert.ok(src.includes('<ArrowBadge size={ARROW_BADGE_SMALL}') && !src.includes('chevron-right'), 'la flecha de Tu nivel es la de Tu próxima clase en versión pequeña');
     assert.ok(!/opacity/.test(src.replace(/shadowOpacity/g, '')), 'sin opacidad (ni para el presionado)');
   });
   it('insignias, esquinas, flecha y los siete indicadores: ocultos a lectores de pantalla y en contenedores con pointerEvents="none" (nunca en un Text)', () => {
@@ -1589,8 +1589,34 @@ describe('Flecha compartida (ArrowBadge): la de "Tu próxima clase" y su versió
     assert.deepEqual([r2(mm.arrowBorder), r2(mm.arrowBorderPressed), r2(mm.arrowVsFill)], [3.07, 6.8, 12.82]);
     assert.ok(prPasses(pm) && medalsPasses(mm));
   });
-  it('"Tu nivel" NO cambia: conserva su flecha ">" discreta (chevron-right de 16 dp en gris cálido), sin círculo', () => {
-    assert.ok(level.includes('<Feather name="chevron-right" size={16} color={c.secondary} />'));
-    assert.ok(!level.includes('ArrowBadge'));
+  it('"Tu nivel" usa ArrowBadge pequeño (22,4 dp) con borde de cobre medio #B98250, relleno translúcido oscuro y flecha crema, decorativa (contenedor con pointerEvents="none", oculto a lectores de pantalla) en la esquina superior derecha; "Racha de constancia" NO lleva flecha', () => {
+    assert.ok(level.includes('<ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.primary} />'));
+    assert.ok(level.includes("arrow: { position: 'absolute', top: 8, right: 8 }"));
+    assert.equal((level.match(/<ArrowBadge/g) ?? []).length, 1, 'una sola flecha: la de Tu nivel');
+    const racha = level.slice(level.indexOf('accessible accessibilityLabel={streakA11yLabel(streak)}'), level.indexOf('/** Insignia: escudo'));
+    assert.ok(!racha.includes('ArrowBadge') && !racha.includes('arrow'), 'Racha no lleva flecha');
+    assert.equal((level.match(/accessibilityRole="button"/g) ?? []).length, 1, 'Tu nivel sigue siendo el único botón');
+    assert.ok(level.includes('onPress={onOpenProfile}') && level.includes('accessibilityLabel={levelA11yLabel(level)}') && level.includes('pressed ? c.pressed : c.background'));
+    assert.equal(levelStreakColors(light).arrowBorder, '#B98250');
+    assert.equal(levelStreakColors(light).arrowFill, light.glassBackground);
+  });
+  it('contrastes de la flecha de "Tu nivel" (mínimo 3:1): borde 5,34 contra el fondo y 4,05 presionado, flecha crema sobre su relleno 16,52', () => {
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const m = levelStreakMeasure(levelStreakColors(light));
+    assert.deepEqual([r2(m.arrowBorder), r2(m.arrowBorderPressed), r2(m.arrowVsFill)], [5.34, 4.05, 16.52]);
+    assert.ok(levelStreakPasses(m));
+  });
+  it('las cuatro flechas (Tu próxima clase, Tu nivel, PR destacado y Medallas) usan el MISMO componente y la misma opacidad del relleno (negro al 60 %); las tres pequeñas, el mismo tamaño', () => {
+    for (const [name, src] of [['Tu nivel', level], ['PR', pr], ['Medallas', medals]] as const) {
+      assert.ok(src.includes('<ArrowBadge size={ARROW_BADGE_SMALL}'), name);
+      assert.ok(!src.includes('chevron-right'), name + ' conserva un chevron');
+    }
+    assert.ok(next.includes('<ArrowBadge borderColor={copper}'));
+    assert.equal(ARROW_BADGE_GLASS_ALPHA, 0.6);
+    for (const f of ['levelStreakColors.ts', 'prHighlightColors.ts', 'medalsColors.ts']) {
+      const code = readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+      assert.ok(code.includes('ARROW_BADGE_GLASS_ALPHA') && !/GLASS_ALPHA = /.test(code), f);
+    }
+    assert.equal(light.glassBackground, 'rgba(0,0,0,0.6)');
   });
 });
