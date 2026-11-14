@@ -43,7 +43,7 @@ import {
   prValueText,
   prView,
 } from '../../artifacts/wodplace/components/home/prHighlightModel';
-import { DEFAULT_SCALE, LONG_NAME_LETTERS, NAME_GAP, NAME_STYLE, NAME_STYLE_LONG, SCALES, nameSlotHeight, nameStyleFor, showcaseGeometry, showcaseHeight } from '../../artifacts/wodplace/components/home/achievementShowcaseLayout';
+import { DEFAULT_LEADING, DEFAULT_SCALE, LONG_NAME_LETTERS, NAME_GAP, NAME_LEADINGS, NAME_MAX_SCALE, NAME_STYLE, NAME_STYLE_LONG, nameSlotHeight, nameStyleFor, showcaseGeometry, showcaseHeight } from '../../artifacts/wodplace/components/home/achievementShowcaseLayout';
 import { LAUREL_DATA, LAUREL_GROUP_OPACITY, LAUREL_MIRROR, LAUREL_VIEWBOX } from '../../artifacts/wodplace/components/ui/laurelData';
 import {
   MEDAL_DEFAULT_SIZE,
@@ -1271,29 +1271,32 @@ describe('Laurel "relieve" (laurelData.ts y Laurel.tsx): dibujo propio vectoriza
 });
 
 describe('Bloque derecho de Medallas (achievementShowcaseLayout.ts y AchievementShowcase.tsx): geometría, nombre y alto fijo', () => {
-  it('por defecto la escala es 0,95 (laurel de 83,6 x 68,4 dp y medalla de 36,1 dp); con 0,9 el laurel mide 79,2 x 64,8 dp y la medalla 34,2 dp, todo proporcional; el centro de la medalla queda a 31 x escala desde arriba y centrado en horizontal', () => {
-    assert.equal(DEFAULT_SCALE, 0.95);
+  it('la escala del bloque es 100 % (laurel de 88 x 72 dp y medalla de 38 dp); con otra escala todo es proporcional (p. ej. 0,9: 79,2 x 64,8 dp y medalla de 34,2 dp); el centro de la medalla queda a 31 x escala desde arriba y centrado en horizontal', () => {
+    assert.equal(DEFAULT_SCALE, 1);
     const d = showcaseGeometry(DEFAULT_SCALE);
-    assert.ok(Math.abs(d.boxW - 83.6) < 1e-9 && Math.abs(d.boxH - 68.4) < 1e-9 && Math.abs(d.medal - 36.1) < 1e-9);
+    assert.ok(d.boxW === 88 && d.boxH === 72 && d.medal === 38);
+    assert.ok(Math.abs(medalIconSize(d.medal) - 19) < 1e-9, 'ícono = medalla x 0,5');
     const g = showcaseGeometry(0.9);
     assert.ok(Math.abs(g.boxW - 79.2) < 1e-9 && Math.abs(g.boxH - 64.8) < 1e-9 && Math.abs(g.medal - 34.2) < 1e-9);
     assert.ok(Math.abs(g.medalTop + g.medal / 2 - 31 * 0.9) < 1e-9, 'centro a 31 x escala');
     assert.ok(Math.abs(g.medalLeft + g.medal / 2 - g.boxW / 2) < 1e-9, 'centrada en horizontal');
-    for (const s of SCALES) {
+    for (const s of [1, 0.95, 0.9, 0.85]) {
       const k = showcaseGeometry(s);
       assert.ok(Math.abs(k.boxW / 88 - s) < 1e-9 && Math.abs(k.boxH / 72 - s) < 1e-9 && Math.abs(k.medal / 38 - s) < 1e-9, 'proporcional: ' + s);
     }
-    assert.deepEqual([...SCALES], [1, 0.95, 0.9, 0.85]);
+    assert.deepEqual([...NAME_LEADINGS], [20, 19, 18]);
+    assert.equal(DEFAULT_LEADING, 20);
   });
-  it('el nombre empieza 4 dp bajo el borde inferior del laurel y su casilla mide dos líneas fijas de 20 dp: alto del bloque 112,4 dp con la escala por defecto 0,95 y letra 1,0 (116,4 con letra 1,1; 124,4 con 1,3)', () => {
-    assert.equal(NAME_GAP, 4);
-    assert.ok(Math.abs(showcaseHeight(0.95, 1) - 112.4) < 1e-9);
-    assert.ok(Math.abs(showcaseHeight(0.95, 1.1) - 116.4) < 1e-9);
-    assert.ok(Math.abs(showcaseHeight(0.95, 1.3) - 124.4) < 1e-9);
-    assert.ok(Math.abs(showcaseHeight(0.9, 1) - 108.8) < 1e-9);
-    assert.ok(Math.abs(showcaseHeight(1, 1) - 116) < 1e-9);
+  it('el nombre empieza 2 dp bajo el borde inferior del laurel y su casilla mide dos líneas fijas de 20 dp: alto del bloque 114 dp con la escala 100 % y letra 1,0 (118 con letra 1,1; 120 con 1,3, porque la letra del nombre tiene tope 1,15)', () => {
+    assert.equal(NAME_GAP, 2);
+    assert.ok(Math.abs(showcaseHeight(1, 1) - 114) < 1e-9);
+    assert.ok(Math.abs(showcaseHeight(1, 1.1) - 118) < 1e-9);
+    assert.ok(Math.abs(showcaseHeight(1, 1.3) - 120) < 1e-9);
+    assert.equal(NAME_MAX_SCALE, 1.15);
+    // El alto de la tarjeta = relleno de arriba (12) + bloque + relleno de abajo (10) + bordes (2) = 138 dp con letra 1,0.
+    assert.equal(12 + showcaseHeight(1, 1) + 10 + 2, 138);
     assert.equal(nameSlotHeight(1), 40);
-    assert.equal(nameSlotHeight(1.3), 52);
+    assert.equal(nameSlotHeight(1.3), 46);
   });
   it('nombre en Inter SemiBold 14 con interlineado 20 (13/19 solo con 20 o más letras: el interlineado no baja del alto de línea de Android de Inter, 1,43 em), sin adjustsFontSizeToFit, y cabe en dos líneas sin "…"', () => {
     assert.deepEqual(nameStyleFor('Racha de 7 días'), { fontSize: 14, lineHeight: 20 });
@@ -1301,7 +1304,12 @@ describe('Bloque derecho de Medallas (achievementShowcaseLayout.ts y Achievement
     assert.deepEqual(nameStyleFor('Primer entrenamiento'), { fontSize: 13, lineHeight: 19 });
     assert.deepEqual(nameStyleFor('Competidor recurrente'), { fontSize: 13, lineHeight: 19 });
     assert.deepEqual(nameStyleFor('Leyenda de la constancia'), { fontSize: 13, lineHeight: 19 });
-    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.3), { fontSize: 14 * 1.3, lineHeight: 26 });
+    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.3), { fontSize: 14 * 1.15, lineHeight: 23 });
+    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.1), { fontSize: 14 * 1.1, lineHeight: 22 });
+    // Interlineado de comparación (solo desarrollo): 20 / 19 / 18 para 14 sp y uno menos para 13 sp.
+    assert.deepEqual(nameStyleFor('Racha de 7 días', 1, 19), { fontSize: 14, lineHeight: 19 });
+    assert.deepEqual(nameStyleFor('Leyenda de la constancia', 1, 18), { fontSize: 13, lineHeight: 17 });
+    assert.equal(nameSlotHeight(1, 18), 36);
     // Evidencia del recorte: el alto de línea de Inter en Android (usWinAscent + usWinDescent = 2269 + 660 sobre 2048 = 1,43 em) es 20,0 dp con 14 sp; el interlineado debe cubrirlo.
     const androidLine = (2269 + 660) / 2048;
     assert.ok(NAME_STYLE.lineHeight >= Math.floor(androidLine * NAME_STYLE.fontSize), 'interlineado 14 sp bajo el alto de línea de Android');
@@ -1445,8 +1453,8 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
   const showcase = readFileSync(new URL('../../artifacts/wodplace/components/home/AchievementShowcase.tsx', import.meta.url), 'utf8');
   const copper = src.slice(src.indexOf('function CopperCard'), src.indexOf('const sizeOf = '));
 
-  it("el valor por defecto es 'cobre' con degradado legible y bloque derecho al 95 % (Inicio real cambia); para volver basta variant: 'actual'; el diseño anterior se movió tal cual", () => {
-    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurelScale: DEFAULT_SCALE };"));
+  it("el valor por defecto es 'cobre' con degradado legible y bloque derecho al 100 % (Inicio real cambia); para volver basta variant: 'actual'; el diseño anterior se movió tal cual", () => {
+    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', nameLeading: DEFAULT_LEADING };"));
     const a = src.slice(src.indexOf('function ActualCard'), src.indexOf('/* ───────────── Piezas'));
     assert.ok(a.includes('accessibilityLabel="Ver medallas"') && a.includes('onPress={onOpenMedals}') && a.includes('colors.cardPressed') && a.includes('MedalBadge'));
   });
@@ -1503,7 +1511,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
   });
   it('ALTO FIJO: el contador tiene alto fijo, la casilla del nombre mide dos líneas fijas y el lado izquierdo reparte (título arriba, contador y barra abajo) con el alto del bloque derecho', () => {
     assert.ok(copper.includes('height: counterSlotH'));
-    assert.ok(showcase.includes('height: slot') && showcase.includes('const slot = nameSlotHeight(fontScale);'));
+    assert.ok(showcase.includes('height: slot') && showcase.includes('const slot = nameSlotHeight(fontScale, nameLeading);'));
     assert.ok(src.includes("left: { flex: 1, paddingRight: SPACING.md, justifyContent: 'space-between' }"));
     assert.ok(src.includes('const RIGHT_W = 120;'));
   });
@@ -1519,10 +1527,10 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     assert.ok(fields.length >= 12);
     for (const f of fields) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src), 'color sin uso: ' + f);
   });
-  it('en desarrollo: chips de diseño, degradado, escala del laurel (100 / 90 / 85 %), ancho y letra, los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable) y el estudio con los 6 ejemplos', () => {
-    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí', 'Escala del laurel: 100 %', 'Escala del laurel: 95 %', 'Escala del laurel: 90 %', 'Escala del laurel: 85 %', 'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
+  it('en desarrollo: chips de diseño, degradado, interlineado del nombre (20 / 19 / 18), ancho y letra, los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable) y el estudio con los 6 ejemplos', () => {
+    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí', 'Interlineado del nombre: 20', 'Interlineado del nombre: 19', 'Interlineado del nombre: 18', 'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
     for (const label of ['Medallas 0 de 122', 'Medallas 1 de 122', 'Medallas 6 de 122', 'Medallas 122 de 122 (nombre más largo)', 'Medallas nombre corto', 'Medallas cargando', 'Medallas error', 'Medallas última no identificable']) assert.ok(states.includes(`'${label}'`), label);
-    assert.ok(dev.includes('<LaurelStudy />') && (study.match(/icon: '/g) ?? []).length === 6);
+    assert.ok(dev.includes('<LaurelStudy />') && (study.match(/icon: '/g) ?? []).length === 7);
   });
   it('la línea de depuración del degradado "como lo pedí" solo existe en desarrollo y solo con ese degradado (no se activa en Inicio real)', () => {
     assert.ok(src.includes("__DEV__ && look.variant === 'cobre' && look.gradient === 'pedido'"));

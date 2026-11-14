@@ -9,7 +9,7 @@ import { readLayout } from '@/components/home/layoutEvents';
 import { AchievementShowcase } from '@/components/home/AchievementShowcase';
 import { ArrowBadge } from '@/components/home/ArrowBadge';
 import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
-import { DEFAULT_SCALE } from '@/components/home/achievementShowcaseLayout';
+import { DEFAULT_LEADING } from '@/components/home/achievementShowcaseLayout';
 import {
   GLOW_OPACITY,
   LAUREL_OPACITY_DIM,
@@ -49,11 +49,11 @@ import { RADIUS } from '@/constants/radius';
  * ALTO ESTABLE: cargando, error, sin medallas y con medalla miden lo mismo (el nombre y la etiqueta van en casillas de alto fijo).
  */
 export type MedalsVariant = 'actual' | 'cobre';
-/** laurelScale: escala del bloque derecho (laurel + medalla): 1, 0,95 (por defecto), 0,9 o 0,85. */
-export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; laurelScale: number };
+/** nameLeading: interlineado del nombre del logro (20 por defecto; 19 y 18 solo para comparar en desarrollo). */
+export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; nameLeading: number };
 
-/** Valor por defecto: el diseño Copper Achievement con el degradado legible y el bloque derecho al 95 %. Para volver al diseño anterior basta poner variant: 'actual'. */
-export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurelScale: DEFAULT_SCALE };
+/** Valor por defecto: el diseño Copper Achievement con el degradado legible y el bloque derecho al 100 %. Para volver al diseño anterior basta poner variant: 'actual'. */
+export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', nameLeading: DEFAULT_LEADING };
 
 const MAX_MULT = 1.3;
 const TITLE = FONT_SIZE.sm + 1; // 13 sp
@@ -62,6 +62,7 @@ const RIBBON = { w: 30, h: 46 };
 const RIBBON_ICON = 18;
 const BAR_H = 7;
 const PAD_V = 12;
+const PAD_BOTTOM = 10; // un poco menos abajo: absorbe el crecimiento del bloque derecho (laurel al 100 %) para que la tarjeta se quede en 138 dp; bajo el nombre quedan 13 dp o más
 const PAD_H = 14;
 const RIGHT_W = 120; // mitad derecha: el nombre del logro dispone de RIGHT_W menos el relleno izquierdo
 const RIGHT_PAD = 8;
@@ -114,7 +115,7 @@ export function MedalsCard({ summary, status, onOpenMedals, look = MEDALS_LOOK, 
         {look.variant === 'actual' ? (
           <ActualCard view={view} summary={summary} onOpenMedals={onOpenMedals} />
         ) : (
-          <CopperCard c={c} view={view} onOpenMedals={onOpenMedals} scale={look.laurelScale} fs={fs} />
+          <CopperCard c={c} view={view} onOpenMedals={onOpenMedals} leading={look.nameLeading} fs={fs} />
         )}
         {devBadge}
       </View>
@@ -230,7 +231,7 @@ function Bone({ c, width, height, round }: { c: MedalsColors; width: number | `$
   return <View style={{ width, height, borderRadius: round ? height / 2 : 6, backgroundColor: c.bone }} />;
 }
 
-function CopperCard({ c, view, onOpenMedals, scale, fs }: { c: MedalsColors; view: MedalsView; onOpenMedals: () => void; scale: number; fs: number }) {
+function CopperCard({ c, view, onOpenMedals, leading, fs }: { c: MedalsColors; view: MedalsView; onOpenMedals: () => void; leading: number; fs: number }) {
   const colors = useColors();
   const unlocked = view.kind === 'medals' || view.kind === 'unidentified' ? view.unlocked : 0;
   const total = view.kind === 'loading' || view.kind === 'error' ? 0 : view.total;
@@ -294,8 +295,8 @@ function CopperCard({ c, view, onOpenMedals, scale, fs }: { c: MedalsColors; vie
                 <AchievementShowcase
                   icon={view.kind === 'medals' ? view.last.icon : GENERIC_ICON}
                   name={view.kind === 'medals' ? view.last.name : view.kind === 'empty' ? FIRST_MEDAL_HINT : undefined}
-                  scale={scale}
                   fontScale={fs}
+                  nameLeading={leading}
                   textWidth={RIGHT_W - RIGHT_PAD}
                   laurelOpacity={view.kind === 'medals' || view.kind === 'unidentified' ? undefined : LAUREL_OPACITY_DIM}
                   muted={view.kind === 'empty' || view.kind === 'error'}
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  card: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: 'hidden', paddingVertical: PAD_V, paddingHorizontal: PAD_H },
+  card: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: 'hidden', paddingTop: PAD_V, paddingBottom: PAD_BOTTOM, paddingHorizontal: PAD_H },
   row: { flexDirection: 'row', alignItems: 'stretch' },
   left: { flex: 1, paddingRight: SPACING.md, justifyContent: 'space-between' },
   ribbon: { position: 'absolute', top: -PAD_V, left: 0 },

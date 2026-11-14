@@ -8,8 +8,8 @@ import { SPACING } from '@/constants/spacing';
 import { RADIUS } from '@/constants/radius';
 
 /**
- * ESTUDIO DE LA PARTE DERECHA DE MEDALLAS (pedidos 32 y 33). SOLO en "Estados de Inicio (dev)": una fila con el laurel 'relieve' (el elegido) y seis ejemplos de nombres de logros (tres de rachas y
- * tres del catálogo, para probar el largo) sobre el fondo de la mitad derecha de la tarjeta real (extremo derecho del degradado legible, #8B5E34). No depende de ningún archivo ignorado por git.
+ * ESTUDIO DE LA PARTE DERECHA DE MEDALLAS (pedidos 32 y 33). SOLO en "Estados de Inicio (dev)": una fila con el laurel 'relieve' (el elegido) y siete ejemplos de nombres de logros (tres de rachas y
+ * cuatro del catálogo, para probar el largo y las letras con cola: g, p, y) sobre el fondo de la mitad derecha de la tarjeta real (extremo derecho del degradado legible, #8B5E34). No depende de ningún archivo ignorado por git.
  */
 const EXAMPLES: { icon: string; name: string }[] = [
   { icon: 'mci:calendar-check', name: 'Racha de 7 días' },
@@ -18,6 +18,7 @@ const EXAMPLES: { icon: string; name: string }[] = [
   { icon: 'message-circle', name: 'Primer comentario' },
   { icon: 'repeat', name: 'Competidor recurrente' },
   { icon: 'award', name: 'Leyenda de la constancia' },
+  { icon: 'users', name: 'Mejor progreso grupal' },
 ];
 
 export function LaurelStudy() {

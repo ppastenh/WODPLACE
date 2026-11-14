@@ -610,6 +610,13 @@ export const DEV_GROUPS: DevGroup[] = [
         },
       },
       {
+        id: 'cola',
+        label: 'Medallas nombre con g, p, y (dos líneas)',
+        apply: (d) => {
+          d.medalsSummary = { totalUnlocked: 6, totalAchievements: 122, recent: [{ id: 'grupo_best', icon: 'users', name: 'Mejor progreso grupal' }] };
+        },
+      },
+      {
         id: 'cargando',
         label: 'Medallas cargando',
         apply: (d) => {
