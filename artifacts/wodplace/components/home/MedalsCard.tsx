@@ -1,22 +1,21 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { MedalBadge } from '@/components/MedalBadge';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
-import { LaurelWreath } from '@/components/home/LaurelWreath';
+import { AchievementShowcase } from '@/components/home/AchievementShowcase';
+import { DEFAULT_SCALE } from '@/components/home/achievementShowcaseLayout';
 import {
   GLOW_OPACITY,
-  LAUREL_OPACITY,
   LAUREL_OPACITY_DIM,
   SEPARATOR_OPACITY,
   medalsColors,
   medalsMeasure,
   type MedalsColors,
   type MedalsGradient,
-  type MedalsRibbon,
 } from '@/components/home/medalsColors';
 import {
   FIRST_MEDAL_HINT,
@@ -26,11 +25,8 @@ import {
   MIN_FILL_PX,
   barFraction,
   counterSizes,
-  isTrophy,
-  medalIconColor,
   medalsA11yLabel,
   medalsView,
-  nameFontSize,
   type MedalsStatus,
   type MedalsSummary,
   type MedalsView,
@@ -44,32 +40,30 @@ import { RADIUS } from '@/constants/radius';
  * TARJETA "MEDALLAS" de Inicio (decisión (y) de DECISIONES-DISENO.md, Copper Achievement). Antes vivía dentro de HomeView; se movió aquí SIN cambiar su lógica, sus datos ni su toque:
  * HomeView entrega el resumen (medalsSummary: N desbloqueadas, M totales y la lista de las últimas por fecha de desbloqueo; la primera es "la última"), el estado de la consulta
  * (el mismo de la racha) y onOpenMedals (toca → pantalla Medallas). Qué decide qué: medalsModel.ts (estados, textos, barra y tramos; puro), medalsColors.ts (colores y contraste; puro)
- * y laurelGeometry.ts (corona de laurel; puro). Aquí solo se dibuja.
+ * y achievementShowcaseLayout.ts (laurel, medalla y nombre; puro). Aquí solo se dibuja.
  *
  * variant 'cobre' (por defecto) = tarjeta de cobre en dos áreas ("Colección" a la izquierda, "Logro destacado" a la derecha); 'actual' = el diseño de siempre (solo desarrollo).
  * La tarjeta entera es UN botón (presionado SÓLIDO). Cinta, brillo, separador, corona, medalla y flecha son decorativos: ocultos a lectores de pantalla y sin tapar el toque.
  * ALTO ESTABLE: cargando, error, sin medallas y con medalla miden lo mismo (el nombre y la etiqueta van en casillas de alto fijo).
  */
 export type MedalsVariant = 'actual' | 'cobre';
-export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; laurel: boolean; ribbon: MedalsRibbon };
+/** laurelScale: escala del bloque derecho (laurel + medalla): 1, 0,9 o 0,85 (por defecto: con 0,9 la tarjeta mide 129 dp, sobre el máximo de 128). */
+export type MedalsLook = { variant: MedalsVariant; gradient: MedalsGradient; laurelScale: number };
 
-/** Valor por defecto: el diseño Copper Achievement con el degradado legible y la corona. Para volver al diseño anterior basta poner variant: 'actual'. */
-export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurel: true, ribbon: 'cafe' };
+/** Valor por defecto: el diseño Copper Achievement con el degradado legible y el bloque derecho al 85 %. Para volver al diseño anterior basta poner variant: 'actual'. */
+export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurelScale: DEFAULT_SCALE };
 
 const MAX_MULT = 1.3;
 const TITLE = FONT_SIZE.sm + 1; // 13 sp
-const MEDAL = 42; // diámetro de la medalla (dp)
 // Cinta: 30 x 46 dp en total, con 12 dp ocultos sobre el borde superior de la tarjeta (se ven 34 dp de alto, con la muesca abajo); ícono de 18 dp.
 const RIBBON = { w: 30, h: 46 };
 const RIBBON_ICON = 18;
 const BAR_H = 7;
 const PAD_V = 12;
 const PAD_H = 14;
-const RIGHT_W = 108;
-const NAME_BASE = 13; // el tramo mayor del nombre: la casilla del nombre mide dos líneas de este tamaño en todos los estados
+const RIGHT_W = 120; // mitad derecha: el nombre del logro dispone de RIGHT_W menos el relleno izquierdo
+const RIGHT_PAD = 8;
 const COUNTER_BASE = 36; // el tramo mayor del contador: la casilla del contador mide una línea de este tamaño en todos los estados
-const SLOT_H = 52; // casilla de la medalla: la corona se sale un poco, sin cambiar el alto
-const NAME_LINES = 2;
 
 type Props = {
   summary: MedalsSummary;
@@ -109,7 +103,7 @@ export function MedalsCard({ summary, status, onOpenMedals, look = MEDALS_LOOK, 
     </View>
   ) : null;
   // Línea de depuración (solo desarrollo, solo con el degradado "como lo pedí"): marca lo que NO pasa el contraste. En Inicio real nunca se dibuja.
-  const c = medalsColors(colors, look.gradient, look.ribbon);
+  const c = medalsColors(colors, look.gradient);
   const debugLine = __DEV__ && look.variant === 'cobre' && look.gradient === 'pedido' ? <DebugLine c={c} /> : null;
 
   return (
@@ -118,7 +112,7 @@ export function MedalsCard({ summary, status, onOpenMedals, look = MEDALS_LOOK, 
         {look.variant === 'actual' ? (
           <ActualCard view={view} summary={summary} onOpenMedals={onOpenMedals} />
         ) : (
-          <CopperCard c={c} view={view} onOpenMedals={onOpenMedals} laurel={look.laurel} fs={fs} />
+          <CopperCard c={c} view={view} onOpenMedals={onOpenMedals} scale={look.laurelScale} fs={fs} />
         )}
         {devBadge}
       </View>
@@ -234,46 +228,13 @@ function Bone({ c, width, height, round }: { c: MedalsColors; width: number | `$
   return <View style={{ width, height, borderRadius: round ? height / 2 : 6, backgroundColor: c.bone }} />;
 }
 
-/** Ícono real del logro (el mismo mapeo que MedalBadge: glifo de Feather, salvo "trophy", que es de MaterialCommunityIcons) y el color de podio si se distingue del relleno. */
-function MedalGlyph({ icon, color, size }: { icon: string; color: string; size: number }) {
-  return isTrophy(icon) ? (
-    <MaterialCommunityIcons name="trophy" size={size} color={color} />
-  ) : (
-    <Feather name={icon as React.ComponentProps<typeof Feather>['name']} size={size} color={color} />
-  );
-}
-
-/** Medalla circular de cobre profundo con borde fino de cobre claro y el ícono real; atenuada (contorno punteado, sin relleno) sin medallas, con error o cargando. */
-function Medal({ c, view }: { c: MedalsColors; view: MedalsView }) {
-  if (view.kind === 'loading') return <View style={[styles.medal, { backgroundColor: c.bone }]} />;
-  const solid = view.kind === 'medals' || view.kind === 'unidentified';
-  const icon = view.kind === 'medals' ? view.last.icon : GENERIC_ICON;
-  const color = view.kind === 'medals' ? medalIconColor(getMedalIconColor(view.last.id), c.medalFill, c.medalIcon) : solid ? c.medalIcon : c.mutedIcon;
-  return (
-    <View
-      style={[
-        styles.medal,
-        solid
-          ? { backgroundColor: c.medalFill, borderColor: c.medalBorder }
-          : { borderColor: c.medalBorder, borderStyle: 'dashed' },
-      ]}
-    >
-      <MedalGlyph icon={icon} color={color} size={20} />
-    </View>
-  );
-}
-
-function CopperCard({ c, view, onOpenMedals, laurel, fs }: { c: MedalsColors; view: MedalsView; onOpenMedals: () => void; laurel: boolean; fs: number }) {
+function CopperCard({ c, view, onOpenMedals, scale, fs }: { c: MedalsColors; view: MedalsView; onOpenMedals: () => void; scale: number; fs: number }) {
   const colors = useColors();
   const unlocked = view.kind === 'medals' || view.kind === 'unidentified' ? view.unlocked : 0;
   const total = view.kind === 'loading' || view.kind === 'error' ? 0 : view.total;
   const sizes = counterSizes(unlocked, total);
   const pct = barFraction(unlocked, total) * 100;
-  const nameSize = view.kind === 'medals' ? nameFontSize(view.last.name) : 13;
-  const nameLine = Math.round(nameSize * 1.15 * fs);
-  const nameSlotH = Math.round(NAME_BASE * 1.15 * fs) * NAME_LINES;
   const counterSlotH = Math.round(COUNTER_BASE * 1.15 * fs);
-  const laurelOpacity = view.kind === 'medals' || view.kind === 'unidentified' ? LAUREL_OPACITY : LAUREL_OPACITY_DIM;
   const text = { color: c.text };
 
   return (
@@ -305,6 +266,7 @@ function CopperCard({ c, view, onOpenMedals, laurel, fs }: { c: MedalsColors; vi
                     {MEDALS_TITLE}
                   </Text>
                 </View>
+                <View>
                 {view.kind === 'loading' ? (
                   <View style={[styles.counterRow, { height: counterSlotH }]}>
                     <Bone c={c} width={72} height={Math.round(sizes.number * 0.7 * fs)} />
@@ -320,29 +282,24 @@ function CopperCard({ c, view, onOpenMedals, laurel, fs }: { c: MedalsColors; vi
                 <View style={[styles.track, { backgroundColor: c.barTrack }]}>
                   {pct > 0 ? <View style={[styles.fill, { backgroundColor: c.barFill, width: `${pct}%`, minWidth: MIN_FILL_PX }]} /> : null}
                 </View>
+                </View>
               </View>
               <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.separatorWrap}>
                 <View style={[styles.separator, { backgroundColor: c.separator, opacity: SEPARATOR_OPACITY }]} />
               </View>
               {/* Lado derecho: Logro destacado */}
               <View style={styles.right}>
-                <View style={styles.slot}>
-                  {laurel ? <LaurelWreath size={MEDAL} color={c.laurel} opacity={view.kind === 'loading' ? 0.2 : laurelOpacity} /> : null}
-                  <Medal c={c} view={view} />
-                </View>
-                <View style={[styles.nameSlot, { minHeight: nameSlotH }]}>
-                  {view.kind === 'loading' ? (
-                    <Bone c={c} width={70} height={12} round />
-                  ) : view.kind === 'medals' ? (
-                    <Text style={[styles.name, { fontSize: nameSize * fs, lineHeight: nameLine }, text]} maxFontSizeMultiplier={MAX_MULT}>
-                      {view.last.name}
-                    </Text>
-                  ) : view.kind === 'empty' ? (
-                    <Text style={[styles.name, { fontSize: 12 * fs, lineHeight: Math.round(12 * 1.15 * fs) }, text]} maxFontSizeMultiplier={MAX_MULT}>
-                      {FIRST_MEDAL_HINT}
-                    </Text>
-                  ) : null}
-                </View>
+                <AchievementShowcase
+                  icon={view.kind === 'medals' ? view.last.icon : GENERIC_ICON}
+                  name={view.kind === 'medals' ? view.last.name : view.kind === 'empty' ? FIRST_MEDAL_HINT : undefined}
+                  scale={scale}
+                  fontScale={fs}
+                  textWidth={RIGHT_W - RIGHT_PAD}
+                  laurelOpacity={view.kind === 'medals' || view.kind === 'unidentified' ? undefined : LAUREL_OPACITY_DIM}
+                  muted={view.kind === 'empty' || view.kind === 'error'}
+                  mutedIconColor={c.mutedIcon}
+                  skeletonColor={view.kind === 'loading' ? c.bone : undefined}
+                />
               </View>
             </View>
             <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.arrow}>
@@ -394,7 +351,7 @@ const styles = StyleSheet.create({
   },
   card: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: 'hidden', paddingVertical: PAD_V, paddingHorizontal: PAD_H },
   row: { flexDirection: 'row', alignItems: 'stretch' },
-  left: { flex: 1, paddingRight: SPACING.md },
+  left: { flex: 1, paddingRight: SPACING.md, justifyContent: 'space-between' },
   ribbon: { position: 'absolute', top: -PAD_V, left: 0 },
   ribbonIcon: { position: 'absolute', top: PAD_V + 4, left: 0, right: 0, alignItems: 'center' },
   // El título queda a la altura del ícono de la cinta; el contador empieza debajo de las puntas de la cinta (34 dp desde el borde superior de la columna).
@@ -406,11 +363,7 @@ const styles = StyleSheet.create({
   fill: { height: BAR_H, borderRadius: BAR_H / 2 },
   separatorWrap: { width: 1, paddingVertical: SPACING.sm },
   separator: { flex: 1, width: 1 },
-  right: { width: RIGHT_W, alignItems: 'center', justifyContent: 'center', paddingLeft: SPACING.sm },
-  slot: { width: MEDAL, height: SLOT_H, alignItems: 'center', justifyContent: 'center' },
-  medal: { width: MEDAL, height: MEDAL, borderRadius: MEDAL / 2, borderWidth: 1.2, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
-  nameSlot: { alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 },
-  name: { fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  right: { width: RIGHT_W, alignItems: 'center', justifyContent: 'center', paddingLeft: RIGHT_PAD },
   arrow: { position: 'absolute', top: 10, right: 8 },
   debug: { color: '#B42318', fontSize: 10, fontFamily: 'Inter_600SemiBold', marginTop: 4 },
   // Solo desarrollo

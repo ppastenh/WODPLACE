@@ -43,35 +43,28 @@ import {
   prValueText,
   prView,
 } from '../../artifacts/wodplace/components/home/prHighlightModel';
+import { DEFAULT_SCALE, LONG_NAME_LETTERS, NAME_GAP, SCALES, nameSlotHeight, nameStyleFor, showcaseGeometry, showcaseHeight } from '../../artifacts/wodplace/components/home/achievementShowcaseLayout';
+import { LAUREL_DATA, LAUREL_GROUP_OPACITY, LAUREL_MIRROR, LAUREL_VIEWBOX } from '../../artifacts/wodplace/components/ui/laurelData';
 import {
-  LEAF_ANGLES,
-  MIN_GAP,
-  STEM_END_DEG,
-  STEM_RADIUS,
-  STEM_START_DEG,
-  leafPoints,
-  leftBranch,
-  minGapToMedal,
-  mirror,
-  rightBranch,
-  stemPoints,
-  wreathHeight,
-  wreathPoints,
-  wreathWidth,
-} from '../../artifacts/wodplace/components/home/laurelGeometry';
-import { medalsColors, medalsMeasure, medalsPasses } from '../../artifacts/wodplace/components/home/medalsColors';
+  MEDAL_DEFAULT_SIZE,
+  MEDAL_FROM,
+  MEDAL_ICON,
+  MEDAL_RING,
+  MEDAL_RING_OPACITY,
+  MEDAL_TO,
+  medalIconSize,
+  medalRing,
+} from '../../artifacts/wodplace/components/ui/achievementMedalSpec';
+import { LAUREL_OPACITY_DIM, medalsColors, medalsMeasure, medalsPasses } from '../../artifacts/wodplace/components/home/medalsColors';
 import {
   GENERIC_ICON,
   MIN_FILL_PX,
   NO_DATA,
   barFraction,
   counterSizes,
-  isTrophy,
-  medalIconColor,
   medalsA11yLabel,
   medalsStatusOf,
   medalsView,
-  nameFontSize,
 } from '../../artifacts/wodplace/components/home/medalsModel';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
@@ -1235,85 +1228,91 @@ describe('Tarjeta "PR destacado": estados cargando, error, vacío y con marca (f
 });
 
 // ───────────── Tarjeta "Medallas" (decisión (y), Copper Achievement, pedido 30) ─────────────
-describe('Corona de laurel (laurelGeometry.ts): dos ramas simétricas, hojas, separación y ancho', () => {
-  const r = 21;
-  const left = leftBranch(r);
-  const right = rightBranch(r);
-  it('la rama derecha es el espejo EXACTO de la izquierda (tallo y cada hoja: base, punta y puntos de control)', () => {
-    assert.deepEqual(right.stemStart, mirror(left.stemStart));
-    assert.deepEqual(right.stemEnd, mirror(left.stemEnd));
-    assert.equal(right.leaves.length, left.leaves.length);
-    left.leaves.forEach((l, i) => {
-      const m = right.leaves[i]!;
-      assert.deepEqual(m.base, mirror(l.base));
-      assert.deepEqual(m.tip, mirror(l.tip));
-      assert.deepEqual(m.controlA, mirror(l.controlA));
-      assert.deepEqual(m.controlB, mirror(l.controlB));
-      assert.equal(m.angleDeg, 180 - l.angleDeg);
-    });
-    // Los ángulos equivalentes de la rama derecha: 75° a -65°.
-    assert.equal(right.leaves[0]!.angleDeg, 75);
-    assert.equal(right.leaves[5]!.angleDeg, -65);
+describe('Laurel "relieve" (laurelData.ts y Laurel.tsx): dibujo propio vectorizado, dos ramas espejo exactas, tonos', () => {
+  const src = readFileSync(new URL('../../artifacts/wodplace/components/ui/Laurel.tsx', import.meta.url), 'utf8');
+  const dataSrc = readFileSync(new URL('../../artifacts/wodplace/components/ui/laurelData.ts', import.meta.url), 'utf8');
+  it('15 hojas por rama, todas con la misma forma en dos mitades (clara #F3D3AA y oscura #C08A57) y un tallo en arco de 1,1 dp (#E2B887, puntas redondeadas)', () => {
+    assert.equal(LAUREL_DATA.leaves.length, 15);
+    assert.equal(LAUREL_DATA.leafLight.fill, '#F3D3AA');
+    assert.equal(LAUREL_DATA.leafDark.fill, '#C08A57');
+    assert.equal(LAUREL_DATA.stem.stroke, '#E2B887');
+    assert.equal(LAUREL_DATA.stem.strokeWidth, 1.1);
+    assert.equal(LAUREL_DATA.stem.linecap, 'round');
+    assert.ok(/A30 30 0 0 1/.test(LAUREL_DATA.stem.d), 'el tallo es un arco');
+    for (const l of LAUREL_DATA.leaves) assert.ok(Number.isFinite(l.x) && Number.isFinite(l.y) && Number.isFinite(l.rot) && l.scale > 0 && l.scale <= 1);
   });
-  it('el tallo es un arco de radio 26 de 105° a 245° (deja 30° de abertura abajo y 50° arriba) y las hojas van en 105°, 133°, 161°, 189°, 217° y 245°', () => {
-    assert.equal(STEM_RADIUS, 26);
-    assert.equal(STEM_START_DEG, 105);
-    assert.equal(STEM_END_DEG, 245);
-    assert.deepEqual([...LEAF_ANGLES], [105, 133, 161, 189, 217, 245]);
-    const angleOf = (p: { x: number; y: number }) => ((Math.atan2(p.y, p.x) * 180) / Math.PI + 360) % 360;
-    assert.ok(Math.abs(angleOf(left.stemStart) - angleOf(right.stemStart) - 30) < 1e-9, 'abertura de 30° abajo');
-    assert.ok(Math.abs(angleOf(right.stemEnd) - angleOf(left.stemEnd) - 50) < 1e-9, 'abertura de 50° arriba');
-    for (const p of stemPoints(r)) assert.ok(Math.abs(Math.hypot(p.x, p.y) - 26) < 1e-9, 'el tallo es un arco circular de radio 26');
-    assert.ok(/ A 26 26 0 0 1 /.test(left.stemPath));
+  it('el lienzo es de 88 x 72 dp y la opacidad del grupo completo es 0,5 (decorativa y fija, no un estado presionado)', () => {
+    assert.deepEqual(LAUREL_VIEWBOX, { w: 88, h: 72 });
+    assert.equal(LAUREL_GROUP_OPACITY, 0.5);
+    assert.ok(src.includes('opacity = LAUREL_GROUP_OPACITY'));
   });
-  it('entre 5 y 7 hojas por rama (son 6), cada una de largo 9 y semiancho 2,2, nacida en el tallo', () => {
-    assert.ok(left.leaves.length >= 5 && left.leaves.length <= 7);
-    for (const l of left.leaves) {
-      assert.ok(Math.abs(Math.hypot(l.base.x, l.base.y) - 26) < 1e-9, 'la hoja nace en el tallo');
-      assert.ok(Math.abs(Math.hypot(l.tip.x - l.base.x, l.tip.y - l.base.y) - 9) < 1e-9, 'largo 9');
-      // semiancho: el punto medio de la curva queda a 2,2 del eje de la hoja.
-      const mid = { x: (l.base.x + l.tip.x) / 2, y: (l.base.y + l.tip.y) / 2 };
-      const curveMid = { x: 0.25 * l.base.x + 0.5 * l.controlA.x + 0.25 * l.tip.x, y: 0.25 * l.base.y + 0.5 * l.controlA.y + 0.25 * l.tip.y };
-      assert.ok(Math.abs(Math.hypot(curveMid.x - mid.x, curveMid.y - mid.y) - 2.2) < 1e-9, 'semiancho 2,2');
+  it('la rama derecha es el espejo EXACTO de la izquierda: el mismo dibujo (misma cuenta de hojas) con translate(88 0) scale(-1 1), sin una segunda lista que pueda diferir', () => {
+    assert.equal(LAUREL_MIRROR, 'translate(88 0) scale(-1 1)');
+    assert.equal((src.match(/<Branch shape=\{LAUREL_DATA\} \/>/g) ?? []).length, 2, 'las dos ramas salen del MISMO dibujo');
+    assert.ok(src.includes('<G transform={LAUREL_MIRROR}>'));
+    assert.equal(LAUREL_DATA.leaves.length * 2, 30, 'total de hojas: 15 por rama');
+  });
+  it('la geometría del tallo y de las hojas está copiada de los dibujos de la dueña: forma de las dos mitades de la hoja', () => {
+    assert.equal(LAUREL_DATA.leafLight.d, 'M0 0 C 4.2 -2.5 4.6 -8.5 0 -14.5 Z');
+    assert.equal(LAUREL_DATA.leafDark.d, 'M0 0 L0 -14.5 C -4.6 -8.5 -4.2 -2.5 0 0 Z');
+    assert.deepEqual(LAUREL_DATA.leaves[0], { x: 30.4, y: 59.8, rot: 264.9, scale: 0.9 });
+    assert.deepEqual(LAUREL_DATA.leaves[14], { x: 29.5, y: 6.8, rot: 420, scale: 0.6 });
+  });
+  it('escala y opacidad son proporcionales (el componente escala el lienzo completo), es decorativo (oculto a lectores de pantalla, pointerEvents en el contenedor, nunca en un Text) y no depende de archivos externos', () => {
+    assert.ok(src.includes('LAUREL_VIEWBOX.w * scale') && src.includes('LAUREL_VIEWBOX.h * scale'));
+    assert.ok(src.includes('pointerEvents="none"') && src.includes('importantForAccessibility="no-hide-descendants"') && src.includes('accessible={false}'));
+    assert.ok(!/<Text[^>]*pointerEvents/.test(src));
+    assert.ok(!/require\(|\.svg|\.png|referencias-diseno/.test(src + dataSrc.replace(/\/\*\*[\s\S]*?\*\//, '')), 'no depende de archivos externos');
+    assert.ok(dataSrc.includes('dibujo propio de la dueña, vectorizado a datos'));
+  });
+});
+
+describe('Bloque derecho de Medallas (achievementShowcaseLayout.ts y AchievementShowcase.tsx): geometría, nombre y alto fijo', () => {
+  it('por defecto la escala es 0,85 (con 0,9 la tarjeta medía 129 dp, sobre el máximo de 128); con 0,9 el laurel mide 79,2 x 64,8 dp y la medalla 34,2 dp, todo proporcional; el centro de la medalla queda a 31 x escala desde arriba y centrado en horizontal', () => {
+    assert.equal(DEFAULT_SCALE, 0.85);
+    const g = showcaseGeometry(0.9);
+    assert.ok(Math.abs(g.boxW - 79.2) < 1e-9 && Math.abs(g.boxH - 64.8) < 1e-9 && Math.abs(g.medal - 34.2) < 1e-9);
+    assert.ok(Math.abs(g.medalTop + g.medal / 2 - 31 * 0.9) < 1e-9, 'centro a 31 x escala');
+    assert.ok(Math.abs(g.medalLeft + g.medal / 2 - g.boxW / 2) < 1e-9, 'centrada en horizontal');
+    for (const s of SCALES) {
+      const k = showcaseGeometry(s);
+      assert.ok(Math.abs(k.boxW / 88 - s) < 1e-9 && Math.abs(k.boxH / 72 - s) < 1e-9 && Math.abs(k.medal / 38 - s) < 1e-9, 'proporcional: ' + s);
     }
+    assert.deepEqual([...SCALES], [1, 0.9, 0.85]);
   });
-  it('cada hoja apunta hacia afuera de la medalla (nunca hacia adentro): la punta queda más lejos del centro que la base, y hacia arriba en la rama', () => {
-    for (const l of left.leaves) {
-      assert.ok(Math.hypot(l.tip.x, l.tip.y) > Math.hypot(l.base.x, l.base.y), 'la punta apunta afuera, ángulo ' + l.angleDeg);
-      // orientada a lo largo de la rama (hacia arriba): el eje forma 35° con la tangente.
-      const a = (l.angleDeg * Math.PI) / 180;
-      const tangent = { x: -Math.sin(a), y: Math.cos(a) };
-      const ax = { x: (l.tip.x - l.base.x) / 9, y: (l.tip.y - l.base.y) / 9 };
-      const deg = (Math.acos(tangent.x * ax.x + tangent.y * ax.y) * 180) / Math.PI;
-      assert.ok(Math.abs(deg - 35) < 1e-6, 'inclinada 35° respecto de la rama: ' + deg);
-    }
+  it('el nombre empieza 4 dp bajo el borde inferior del laurel y su casilla mide dos líneas fijas: alto del bloque 99,2 dp con la escala por defecto 0,85 y letra 1,0 (102,8 con 0,9; 110 con 1,0 de escala)', () => {
+    assert.equal(NAME_GAP, 4);
+    assert.ok(Math.abs(showcaseHeight(0.85, 1) - 99.2) < 1e-9);
+    assert.ok(Math.abs(showcaseHeight(0.9, 1) - 102.8) < 1e-9);
+    assert.ok(Math.abs(showcaseHeight(1, 1) - 110) < 1e-9);
+    assert.ok(Math.abs(showcaseHeight(0.85, 1.1) - 103.2) < 1e-9);
+    assert.ok(Math.abs(showcaseHeight(0.85, 1.3) - 109.2) < 1e-9);
+    assert.equal(nameSlotHeight(1), 34);
+    assert.equal(nameSlotHeight(1.3), 44);
   });
-  it('ningún punto de ninguna hoja ni del tallo queda a menos de 3 dp del borde de la medalla (r = 21) y las hojas no tocan el ícono central', () => {
-    assert.ok(minGapToMedal(r) >= 3, String(minGapToMedal(r)));
-    for (const l of [...left.leaves, ...right.leaves]) for (const p of leafPoints(l)) assert.ok(Math.hypot(p.x, p.y) - r >= 3, 'hoja a menos de 3 dp');
-    assert.equal(MIN_GAP, 3);
+  it('nombre en Inter SemiBold 14 con interlineado 17 (13/16 solo con 20 o más letras), sin adjustsFontSizeToFit, y cabe en dos líneas sin "…"', () => {
+    assert.deepEqual(nameStyleFor('Racha de 7 días'), { fontSize: 14, lineHeight: 17 });
+    assert.deepEqual(nameStyleFor('Primer comentario'), { fontSize: 14, lineHeight: 17 });
+    assert.deepEqual(nameStyleFor('Primer entrenamiento'), { fontSize: 13, lineHeight: 16 });
+    assert.deepEqual(nameStyleFor('Competidor recurrente'), { fontSize: 13, lineHeight: 16 });
+    assert.deepEqual(nameStyleFor('Leyenda de la constancia'), { fontSize: 13, lineHeight: 16 });
+    assert.deepEqual(nameStyleFor('Racha de 7 días', 1.3), { fontSize: 14 * 1.3, lineHeight: 22 });
+    assert.equal(LONG_NAME_LETTERS, 20);
+    const src = readFileSync(new URL('../../artifacts/wodplace/components/home/AchievementShowcase.tsx', import.meta.url), 'utf8');
+    assert.ok(!/^\s*adjustsFontSizeToFit/m.test(src) && !src.includes('numberOfLines') && !src.includes('ellipsizeMode'));
+    assert.ok(src.includes("color: CREAM") && src.includes("const CREAM = '#F6F1E8';") && src.includes("fontFamily: 'Inter_600SemiBold'"));
   });
-  it('el ancho total de la corona está entre 62 y 72 dp con r = 21 (con la medalla de 42), y también es simétrica en alto respecto del eje', () => {
-    const w = wreathWidth(r);
-    assert.ok(w >= 62 && w <= 72, String(w));
-    const xs = wreathPoints(r).map((p) => p.x);
-    assert.ok(Math.abs(Math.max(...xs) + Math.min(...xs)) < 1e-9, 'centrada en la medalla');
-  });
-  it('el escalado por r mantiene las proporciones (ancho, alto y separación son proporcionales a r)', () => {
-    for (const rr of [16, 19, 22, 26]) {
-      const k = rr / 21;
-      assert.ok(Math.abs(wreathWidth(rr) - wreathWidth(21) * k) < 1e-6, 'ancho r=' + rr);
-      assert.ok(Math.abs(wreathHeight(rr) - wreathHeight(21) * k) < 1e-6, 'alto r=' + rr);
-      assert.ok(Math.abs(minGapToMedal(rr) - minGapToMedal(21) * k) < 1e-6, 'separación r=' + rr);
-      assert.equal(leftBranch(rr).leaves.length, 6);
-    }
-  });
-  it('el componente LaurelWreath recibe size, color, strokeWidth y opacity, usa react-native-svg, está centrado y oculto a lectores de pantalla', () => {
-    const src = readFileSync(new URL('../../artifacts/wodplace/components/home/LaurelWreath.tsx', import.meta.url), 'utf8');
-    assert.ok(/size: number;\s*color: string;\s*strokeWidth\?: number;\s*opacity\?: number;/.test(src));
-    assert.ok(src.includes("from 'react-native-svg'") && src.includes('pointerEvents="none"') && src.includes('importantForAccessibility="no-hide-descendants"'));
-    assert.ok(src.includes('left: r - half') && src.includes('top: r - half'), 'centrada en la medalla');
-    assert.ok(!/[\u{1F300}-\u{1FAFF}☀-➿]/u.test(src), 'sin emojis ni símbolos Unicode');
+  it('la medalla de logro: degradado radial #7A4E2A a #4A2E17, aro de 1,5 dp (con 38) en #E2B887 al 75 %, ícono de size x 0,5 en #F6F1E8; todo escala con size', () => {
+    assert.equal(MEDAL_DEFAULT_SIZE, 38);
+    assert.equal(MEDAL_FROM, '#7A4E2A');
+    assert.equal(MEDAL_TO, '#4A2E17');
+    assert.equal(MEDAL_RING, '#E2B887');
+    assert.equal(MEDAL_RING_OPACITY, 0.75);
+    assert.equal(MEDAL_ICON, '#F6F1E8');
+    assert.ok(Math.abs(medalRing(38) - 1.5) < 1e-9);
+    assert.ok(Math.abs(medalIconSize(38) - 19) < 1e-9);
+    assert.ok(Math.abs(medalIconSize(34.2) - 17.1) < 1e-9);
+    assert.ok(Math.abs(medalRing(34.2) - 1.5 * 0.9) < 1e-9);
   });
 });
 
@@ -1354,27 +1353,13 @@ describe('Tarjeta "Medallas": estados, barra, contador y textos (función pura)'
     assert.equal(barFraction(130, 122), 1, 'tope 100 %');
     assert.equal(barFraction(5, 0), 0, 'sin total no hay relleno');
     assert.equal(MIN_FILL_PX, 6);
-    assert.ok(barFraction(1, 122) > 0, 'con N > 0 el porcentaje es positivo y el estilo aplica minWidth 4');
+    assert.ok(barFraction(1, 122) > 0, 'con N > 0 el porcentaje es positivo y el estilo aplica minWidth 6');
   });
   it('contador "N de M": hasta 3 caracteres numéricos en total 36/20 sp ("6 de 30"), 4 a 5 caracteres 32/18 sp ("6 de 122"), 6 o más 28/16 sp ("122 de 122")', () => {
     assert.deepEqual(counterSizes(0, 0), { number: 36, of: 20 });
     assert.deepEqual(counterSizes(6, 30), { number: 36, of: 20 });
     assert.deepEqual(counterSizes(6, 122), { number: 32, of: 18 });
     assert.deepEqual(counterSizes(122, 122), { number: 28, of: 16 });
-  });
-  it('tamaño del nombre por tramos: hasta 14 letras 13 sp, de 15 a 20 12 sp, más largo 11 sp (el más largo real es "Leyenda de la constancia", 24 letras)', () => {
-    assert.equal(nameFontSize('Box'), 13);
-    assert.equal(nameFontSize('Primer entrenamiento'), 12);
-    assert.equal(nameFontSize('Leyenda de la constancia'), 11);
-    assert.equal('Leyenda de la constancia'.length, 24);
-  });
-  it('el ícono dentro de la medalla es el real del logro (mismo mapeo que MedalBadge: "trophy" es de MaterialCommunityIcons) y el color de podio solo si se distingue del relleno', () => {
-    assert.equal(isTrophy('trophy'), true);
-    assert.equal(isTrophy('award'), false);
-    const fill = light.medalCopperDeep;
-    assert.equal(medalIconColor('#D4AF37', fill, light.nextClassCardForeground), '#D4AF37', 'oro se distingue del cobre profundo');
-    assert.equal(medalIconColor('#B5722E', fill, light.nextClassCardForeground), light.nextClassCardForeground, 'el bronce no se distingue (menos de 3:1): crema');
-    assert.equal(medalIconColor(undefined, fill, light.nextClassCardForeground), light.nextClassCardForeground);
   });
   it('frase accesible: "Medallas: N de M desbloqueadas. Último logro: {nombre}. Ver medallas" y las de los otros estados', () => {
     assert.equal(medalsA11yLabel(medalsView(s(6, 122, [last]))), 'Medallas: 6 de 122 desbloqueadas. Último logro: Primer PR. Ver medallas');
@@ -1389,7 +1374,7 @@ describe('Tarjeta "Medallas": colores y contraste (degradado legible de cobre pr
   const r = (n: number) => Math.round(n * 100) / 100;
   const c = medalsColors(light);
   const m = medalsMeasure(c);
-  it('la combinación activa por defecto cumple los mínimos (4,5:1 texto pequeño, 3:1 contador y gráficos) y usa solo tokens (los 4 nuevos y los existentes)', () => {
+  it('la combinación activa por defecto cumple los mínimos (4,5:1 texto pequeño, 3:1 contador y gráficos) y usa solo tokens', () => {
     assert.ok(medalsPasses(m), JSON.stringify(m));
     assert.equal(c.gradientStart, light.medalCopperDeep);
     assert.equal(c.gradientEnd, light.navActiveTextSmall);
@@ -1397,22 +1382,23 @@ describe('Tarjeta "Medallas": colores y contraste (degradado legible de cobre pr
     assert.equal(c.ribbon, light.medalRibbon);
     assert.equal(c.ribbonIcon, light.medalCopperLight);
     assert.equal(c.border, light.medalCopper);
-    assert.equal(c.medalFill, light.medalCopperDeep);
-    assert.equal(c.medalBorder, light.medalCopperLight);
     assert.equal(c.barFill, light.medalProgress);
     assert.equal(c.separator, light.medalCopperLight);
-    assert.equal(c.laurel, light.medalCopperLight);
   });
-  it('números exactos del degradado legible: título y contador 5,59 (peor punto, con el brillo); etiqueta, nombre y flecha 4,98; barra 9,93 contra la pista y 5,04 contra la tarjeta; borde de la medalla 3,07; ícono 7,10; presionado 11,02', () => {
+  it('números exactos del degradado legible: título y contador 5,59 (peor punto, con el brillo); NOMBRE (y flecha) 4,98 en el peor punto, el extremo derecho; barra 9,93 contra la pista y 5,04 contra la tarjeta; ícono de la medalla (al 90 % también) 6,33; presionado 11,02', () => {
     assert.equal(r(m.titleWorst), 5.59);
     assert.equal(r(m.counterWorst), 5.59);
     assert.equal(r(m.rightText), 4.98);
     assert.equal(r(m.arrow), 4.98);
     assert.equal(r(m.barFillVsTrack), 9.93);
     assert.equal(r(m.barFillVsCard), 5.04);
-    assert.equal(r(m.medalBorder), 3.07);
-    assert.equal(r(m.medalIcon), 7.1);
+    assert.equal(r(m.medalIcon), 6.33);
     assert.equal(r(m.pressed), 11.02);
+    assert.ok(m.rightText >= 4.5 && m.medalIcon >= 3);
+  });
+  it('el nombre está en la mitad derecha de la tarjeta: ahí el fondo es el del extremo derecho (#8B5E34), el más claro del degradado, y el crema pasa 4,5:1 también en el punto de tres cuartos', () => {
+    assert.ok(contrast(light.nextClassCardForeground, '#865830') >= 4.5);
+    assert.ok(contrast(light.nextClassCardForeground, light.navActiveTextSmall) >= 4.5);
   });
   it('el degradado "como lo pedí" (de #B98250 a #754522) NO pasa: el crema del lado izquierdo queda bajo 4,5:1; por eso no es el de Inicio', () => {
     const p = medalsColors(light, 'pedido');
@@ -1422,21 +1408,13 @@ describe('Tarjeta "Medallas": colores y contraste (degradado legible de cobre pr
     assert.equal(p.gradientStart, light.charcoalAccent);
     assert.equal(p.gradientEnd, light.medalCopperDeep);
   });
-  it('cinta en café #5E3A1A (o café profundo #4A2E17 solo para comparar): el ícono de cobre claro #E8B781 se distingue sobre ella (≥ 3:1) y el color es más oscuro que el fondo de la tarjeta', () => {
+  it('cinta en café #5E3A1A: el ícono de cobre claro se distingue sobre ella (5,50:1); su silueta contra el fondo NO llega a 3:1 (1,51:1) y está ACEPTADO (sin filo); el aro de la medalla (2,06:1) es solo informativo', () => {
     assert.equal(light.medalRibbon, '#5E3A1A');
-    assert.equal(light.medalRibbonDeep, '#4A2E17');
     assert.notEqual(light.medalRibbon, light.medalCopperDeep, 'no es el mismo tono del fondo: la cinta desaparecería');
     assert.equal(r(m.ribbonIcon), 5.5);
-    assert.equal(r(medalsMeasure(medalsColors(light, 'legible', 'profundo')).ribbonIcon), 6.8);
-    assert.ok(medalsMeasure(medalsColors(light, 'legible', 'profundo')).ribbonIcon >= 3);
-    assert.equal(medalsColors(light, 'legible', 'profundo').ribbon, light.medalRibbonDeep);
-  });
-  it('la silueta de la cinta contra el fondo NO llega a 3:1 (café 1,51:1 a 1,59:1; café profundo 1,86:1 a 1,97:1): es informativo y no entra en medalsPasses; un filo fino de cobre claro #E8B781 contra el fondo daría 3,45:1 (propuesta, no aplicada)', () => {
     assert.equal(r(m.ribbonVsCard), 1.51);
-    assert.equal(r(medalsMeasure(medalsColors(light, 'legible', 'profundo')).ribbonVsCard), 1.86);
-    assert.ok(m.ribbonVsCard < 3);
-    assert.ok(contrast(light.medalCopperLight, '#85552f') >= 3);
-    assert.ok(medalsPasses(m), 'la silueta no cuenta para los mínimos');
+    assert.ok(m.ribbonVsCard < 3 && medalsPasses(m), 'la silueta no cuenta para los mínimos (aceptado)');
+    assert.equal(r(m.medalRing), 2.06);
   });
   it('el presionado es un color SÓLIDO (mezcla de nextClassCard y medalCopperDeep, sin opacidad) y el texto sigue sobre 4,5:1', () => {
     assert.match(c.pressed, /^#[0-9a-f]{6}$/i);
@@ -1445,23 +1423,50 @@ describe('Tarjeta "Medallas": colores y contraste (degradado legible de cobre pr
   });
 });
 
-describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad, alto estable y sin código muerto', () => {
+describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad, alto fijo y sin restos de lo retirado', () => {
   const src = readFileSync(new URL('../../artifacts/wodplace/components/home/MedalsCard.tsx', import.meta.url), 'utf8');
   const colorsSrc = readFileSync(new URL('../../artifacts/wodplace/components/home/medalsColors.ts', import.meta.url), 'utf8');
   const home = readFileSync(new URL('../../artifacts/wodplace/components/home/HomeView.tsx', import.meta.url), 'utf8');
   const dev = readFileSync(new URL('../../artifacts/wodplace/components/home/DevHomeScreen.tsx', import.meta.url), 'utf8');
   const states = readFileSync(new URL('../../artifacts/wodplace/components/home/devHomeStates.ts', import.meta.url), 'utf8');
+  const study = readFileSync(new URL('../../artifacts/wodplace/components/home/LaurelStudy.tsx', import.meta.url), 'utf8');
+  const showcase = readFileSync(new URL('../../artifacts/wodplace/components/home/AchievementShowcase.tsx', import.meta.url), 'utf8');
   const copper = src.slice(src.indexOf('function CopperCard'), src.indexOf('const sizeOf = '));
 
-  it("el valor por defecto es 'cobre' con degradado legible y corona (Inicio real cambia); para volver basta variant: 'actual'; el diseño anterior se movió tal cual", () => {
-    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurel: true, ribbon: 'cafe' };"));
+  it("el valor por defecto es 'cobre' con degradado legible y bloque derecho al 85 % (Inicio real cambia); para volver basta variant: 'actual'; el diseño anterior se movió tal cual", () => {
+    assert.ok(src.includes("export const MEDALS_LOOK: MedalsLook = { variant: 'cobre', gradient: 'legible', laurelScale: DEFAULT_SCALE };"));
     const a = src.slice(src.indexOf('function ActualCard'), src.indexOf('/* ───────────── Piezas'));
     assert.ok(a.includes('accessibilityLabel="Ver medallas"') && a.includes('onPress={onOpenMedals}') && a.includes('colors.cardPressed') && a.includes('MedalBadge'));
+  });
+  it('la parte derecha es AchievementShowcase (laurel + medalla + nombre) con el ícono REAL del último logro y los estados: más tenue (0,25) sin medallas o con error, esqueleto al cargar', () => {
+    assert.ok(copper.includes('<AchievementShowcase') && copper.includes('icon={view.kind === \'medals\' ? view.last.icon : GENERIC_ICON}'));
+    assert.ok(copper.includes("name={view.kind === 'medals' ? view.last.name : view.kind === 'empty' ? FIRST_MEDAL_HINT : undefined}"));
+    assert.ok(copper.includes('laurelOpacity={view.kind === \'medals\' || view.kind === \'unidentified\' ? undefined : LAUREL_OPACITY_DIM}'));
+    assert.ok(copper.includes("muted={view.kind === 'empty' || view.kind === 'error'}") && copper.includes("skeletonColor={view.kind === 'loading' ? c.bone : undefined}"));
+    assert.equal(LAUREL_OPACITY_DIM, 0.25);
   });
   it('HomeView no tiene restos de la tarjeta: solo la llama con el resumen, el estado, el toque a Medallas y la letra/ancho de desarrollo', () => {
     assert.ok(home.includes('<MedalsCard') && home.includes('onOpenMedals={() => events.onOpenMedals()}') && home.includes('summary={medalsSummary}'));
     assert.ok(home.includes('status={medalsStatusOf(streakStatus, achievementStats === null)}'));
     for (const rest of ['Desbloquea tu primera', 'Ver medallas', 'medalsWideCard', 'medalsRecentName', 'progressTrack', 'progressFill', 'getMedalIconColor', 'statsValue', 'statsDetail']) assert.ok(!home.includes(rest), 'resto en HomeView: ' + rest);
+  });
+  it('NO quedan restos de lo retirado: la corona por geometría, la variante "fino", el estudio con PNG, la cinta "café profundo", sus chips y el token medalRibbonDeep', () => {
+    const all = [src, colorsSrc, home, dev, states, study, showcase];
+    for (const word of ['LaurelWreath', 'laurelGeometry', 'devLaurelCompare', 'LAUREL_REFERENCE_PNG', 'medalRibbonDeep', 'MedalsRibbon', "'fino'", 'Laurel: sí', 'Laurel: no', 'Cinta: café', 'laurel: boolean', 'referencias-diseno']) {
+      for (const t of all) assert.ok(!t.includes(word), 'queda: ' + word);
+    }
+    assert.ok(!existsSync(new URL('../../artifacts/wodplace/components/home/laurelGeometry.ts', import.meta.url)));
+    assert.ok(!existsSync(new URL('../../artifacts/wodplace/components/home/LaurelWreath.tsx', import.meta.url)));
+    assert.ok(!existsSync(new URL('../../artifacts/wodplace/components/home/devLaurelCompare.ts', import.meta.url)));
+    assert.ok(!('medalRibbonDeep' in light));
+  });
+  it('ningún archivo del código depende de archivos que git ignora: las imágenes de los estudios (referencias-diseno, textura, paisaje, prueba-fondos) no se piden desde components/', () => {
+    const dir = new URL('../../artifacts/wodplace/components/', import.meta.url);
+    const walk = (d: URL): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(new URL(e.name + '/', d)) : e.name.endsWith('.ts') || e.name.endsWith('.tsx') ? [new URL(e.name, d).pathname] : []));
+    for (const f of walk(dir)) {
+      const code = readFileSync(decodeURIComponent(f).replace(/^\//, ''), 'utf8');
+      for (const m of code.matchAll(/require\(['"]([^'"]+)['"]\)/g)) assert.ok(!/referencias-diseno|textura|paisaje|prueba-fondos/.test(m[1]!), f + ' pide ' + m[1]);
+    }
   });
   it('toda la tarjeta es UN botón con la frase completa, presionado SÓLIDO (sin opacidad), flecha lineal discreta; el degradado y el brillo se apagan al presionar', () => {
     assert.equal((copper.match(/<Pressable/g) ?? []).length, 1);
@@ -1469,49 +1474,43 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     assert.ok(copper.includes('accessibilityLabel={medalsA11yLabel(view)}') && copper.includes('onPress={onOpenMedals}'));
     assert.ok(/pressed \? c\.pressed/.test(copper) && copper.includes('{pressed ? null : ('));
     assert.ok(copper.includes('name="chevron-right"') && !copper.includes('arrow-right'));
-    for (const line of copper.split(String.fromCharCode(10)).filter((l) => /opacity/i.test(l))) assert.ok(/SEPARATOR_OPACITY|laurelOpacity|LAUREL_OPACITY/.test(line), 'opacidad fuera del separador y la corona: ' + line.trim());
+    for (const line of copper.split(String.fromCharCode(10)).filter((l) => /opacity/i.test(l))) assert.ok(/SEPARATOR_OPACITY|laurelOpacity|LAUREL_OPACITY/.test(line), 'opacidad fuera del separador y el laurel: ' + line.trim());
   });
-  it('cinta, brillo, separador, corona, medalla y flecha: ocultos a lectores de pantalla o dentro de contenedores con pointerEvents="none" (nunca en un Text)', () => {
+  it('cinta, brillo, separador, laurel, medalla y flecha: ocultos a lectores de pantalla o dentro de contenedores con pointerEvents="none" (nunca en un Text)', () => {
     assert.ok(src.includes('function Ribbon') && src.includes('function Glow'));
-    assert.ok((src.match(/pointerEvents="none"/g) ?? []).length >= 5);
+    assert.ok((src.match(/pointerEvents="none"/g) ?? []).length >= 4);
     assert.ok(!/<Text[^>]*pointerEvents/.test(src), 'pointerEvents en un Text');
-    assert.ok((src.match(/importantForAccessibility="no-hide-descendants"/g) ?? []).length >= 5);
+    assert.ok((src.match(/importantForAccessibility="no-hide-descendants"/g) ?? []).length >= 4);
     assert.ok(copper.includes('<View style={styles.row} importantForAccessibility="no-hide-descendants">'), 'el contenido se lee solo por la frase de la tarjeta');
   });
-  it('la cinta es una silueta de react-native-svg con muesca; el contador va en Anton; el degradado es de expo-linear-gradient; la corona LaurelWreath rodea la medalla', () => {
+  it('la cinta es una silueta de react-native-svg con muesca (30 x 46 dp, ícono de 18 dp); el contador va en Anton; la barra mide 7 dp con extremos redondeados y relleno mínimo (6 dp) solo con N > 0', () => {
     assert.ok(src.includes('M0 0 H30 V46 L15 37 L0 46 Z') && src.includes('const RIBBON = { w: 30, h: 46 };') && src.includes('const RIBBON_ICON = 18;'));
     assert.ok(src.includes("counter: { fontFamily: 'Anton_400Regular'"));
     assert.ok(src.includes("import { LinearGradient } from 'expo-linear-gradient';"));
-    assert.ok(copper.includes('<LaurelWreath size={MEDAL}') && src.includes('const MEDAL = 42;'));
+    assert.ok(src.includes('const BAR_H = 7;') && src.includes('borderRadius: BAR_H / 2') && src.includes('{pct > 0 ? <View') && src.includes('minWidth: MIN_FILL_PX'));
   });
-  it('la barra mide 7 dp con extremos redondeados; el relleno tiene ancho mínimo (6 dp) solo con N > 0', () => {
-    assert.ok(src.includes('const BAR_H = 7;') && src.includes('borderRadius: BAR_H / 2'));
-    assert.ok(src.includes('{pct > 0 ? <View') && src.includes('minWidth: MIN_FILL_PX'));
+  it('ALTO FIJO: el contador tiene alto fijo, la casilla del nombre mide dos líneas fijas y el lado izquierdo reparte (título arriba, contador y barra abajo) con el alto del bloque derecho', () => {
+    assert.ok(copper.includes('height: counterSlotH'));
+    assert.ok(showcase.includes('height: slot') && showcase.includes('const slot = nameSlotHeight(fontScale);'));
+    assert.ok(src.includes("left: { flex: 1, paddingRight: SPACING.md, justifyContent: 'space-between' }"));
+    assert.ok(src.includes('const RIGHT_W = 120;'));
   });
-  it('el texto "ÚLTIMO LOGRO" ya no se ve en la tarjeta (la frase para lectores de pantalla sigue diciendo "Último logro") y el conjunto medalla + nombre se centra verticalmente en la mitad derecha', () => {
-    assert.ok(!src.includes('ÚLTIMO LOGRO') && !src.includes('LAST_ACHIEVEMENT_LABEL') && !src.includes('LABEL_SIZE') && !src.includes('letterSpacing'));
+  it('el texto "ÚLTIMO LOGRO" ya no se ve (la frase accesible sigue diciendo "Último logro")', () => {
+    assert.ok(!src.includes('ÚLTIMO LOGRO') && !showcase.includes('ÚLTIMO LOGRO'));
     assert.ok(medalsA11yLabel({ kind: 'medals', unlocked: 6, total: 122, last: { id: 'a', icon: 'award', name: 'Primer PR' } }).includes('Último logro: Primer PR'));
-    assert.ok(src.includes("right: { width: RIGHT_W, alignItems: 'center', justifyContent: 'center'"));
-  });
-  it('ALTO ESTABLE: la etiqueta y el nombre van en casillas de alto fijo que usan todos los estados; el contador y el esqueleto miden lo mismo', () => {
-    assert.ok(copper.includes('minHeight: nameSlotH') && src.includes('slot: { width: MEDAL, height: SLOT_H'));
-    assert.ok(copper.includes("view.kind === 'loading' ? (") && copper.includes('height: counterSlotH'));
-  });
-  it('el nombre va por tramos, sin adjustsFontSizeToFit ni numberOfLines (hasta dos líneas, sin "…" ni cortes)', () => {
-    assert.ok(copper.includes('nameFontSize(view.last.name)'));
-    assert.ok(!/^\s*adjustsFontSizeToFit/m.test(src) && !copper.includes('numberOfLines') && !copper.includes('ellipsizeMode'));
   });
   it('sin código muerto: cada función y constante del componente se usa, y cada color de medalsColors se lee en el componente', () => {
     const decls = [...src.matchAll(/^(?:export )?(?:function|const) (\w+)/gm)].map((x) => x[1]);
-    assert.ok(decls.length >= 15);
+    assert.ok(decls.length >= 12);
     for (const name of decls.filter((d) => d !== 'MedalsCard')) assert.ok((src.match(new RegExp('\\b' + name + '\\b', 'g')) ?? []).length >= 2, 'sin uso: ' + name);
     const fields = [...colorsSrc.slice(colorsSrc.indexOf('export type MedalsColors'), colorsSrc.indexOf('/** Opacidad del brillo')).matchAll(/^  (\w+): string;/gm)].map((x) => x[1]);
-    assert.ok(fields.length >= 15);
+    assert.ok(fields.length >= 12);
     for (const f of fields) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src), 'color sin uso: ' + f);
   });
-  it('en desarrollo: chips de diseño, degradado, corona, ancho y letra, y los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable)', () => {
-    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí', 'Laurel: sí', 'Laurel: no', 'Cinta: café #5E3A1A', 'Cinta: café profundo #4A2E17', 'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
+  it('en desarrollo: chips de diseño, degradado, escala del laurel (100 / 90 / 85 %), ancho y letra, los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable) y el estudio con los 6 ejemplos', () => {
+    for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí', 'Escala del laurel: 100 %', 'Escala del laurel: 90 %', 'Escala del laurel: 85 %', 'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);
     for (const label of ['Medallas 0 de 122', 'Medallas 1 de 122', 'Medallas 6 de 122', 'Medallas 122 de 122 (nombre más largo)', 'Medallas nombre corto', 'Medallas cargando', 'Medallas error', 'Medallas última no identificable']) assert.ok(states.includes(`'${label}'`), label);
+    assert.ok(dev.includes('<LaurelStudy />') && (study.match(/icon: '/g) ?? []).length === 6);
   });
   it('la línea de depuración del degradado "como lo pedí" solo existe en desarrollo y solo con ese degradado (no se activa en Inicio real)', () => {
     assert.ok(src.includes("__DEV__ && look.variant === 'cobre' && look.gradient === 'pedido'"));

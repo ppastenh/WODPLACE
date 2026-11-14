@@ -1,5 +1,3 @@
-import { contrastRatio } from './progressColors';
-
 /**
  * Lógica PURA de la tarjeta "Medallas" de Inicio (decisión (y), Copper Achievement). Sin React: la dibuja MedalsCard.tsx.
  * No decide nada nuevo: los números (N desbloqueadas, M totales) y la lista de las últimas medallas ya los calcula app/home.tsx (medalsSummary) a partir de GET /achievements;
@@ -65,30 +63,8 @@ export function barFraction(unlocked: number, total: number): number {
 /** Ancho mínimo visual del relleno (dp) cuando N > 0 (proporcional al grosor de la barra, 7 dp): con N/M muy pequeño el relleno nunca desaparece. Con N = 0 no hay relleno. */
 export const MIN_FILL_PX = 6;
 
-/** Tamaño del nombre del logro por tramos según el largo (sin adjustsFontSizeToFit): hasta 14 letras 13 sp, de 15 a 20 12 sp, más largo 11 sp; pasa a dos líneas, sin "…". */
-export function nameFontSize(name: string): number {
-  const len = name.trim().length;
-  if (len <= 14) return 13;
-  if (len <= 20) return 12;
-  return 11;
-}
-
-/** El logro "trophy" es el único sin glifo de Feather (se dibuja con MaterialCommunityIcons), igual que en MedalBadge. */
-export function isTrophy(icon: string): boolean {
-  return icon === 'trophy';
-}
-
 /** Ícono genérico de la medalla cuando no hay una última identificable o no hay medallas (el mismo glifo "award" que usa hoy la tarjeta). */
 export const GENERIC_ICON = 'award';
-
-/**
- * Color del ícono dentro de la medalla: el de la medalla de podio (oro, plata o bronce, lib/medalColors.ts) solo si se distingue del relleno de la medalla (3:1);
- * si no (el bronce sobre el cobre profundo da menos), el color de reserva (crema).
- */
-export function medalIconColor(override: string | undefined, medalFill: string, fallback: string): string {
-  if (override && contrastRatio(override, medalFill) >= 3) return override;
-  return fallback;
-}
 
 /** Frase completa de la tarjeta para lectores de pantalla (la tarjeta es UN botón que abre Medallas). El texto "Último logro" ya no se ve en la tarjeta, pero la frase lo conserva. */
 export function medalsA11yLabel(view: MedalsView): string {

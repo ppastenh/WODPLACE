@@ -22,7 +22,8 @@ import {
   type DevSelection,
 } from '@/components/home/devHomeStates';
 import { MEDALS_LOOK, type MedalsLook, type MedalsVariant } from '@/components/home/MedalsCard';
-import type { MedalsGradient, MedalsRibbon } from '@/components/home/medalsColors';
+import type { MedalsGradient } from '@/components/home/medalsColors';
+import { LaurelStudy } from '@/components/home/LaurelStudy';
 import { ThemeOverride } from '@/context/ThemeContext';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -123,13 +124,10 @@ const MEDALS_GRADIENT_CHIPS: { id: MedalsGradient; label: string }[] = [
   { id: 'legible', label: 'Degradado: legible' },
   { id: 'pedido', label: 'Degradado: como lo pedí' },
 ];
-const MEDALS_RIBBON_CHIPS: { id: MedalsRibbon; label: string }[] = [
-  { id: 'cafe', label: 'Cinta: café #5E3A1A' },
-  { id: 'profundo', label: 'Cinta: café profundo #4A2E17' },
-];
-const MEDALS_LAUREL_CHIPS: { id: 'si' | 'no'; label: string }[] = [
-  { id: 'si', label: 'Laurel: sí' },
-  { id: 'no', label: 'Laurel: no' },
+const MEDALS_SCALE_LAUREL_CHIPS: { id: '1' | '0.9' | '0.85'; label: string }[] = [
+  { id: '1', label: 'Escala del laurel: 100 %' },
+  { id: '0.9', label: 'Escala del laurel: 90 %' },
+  { id: '0.85', label: 'Escala del laurel: 85 %' },
 ];
 const MEDALS_WIDTH_CHIPS: { id: LevelWidth; label: string }[] = [
   { id: 'real', label: 'Medallas, ancho: real' },
@@ -284,11 +282,10 @@ function DevHomeBody() {
   const [prScale, setPrScale] = useState<QuoteFont>('1');
   const [medalsVariant, setMedalsVariant] = useState<MedalsVariant>(MEDALS_LOOK.variant);
   const [medalsGradient, setMedalsGradient] = useState<MedalsGradient>(MEDALS_LOOK.gradient);
-  const [medalsLaurel, setMedalsLaurel] = useState<'si' | 'no'>(MEDALS_LOOK.laurel ? 'si' : 'no');
-  const [medalsRibbon, setMedalsRibbon] = useState<MedalsRibbon>(MEDALS_LOOK.ribbon);
+  const [medalsLaurelScale, setMedalsLaurelScale] = useState<'1' | '0.9' | '0.85'>(String(MEDALS_LOOK.laurelScale) as '1' | '0.9' | '0.85');
   const [medalsWidth, setMedalsWidth] = useState<LevelWidth>('real');
   const [medalsScale, setMedalsScale] = useState<QuoteFont>('1');
-  const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient, laurel: medalsLaurel === 'si', ribbon: medalsRibbon };
+  const medalsLook: MedalsLook = { variant: medalsVariant, gradient: medalsGradient, laurelScale: Number(medalsLaurelScale) };
   const [quoteShadow, setQuoteShadow] = useState<'no' | 'si'>('no');
   const quoteLook: QuoteLook = {
     variant: quoteVariant,
@@ -337,8 +334,7 @@ function DevHomeBody() {
           <ChipGroup title="PR destacado: letra simulada" chips={PR_SCALE_CHIPS} selected={prScale} onSelect={setPrScale} />
           <ChipGroup title="Medallas: diseño" chips={MEDALS_VARIANT_CHIPS} selected={medalsVariant} onSelect={setMedalsVariant} />
           <ChipGroup title="Medallas: degradado" chips={MEDALS_GRADIENT_CHIPS} selected={medalsGradient} onSelect={setMedalsGradient} />
-          <ChipGroup title="Medallas: cinta" chips={MEDALS_RIBBON_CHIPS} selected={medalsRibbon} onSelect={setMedalsRibbon} />
-          <ChipGroup title="Medallas: corona de laurel" chips={MEDALS_LAUREL_CHIPS} selected={medalsLaurel} onSelect={setMedalsLaurel} />
+          <ChipGroup title="Medallas: escala del laurel" chips={MEDALS_SCALE_LAUREL_CHIPS} selected={medalsLaurelScale} onSelect={setMedalsLaurelScale} />
           <ChipGroup title="Medallas: ancho simulado" chips={MEDALS_WIDTH_CHIPS} selected={medalsWidth} onSelect={setMedalsWidth} />
           <ChipGroup title="Medallas: letra simulada" chips={MEDALS_SCALE_CHIPS} selected={medalsScale} onSelect={setMedalsScale} />
           <ChipGroup title="Frase del día: variante" chips={QUOTE_VARIANT_CHIPS} selected={quoteVariant} onSelect={setQuoteVariant} />
@@ -360,6 +356,7 @@ function DevHomeBody() {
               onSelect={(id) => setSelection((s) => ({ ...s, [group.id]: id }))}
             />
           ))}
+          <LaurelStudy />
         </ScrollView>
       ) : null}
     </View>

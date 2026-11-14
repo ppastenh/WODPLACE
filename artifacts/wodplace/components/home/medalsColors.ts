@@ -1,14 +1,14 @@
 import { contrastRatio, mixHex } from './progressColors';
+import { MEDAL_FROM, MEDAL_ICON, MEDAL_RING, MEDAL_RING_OPACITY, MEDAL_TO } from '../ui/achievementMedalSpec';
 
 /**
- * Colores PUROS de la tarjeta "Medallas" (decisión (y), Copper Achievement) y su medición. Solo tokens (los cuatro nuevos de la decisión (y) y los que ya existían) y mezclas de dos tokens.
+ * Colores PUROS de la tarjeta "Medallas" (decisión (y), Copper Achievement) y su medición. Solo tokens (los nuevos de la decisión (y) y los que ya existían) y mezclas de dos tokens;
+ * la medalla del logro y el laurel traen sus propios colores (achievementMedalSpec.ts y laurelData.ts).
  *
  * Degradado 'legible' (el de Inicio): de medalCopperDeep #754522 (izquierda) a navActiveTextSmall #8B5E34 (derecha); mantiene todo el texto pequeño sobre 4,5:1.
  * Degradado 'pedido' (solo para comparar en desarrollo): de charcoalAccent #B98250 a medalCopperDeep #754522; el crema del lado izquierdo no llega a 4,5:1 sobre #B98250 (2,9:1).
  */
 export type MedalsGradient = 'legible' | 'pedido';
-/** Color de la cinta del ícono: café #5E3A1A (el de Inicio) o café profundo #4A2E17 (solo para comparar en desarrollo). */
-export type MedalsRibbon = 'cafe' | 'profundo';
 
 export type MedalsPalette = {
   nextClassCard: string;
@@ -20,7 +20,6 @@ export type MedalsPalette = {
   medalCopperLight: string;
   medalProgress: string;
   medalRibbon: string;
-  medalRibbonDeep: string;
 };
 
 export type MedalsColors = {
@@ -30,24 +29,18 @@ export type MedalsColors = {
   pressed: string;
   /** Borde fino de la tarjeta (cobre base). */
   border: string;
-  /** Título, contador, etiqueta, nombre y flecha. */
+  /** Título, contador, nombre y flecha. */
   text: string;
   /** Cinta vertical (café oscuro, más oscuro que el fondo de la tarjeta) y el ícono de medalla que lleva (cobre claro). */
   ribbon: string;
   ribbonIcon: string;
-  /** Relleno de la medalla (cobre profundo) y su borde (cobre claro). */
-  medalFill: string;
-  medalBorder: string;
-  /** Ícono de la medalla (crema). */
-  medalIcon: string;
-  /** Ícono y contorno de la medalla atenuada (sin medallas, cargando o error). */
+  /** Ícono de la medalla atenuada (sin medallas o con error). */
   mutedIcon: string;
   /** Pista y relleno de la barra de progreso. */
   barTrack: string;
   barFill: string;
-  /** Separador vertical y corona de laurel (cobre claro). */
+  /** Separador vertical (cobre claro). */
   separator: string;
-  laurel: string;
   /** Brillo difuso muy tenue (cobre claro) de la esquina superior izquierda. */
   glow: string;
   /** Barras del esqueleto. */
@@ -58,11 +51,10 @@ export type MedalsColors = {
 export const GLOW_OPACITY = 0.14;
 /** Opacidad del separador vertical (moderada). */
 export const SEPARATOR_OPACITY = 0.45;
-/** Opacidad de la corona: normal y tenue (sin medallas). */
-export const LAUREL_OPACITY = 0.75;
-export const LAUREL_OPACITY_DIM = 0.35;
+/** Opacidad del laurel más tenue: sin medallas, con error o cargando (con medalla es la del dibujo, 0,5). */
+export const LAUREL_OPACITY_DIM = 0.25;
 
-export function medalsColors(p: MedalsPalette, gradient: MedalsGradient = 'legible', ribbon: MedalsRibbon = 'cafe'): MedalsColors {
+export function medalsColors(p: MedalsPalette, gradient: MedalsGradient = 'legible'): MedalsColors {
   const start = gradient === 'legible' ? p.medalCopperDeep : p.charcoalAccent;
   const end = gradient === 'legible' ? p.navActiveTextSmall : p.medalCopperDeep;
   const mid = mixHex(end, start, 0.5);
@@ -72,16 +64,12 @@ export function medalsColors(p: MedalsPalette, gradient: MedalsGradient = 'legib
     pressed: mixHex(p.nextClassCard, p.medalCopperDeep, 0.5),
     border: p.medalCopper,
     text: p.nextClassCardForeground,
-    ribbon: ribbon === 'cafe' ? p.medalRibbon : p.medalRibbonDeep,
+    ribbon: p.medalRibbon,
     ribbonIcon: p.medalCopperLight,
-    medalFill: p.medalCopperDeep,
-    medalBorder: p.medalCopperLight,
-    medalIcon: p.nextClassCardForeground,
     mutedIcon: mixHex(p.nextClassCardForeground, mid, 0.6),
     barTrack: mixHex(p.medalCopperDeep, p.nextClassCard, 0.5),
     barFill: p.medalProgress,
     separator: p.medalCopperLight,
-    laurel: p.medalCopperLight,
     glow: p.medalCopperLight,
     bone: mixHex(p.nextClassCardForeground, mid, 0.25),
   };
@@ -97,22 +85,22 @@ export type MedalsMeasure = {
   titleWorst: number;
   /** Crema sobre el peor fondo del lado izquierdo (contador grande; 3:1). */
   counterWorst: number;
-  /** Crema sobre el extremo derecho (etiqueta y nombre; 4,5:1). */
+  /** Crema sobre el extremo derecho, el peor punto bajo el nombre del logro y la flecha (4,5:1 para el nombre). */
   rightText: number;
   /** Crema sobre el fondo presionado (4,5:1). */
   pressed: number;
   /** Relleno de la barra contra su pista y contra el fondo de la tarjeta donde se dibuja (3:1). */
   barFillVsTrack: number;
   barFillVsCard: number;
-  /** Borde de la medalla contra el extremo derecho (3:1). */
-  medalBorder: number;
+  /** Aro de la medalla (#E2B887 al 75 % sobre el tramo oscuro de su relleno) contra el extremo derecho de la tarjeta. SOLO INFORMATIVO (no entra en medalsPasses): da 2,06:1 y los colores de la medalla los fijó la dueña; la medalla se lee por su ícono (6,33:1). */
+  medalRing: number;
   /** Flecha (crema) contra el extremo derecho (3:1). */
   arrow: number;
-  /** Ícono (crema) contra el relleno de la medalla (3:1). */
+  /** Ícono de la medalla (crema) contra el tramo MÁS CLARO de su degradado (3:1). */
   medalIcon: number;
   /** Ícono de la cinta (cobre claro) contra la cinta (3:1). */
   ribbonIcon: number;
-  /** Silueta de la cinta contra el peor fondo del lado izquierdo. SOLO INFORMATIVO (no entra en medalsPasses): con el café no llega a 3:1; si hiciera falta, un filo fino de cobre claro da 3,45:1. */
+  /** Silueta de la cinta contra el peor fondo del lado izquierdo. SOLO INFORMATIVO (no entra en medalsPasses): con el café no llega a 3:1 y está aceptado (sin filo). */
   ribbonVsCard: number;
 };
 
@@ -126,15 +114,15 @@ export function medalsMeasure(c: MedalsColors): MedalsMeasure {
     pressed: contrastRatio(c.text, c.pressed),
     barFillVsTrack: contrastRatio(c.barFill, c.barTrack),
     barFillVsCard: Math.min(contrastRatio(c.barFill, glow), contrastRatio(c.barFill, mid)),
-    medalBorder: contrastRatio(c.medalBorder, c.gradientEnd),
+    medalRing: contrastRatio(mixHex(MEDAL_RING, MEDAL_TO, MEDAL_RING_OPACITY), c.gradientEnd),
     arrow: contrastRatio(c.text, c.gradientEnd),
-    medalIcon: contrastRatio(c.medalIcon, c.medalFill),
+    medalIcon: contrastRatio(MEDAL_ICON, MEDAL_FROM),
     ribbonIcon: contrastRatio(c.ribbonIcon, c.ribbon),
     ribbonVsCard: Math.min(contrastRatio(c.ribbon, glow), contrastRatio(c.ribbon, mid)),
   };
 }
 
-/** true si cumple los mínimos: 4,5:1 para el texto pequeño (título, etiqueta, nombre y presionado), 3:1 para el contador grande y los gráficos. */
+/** true si cumple los mínimos: 4,5:1 para el texto pequeño (título, nombre y presionado), 3:1 para el contador grande y los gráficos. */
 export function medalsPasses(m: MedalsMeasure): boolean {
   return (
     m.titleWorst >= 4.5 &&
@@ -143,7 +131,6 @@ export function medalsPasses(m: MedalsMeasure): boolean {
     m.pressed >= 4.5 &&
     m.barFillVsTrack >= 3 &&
     m.barFillVsCard >= 3 &&
-    m.medalBorder >= 3 &&
     m.arrow >= 3 &&
     m.medalIcon >= 3 &&
     m.ribbonIcon >= 3
