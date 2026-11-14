@@ -453,14 +453,14 @@ describe('Tarjeta "Progreso mensual" (MonthlyProgressCard.tsx, decisión (v))', 
     const states = readFileSync(new URL('../../artifacts/wodplace/components/home/devHomeStates.ts', import.meta.url), 'utf8');
     for (const label of ['Sin plan', 'Cargando plan', 'Plan por cantidad', 'Plan ilimitado', '0 realizadas', 'completo', 'sobre el total', 'total de 30 clases']) assert.ok(states.includes(label), label);
   });
-  it('usa solo tokens existentes (cobre claro, carbón, crema; sin hex escritos a mano en la tarjeta ni en progressColors.ts) y el radio de las otras tarjetas oscuras', () => {
+  it('usa solo tokens existentes (cobre de Medallas, carbón, crema; sin hex escritos a mano en la tarjeta ni en progressColors.ts) y el radio de las otras tarjetas oscuras', () => {
     const colorsSrc = readFileSync(new URL('../../artifacts/wodplace/components/home/progressColors.ts', import.meta.url), 'utf8');
-    for (const token of ['charcoalAccentLight', 'charcoal', 'nextClassCardForeground']) assert.ok(colorsSrc.includes('p.' + token), token);
+    for (const token of ['medalCopperLight', 'charcoal', 'nextClassCardForeground']) assert.ok(colorsSrc.includes('p.' + token), token);
     const code = (src: string) => src.split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).join(' ');
     assert.deepEqual(code(colorsSrc).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'colores escritos a mano en progressColors.ts');
     const hexes = (code(refined).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []).filter((h) => h !== '#FFFFFF');
     assert.deepEqual(hexes, [], 'colores escritos a mano en la tarjeta');
-    assert.ok(card.includes('borderRadius: RADIUS.xl'));
+    assert.ok(readFileSync(new URL('../../artifacts/wodplace/components/home/copperSurface.ts', import.meta.url), 'utf8').includes('borderRadius: RADIUS.xl'), 'el radio vive en copperSurface.ts (compartido con Medallas)');
   });
   it('la barra mide 8 dp con extremos redondeados, es progressbar con valor y la tarjeta es UN grupo accesible; los adornos se ocultan', () => {
     assert.ok(card.includes('const BAR_H = 8;'));
@@ -758,28 +758,46 @@ describe('eventos de layout (onLayout / onTextLayout): se leen de forma sincrón
   });
 });
 
-describe('Tarjeta "Progreso mensual": cobre claro con letra oscura (progressColors.ts, enmienda de la decisión (v))', () => {
+describe('Tarjeta "Progreso mensual": el MISMO fondo de Medallas con texto crema (progressColors.ts, ajuste de la decisión (v))', () => {
   const colors = progressColors(light);
   const m = progressMeasure(colors);
   const r = (n: number) => Math.round(n * 100) / 100;
+  const read = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
 
-  it('la combinación activa cumple los mínimos: 4,5:1 texto (número, "Sin plan activo", título, leyenda, cápsula) y 3:1 gráficos (barra contra pista y contra el cobre, cápsula contra el cobre)', () => {
+  it('la combinación activa cumple los mínimos: 4,5:1 texto crema en el peor punto del degradado y en la cápsula, 3:1 barra (contra pista y contra la tarjeta) y borde de la cápsula', () => {
     assert.ok(progressPasses(m), JSON.stringify(m));
   });
-  it('colores: fondo cobre claro #C79A6B (charcoalAccentLight), letra carbón (charcoal), cápsula de carbón con texto crema', () => {
-    assert.equal(colors.background, light.charcoalAccentLight);
-    assert.equal(colors.ink, light.charcoal);
-    assert.equal(colors.fill, light.charcoal);
+  it('Medallas y Progreso mensual usan EL MISMO fondo: ambas dibujan CopperBackdrop con copperSurfaceStyles y sus colores salen de copperSurfaceColors (un solo lugar)', () => {
+    const medals = read('MedalsCard.tsx');
+    const progress = read('MonthlyProgressCard.tsx');
+    for (const [name, src] of [['Medallas', medals], ['Progreso', progress]] as const) {
+      assert.ok(src.includes('<CopperBackdrop'), name + ' no dibuja CopperBackdrop');
+      assert.ok(src.includes('copperSurfaceStyles('), name + ' no usa copperSurfaceStyles');
+      assert.ok(!src.includes('LinearGradient'), name + ' conserva un degradado propio');
+    }
+    assert.ok(read('medalsColors.ts').includes('copperSurfaceColors('));
+    assert.ok(read('progressColors.ts').includes('copperSurfaceColors('));
+    const medalsLook = medalsColors(light, 'legible');
+    for (const k of ['gradientStart', 'gradientEnd', 'border', 'glow', 'barTrack', 'barFill'] as const) assert.equal(colors[k], medalsLook[k], 'distinto: ' + k);
+    assert.equal(colors.gradientStart, light.medalCopperDeep);
+    assert.equal(colors.gradientEnd, light.navActiveTextSmall);
+  });
+  it('colores: todo el texto en crema; barra con el relleno medalProgress sobre la pista de Medallas; cápsula de carbón con texto crema y borde de cobre claro', () => {
+    assert.equal(colors.ink, light.nextClassCardForeground);
+    assert.equal(colors.muted, light.nextClassCardForeground);
+    assert.equal(colors.fill, light.medalProgress);
+    assert.equal(colors.track, medalsColors(light, 'legible').barTrack);
     assert.equal(colors.capsuleBg, light.charcoal);
     assert.equal(colors.capsuleText, light.nextClassCardForeground);
+    assert.equal(colors.capsuleBorder, light.medalCopperLight);
   });
   it('contrastes finales (números exactos)', () => {
-    assert.equal(r(m.largeText), 7.56); // número y "Sin plan activo"
-    assert.equal(r(m.smallText), 6.05); // título, total, leyenda, reservadas
-    assert.equal(r(m.fillVsTrack), 4.69); // barra contra su pista
-    assert.equal(r(m.fillVsCard), 7.56); // barra contra el cobre
+    assert.equal(r(m.largeText), 4.98); // número y "Sin plan activo", peor punto del degradado
+    assert.equal(r(m.smallText), 4.98); // título, total, leyenda, reservadas
+    assert.equal(r(m.fillVsTrack), 9.93); // barra contra su pista
+    assert.equal(r(m.fillVsCard), 4.49); // barra contra la tarjeta
     assert.equal(r(m.capsuleText), 17.08); // crema sobre carbón
-    assert.equal(r(m.capsuleVsCard), 7.56); // cápsula contra el cobre
+    assert.equal(r(m.capsuleBorder), 3.07); // borde de la cápsula contra el peor punto
   });
   it('la tarjeta no gana interacción ni estado presionado', () => {
     const card = readFileSync(new URL('../../artifacts/wodplace/components/home/MonthlyProgressCard.tsx', import.meta.url), 'utf8');
@@ -825,7 +843,7 @@ describe('Tarjeta "Progreso mensual": estado sin plan (decisión (v), pedido 24)
     const height = (fs: number) => PADV * 2 + Math.round(SMALL * 1.2 * fs) + GAP + Math.max(MSG * fs, Math.round(16 * 1.2 * fs));
     const before = (fs: number) => 12 * 2 + Math.round(12 * 1.2 * fs) + 8 + Math.round(26 * fs); // sin plan de antes (70 / 75 / 83 medidos)
     for (const fs of [1, 1.1, 1.3]) assert.ok(height(fs) <= before(fs), `letra ${fs}: ${height(fs)} <= ${before(fs)}`);
-    assert.ok(card.includes('const NONE_MESSAGE_MIN_H = 24;') && card.includes('{ paddingVertical: SPACING.lg }'));
+    assert.ok(card.includes('const NONE_MESSAGE_MIN_H = 24;') && card.includes('{ paddingVertical: SPACING.lg - INNER }'));
   });
 });
 
@@ -1499,12 +1517,14 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     assert.equal((copper.match(/<Pressable/g) ?? []).length, 1);
     assert.equal((copper.match(/accessibilityRole="button"/g) ?? []).length, 1);
     assert.ok(copper.includes('accessibilityLabel={medalsA11yLabel(view)}') && copper.includes('onPress={onOpenMedals}'));
-    assert.ok(/pressed \? c\.pressed/.test(copper) && copper.includes('{pressed ? null : ('));
+    assert.ok(/pressed \? c\.pressed/.test(copper) && copper.includes('{pressed ? null : <CopperBackdrop c={c} />}'));
     assert.ok(copper.includes('<ArrowBadge') && !copper.includes('chevron-right'), 'la flecha es la de Tu próxima clase en versión pequeña');
     for (const line of copper.split(String.fromCharCode(10)).filter((l) => /opacity/i.test(l))) assert.ok(/SEPARATOR_OPACITY|laurelOpacity|LAUREL_OPACITY/.test(line), 'opacidad fuera del separador y el laurel: ' + line.trim());
   });
   it('cinta, brillo, separador, laurel, medalla y flecha: ocultos a lectores de pantalla o dentro de contenedores con pointerEvents="none" (nunca en un Text)', () => {
-    assert.ok(src.includes('function Ribbon') && src.includes('function Glow'));
+    const backdrop = readFileSync(new URL('../../artifacts/wodplace/components/home/CopperBackdrop.tsx', import.meta.url), 'utf8');
+    assert.ok(src.includes('function Ribbon') && backdrop.includes('RadialGradient'), 'el brillo vive ahora en CopperBackdrop');
+    assert.ok(backdrop.includes('pointerEvents="none"') && backdrop.includes('importantForAccessibility="no-hide-descendants"'), 'el fondo compartido está oculto a lectores');
     assert.ok((src.match(/pointerEvents="none"/g) ?? []).length >= 4);
     assert.ok(!/<Text[^>]*pointerEvents/.test(src), 'pointerEvents en un Text');
     assert.ok((src.match(/importantForAccessibility="no-hide-descendants"/g) ?? []).length >= 4);
@@ -1513,7 +1533,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
   it('la cinta es una silueta de react-native-svg con muesca (30 x 46 dp, ícono de 18 dp); el contador va en Anton; la barra mide 7 dp con extremos redondeados y relleno mínimo (6 dp) solo con N > 0', () => {
     assert.ok(src.includes('M0 0 H30 V46 L15 37 L0 46 Z') && src.includes('const RIBBON = { w: 30, h: 46 };') && src.includes('const RIBBON_ICON = 18;'));
     assert.ok(src.includes("counter: { fontFamily: 'Anton_400Regular'"));
-    assert.ok(src.includes("import { LinearGradient } from 'expo-linear-gradient';"));
+    assert.ok(!src.includes('LinearGradient'), 'el degradado vive en CopperBackdrop');
     assert.ok(src.includes('const BAR_H = 7;') && src.includes('borderRadius: BAR_H / 2') && src.includes('{pct > 0 ? <View') && src.includes('minWidth: MIN_FILL_PX'));
   });
   it('ALTO FIJO: el contador tiene alto fijo, la casilla del nombre mide dos líneas fijas y el lado izquierdo reparte (título arriba, contador y barra abajo) con el alto del bloque derecho', () => {
@@ -1530,9 +1550,13 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     const decls = [...src.matchAll(/^(?:export )?(?:function|const) (\w+)/gm)].map((x) => x[1]);
     assert.ok(decls.length >= 12);
     for (const name of decls.filter((d) => d !== 'MedalsCard')) assert.ok((src.match(new RegExp('\\b' + name + '\\b', 'g')) ?? []).length >= 2, 'sin uso: ' + name);
-    const fields = [...colorsSrc.slice(colorsSrc.indexOf('export type MedalsColors'), colorsSrc.indexOf('/** Opacidad del brillo')).matchAll(/^  (\w+): string;/gm)].map((x) => x[1]);
+    const home = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+    const surfaceSrc = home('copperSurface.ts');
+    const fieldsOf = (t: string, start: string) => [...t.slice(t.indexOf(start), t.indexOf('};', t.indexOf(start))).matchAll(/^  (\w+): string;/gm)].map((x) => x[1]);
+    const fields = [...fieldsOf(colorsSrc, 'export type MedalsColors'), ...fieldsOf(surfaceSrc, 'export type CopperSurfaceColors')];
     assert.ok(fields.length >= 12);
-    for (const f of fields) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src), 'color sin uso: ' + f);
+    // los colores del fondo compartido se leen en CopperBackdrop o en copperSurface.ts; los demás, en el componente
+    for (const f of fields) assert.ok(new RegExp('\\bc\\.' + f + '\\b').test(src + home('CopperBackdrop.tsx') + surfaceSrc), 'color sin uso: ' + f);
   });
   it('en desarrollo: chips de diseño, degradado, ancho y letra, los estados (0, 1, 6 y 122 de 122, nombre corto y largo, podio, cargando, error, no identificable) y el estudio con los 6 ejemplos', () => {
     for (const chip of ['Medallas: actual', 'Medallas: cobre', 'Degradado: legible', 'Degradado: como lo pedí',  'Medallas, ancho: 320', 'Medallas, letra simulada: 1,3']) assert.ok(dev.includes(chip), chip);

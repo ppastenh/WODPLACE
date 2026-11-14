@@ -1,5 +1,5 @@
 import { ARROW_BADGE_GLASS_ALPHA } from './arrowBadgeSpec';
-import { contrastRatio, mixHex } from './progressColors';
+import { contrastRatio, mixHex } from './colorMath';
 
 /**
  * Colores PUROS de la tarjeta "PR destacado" (decisión (x), concepto PR Champion en grafito). Solo tokens existentes y mezclas de dos tokens (sin colores nuevos).

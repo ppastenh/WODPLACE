@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { MedalBadge } from '@/components/MedalBadge';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { AchievementShowcase } from '@/components/home/AchievementShowcase';
 import { ArrowBadge } from '@/components/home/ArrowBadge';
+import { CopperBackdrop } from '@/components/home/CopperBackdrop';
+import { copperSurfaceStyles } from '@/components/home/copperSurface';
 import { ARROW_BADGE_SMALL, arrowBadgeCorner } from '@/components/home/arrowBadgeSpec';
 import {
-  GLOW_OPACITY,
   LAUREL_OPACITY_DIM,
   SEPARATOR_OPACITY,
   medalsColors,
@@ -208,29 +208,13 @@ function Ribbon({ c, icon }: { c: MedalsColors; icon: boolean }) {
   );
 }
 
-/** Brillo difuso muy tenue de cobre claro en la esquina superior izquierda (sin imágenes ni patrones). Decorativo. */
-function Glow({ c }: { c: MedalsColors }) {
-  return (
-    <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
-      <Svg width="100%" height="100%">
-        <Defs>
-          <RadialGradient id="medals-glow" cx="12%" cy="0%" rx="55%" ry="120%" fx="12%" fy="0%" gradientUnits="objectBoundingBox">
-            <Stop offset="0" stopColor={c.glow} stopOpacity={GLOW_OPACITY} />
-            <Stop offset="1" stopColor={c.glow} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Rect x={0} y={0} width="100%" height="100%" fill="url(#medals-glow)" />
-      </Svg>
-    </View>
-  );
-}
-
 function Bone({ c, width, height, round }: { c: MedalsColors; width: number | `${number}%`; height: number; round?: boolean }) {
   return <View style={{ width, height, borderRadius: round ? height / 2 : 6, backgroundColor: c.bone }} />;
 }
 
 function CopperCard({ c, view, onOpenMedals, fs }: { c: MedalsColors; view: MedalsView; onOpenMedals: () => void; fs: number }) {
   const colors = useColors();
+  const surface = copperSurfaceStyles(colors.charcoal, c);
   const unlocked = view.kind === 'medals' || view.kind === 'unidentified' ? view.unlocked : 0;
   const total = view.kind === 'loading' || view.kind === 'error' ? 0 : view.total;
   const sizes = counterSizes(unlocked, total);
@@ -239,25 +223,16 @@ function CopperCard({ c, view, onOpenMedals, fs }: { c: MedalsColors; view: Meda
   const text = { color: c.text };
 
   return (
-    <View style={[styles.shadow, { shadowColor: colors.charcoal, backgroundColor: c.gradientStart }]}>
+    <View style={surface.outer}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={medalsA11yLabel(view)}
         onPress={onOpenMedals}
-        style={({ pressed }) => [styles.card, { backgroundColor: pressed ? c.pressed : c.gradientStart, borderColor: c.border }]}
+        style={({ pressed }) => [surface.card, styles.cardPad, { backgroundColor: pressed ? c.pressed : c.gradientStart }]}
       >
         {({ pressed }) => (
           <>
-            {pressed ? null : (
-              <LinearGradient
-                pointerEvents="none"
-                colors={[c.gradientStart, c.gradientEnd]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={StyleSheet.absoluteFill}
-              />
-            )}
-            {pressed ? null : <Glow c={c} />}
+            {pressed ? null : <CopperBackdrop c={c} />}
             <View style={styles.row} importantForAccessibility="no-hide-descendants">
               {/* Lado izquierdo: Colección */}
               <View style={styles.left}>
@@ -342,14 +317,7 @@ const actual = StyleSheet.create({
 
 const styles = StyleSheet.create({
   outer: { marginTop: 12 },
-  shadow: {
-    borderRadius: RADIUS.xl,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  card: { borderRadius: RADIUS.xl, borderWidth: 1, overflow: 'hidden', paddingTop: PAD_V, paddingBottom: PAD_BOTTOM, paddingHorizontal: PAD_H },
+  cardPad: { paddingTop: PAD_V, paddingBottom: PAD_BOTTOM, paddingHorizontal: PAD_H },
   row: { flexDirection: 'row', alignItems: 'stretch' },
   left: { flex: 1, paddingRight: SPACING.md, justifyContent: 'space-between' },
   ribbon: { position: 'absolute', top: -PAD_V, left: 0 },

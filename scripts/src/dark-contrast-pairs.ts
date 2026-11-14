@@ -245,16 +245,18 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('nextClassCardForeground', 'nextClassCardPressed', 'frase con foto: ícono de compartir crema sobre el círculo sólido al presionar'),
   // EXCEPCIÓN ACEPTADA (Pía, 2026-11-08): resaltado en texto cobre claro sobre la foto con el velo del 62 %, peor caso (gris 255, igual a 320, 360 y 412 dp): 2,13:1.
   { ...t('charcoalAccentLight', 'charcoal', 'frase con foto: resaltado en texto cobre claro #C79A6B sobre el velo del 62 % y el punto más claro de la foto (EXCEPCIÓN ACEPTADA)'), bgLiteral: { hex: '#0D0F10', over: '#FFFFFF', alpha: 0.62 }, accepted: { value: 2.13, date: '2026-11-08', by: 'Pía' } },
-  // Tarjeta "Progreso mensual" (decisión (v), enmienda del 2026-11-09): COBRE CLARO #C79A6B con letra OSCURA (carbón #0D0F10). Pista = letra al 25 % sobre el cobre;
-  // texto secundario (título, "/ M clases", leyenda, reservadas) = letra al 85 % sobre el cobre; cápsula "Plan ilimitado" de carbón con texto crema. Vale igual a 320,
-  // 360 y 412 dp y con la letra al 1,0, 1,1 y 1,3: el contraste no depende del tamaño. Las otras versiones (grafito, clara y las demás combinaciones de cobre) se descartaron.
-  t('charcoal', 'charcoalAccentLight', 'progreso mensual: número sobre el cobre claro'),
-  t('charcoal', 'charcoalAccentLight', 'progreso mensual, estado sin plan: "Sin plan activo" (carbón) sobre el cobre claro'),
-  { ...t('charcoal', 'charcoalAccentLight', 'progreso mensual: texto secundario (letra al 85 %) sobre el cobre claro'), textOver: { over: 'charcoalAccentLight', alpha: 0.85 } },
-  { ...ui('charcoal', 'charcoal', 'progreso mensual: relleno de la barra contra su pista (letra al 25 % sobre el cobre)'), bgOver: { over: 'charcoalAccentLight', alpha: 0.25 } },
-  ui('charcoal', 'charcoalAccentLight', 'progreso mensual: relleno de la barra contra el cobre claro'),
+  // Tarjeta "Progreso mensual" (decisión (v), ajuste del 2026-11-15): el MISMO fondo de cobre oscuro de Medallas (degradado #754522 → #8B5E34 con brillo) con TODO el texto en crema; barra como la
+  // de Medallas (relleno medalProgress sobre la pista café); cápsula "Plan ilimitado" de carbón con texto crema y borde de cobre claro. Reemplaza al cobre claro con letra oscura. Vale igual a 320, 360 y 412 dp.
+  t('nextClassCardForeground', '#85552f', 'progreso mensual: título y número (crema) sobre el brillo del extremo izquierdo'),
+  t('nextClassCardForeground', '#80522b', 'progreso mensual: texto (crema) sobre el punto medio del degradado'),
+  t('nextClassCardForeground', 'navActiveTextSmall', 'progreso mensual: "N reservada(s)" y "Plan ilimitado" cerca del extremo derecho; peor punto del texto (crema)'),
+  t('nextClassCardForeground', 'navActiveTextSmall', 'progreso mensual, estado sin plan: "Sin plan activo" (crema) sobre el extremo derecho'),
+  ui('medalProgress', '#472f1e', 'progreso mensual: relleno de la barra contra su pista (la de Medallas)'),
+  ui('medalProgress', '#85552f', 'progreso mensual: relleno de la barra contra la tarjeta (brillo del extremo izquierdo)'),
+  ui('medalProgress', '#80522b', 'progreso mensual: relleno de la barra contra la tarjeta (punto medio del degradado)'),
   t('nextClassCardForeground', 'charcoal', 'progreso mensual: texto crema de la cápsula "Plan ilimitado" sobre su carbón'),
-  ui('charcoal', 'charcoalAccentLight', 'progreso mensual: cápsula de carbón contra el cobre claro'),
+  ui('medalCopperLight', 'navActiveTextSmall', 'progreso mensual: borde de cobre claro de la cápsula contra el peor punto del fondo (extremo derecho)'),
+  ui('medalCopperLight', '#80522b', 'progreso mensual: borde de cobre claro de la cápsula contra el punto medio del degradado'),
   // Recuadros "Tu nivel" y "Racha de constancia" (decisión (w), VIGENTE: opción E en grafito; componente LevelStreakCards.tsx, colores en levelStreakColors.ts). Fondo
   // nextClassCard (#18191A); las insignias de escudo son de carbón con borde e ícono de cobre #B98250; los indicadores completados son de cobre y los pendientes llevan contorno gris cálido.
   // Vale igual a 320, 360 y 412 dp y con la letra 1,0, 1,1 y 1,3. Las opciones C, el diseño anterior y el tratamiento cobre se descartaron.

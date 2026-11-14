@@ -1,5 +1,6 @@
 import { ARROW_BADGE_GLASS_ALPHA } from './arrowBadgeSpec';
-import { contrastRatio, mixHex } from './progressColors';
+import { contrastRatio, mixHex } from './colorMath';
+import { copperBackgrounds, copperSurfaceColors, type CopperGradient, type CopperPalette, type CopperSurfaceColors } from './copperSurface';
 import { MEDAL_FROM, MEDAL_ICON, MEDAL_RING, MEDAL_RING_OPACITY, MEDAL_TO } from '../ui/achievementMedalSpec';
 
 /**
@@ -9,28 +10,16 @@ import { MEDAL_FROM, MEDAL_ICON, MEDAL_RING, MEDAL_RING_OPACITY, MEDAL_TO } from
  * Degradado 'legible' (el de Inicio): de medalCopperDeep #754522 (izquierda) a navActiveTextSmall #8B5E34 (derecha); mantiene todo el texto pequeño sobre 4,5:1.
  * Degradado 'pedido' (solo para comparar en desarrollo): de charcoalAccent #B98250 a medalCopperDeep #754522; el crema del lado izquierdo no llega a 4,5:1 sobre #B98250 (2,9:1).
  */
-export type MedalsGradient = 'legible' | 'pedido';
+export type MedalsGradient = CopperGradient;
 
-export type MedalsPalette = {
-  nextClassCard: string;
-  nextClassCardForeground: string;
-  charcoalAccent: string;
-  navActiveTextSmall: string;
-  medalCopper: string;
-  medalCopperDeep: string;
-  medalCopperLight: string;
-  medalProgress: string;
+export type MedalsPalette = CopperPalette & {
   medalRibbon: string;
   glassBackground: string;
 };
 
-export type MedalsColors = {
-  gradientStart: string;
-  gradientEnd: string;
+export type MedalsColors = CopperSurfaceColors & {
   /** Presionado SÓLIDO (mezcla de nextClassCard y medalCopperDeep); nunca opacidad. */
   pressed: string;
-  /** Borde fino de la tarjeta (cobre base). */
-  border: string;
   /** Título, contador, nombre y flecha. */
   text: string;
   /** Cinta vertical (café oscuro, más oscuro que el fondo de la tarjeta) y el ícono de medalla que lleva (cobre claro). */
@@ -38,53 +27,38 @@ export type MedalsColors = {
   ribbonIcon: string;
   /** Ícono de la medalla atenuada (sin medallas o con error). */
   mutedIcon: string;
-  /** Pista y relleno de la barra de progreso. */
-  barTrack: string;
-  barFill: string;
   /** Separador vertical (cobre claro). */
   separator: string;
   /** Flecha en círculo (la de "Tu próxima clase" en versión pequeña): borde de cobre claro (el cobre medio casi no se vería sobre este fondo) y relleno translúcido oscuro. */
   arrowBorder: string;
   arrowFill: string;
-  /** Brillo difuso muy tenue (cobre claro) de la esquina superior izquierda. */
-  glow: string;
-  /** Barras del esqueleto. */
-  bone: string;
 };
 
-/** Opacidad del brillo difuso del lado izquierdo (decorativo; el peor punto del texto se mide con él puesto). */
-export const GLOW_OPACITY = 0.14;
 /** Opacidad del separador vertical (moderada). */
 export const SEPARATOR_OPACITY = 0.45;
 /** Opacidad del laurel más tenue: sin medallas, con error o cargando (con medalla es la del dibujo, 0,5). */
 export const LAUREL_OPACITY_DIM = 0.25;
 
 export function medalsColors(p: MedalsPalette, gradient: MedalsGradient = 'legible'): MedalsColors {
-  const start = gradient === 'legible' ? p.medalCopperDeep : p.charcoalAccent;
-  const end = gradient === 'legible' ? p.navActiveTextSmall : p.medalCopperDeep;
-  const mid = mixHex(end, start, 0.5);
+  const surface = copperSurfaceColors(p, gradient);
+  const mid = mixHex(surface.gradientEnd, surface.gradientStart, 0.5);
   return {
-    gradientStart: start,
-    gradientEnd: end,
+    ...surface,
     pressed: mixHex(p.nextClassCard, p.medalCopperDeep, 0.5),
-    border: p.medalCopper,
     text: p.nextClassCardForeground,
     ribbon: p.medalRibbon,
     ribbonIcon: p.medalCopperLight,
     mutedIcon: mixHex(p.nextClassCardForeground, mid, 0.6),
-    barTrack: mixHex(p.medalCopperDeep, p.nextClassCard, 0.5),
-    barFill: p.medalProgress,
     separator: p.medalCopperLight,
     arrowBorder: p.medalCopperLight,
     arrowFill: p.glassBackground,
-    glow: p.medalCopperLight,
-    bone: mixHex(p.nextClassCardForeground, mid, 0.25),
   };
 }
 
 /** Fondo bajo el texto del lado izquierdo, en el peor punto: el brillo difuso sobre el extremo izquierdo, o el punto medio del degradado (el que sea más claro). */
 export function medalsLeftBackgrounds(c: MedalsColors): { glow: string; mid: string } {
-  return { glow: mixHex(c.glow, c.gradientStart, GLOW_OPACITY), mid: mixHex(c.gradientEnd, c.gradientStart, 0.5) };
+  const { glow, mid } = copperBackgrounds(c);
+  return { glow, mid };
 }
 
 export type MedalsMeasure = {

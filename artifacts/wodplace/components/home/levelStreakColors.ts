@@ -1,5 +1,5 @@
 import { ARROW_BADGE_GLASS_ALPHA } from './arrowBadgeSpec';
-import { contrastRatio, mixHex } from './progressColors';
+import { contrastRatio, mixHex } from './colorMath';
 
 /**
  * Colores PUROS de los recuadros "Tu nivel" y "Racha de constancia" (decisión (w)) (tratamiento grafito, el elegido), y su medición. Solo tokens existentes y mezclas de dos tokens

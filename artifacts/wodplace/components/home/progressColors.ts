@@ -1,87 +1,64 @@
+import { contrastRatio, mixHex } from './colorMath';
+import { copperBackgrounds, copperSurfaceColors, type CopperPalette, type CopperSurfaceColors } from './copperSurface';
+
 /**
- * Colores de la tarjeta "Progreso mensual" (decisión (v), enmienda del 2026-11-09): barra refinada sobre fondo de COBRE CLARO con letra OSCURA.
- * Lógica pura (sin React Native): elige colores con tokens existentes y mide el contraste real con la misma fórmula que las pruebas
- * (scripts/src/dark-contrast-pairs.ts). No hay colores nuevos: solo mezclas de dos tokens existentes.
- *
- *  - Fondo: charcoalAccentLight (#C79A6B). Letra: charcoal (#0D0F10).
- *  - Pista de la barra: la letra al 25 % sobre el cobre. Texto secundario (título, total, leyenda, reservadas): la letra al 85 % sobre el cobre.
- *  - Cápsula "Plan ilimitado": de carbón con texto crema.
+ * Colores de la tarjeta "Progreso mensual" (decisión (v), ajuste del 2026-11-15): el MISMO fondo de cobre oscuro que "Medallas" (copperSurface.ts: degradado de #754522 a #8B5E34, brillo satinado,
+ * borde y sombra) con TODO el texto en crema; barra con la pista y el relleno de Medallas (relleno medalProgress #FFE2B7 sobre la pista café); cápsula "Plan ilimitado" de carbón con texto crema y
+ * un borde fino de cobre claro (#E8B781) para que se distinga del fondo. Reemplaza al cobre claro con letra oscura. Lógica pura (sin React Native): solo tokens existentes y mezclas de dos tokens.
+ * mixHex y contrastRatio viven en colorMath.ts y se siguen exportando desde aquí.
  */
-export const TRACK_ALPHA = 0.25;
-export const MUTED_ALPHA = 0.85;
+export { contrastRatio, mixHex };
 export const MIN_SMALL_TEXT = 4.5;
 export const MIN_LARGE_AND_GRAPHICS = 3;
 
-export type ProgressPalette = {
-  charcoal: string;
-  nextClassCardForeground: string;
-  charcoalAccentLight: string;
-};
+export type ProgressPalette = CopperPalette & { charcoal: string };
 
-const parse = (hex: string): [number, number, number] => {
-  const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
-export const mixHex = (fg: string, bg: string, alpha: number): string => {
-  const f = parse(fg);
-  const b = parse(bg);
-  return '#' + f.map((v, i) => Math.round(v * alpha + (b[i] as number) * (1 - alpha)).toString(16).padStart(2, '0')).join('');
-};
-const luminance = (hex: string): number => {
-  const [r, g, b] = parse(hex).map((v) => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  }) as [number, number, number];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-};
-/** Misma fórmula (WCAG) que contrast() de scripts/src/dark-contrast-pairs.ts. */
-export function contrastRatio(a: string, b: string): number {
-  const x = luminance(a);
-  const y = luminance(b);
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
-}
-
-export type ProgressColors = {
-  background: string;
+export type ProgressColors = CopperSurfaceColors & {
+  /** Número y "Sin plan activo" (crema). */
   ink: string;
+  /** Título, "/ M clases", leyenda y reservadas (también crema: sobre este fondo un tono atenuado no llega a 4,5:1). */
   muted: string;
   track: string;
   fill: string;
   capsuleBg: string;
   capsuleText: string;
+  capsuleBorder: string;
 };
 
 export function progressColors(p: ProgressPalette): ProgressColors {
-  const background = p.charcoalAccentLight;
-  const ink = p.charcoal;
+  const surface = copperSurfaceColors(p);
   return {
-    background,
-    ink,
-    muted: mixHex(ink, background, MUTED_ALPHA),
-    track: mixHex(ink, background, TRACK_ALPHA),
-    fill: ink,
+    ...surface,
+    ink: p.nextClassCardForeground,
+    muted: p.nextClassCardForeground,
+    track: surface.barTrack,
+    fill: surface.barFill,
     capsuleBg: p.charcoal,
     capsuleText: p.nextClassCardForeground,
+    capsuleBorder: p.medalCopperLight,
   };
 }
 
 export type ProgressMeasure = {
-  largeText: number; // número y "Sin plan activo" sobre el cobre (mínimo 4,5)
-  smallText: number; // título, total, leyenda y reservadas (mínimo 4,5)
+  largeText: number; // número y "Sin plan activo" sobre el peor punto del fondo (mínimo 4,5)
+  smallText: number; // título, total, leyenda y reservadas sobre el peor punto del fondo (mínimo 4,5)
   fillVsTrack: number; // relleno de la barra contra su pista (mínimo 3)
-  fillVsCard: number; // relleno de la barra contra el cobre (mínimo 3)
+  fillVsCard: number; // relleno de la barra contra el peor punto del fondo (mínimo 3)
   capsuleText: number; // texto crema de la cápsula sobre su carbón (mínimo 4,5)
-  capsuleVsCard: number; // cápsula de carbón contra el cobre (mínimo 3)
+  capsuleBorder: number; // borde de cobre claro de la cápsula contra el peor punto del fondo (mínimo 3)
 };
 
+/** Peor punto de cada contraste: el fondo más desfavorable de los tres tramos (brillo del extremo izquierdo, punto medio y extremo derecho del degradado). */
 export function progressMeasure(c: ProgressColors): ProgressMeasure {
+  const bgs = Object.values(copperBackgrounds(c));
+  const worst = (fg: string) => Math.min(...bgs.map((bg) => contrastRatio(fg, bg)));
   return {
-    largeText: contrastRatio(c.ink, c.background),
-    smallText: contrastRatio(c.muted, c.background),
+    largeText: worst(c.ink),
+    smallText: worst(c.muted),
     fillVsTrack: contrastRatio(c.fill, c.track),
-    fillVsCard: contrastRatio(c.fill, c.background),
+    fillVsCard: worst(c.fill),
     capsuleText: contrastRatio(c.capsuleText, c.capsuleBg),
-    capsuleVsCard: contrastRatio(c.capsuleBg, c.background),
+    capsuleBorder: worst(c.capsuleBorder),
   };
 }
 
@@ -92,6 +69,6 @@ export function progressPasses(m: ProgressMeasure): boolean {
     m.fillVsTrack >= MIN_LARGE_AND_GRAPHICS &&
     m.fillVsCard >= MIN_LARGE_AND_GRAPHICS &&
     m.capsuleText >= MIN_SMALL_TEXT &&
-    m.capsuleVsCard >= MIN_LARGE_AND_GRAPHICS
+    m.capsuleBorder >= MIN_LARGE_AND_GRAPHICS
   );
 }
