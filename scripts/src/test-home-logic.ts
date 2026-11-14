@@ -12,7 +12,7 @@ import { describe, it } from 'node:test';
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
-import { PHOTO_GRAYS, QUOTE_COPPER_DEFAULT, minVeilFor, quoteContrast, quoteCopperHex } from '../../artifacts/wodplace/components/home/quoteCopper';
+import { PHOTO_GRAYS, minVeilFor, quoteContrast } from '../../artifacts/wodplace/components/home/quoteCopper';
 import { progressColors, progressMeasure, progressPasses } from '../../artifacts/wodplace/components/home/progressColors';
 import { levelStreakColors, levelStreakMeasure, levelStreakPasses } from '../../artifacts/wodplace/components/home/levelStreakColors';
 import {
@@ -1686,24 +1686,21 @@ describe('Flechas pequeñas: la MISMA posición y el MISMO margen en "Tu nivel",
   });
 });
 
-describe('Frase del día: letra y comillas en cobre (quoteCopper.ts, ajuste de la decisión (s), 2026-11-15)', () => {
+describe('Frase del día: letra y comillas en cobre (quoteCopper.ts, ajuste de la decisión (s), 2026-11-14)', () => {
   const r = (n: number | null) => (n === null ? null : Math.round(n * 100) / 100);
   const veil = light.charcoal;
   const src = readFileSync(new URL('../../artifacts/wodplace/components/home/DailyQuoteCard.tsx', import.meta.url), 'utf8');
   const dev = readFileSync(new URL('../../artifacts/wodplace/components/home/DevHomeScreen.tsx', import.meta.url), 'utf8');
-  it('el cobre por defecto es charcoalAccent #B98250 y el fondo NO cambió: foto y velo del 62 %, sin chip de velo', () => {
-    assert.equal(quoteCopperHex(light, QUOTE_COPPER_DEFAULT), '#B98250');
-    assert.equal(quoteCopperHex(light, 'claro'), '#C79A6B');
-    assert.equal(quoteCopperHex(light, 'brillante'), '#E8B781');
+  it('el cobre es charcoalAccent #B98250 y el fondo NO cambió: foto y velo del 62 %, sin chip de velo', () => {
+    assert.equal(light.charcoalAccent, '#B98250');
+    assert.ok(src.includes('const copperHex = colors.charcoalAccent;'), 'el cobre de la frase es charcoalAccent');
     assert.match(src, /export const QUOTE_VEIL = 0.62;/);
     assert.ok(!/Velo:|veilChip|VEIL_CHIPS/i.test(dev), 'no hay chip de velo');
     assert.ok(!src.includes('minVeilFor') && !src.includes('look.veil'), 'el componente no cambia nada del fondo (el velo es la constante QUOTE_VEIL)');
   });
-  it('el chip de desarrollo ofrece los tres cobres y solo existen en desarrollo (línea de depuración con el contraste del peor punto)', () => {
-    for (const label of ['Cobre de la frase: #B98250', 'Cobre de la frase: #C79A6B', 'Cobre de la frase: #E8B781']) assert.ok(dev.includes(label), label);
-    const before = src.slice(0, src.indexOf('style={styles.devCopper}'));
-    assert.ok(/__DEV__ \? \(\s*<View pointerEvents="none" $/.test(before), 'la línea del cobre solo existe en desarrollo');
-    assert.ok(src.includes('quoteContrast(copperHex, colors.charcoal, QUOTE_VEIL, PHOTO_GRAYS.claro)'), 'la línea usa el peor punto (foto más clara) con el velo vigente');
+  it('NO quedan el chip de cobres ni la línea de depuración de la frase (retirados el 2026-11-14); solo #B98250', () => {
+    assert.ok(!dev.includes('Cobre de la frase'), 'chip retirado');
+    assert.ok(!/devCopper|en el peor punto|quoteCopperDebugText|QuoteCopperChoice|look.copper/.test(src + dev), 'línea de depuración retirada');
     assert.equal(r(quoteContrast('#B98250', veil, 0.62, PHOTO_GRAYS.claro)), 1.64);
   });
   it('el ícono de compartir sigue en crema', () => {

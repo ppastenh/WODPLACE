@@ -318,7 +318,8 @@ const styles = StyleSheet.create({
   texture: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH, opacity: TEXTURE_OPACITY },
   textureBox: { position: 'absolute', top: 0, right: 0, bottom: 0, width: TEXTURE_WIDTH },
   content: { padding: SPACING.lg, gap: SPACING.sm, justifyContent: 'center', flexGrow: 1 },
-  inviteContent: { paddingRight: SPACING.lg + ARROW + SPACING.sm },
+  // Sin reserva: el título lleva 20 dp (SPACING.xxl) desde el borde izquierdo (antes 12); arriba y abajo el relleno es el de siempre, así que el alto no cambia.
+  inviteContent: { paddingLeft: SPACING.xxl, paddingRight: SPACING.lg + ARROW + SPACING.sm },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   circle: {
     width: CIRCLE,

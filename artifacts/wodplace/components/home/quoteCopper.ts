@@ -1,18 +1,9 @@
 import { contrastRatio, mixHex } from './colorMath';
 
 /**
- * Cobre de la letra de la frase del día (decisión (s), ajuste del 2026-11-15). Lógica pura: sin React Native.
- * La frase y sus dos comillas van en cobre sobre la foto con el velo; las palabras resaltadas, en crema. El FONDO (foto y velo del 62 %) no cambia.
- * El cobre por defecto es charcoalAccent #B98250: no llega a 4,5:1 sobre el punto más claro de la foto (excepción consciente, medida en las pruebas).
+ * Medición del contraste de la letra de la frase del día sobre la foto con el velo (decisión (s)). Lógica pura, SOLO para las pruebas y las notas de diseño: la tarjeta no la importa.
+ * La letra va en cobre #B98250 (charcoalAccent), una EXCEPCIÓN consciente al mínimo de 4,5:1 aceptada por Pía el 2026-11-14 (1,64:1 en el peor punto); las palabras resaltadas, en crema.
  */
-export type QuoteCopperChoice = 'medio' | 'claro' | 'brillante';
-
-export type QuoteCopperPalette = { charcoalAccent: string; charcoalAccentLight: string; medalCopperLight: string; charcoal: string };
-
-/** Los tres cobres de comparación en desarrollo; 'medio' es el valor por defecto. */
-export const QUOTE_COPPER_DEFAULT: QuoteCopperChoice = 'medio';
-export const quoteCopperHex = (p: QuoteCopperPalette, choice: QuoteCopperChoice): string =>
-  choice === 'medio' ? p.charcoalAccent : choice === 'claro' ? p.charcoalAccentLight : p.medalCopperLight;
 
 /** Grises de la foto que se miden: el punto más claro (peor caso), uno medio y el más oscuro. */
 export const PHOTO_GRAYS = { claro: '#FFFFFF', medio: '#808080', oscuro: '#000000' } as const;

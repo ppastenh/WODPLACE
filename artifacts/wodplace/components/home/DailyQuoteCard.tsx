@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { readLayout, readLines } from '@/components/home/layoutEvents';
-import { PHOTO_GRAYS, QUOTE_COPPER_DEFAULT, quoteContrast, quoteCopperHex, type QuoteCopperChoice } from '@/components/home/quoteCopper';
 import { splitHighlight } from '@/components/home/splitHighlight';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -35,8 +34,6 @@ export type QuoteLook = {
   highlightShadow?: boolean;
   /** Solo desarrollo: simula la letra del sistema (1; 1,1; 1,3). */
   fontScale?: number;
-  /** Solo desarrollo: cobre de la letra de la frase y las comillas (medio #B98250 por defecto, claro #C79A6B o brillante #E8B781). Solo afecta a la letra, nunca al fondo. */
-  copper?: QuoteCopperChoice;
 };
 
 /** UNA sola constante decide la variante que ve Inicio. 'editorialCream' = la elegida; 'actual' = la tarjeta de antes. */
@@ -231,7 +228,7 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
   // el punto más claro de la foto con el velo del 62 % (3,46:1 con una foto media, 6,05:1 con la más oscura): EXCEPCIÓN consciente al mínimo de 4,5:1, aceptada por Pía y registrada en
   // las pruebas de contraste, ESTADO.md y DECISIONES-DISENO.md. El fondo (foto y velo) no cambia. Las otras dos opciones de resaltado (marcador y subrayado) quedan para comparar en desarrollo.
   const cream = colors.nextClassCardForeground;
-  const copperHex = quoteCopperHex(colors, look.copper ?? QUOTE_COPPER_DEFAULT);
+  const copperHex = colors.charcoalAccent;
   const markerReady = marker && rects !== null && rects.length > 0;
   const bodyColor = style === 'cobre' ? copperHex : cream;
   const highlightStyle =
@@ -367,11 +364,6 @@ function EditorialQuote({ quote, onShare, look }: { quote: string; onShare: () =
           <Text style={styles.devBadgeText}>{`Alto: ${cardH} dp`}</Text>
         </View>
       ) : null}
-      {__DEV__ ? (
-        <View pointerEvents="none" style={styles.devCopper}>
-          <Text style={styles.devCopperText}>{`Cobre ${copperHex}: ${quoteContrast(copperHex, colors.charcoal, QUOTE_VEIL, PHOTO_GRAYS.claro).toFixed(2).replace('.', ',')}:1 en el peor punto`}</Text>
-        </View>
-      ) : null}
 
       {/* Compartir: ícono crema SIN círculo visible; el área táctil de 48 × 48 dp es invisible y, mientras el dedo está apretado, aparece un círculo de color
           SÓLIDO (nextClassCardPressed, sin opacidad). */}
@@ -419,9 +411,6 @@ const styles = StyleSheet.create({
   // Solo __DEV__ (texto de depuración con el alto medido).
   devBadge: { position: 'absolute', left: SPACING.sm, bottom: 1 },
   devBadgeText: { fontSize: 9, color: '#B00020', fontFamily: 'Inter_600SemiBold' },
-  // Solo __DEV__: el contraste del peor punto de la foto con el cobre elegido (no cambia ningún alto: va flotando abajo a la derecha).
-  devCopper: { position: 'absolute', right: SPACING.sm, bottom: 1 },
-  devCopperText: { fontSize: 9, color: '#B00020', fontFamily: 'Inter_600SemiBold' },
   // Área táctil de 48 × 48 dp; el ícono (20 dp) se ve más chico.
   share: {
     position: 'absolute',
