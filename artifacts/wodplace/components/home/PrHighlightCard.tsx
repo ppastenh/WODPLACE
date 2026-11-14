@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, G, Path, Pattern, Rect } from 'react-native-svg';
+import { ArrowBadge } from '@/components/home/ArrowBadge';
+import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { prColors, TEXTURE_OPACITY, type PrColors } from '@/components/home/prHighlightColors';
@@ -120,7 +121,7 @@ export function PrHighlightCard({ pr, prStatus, onOpenRm, fontScale, screenWidth
                   </View>
                 </View>
                 <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.chevron}>
-                  <Feather name="chevron-right" size={18} color={c.primary} />
+                  <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.primary} />
                 </View>
               </View>
               <View style={[styles.capsuleSlot, { minHeight: capsuleH }]}>

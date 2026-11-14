@@ -296,6 +296,16 @@ export const PAIRS_LIGHT: Pair[] = [
   // Medallas, cinta del ícono (ajuste de la decisión (y)): café #5E3A1A; el ícono de cobre claro #E8B781 sobre la cinta. La silueta de la cinta
   // contra el fondo de la tarjeta NO llega a 3:1 (1,51:1 con el café) y está ACEPTADO por la dueña (sin filo).
   ui('medalCopperLight', 'medalRibbon', 'medallas: ícono de medalla (cobre claro) sobre la cinta de café'),
+  // Flecha en círculo (la de 'Tu próxima clase' en versión pequeña: ArrowBadge). Relleno translúcido = negro al 60 % (glassBackground) sobre el fondo de cada tarjeta; borde de 1,5 dp (a escala).
+  // PR destacado (grafito): borde de cobre medio #B98250 como el modelo. Medallas (cobre oscuro): borde de cobre claro #E8B781, porque el cobre medio casi no se vería sobre ese fondo.
+  ui('charcoalAccent', '#232428', 'PR destacado: borde de la flecha (cobre medio) contra el extremo claro del degradado'),
+  ui('charcoalAccent', 'nextClassCardPressed', 'PR destacado: borde de la flecha contra el grafito presionado'),
+  ui('nextClassCardForeground', '#0e0e10', 'PR destacado: flecha crema sobre su relleno (negro al 60 % sobre #232428)'),
+  ui('nextClassCardForeground', '#121315', 'PR destacado: flecha crema sobre su relleno presionado (negro al 60 % sobre #2E2F35)'),
+  ui('medalCopperLight', 'navActiveTextSmall', 'medallas: borde de la flecha (cobre claro) contra el extremo derecho'),
+  ui('medalCopperLight', '#472f1e', 'medallas: borde de la flecha contra el cobre presionado'),
+  ui('nextClassCardForeground', '#382615', 'medallas: flecha crema sobre su relleno (negro al 60 % sobre #8B5E34)'),
+  ui('nextClassCardForeground', '#1c1209', 'medallas: flecha crema sobre su relleno presionado (negro al 60 % sobre #472F1E)'),
   // Cápsula de la fecha: A (cobre con texto e ícono carbón), B (cobre oscuro con crema), C (vidrio con borde cobre y texto crema).
   t('charcoal', 'charcoalAccent', 'cápsula A: texto e ícono carbón sobre cobre #B98250'),
   t('charcoal', 'charcoalAccentLight', 'cápsula A con cobre claro: texto e ícono carbón sobre #C79A6B'),

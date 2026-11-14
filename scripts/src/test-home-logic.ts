@@ -66,6 +66,7 @@ import {
   medalsStatusOf,
   medalsView,
 } from '../../artifacts/wodplace/components/home/medalsModel';
+import { ARROW_BADGE_BORDER, ARROW_BADGE_ICON_RATIO, ARROW_BADGE_SIZE, ARROW_BADGE_SMALL, arrowBadgeBorder, arrowBadgeIconSize } from '../../artifacts/wodplace/components/home/arrowBadgeSpec';
 import { splitHighlight } from '../../artifacts/wodplace/components/home/splitHighlight';
 import { NO_COACH_LABEL, coachLine, nextClassA11yLabel, nextClassCardState } from '../../artifacts/wodplace/lib/nextClassCard';
 import { monthlyCardParts, planProgressView, reservedLine, unlimitedLegend } from '../../artifacts/wodplace/lib/planProgress';
@@ -1085,14 +1086,16 @@ describe('Tarjeta "PR destacado": colores y contraste (cobre de "Tu nivel" y "Ra
     const colorsSrc = readFileSync(new URL('../../artifacts/wodplace/components/home/prHighlightColors.ts', import.meta.url), 'utf8');
     assert.ok(!/charcoalAccentLight|C79A6B/i.test(colorsSrc), 'queda cobre claro');
   });
-  it('números exactos: nombre 12,24; etiqueta 5,00; texto de la cápsula 4,70; bordes 5,34; barra 5,83; flecha 12,24; presionado: nombre 11,86 y etiqueta (crema) 11,86', () => {
+  it('números exactos: nombre 12,24; etiqueta 5,00; texto de la cápsula 4,70; bordes 5,34; barra 5,83; flecha en círculo: borde 4,70 (4,05 presionado) y crema sobre su relleno 16,52; presionado: nombre 11,86 y etiqueta (crema) 11,86', () => {
     assert.equal(r(m.nameWorst), 12.24);
     assert.equal(r(m.labelMid), 5);
     assert.equal(r(m.capsuleText), 4.7);
     assert.equal(r(m.capsuleBorder), 5.34);
     assert.equal(r(m.badgeBorder), 5.34);
     assert.equal(r(m.icon), 5.83);
-    assert.equal(r(m.chevron), 12.24);
+    assert.equal(r(m.arrowBorder), 4.7);
+    assert.equal(r(m.arrowBorderPressed), 4.05);
+    assert.equal(r(m.arrowVsFill), 16.52);
     assert.equal(r(m.namePressed), 11.86);
     assert.equal(r(m.labelPressed), 11.86);
     assert.equal(prWorstBackground(c), '#2c2d30', 'peor punto: degradado claro + textura al 7 %');
@@ -1132,7 +1135,7 @@ describe('Tarjeta "PR destacado" (PrHighlightCard.tsx): un solo diseño, toque, 
     assert.equal((src.match(/accessibilityRole="button"/g) ?? []).length, 1);
     assert.ok(src.includes(': PR_A11Y_LABEL}') && src.includes('onPress={onOpenRm}'));
     assert.ok(/pressed \? c\.pressed/.test(src) && src.includes('{pressed ? null : ('));
-    assert.ok(src.includes('name="chevron-right"') && !src.includes('arrow-right'));
+    assert.ok(src.includes('<ArrowBadge') && !src.includes('chevron-right'), 'la flecha es la de Tu próxima clase en versión pequeña');
     assert.ok(!/opacity/i.test(src.replace(/shadowOpacity/g, '').replace(/TEXTURE_OPACITY|strokeOpacity/g, '')), 'solo la textura usa opacidad (decorativa)');
   });
   it('insignia, textura, acento y flecha: ocultos a lectores de pantalla y en contenedores con pointerEvents="none" (nunca en un Text)', () => {
@@ -1392,11 +1395,13 @@ describe('Tarjeta "Medallas": colores y contraste (degradado legible de cobre pr
     assert.equal(c.barFill, light.medalProgress);
     assert.equal(c.separator, light.medalCopperLight);
   });
-  it('números exactos del degradado legible: título y contador 5,59 (peor punto, con el brillo); NOMBRE (y flecha) 4,98 en el peor punto, el extremo derecho; barra 9,93 contra la pista y 5,04 contra la tarjeta; ícono de la medalla (al 90 % también) 6,33; presionado 11,02', () => {
+  it('números exactos del degradado legible: título y contador 5,59 (peor punto, con el brillo); NOMBRE 4,98 en el peor punto, el extremo derecho; flecha en círculo: borde de cobre claro 3,07 contra el fondo (6,80 presionado) y crema sobre su relleno 12,82; barra 9,93 contra la pista y 5,04 contra la tarjeta; ícono de la medalla (al 90 % también) 6,33; presionado 11,02', () => {
     assert.equal(r(m.titleWorst), 5.59);
     assert.equal(r(m.counterWorst), 5.59);
     assert.equal(r(m.rightText), 4.98);
-    assert.equal(r(m.arrow), 4.98);
+    assert.equal(r(m.arrowBorder), 3.07);
+    assert.equal(r(m.arrowBorderPressed), 6.8);
+    assert.equal(r(m.arrowVsFill), 12.82);
     assert.equal(r(m.barFillVsTrack), 9.93);
     assert.equal(r(m.barFillVsCard), 5.04);
     assert.equal(r(m.medalIcon), 6.33);
@@ -1480,7 +1485,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     assert.equal((copper.match(/accessibilityRole="button"/g) ?? []).length, 1);
     assert.ok(copper.includes('accessibilityLabel={medalsA11yLabel(view)}') && copper.includes('onPress={onOpenMedals}'));
     assert.ok(/pressed \? c\.pressed/.test(copper) && copper.includes('{pressed ? null : ('));
-    assert.ok(copper.includes('name="chevron-right"') && !copper.includes('arrow-right'));
+    assert.ok(copper.includes('<ArrowBadge') && !copper.includes('chevron-right'), 'la flecha es la de Tu próxima clase en versión pequeña');
     for (const line of copper.split(String.fromCharCode(10)).filter((l) => /opacity/i.test(l))) assert.ok(/SEPARATOR_OPACITY|laurelOpacity|LAUREL_OPACITY/.test(line), 'opacidad fuera del separador y el laurel: ' + line.trim());
   });
   it('cinta, brillo, separador, laurel, medalla y flecha: ocultos a lectores de pantalla o dentro de contenedores con pointerEvents="none" (nunca en un Text)', () => {
@@ -1526,5 +1531,58 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     const code = src.split(String.fromCharCode(10)).filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*'));
     assert.deepEqual((code.join(' ').match(/#[0-9A-Fa-f]{3,8}\b/g) ?? []).filter((h) => !['#FFFFFF', '#B42318'].includes(h)), []);
     assert.ok(src.indexOf('readLayout(e)') < src.indexOf('setBoxH(height)'));
+  });
+});
+
+describe('Flecha compartida (ArrowBadge): la de "Tu próxima clase" y su versión pequeña en "Medallas" y "PR destacado"', () => {
+  const arrow = readFileSync(new URL('../../artifacts/wodplace/components/home/ArrowBadge.tsx', import.meta.url), 'utf8');
+  const next = readFileSync(new URL('../../artifacts/wodplace/components/home/NextClassCard.tsx', import.meta.url), 'utf8');
+  const pr = readFileSync(new URL('../../artifacts/wodplace/components/home/PrHighlightCard.tsx', import.meta.url), 'utf8');
+  const medals = readFileSync(new URL('../../artifacts/wodplace/components/home/MedalsCard.tsx', import.meta.url), 'utf8');
+  const level = readFileSync(new URL('../../artifacts/wodplace/components/home/LevelStreakCards.tsx', import.meta.url), 'utf8');
+  it('el modelo (la de "Tu próxima clase") es un círculo de 32 dp con borde de 1,5 dp, relleno translúcido y la flecha "arrow-right" de 16 dp; la pequeña es el 70 % (22,4 dp), con borde e ícono en proporción', () => {
+    assert.equal(ARROW_BADGE_SIZE, 32);
+    assert.equal(ARROW_BADGE_BORDER, 1.5);
+    assert.equal(ARROW_BADGE_ICON_RATIO, 0.5);
+    assert.equal(arrowBadgeIconSize(ARROW_BADGE_SIZE), 16);
+    assert.equal(arrowBadgeBorder(ARROW_BADGE_SIZE), 1.5);
+    assert.ok(Math.abs(ARROW_BADGE_SMALL - 22.4) < 1e-9);
+    assert.ok(Math.abs(arrowBadgeBorder(ARROW_BADGE_SMALL) - 1.05) < 1e-9);
+    assert.ok(Math.abs(arrowBadgeIconSize(ARROW_BADGE_SMALL) - 11.2) < 1e-9);
+    assert.ok(arrow.includes('name="arrow-right"') && arrow.includes('borderRadius: size / 2'));
+  });
+  it('"Tu próxima clase" usa ArrowBadge con los mismos valores de siempre (tamaño 32 por defecto, borde de cobre, relleno glassBackground, flecha en crema) y ya no tiene su propio círculo', () => {
+    assert.ok(next.includes('<ArrowBadge borderColor={copper} backgroundColor={colors.glassBackground} arrowColor={colors.nextClassCardForeground} />'));
+    assert.ok(next.includes('const ARROW = ARROW_BADGE_SIZE;'));
+    assert.ok(!/^\s*arrow: \{/m.test(next) && !next.includes('name="arrow-right"'), 'queda el círculo propio');
+    assert.equal(light.glassBackground, 'rgba(0,0,0,0.6)');
+  });
+  it('"Medallas" y "PR destacado" usan el MISMO componente en versión pequeña, decorativo (contenedor con pointerEvents="none" y oculto a lectores de pantalla), y no cambian el área táctil: la tarjeta sigue siendo el único botón', () => {
+    for (const [name, src] of [['PR', pr], ['Medallas', medals]] as const) {
+      assert.ok(src.includes('<ArrowBadge size={ARROW_BADGE_SMALL}'), name);
+      assert.ok(!src.includes('chevron-right'), name + ' conserva la flecha anterior');
+      assert.equal((src.match(/accessibilityRole="button"/g) ?? []).length, name === 'PR' ? 1 : 2, name);
+    }
+    assert.ok(arrow.includes('Es decorativa') && !/<Text[^>]*pointerEvents/.test(arrow));
+  });
+  it('colores: PR (grafito) usa el borde de cobre medio del modelo (#B98250); Medallas (cobre oscuro) el cobre claro (#E8B781, token medalCopperLight), con el relleno translúcido oscuro y la flecha en crema', () => {
+    assert.equal(prColors(light).arrowBorder, '#B98250');
+    assert.equal(prColors(light).arrowFill, light.glassBackground);
+    assert.equal(medalsColors(light).arrowBorder, light.medalCopperLight);
+    assert.equal(medalsColors(light).arrowBorder, '#E8B781');
+    assert.equal(medalsColors(light).arrowFill, light.glassBackground);
+    assert.equal(contrast('#B98250', light.nextClassCard) > 3, true);
+  });
+  it('contrastes de la flecha (mínimo 3:1): PR borde 4,70 (4,05 presionado) y flecha crema sobre su relleno 16,52; Medallas borde 3,07 (6,80 presionado) y flecha crema sobre su relleno 12,82', () => {
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const pm = prMeasure(prColors(light));
+    const mm = medalsMeasure(medalsColors(light));
+    assert.deepEqual([r2(pm.arrowBorder), r2(pm.arrowBorderPressed), r2(pm.arrowVsFill)], [4.7, 4.05, 16.52]);
+    assert.deepEqual([r2(mm.arrowBorder), r2(mm.arrowBorderPressed), r2(mm.arrowVsFill)], [3.07, 6.8, 12.82]);
+    assert.ok(prPasses(pm) && medalsPasses(mm));
+  });
+  it('"Tu nivel" NO cambia: conserva su flecha ">" discreta (chevron-right de 16 dp en gris cálido), sin círculo', () => {
+    assert.ok(level.includes('<Feather name="chevron-right" size={16} color={c.secondary} />'));
+    assert.ok(!level.includes('ArrowBadge'));
   });
 });

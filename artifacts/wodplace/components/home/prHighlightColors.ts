@@ -13,6 +13,7 @@ export type PrPalette = {
   charcoal: string;
   charcoalAccent: string;
   charcoalMuted: string;
+  glassBackground: string;
 };
 
 export type PrColors = {
@@ -37,6 +38,9 @@ export type PrColors = {
   icon: string;
   /** Insignia y textos atenuados (cargando, error, vacío). */
   muted: string;
+  /** Flecha en círculo (la de "Tu próxima clase" en versión pequeña): borde de cobre medio (el mismo del modelo), relleno translúcido oscuro y flecha en crema (primary). */
+  arrowBorder: string;
+  arrowFill: string;
   /** Rombos de la textura. */
   texture: string;
   /** Acento diagonal de cobre. */
@@ -45,6 +49,8 @@ export type PrColors = {
   bone: string;
 };
 
+/** Opacidad del relleno translúcido de la flecha (glassBackground = negro al 60 %). */
+export const GLASS_ALPHA = 0.6;
 /** Opacidad de la textura de rombos (casi imperceptible). */
 export const TEXTURE_OPACITY = 0.07;
 
@@ -64,6 +70,8 @@ export function prColors(p: PrPalette): PrColors {
     badgeBorder: p.charcoalAccent,
     icon: p.charcoalAccent,
     muted: p.charcoalMuted,
+    arrowBorder: p.charcoalAccent,
+    arrowFill: p.glassBackground,
     texture: p.charcoalMuted,
     accent: p.charcoalAccent,
     bone: mixHex(p.charcoalMuted, p.nextClassCard, 0.25),
@@ -87,8 +95,10 @@ export type PrMeasure = {
   badgeBorder: number;
   /** Ícono de barra contra el relleno de la insignia (3:1). */
   icon: number;
-  /** Flecha contra el peor punto del fondo (3:1). */
-  chevron: number;
+  /** Flecha en círculo: borde contra el peor punto del fondo y contra el presionado (3:1), y la flecha (crema) contra el relleno translúcido (3:1). */
+  arrowBorder: number;
+  arrowBorderPressed: number;
+  arrowVsFill: number;
   /** Texto atenuado (la sugerencia del vacío) sobre el punto medio del degradado (4,5:1). */
   muted: number;
 };
@@ -115,7 +125,9 @@ export function prMeasure(c: PrColors): PrMeasure {
     capsuleBorder: contrastRatio(c.capsuleBorder, c.background),
     badgeBorder: contrastRatio(c.badgeBorder, c.background),
     icon: contrastRatio(c.icon, c.badgeFill),
-    chevron: contrastRatio(c.primary, worst),
+    arrowBorder: contrastRatio(c.arrowBorder, c.gradientEnd),
+    arrowBorderPressed: contrastRatio(c.arrowBorder, c.pressed),
+    arrowVsFill: Math.min(contrastRatio(c.primary, mixHex('#000000', c.gradientEnd, GLASS_ALPHA)), contrastRatio(c.primary, mixHex('#000000', c.pressed, GLASS_ALPHA))),
     muted: contrastRatio(c.muted, mid),
   };
 }
@@ -131,7 +143,9 @@ export function prPasses(m: PrMeasure): boolean {
     m.capsuleBorder >= 3 &&
     m.badgeBorder >= 3 &&
     m.icon >= 3 &&
-    m.chevron >= 3 &&
+    m.arrowBorder >= 3 &&
+    m.arrowBorderPressed >= 3 &&
+    m.arrowVsFill >= 3 &&
     m.muted >= 4.5
   );
 }

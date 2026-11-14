@@ -7,6 +7,8 @@ import { MedalBadge } from '@/components/MedalBadge';
 import { useColors } from '@/hooks/useColors';
 import { readLayout } from '@/components/home/layoutEvents';
 import { AchievementShowcase } from '@/components/home/AchievementShowcase';
+import { ArrowBadge } from '@/components/home/ArrowBadge';
+import { ARROW_BADGE_SMALL } from '@/components/home/arrowBadgeSpec';
 import { DEFAULT_SCALE } from '@/components/home/achievementShowcaseLayout';
 import {
   GLOW_OPACITY,
@@ -303,7 +305,7 @@ function CopperCard({ c, view, onOpenMedals, scale, fs }: { c: MedalsColors; vie
               </View>
             </View>
             <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.arrow}>
-              <Feather name="chevron-right" size={18} color={c.text} />
+              <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={c.arrowBorder} backgroundColor={c.arrowFill} arrowColor={c.text} />
             </View>
           </>
         )}

@@ -6,6 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
 import type { HomeViewData } from '@/components/home/HomeView';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ArrowBadge } from '@/components/home/ArrowBadge';
+import { ARROW_BADGE_SIZE } from '@/components/home/arrowBadgeSpec';
 import { useColors } from '@/hooks/useColors';
 import { formatClassDateShort, formatHM } from '@/lib/dateUtils';
 import { coachLine, nextClassA11yLabel } from '@/lib/nextClassCard';
@@ -69,7 +71,7 @@ const PATTERN_OPACITY = 0.55;
 
 const CIRCLE = 32;
 const CAPSULE_H = 28;
-const ARROW = 32;
+const ARROW = ARROW_BADGE_SIZE;
 const CARD_MIN_H = 124;
 // Estado sin reserva: el título baja de FONT_SIZE.hero (26 sp) a 21 sp (-19 %), con la misma fuente (Anton).
 const INVITE_NAME_SIZE = 21;
@@ -141,14 +143,12 @@ function PatternLayer({ kind, color }: { kind: NextClassPattern; color: string }
   );
 }
 
-/** Flecha DECORATIVA en un círculo translúcido con borde cobre, a la derecha y centrada en la altura. */
+/** Flecha DECORATIVA en un círculo translúcido con borde cobre, a la derecha y centrada en la altura (el dibujo es ArrowBadge, compartido con Medallas y PR destacado). */
 function Arrow({ copper }: { copper: string }) {
   const colors = useColors();
   return (
     <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={styles.arrowWrap}>
-      <View style={[styles.arrow, { backgroundColor: colors.glassBackground, borderColor: copper }]}>
-        <Feather name="arrow-right" size={16} color={colors.nextClassCardForeground} />
-      </View>
+      <ArrowBadge borderColor={copper} backgroundColor={colors.glassBackground} arrowColor={colors.nextClassCardForeground} />
     </View>
   );
 }
@@ -349,13 +349,5 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   metaText: { fontSize: FONT_SIZE.xs, lineHeight: 14, fontFamily: 'Inter_600SemiBold' },
   arrowWrap: { position: 'absolute', top: 0, bottom: 0, right: SPACING.lg, justifyContent: 'center' },
-  arrow: {
-    width: ARROW,
-    height: ARROW,
-    borderRadius: ARROW / 2,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   skeletonBottom: { gap: SPACING.md },
 });
