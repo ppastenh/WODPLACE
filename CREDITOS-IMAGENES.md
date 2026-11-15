@@ -67,3 +67,29 @@ Se mide el PEOR caso: el punto más claro de la parte de la foto que realmente q
 ## Laurel de la tarjeta "Medallas" (diseño propio de la dueña)
 
 El laurel de la tarjeta "Medallas" de Inicio (variante "relieve": dos ramas simétricas con hojas de dos tonos) es **diseño propio de la dueña**, vectorizado a datos y guardado en `artifacts/wodplace/components/ui/laurelData.ts`. No usa imágenes, fuentes externas ni bancos de íconos, y no depende de ningún archivo ignorado por git: los dibujos de origen (SVG y PNG) y el script que los convirtió no se versionan (copias de respaldo fuera del repositorio).
+
+## `artifacts/wodplace/assets/images/home/home-fondo-progreso.jpg`
+
+- **Uso:** fondo fijo de la tarjeta "Progreso mensual" de Inicio (decisión (v) de `DECISIONES-DISENO.md`), con todo el texto en crema encima. Lo da `FONDO_PROGRESO` en `components/home/MonthlyProgressCard.tsx`.
+- **Foto:** "Abstracto en blanco y negro de un pavimento de piedra con patrones geométricos y sombras" (título de la página: "Abstracto monocromático de patrones geométricos de piedra").
+- **Autor:** ab_h_i s_h_ek_09, https://www.pexels.com/es-es/@ab_h_i-s_h_ek_09-283673767/
+- **Página de origen:** https://www.pexels.com/es-es/foto/abstracto-monocromatico-de-patrones-geometricos-de-piedra-33096666/ (publicada el 2025-07-21).
+- **Licencia:** licencia gratuita de Pexels, https://www.pexels.com/es-es/license/ (uso comercial y modificación permitidos; no exige atribución).
+- **Fecha de consulta:** 2026-11-14.
+- **Original:** 3376 × 6000 px (el archivo que descargó Pía, `fondo-progreso6.jpg`, que queda fuera del repositorio; el contenido coincide con el título de la página).
+- **Edición:** recorte a ancho completo con la proporción de la tarjeta (3376 × 1134 px, centrado en la vertical) y reducción a 1116 × 375 px (372 × 125 dp a 3x); duotono de cobre: luminancia Y = 0,299 R + 0,587 G + 0,114 B, estirada entre los percentiles 2 y 98, mapeada a la rampa de #5E3A1A a #8B5E34 con intensidad media (0,65 + 0,7 × (Ls − 0,5), con techo que baja hasta que ningún píxel supere la luminancia de #8B5E34); JPEG sin metadatos (solo el encabezado JFIF), 75.137 bytes.
+- **Archivo:** `home-fondo-progreso.jpg`.
+- La foto no lleva logos, texto, marcas ni personas.
+
+## `artifacts/wodplace/assets/images/home/home-fondo-medallas.jpg`
+
+- **Uso:** fondo fijo de la tarjeta "Medallas" de Inicio (decisión (y) de `DECISIONES-DISENO.md`), con el laurel, el contador y el nombre del logro encima. Lo da `FONDO_MEDALLAS` en `components/home/MedalsCard.tsx`.
+- **Foto:** "Podio rojo en una pista de atletismo al aire libre soleada con plantas decorativas" (título de la página: "Podio de atletismo vacío en pista al aire libre").
+- **Autor:** Szcze hoo, https://www.pexels.com/es-es/@szczehoo/
+- **Página de origen:** https://www.pexels.com/es-es/foto/podio-de-atletismo-vacio-en-pista-al-aire-libre-35347469/ (publicada el 2025-12-23).
+- **Licencia:** licencia gratuita de Pexels, https://www.pexels.com/es-es/license/ (uso comercial y modificación permitidos; no exige atribución).
+- **Fecha de consulta:** 2026-11-14.
+- **Original:** 4898 × 3265 px (el archivo que descargó Pía, `fondo-medalla2.jpg`, que queda fuera del repositorio; el contenido coincide con el título de la página).
+- **Edición:** recorte a ancho completo con la proporción de la tarjeta (4898 × 1817 px, de y = 436 a y = 2253, es decir del 13,4 % al 69,0 % de la altura) y reducción a 1116 × 414 px (372 × 138 dp a 3x); duotono de cobre con la misma rampa de #5E3A1A a #8B5E34 e intensidad media (la misma fórmula que `home-fondo-progreso.jpg`); JPEG sin metadatos (solo el encabezado JFIF), 28.367 bytes.
+- **Archivo:** `home-fondo-medallas.jpg`.
+- **El recorte excluye los logos del evento que aparecen en el podio** (el podio trae el logo "PKO SILESIA MARATHON" bajo cada número; la ventana termina sobre el borde superior del logo del "2" y queda a 13 px del original, unos 3 px de la copia, por encima). Se revisó con zoom el borde inferior del archivo final y no hay rastro de ningún logo ni texto de marca; solo se ven los números "1" y "2" del podio.
