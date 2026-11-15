@@ -259,6 +259,12 @@ export const PAIRS_LIGHT: Pair[] = [
   t('nextClassCardForeground', 'charcoal', 'progreso mensual: texto crema de la cápsula "Plan ilimitado" sobre su carbón'),
   ui('medalCopperLight', 'navActiveTextSmall', 'progreso mensual: borde de cobre claro de la cápsula contra el peor punto del fondo (extremo derecho)'),
   ui('medalCopperLight', '#80522b', 'progreso mensual: borde de cobre claro de la cápsula contra el punto medio del degradado'),
+  // Fotos de fondo (pedido 40): "Progreso mensual" usa home-fondo-progreso.jpg y "Medallas" home-fondo-medallas.jpg, las dos en duotono de cobre con la MISMA rampa (#5E3A1A a #8B5E34, intensidad media).
+  // Peor punto = el píxel MÁS CLARO de toda la foto con los archivos finales (#875D37 en las dos; vale para 320, 360 y 412 dp y cualquier letra). La prueba de scripts/src/test-home-logic.ts fija el hash de cada archivo:
+  // si una foto cambia hay que volver a medir y actualizar estos pares. Los pares del degradado de arriba quedan como respaldo (el degradado va debajo de la foto mientras carga).
+  t('nextClassCardForeground', '#875D37', 'fotos de fondo de Progreso mensual y Medallas: texto crema sobre el píxel más claro de la foto (peor punto)'),
+  ui('medalProgress', '#875D37', 'fotos de fondo: relleno de la barra de progreso contra el píxel más claro de la foto'),
+  ui('medalCopperLight', '#875D37', 'fotos de fondo: borde de cobre claro de la cápsula "Plan ilimitado" y de la flecha de Medallas contra el píxel más claro de la foto'),
   // Recuadros "Tu nivel" y "Racha de constancia" (decisión (w), VIGENTE: opción E en grafito; componente LevelStreakCards.tsx, colores en levelStreakColors.ts). Fondo
   // nextClassCard (#18191A); las insignias de escudo son de carbón con borde e ícono de cobre #B98250; los indicadores completados son de cobre y los pendientes llevan contorno gris cálido.
   // Vale igual a 320, 360 y 412 dp y con la letra 1,0, 1,1 y 1,3. Las opciones C, el diseño anterior y el tratamiento cobre se descartaron.

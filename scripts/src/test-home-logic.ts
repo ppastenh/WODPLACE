@@ -6,13 +6,16 @@
  * Corre con: pnpm --filter @workspace/scripts test:home-logic
  */
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
 import { PHOTO_GRAYS, minVeilFor, quoteContrast } from '../../artifacts/wodplace/components/home/quoteCopper';
+import { COPPER_TEXTURE_RAMP } from '../../artifacts/wodplace/components/home/copperSurface';
+import { contrastRatio as ratio } from '../../artifacts/wodplace/components/home/colorMath';
 import { progressColors, progressMeasure, progressPasses } from '../../artifacts/wodplace/components/home/progressColors';
 import { levelStreakColors, levelStreakMeasure, levelStreakPasses } from '../../artifacts/wodplace/components/home/levelStreakColors';
 import {
@@ -1520,7 +1523,7 @@ describe('Tarjeta "Medallas" (MedalsCard.tsx): estructura, toque, accesibilidad,
     assert.equal((copper.match(/<Pressable/g) ?? []).length, 1);
     assert.equal((copper.match(/accessibilityRole="button"/g) ?? []).length, 1);
     assert.ok(copper.includes('accessibilityLabel={medalsA11yLabel(view)}') && copper.includes('onPress={onOpenMedals}'));
-    assert.ok(/pressed \? c\.pressed/.test(copper) && copper.includes('{pressed ? null : <CopperBackdrop c={c} />}'));
+    assert.ok(/pressed \? c\.pressed/.test(copper) && copper.includes('{pressed ? null : <CopperBackdrop c={c} image={FONDO_MEDALLAS} />}'));
     assert.ok(copper.includes('<ArrowBadge') && !copper.includes('chevron-right'), 'la flecha es la de Tu próxima clase en versión pequeña');
     for (const line of copper.split(String.fromCharCode(10)).filter((l) => /opacity/i.test(l))) assert.ok(/SEPARATOR_OPACITY|laurelOpacity|LAUREL_OPACITY/.test(line), 'opacidad fuera del separador y el laurel: ' + line.trim());
   });
@@ -1721,5 +1724,83 @@ describe('Frase del día: letra y comillas en cobre (quoteCopper.ts, ajuste de l
     assert.equal(need('#C79A6B', 4.5), 0.83);
     assert.equal(need('#E8B781', 3), 0.63);
     assert.equal(need('#E8B781', 4.5), 0.74);
+  });
+});
+
+describe('Fondos de foto de "Progreso mensual" y "Medallas" (decisiones (v) y (y), pedido 40): mismos colores, mismo archivo fijo, peor punto medido', () => {
+  const home = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const imgDir = '../../artifacts/wodplace/assets/images/home/';
+  const FILES = {
+    progreso: { name: 'home-fondo-progreso.jpg', w: 1116, h: 375, sha: '5dac64dc0aacf476ce402fe52150b1dffdc3b697806899f4753078d7e7416c37', bright: '#875D37', dark: '#673D17' },
+    medallas: { name: 'home-fondo-medallas.jpg', w: 1116, h: 414, sha: 'dc9271328c9868f8956531bb54adcf8ab5d249d599a1300ef25f6b6880532bf2', bright: '#875D37', dark: '#673F1B' },
+  } as const;
+  /** Dimensiones y marcadores de un JPEG (sin decodificar los píxeles). */
+  const jpegInfo = (b: Buffer) => {
+    const markers: number[] = [];
+    let w = 0;
+    let h = 0;
+    for (let i = 2; i < b.length; ) {
+      if (b[i] !== 0xff) break;
+      const t = b[i + 1]!;
+      markers.push(t);
+      if (t === 0xc0 || t === 0xc2) {
+        h = b.readUInt16BE(i + 5);
+        w = b.readUInt16BE(i + 7);
+      }
+      if (t === 0xda) break;
+      i += 2 + b.readUInt16BE(i + 2);
+    }
+    return { w, h, markers };
+  };
+  /** Luminancia relativa WCAG, a partir del contraste con negro: ratio = (L + 0,05) / 0,05. */
+  const luminance = (hex: string) => ratio(hex, '#000000') * 0.05 - 0.05;
+
+  it('cada tarjeta pide SU archivo con una constante, lo dibuja con CopperBackdrop (ancho y alto al 100 %, en un contenedor con pointerEvents="none" y oculto a lectores) y nada se dibuja encima de la foto', () => {
+    const medals = home('MedalsCard.tsx');
+    const progress = home('MonthlyProgressCard.tsx');
+    assert.ok(medals.includes("const FONDO_MEDALLAS = require('@/assets/images/home/home-fondo-medallas.jpg');"));
+    assert.ok(progress.includes("const FONDO_PROGRESO = require('@/assets/images/home/home-fondo-progreso.jpg');"));
+    assert.ok(medals.includes('<CopperBackdrop c={c} image={FONDO_MEDALLAS} />') && progress.includes('<CopperBackdrop c={look} image={FONDO_PROGRESO} />'));
+    const backdrop = home('CopperBackdrop.tsx');
+    assert.ok(backdrop.includes("photo: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }"), 'un require trae su tamaño propio y gana sobre absoluteFill');
+    assert.ok(backdrop.includes('<Image source={image} resizeMode="cover" style={styles.photo} />'));
+    const at = backdrop.indexOf('<Image source={image}');
+    assert.ok(/pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants"/.test(backdrop.slice(at - 220, at)), 'la foto va en un contenedor decorativo');
+    assert.ok(backdrop.indexOf('<LinearGradient') < at && backdrop.indexOf('<Svg') < at, 'el degradado y el brillo quedan DEBAJO de la foto (respaldo), nunca encima');
+    assert.ok(!backdrop.slice(at).includes('<Svg') && !backdrop.slice(at).includes('<LinearGradient'), 'nada encima de la foto');
+  });
+  it('los dos archivos son fijos y sin metadatos: medidas exactas, ≤ 120 KB, solo el encabezado JFIF, el hash de lo medido, y nombres que no coinciden con las exclusiones locales', () => {
+    for (const f of Object.values(FILES)) {
+      const url = new URL(imgDir + f.name, import.meta.url);
+      assert.ok(existsSync(url), f.name + ' existe');
+      const buf = readFileSync(url);
+      const info = jpegInfo(buf);
+      assert.deepEqual([info.w, info.h], [f.w, f.h], f.name + ' mide lo previsto (372 x alto de la tarjeta a 3x)');
+      assert.ok(statSync(url).size <= 120_000, f.name + ' pesa más de 120 KB');
+      assert.deepEqual(info.markers.filter((m) => m >= 0xe0 && m <= 0xef), [0xe0], f.name + ': solo el encabezado JFIF (APP0), sin EXIF ni otros metadatos');
+      assert.ok(!info.markers.includes(0xfe), f.name + ' trae un comentario');
+      assert.equal(createHash('sha256').update(buf).digest('hex'), f.sha, f.name + ' cambió: hay que volver a medir el peor punto y actualizar este hash y los pares de contraste');
+      assert.ok(!/^(fondo-progreso|fondo-medalla|textura|paisaje)/.test(f.name), 'el nombre coincide con una exclusión local de git');
+    }
+    assert.equal(FILES.progreso.h, Math.round((1116 * 125) / 372), 'Progreso: 372 x 125 dp a 3x');
+    assert.equal(FILES.medallas.h, Math.round((1116 * 138) / 372), 'Medallas: 372 x 138 dp a 3x');
+  });
+  it('las dos fotos usan LA MISMA rampa de cobre: sus píxeles extremos caen dentro de #5E3A1A a #8B5E34 (el más claro no pasa el tope) y los tokens de la rampa son los de siempre', () => {
+    assert.equal(COPPER_TEXTURE_RAMP.dark, light.medalRibbon);
+    assert.equal(COPPER_TEXTURE_RAMP.light, light.navActiveTextSmall);
+    for (const f of Object.values(FILES)) {
+      assert.ok(luminance(f.bright) <= luminance(COPPER_TEXTURE_RAMP.light), f.name + ': el píxel más claro (' + f.bright + ') pasa el tope ' + COPPER_TEXTURE_RAMP.light);
+      assert.ok(luminance(f.dark) >= luminance(COPPER_TEXTURE_RAMP.dark), f.name + ': el píxel más oscuro (' + f.dark + ') baja de la rampa');
+    }
+    assert.equal(FILES.progreso.bright, FILES.medallas.bright, 'el extremo claro medido es el mismo en las dos');
+  });
+  it('MEDIDO con los archivos finales (peor punto = el píxel más claro de toda la foto, vale para 320, 360 y 412 dp y cualquier letra): crema ≥ 4,5:1; barra, borde de la cápsula y borde de la flecha ≥ 3:1', () => {
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    for (const f of Object.values(FILES)) {
+      assert.equal(r2(ratio(light.nextClassCardForeground, f.bright)), 5.11, f.name + ': crema');
+      assert.equal(r2(ratio(light.medalProgress, f.bright)), 4.61, f.name + ': barra contra la tarjeta');
+      assert.equal(r2(ratio(light.medalCopperLight, f.bright)), 3.16, f.name + ': borde de la cápsula y de la flecha');
+      assert.ok(ratio(light.nextClassCardForeground, f.bright) >= 4.5 && ratio(light.medalProgress, f.bright) >= 3 && ratio(light.medalCopperLight, f.bright) >= 3);
+    }
   });
 });

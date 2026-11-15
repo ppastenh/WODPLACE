@@ -66,6 +66,9 @@ const RIGHT_W = 120; // mitad derecha: el nombre del logro dispone de RIGHT_W me
 const RIGHT_PAD = 8;
 const COUNTER_BASE = 36; // el tramo mayor del contador: la casilla del contador mide una línea de este tamaño en todos los estados
 
+// Foto de fondo (Pexels, Szcze hoo; créditos en CREDITOS-IMAGENES.md): podio recortado SIN los logos del evento, en duotono de cobre (1116 x 414 px = 372 x 138 dp a 3x).
+const FONDO_MEDALLAS = require('@/assets/images/home/home-fondo-medallas.jpg');
+
 type Props = {
   summary: MedalsSummary;
   /** Estado de la consulta de logros (el mismo de la racha). Si no llega, 'ready'. */
@@ -232,7 +235,7 @@ function CopperCard({ c, view, onOpenMedals, fs }: { c: MedalsColors; view: Meda
       >
         {({ pressed }) => (
           <>
-            {pressed ? null : <CopperBackdrop c={c} />}
+            {pressed ? null : <CopperBackdrop c={c} image={FONDO_MEDALLAS} />}
             <View style={styles.row} importantForAccessibility="no-hide-descendants">
               {/* Lado izquierdo: Colección */}
               <View style={styles.left}>

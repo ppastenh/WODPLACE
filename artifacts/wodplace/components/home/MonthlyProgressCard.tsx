@@ -27,6 +27,9 @@ const INNER = COPPER_BORDER_WIDTH;
 /** Estado sin plan: mensaje de 16 sp (peso medio) en un espacio de 24 dp bajo el título; con el relleno de 12 dp arriba y abajo la tarjeta mide ~64 dp (antes 70). */
 const NONE_SIZE = 16;
 const NONE_MESSAGE_MIN_H = 24;
+// Foto de fondo (Pexels, ab_h_i s_h_ek_09; créditos en CREDITOS-IMAGENES.md): pavimento de piedra en duotono de cobre (1116 x 375 px = 372 x 125 dp a 3x).
+const FONDO_PROGRESO = require('@/assets/images/home/home-fondo-progreso.jpg');
+
 /** Tope de la letra del sistema, igual que el resto de Inicio. */
 const MAX_MULT = 1.3;
 
@@ -175,7 +178,7 @@ function Surface({
   return (
     <View style={surface.outer}>
       <View {...rest} style={[surface.card, styles.card, style]}>
-        <CopperBackdrop c={look} />
+        <CopperBackdrop c={look} image={FONDO_PROGRESO} />
         {children}
       </View>
     </View>

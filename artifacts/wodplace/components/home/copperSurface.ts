@@ -65,3 +65,16 @@ export function copperSurfaceStyles(shadowColor: string, c: Pick<CopperSurfaceCo
     card: { borderRadius: RADIUS.xl, borderWidth: COPPER_BORDER_WIDTH, borderColor: c.border, overflow: 'hidden' as const, backgroundColor: c.gradientStart },
   };
 }
+
+/**
+ * RAMPA de color de las fotos de fondo de "Progreso mensual" y "Medallas" (home-fondo-progreso.jpg y home-fondo-medallas.jpg; créditos en CREDITOS-IMAGENES.md): UNA sola para las dos tarjetas,
+ * así conservan el mismo color. Cada foto está en duotono: Y = 0,299 R + 0,587 G + 0,114 B, Ls = Y estirada entre los percentiles 2 y 98, t = recorte(center + intensidad × (Ls − 0,5), 0, techo) y
+ * color = oscuro + t × (claro − oscuro). Las dos van con la intensidad media. El extremo claro es el TOPE: ningún píxel supera la luminancia de #8B5E34 (el techo baja por imagen hasta cumplirlo),
+ * así el crema nunca baja de 4,98:1. Las copias salieron de los originales con un script que NO se versiona (respaldo fuera del repositorio).
+ */
+export const COPPER_TEXTURE_RAMP = {
+  dark: '#5E3A1A',
+  light: '#8B5E34',
+  center: 0.65,
+  intensity: { suave: 0.4, media: 0.7, marcada: 1 },
+} as const;
