@@ -14,6 +14,7 @@ import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
 import { PHOTO_GRAYS, minVeilFor, quoteContrast } from '../../artifacts/wodplace/components/home/quoteCopper';
+import { planNoticeLines } from '../../artifacts/wodplace/components/home/planNoticeModel';
 import { COPPER_TEXTURE_RAMP } from '../../artifacts/wodplace/components/home/copperSurface';
 import { contrastRatio as ratio } from '../../artifacts/wodplace/components/home/colorMath';
 import { progressColors, progressMeasure, progressPasses } from '../../artifacts/wodplace/components/home/progressColors';
@@ -1828,7 +1829,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
     for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
   });
   it('los textos de las tarjetas no cambiaron al moverlas', () => {
-    for (const text of ['¡Feliz cumpleaños, {getFirstName(name)}!', 'Que tengas un gran entrenamiento hoy', 'Te quedan {plan.classesRemaining} clase', 'vence hoy', 'Tienes un contrato pendiente de leer y aceptar', 'Mientras esté pendiente, no podrás hacer nuevas reservas.', 'Aviso Importante', "WOD de hoy{wod.myResult ? ' · registrado' : ''}", 'Próximos cumpleaños']) assert.ok(cards.includes(text), text);
+    for (const text of ['¡Feliz cumpleaños, {getFirstName(name)}!', 'Que tengas un gran entrenamiento hoy', 'Tienes un contrato pendiente de leer y aceptar', 'Mientras esté pendiente, no podrás hacer nuevas reservas.', 'Aviso Importante', "WOD de hoy{wod.myResult ? ' · registrado' : ''}", 'Próximos cumpleaños']) assert.ok(cards.includes(text), text);
     assert.ok(cards.includes('accessibilityLabel="Ir a Contratos Activos"') && cards.includes('accessibilityLabel="Ver WOD de hoy"'));
   });
   it('estado presionado SÓLIDO (sin opacidad) en las dos tarjetas que son botones', () => {
@@ -1854,5 +1855,30 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
     const real = app('app/home.tsx');
     assert.ok(real.includes("'¡Tu box ya está aprobado!'") && real.includes("'Ya puedes administrarlo y empezar a invitar alumnos.'"));
     assert.ok(avisos.includes("title: '¡Tu box ya está aprobado!'") && avisos.includes("message: 'Ya puedes administrarlo y empezar a invitar alumnos.'"), 'los textos de la alerta cambiaron en home.tsx: actualizar la copia');
+  });
+});
+
+describe('Aviso del plan: las líneas salen de planNoticeModel.ts y PlanNoticeCard las usa (pedido 43, parte a)', () => {
+  const cards = readFileSync(new URL('../../artifacts/wodplace/components/home/ConditionalCards.tsx', import.meta.url), 'utf8');
+  type Plan = Parameters<typeof planNoticeLines>[0];
+  const plan = (over: object): Plan => ({ classesPerPeriod: 8, classesRemaining: 5, daysUntilRenewal: 20, ...over });
+  it('PlanNoticeCard dibuja una línea por cada regla que se cumple, con el mismo estilo de siempre, y las frases ya no están escritas en la tarjeta', () => {
+    assert.ok(cards.includes("import { planNoticeLines } from '@/components/home/planNoticeModel';"));
+    assert.ok(cards.includes('{planNoticeLines(plan).map((line) => (') && cards.includes('style={[styles.noticeText, { color: colors.foreground }]}'));
+    assert.ok(!cards.includes('Te quedan ') && !cards.includes('vence hoy'), 'las frases viven en planNoticeModel.ts');
+  });
+  it('los textos y las reglas son los de siempre: "Te quedan N clase(s) este período." con 2 clases o menos en un plan por cantidad y "Tu plan vence hoy / en N día(s)." con 7 días o menos', () => {
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 1 })), ['Te quedan 1 clase este período.']);
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 0 })), ['Te quedan 0 clases este período.']);
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 2 })), ['Te quedan 2 clases este período.']);
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 3 })), []);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 3 })), ['Tu plan vence en 3 días.']);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 1 })), ['Tu plan vence en 1 día.']);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 0 })), ['Tu plan vence hoy.']);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 7 })), ['Tu plan vence en 7 días.']);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 8 })), []);
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 2, daysUntilRenewal: 0 })), ['Te quedan 2 clases este período.', 'Tu plan vence hoy.']);
+    assert.deepEqual(planNoticeLines(plan({ classesPerPeriod: null, classesRemaining: 1, daysUntilRenewal: 20 })), [], 'un plan ilimitado no avisa por clases');
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: null, daysUntilRenewal: null })), []);
   });
 });

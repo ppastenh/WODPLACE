@@ -3,6 +3,7 @@ import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { BoxAnnouncement, MyPlan, UpcomingBirthday } from '@workspace/api-client-react';
 import { AutoFitImage } from '@/components/AutoFitImage';
+import { planNoticeLines } from '@/components/home/planNoticeModel';
 import { useColors } from '@/hooks/useColors';
 import { MONTH_NAMES } from '@/lib/dateUtils';
 import { FONT_SIZE } from '@/constants/typography';
@@ -50,7 +51,7 @@ export function OwnBirthdayCard({ name }: { name: string }) {
   );
 }
 
-/** Aviso del plan: "Te quedan N clases este período." y/o "Tu plan vence en N días." (cada línea aparece sola si cumple su regla). */
+/** Aviso del plan: una línea por regla que se cumple (ver planNoticeLines). */
 export function PlanNoticeCard({ plan }: { plan: MyPlan }) {
   const colors = useColors();
   return (
@@ -59,16 +60,11 @@ export function PlanNoticeCard({ plan }: { plan: MyPlan }) {
         <Feather name="alert-circle" size={16} color={colors.warningForeground} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        {plan.classesPerPeriod != null && plan.classesRemaining != null && plan.classesRemaining <= 2 ? (
-          <Text style={[styles.noticeText, { color: colors.foreground }]}>
-            Te quedan {plan.classesRemaining} clase{plan.classesRemaining === 1 ? '' : 's'} este período.
+        {planNoticeLines(plan).map((line) => (
+          <Text key={line} style={[styles.noticeText, { color: colors.foreground }]}>
+            {line}
           </Text>
-        ) : null}
-        {plan.daysUntilRenewal != null && plan.daysUntilRenewal <= 7 ? (
-          <Text style={[styles.noticeText, { color: colors.foreground }]}>
-            Tu plan {plan.daysUntilRenewal <= 0 ? 'vence hoy' : `vence en ${plan.daysUntilRenewal} día${plan.daysUntilRenewal === 1 ? '' : 's'}`}.
-          </Text>
-        ) : null}
+        ))}
       </View>
     </View>
   );
