@@ -1815,18 +1815,19 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   const view = home('HomeView.tsx');
   const avisos = home('DevAvisosView.tsx');
 
-  it('las seis tarjetas condicionales viven en ConditionalCards.tsx y HomeView las usa con LAS MISMAS condiciones de antes (la condición sigue en HomeView; aquí solo se dibujan)', () => {
-    for (const name of ['OwnBirthdayCard', 'PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard', 'UpcomingBirthdaysSection']) {
+  it('las tarjetas condicionales viven en ConditionalCards.tsx (las de cumpleaños, desde el pedido 46, en BirthdayCardsNew.tsx) y HomeView las usa con LAS MISMAS condiciones de antes (la condición sigue en HomeView; aquí solo se dibujan)', () => {
+    for (const name of ['OwnBirthdayCard', 'PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard', 'UpcomingBirthdaysSection']) assert.ok(cards.includes('export function ' + name + '('), name + ' (diseño anterior, se conserva para comparar en "Ver avisos") no está exportada');
+    for (const name of ['PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard']) {
       assert.ok(cards.includes('export function ' + name + '('), name + ' no está exportada');
       assert.ok(view.includes('<' + name + ' '), 'HomeView no usa ' + name);
     }
     for (const cond of [
-      '{isOwnBirthdayToday ? <OwnBirthdayCard name={user.name} /> : null}',
+      '{isOwnBirthdayToday ? <OwnBirthdayCardNew name={user.name} /> : null}',
       '{hasActivePlan && nearPlanLimit ? <PlanNoticeCard plan={myPlan!} /> : null}',
       '{hasBoxMembership && hasPendingContract ? <PendingContractCard onPress={() => events.onOpenContracts()} /> : null}',
       '{hasBoxMembership && pinnedPush ? <PinnedAvisoCard announcement={pinnedPush} /> : null}',
       '{hasBoxMembership && todayWod ? <WodTodayCard wod={todayWod} onPress={() => events.onOpenWod()} /> : null}',
-      '{hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSection birthdays={birthdays} /> : null}',
+      '{hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSectionNew birthdays={birthdays} /> : null}',
     ]) assert.ok(view.includes(cond), 'cambió una condición de HomeView: ' + cond);
     for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
   });
@@ -2052,8 +2053,11 @@ describe('Cumpleaños nuevos (BirthdayCardsNew.tsx, pedido 45): solo en "Ver avi
     const actual = homeF('ConditionalCards.tsx');
     assert.ok(actual.includes('¡Feliz cumpleaños, {getFirstName(name)}!') && actual.includes('Que tengas un gran entrenamiento hoy') && actual.includes("birthday.daysUntil === 0 ? 'Hoy' : birthdayDayLabel(birthday.month, birthday.day)"), 'el diseño actual no cambió');
   });
-  it('NO están conectados a Inicio (HomeView y ConditionalCards no los importan) y "Ver avisos" los muestra junto al diseño actual: propio con nombre corto y largo; próximos con 1 persona, 3 personas con una de "Hoy" y un nombre muy largo', () => {
-    for (const f of ['HomeView.tsx', 'ConditionalCards.tsx', 'NextClassCard.tsx']) assert.ok(!/BirthdayCardsNew|birthdayNewSpec/.test(homeF(f)), f + ' ya usa los cumpleaños nuevos');
+  it('ESTÁN conectados a Inicio (HomeView usa los dos con las mismas condiciones y los mismos datos; ya no usa el diseño anterior) y "Ver avisos" muestra el anterior junto al actual: propio con nombre corto y largo; próximos con 1 persona, 3 personas con una de "Hoy" y un nombre muy largo', () => {
+    const view = homeF('HomeView.tsx');
+    assert.ok(view.includes("import { OwnBirthdayCardNew, UpcomingBirthdaysSectionNew } from '@/components/home/BirthdayCardsNew';"));
+    assert.ok(!view.includes('<OwnBirthdayCard ') && !view.includes('<UpcomingBirthdaysSection '), 'HomeView todavía usa el diseño anterior de cumpleaños');
+    for (const f of ['ConditionalCards.tsx']) assert.ok(!/BirthdayCardsNew|birthdayNewSpec/.test(homeF(f)), f + ' no depende de los cumpleaños nuevos');
     const avisos = homeF('DevAvisosView.tsx');
     assert.equal((avisos.match(/<OwnBirthdayCardNew /g) ?? []).length, 2);
     assert.equal((avisos.match(/<UpcomingBirthdaysSectionNew /g) ?? []).length, 3);

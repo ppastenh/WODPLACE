@@ -17,12 +17,11 @@ import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { MedalBadge } from '@/components/MedalBadge';
 import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
+import { OwnBirthdayCardNew, UpcomingBirthdaysSectionNew } from '@/components/home/BirthdayCardsNew';
 import {
-  OwnBirthdayCard,
   PendingContractCard,
   PinnedAvisoCard,
   PlanNoticeCard,
-  UpcomingBirthdaysSection,
   WodTodayCard,
   getFirstName,
 } from '@/components/home/ConditionalCards';
@@ -406,7 +405,7 @@ function HomeViewInner({
         </View>
 
         <View style={[styles.surface, { backgroundColor: colors.cream }]}>
-        {isOwnBirthdayToday ? <OwnBirthdayCard name={user.name} /> : null}
+        {isOwnBirthdayToday ? <OwnBirthdayCardNew name={user.name} /> : null}
 
         {hasBoxMembership === false ? (
           <JoinBoxCard onPress={() => events.onJoinBox()} />
@@ -460,7 +459,7 @@ function HomeViewInner({
           screenWidth={medalsWidth}
         />
 
-        {hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSection birthdays={birthdays} /> : null}
+        {hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSectionNew birthdays={birthdays} /> : null}
         </View>
       </ScrollView>
 

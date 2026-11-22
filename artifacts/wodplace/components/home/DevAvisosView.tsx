@@ -96,9 +96,9 @@ export function DevAvisosView() {
         </Text>
 
         <Item n={next()} name={AVISOS_NAMES[0]} kind="Tarjeta" buttons="sin botones" when="hoy es el cumpleaños de la alumna (fecha de nacimiento, hora de Chile)">
-          <VersionLabel text="Diseño actual" />
+          <VersionLabel text="Diseño anterior (ya no está en Inicio)" />
           <OwnBirthdayCard name="Camila Rojas" />
-          <VersionLabel text="Diseño nuevo (nombre corto y nombre largo)" />
+          <VersionLabel text="Diseño actual en Inicio (nombre corto y nombre largo)" />
           <OwnBirthdayCardNew name="Camila Rojas" />
           <OwnBirthdayCardNew name="Anastasia-Valentina Rojas" />
         </Item>
@@ -167,9 +167,9 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[9]} kind="Sección (lista)" buttons="sin botones" when="tiene box y hay cumpleaños próximos de otros alumnos (nunca edad ni año; los menores solo con autorización del apoderado)">
-          <VersionLabel text="Diseño actual" />
+          <VersionLabel text="Diseño anterior (ya no está en Inicio)" />
           <UpcomingBirthdaysSection birthdays={[birthdayIn('Valentina Soto', 0), birthdayIn('Matías Pérez Rojas', 3), birthdayIn('Ana López', 9)]} />
-          <VersionLabel text="Diseño nuevo (1 persona; 3 personas con una de Hoy; nombre muy largo)" />
+          <VersionLabel text="Diseño actual en Inicio (1 persona; 3 personas con una de Hoy; nombre muy largo)" />
           <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Ana López', 9)]} />
           <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Valentina Soto', 0), birthdayIn('Matías Pérez Rojas', 3), birthdayIn('Ana López', 9)]} />
           <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Isabella Fernanda Contreras Valenzuela de la Rosa', 2)]} />
