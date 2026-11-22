@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensio
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
+import { DevAvisosView } from '@/components/home/DevAvisosView';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
 import { QUOTE_LOOK, type QuoteCenter, type QuoteHighlight, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
@@ -200,6 +201,12 @@ const MENU_FONT_CHIPS: { id: MenuFont; label: string }[] = [
   { id: '1.3', label: 'Letra: 1,3' },
 ];
 
+// Modo "Ver avisos" (pedido 42): cada aviso, tarjeta o ventana condicional de Inicio con datos de ejemplo, uno debajo del otro.
+const AVISOS_CHIPS: { id: 'no' | 'si'; label: string }[] = [
+  { id: 'no', label: 'Ver avisos: no' },
+  { id: 'si', label: 'Ver avisos: sí' },
+];
+
 const PHOTO_CHIPS: { id: Photo; label: string }[] = [
   { id: 'ok', label: 'Foto: carga' },
   { id: 'falla', label: 'Foto: falla' },
@@ -260,6 +267,7 @@ function DevHomeBody() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
+  const [avisos, setAvisos] = useState<'no' | 'si'>('no');
   const [photo, setPhoto] = useState<Photo>('ok');
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
@@ -317,6 +325,7 @@ function DevHomeBody() {
       </Text>
       {chipsOpen ? (
         <ScrollView style={styles.chipsScroll} nestedScrollEnabled>
+          <ChipGroup title="Ver avisos: todos los avisos, tarjetas y ventanas condicionales" chips={AVISOS_CHIPS} selected={avisos} onSelect={setAvisos} />
           <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
@@ -378,6 +387,9 @@ function DevHomeBody() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.charcoal }]}>
+      {avisos === 'si' ? (
+        <DevAvisosView />
+      ) : (
       <HomeView
         data={{ ...state, quote: QUOTE_LENGTHS[quoteLength] }}
         events={EVENTS}
@@ -393,6 +405,7 @@ function DevHomeBody() {
         medalsFontScale={Number(medalsScale)}
         medalsWidth={medalsWidth === 'real' ? undefined : Number(medalsWidth)}
       />
+      )}
       {panel}
       {menuNode}
       {popup}

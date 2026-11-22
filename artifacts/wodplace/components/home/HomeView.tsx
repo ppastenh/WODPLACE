@@ -13,11 +13,19 @@ import type {
   TodayWod,
   UpcomingBirthday,
 } from '@workspace/api-client-react';
-import { AutoFitImage } from '@/components/AutoFitImage';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { MedalBadge } from '@/components/MedalBadge';
 import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
+import {
+  OwnBirthdayCard,
+  PendingContractCard,
+  PinnedAvisoCard,
+  PlanNoticeCard,
+  UpcomingBirthdaysSection,
+  WodTodayCard,
+  getFirstName,
+} from '@/components/home/ConditionalCards';
 import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
 import { LevelStreakCards } from '@/components/home/LevelStreakCards';
 import { PrHighlightCard } from '@/components/home/PrHighlightCard';
@@ -31,7 +39,6 @@ import { useColors } from '@/hooks/useColors';
 import { statusBarStyleFor } from '@/lib/theme';
 import type { nextClassCardState } from '@/lib/nextClassCard';
 import type { PlanProgressView } from '@/lib/planProgress';
-import { MONTH_NAMES } from '@/lib/dateUtils';
 import { FONT_SIZE } from '@/constants/typography';
 import { SPACING } from '@/constants/spacing';
 import { RADIUS } from '@/constants/radius';
@@ -143,25 +150,6 @@ const LOGO_MARKER_ALPHA = '8C';
 const GLOW_RINGS = ['38', '1C', '0D'] as const;
 const GLOW_STEP = 3;
 
-// scrollContent has 20px horizontal padding each side; the pinned aviso
-// card itself has 16px padding each side (see pinnedAvisoCard).
-const PINNED_AVISO_IMAGE_WIDTH = Dimensions.get('window').width - 40 - 32;
-
-function birthdayInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.[0] ?? '';
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
-  return (first + last).toUpperCase() || '?';
-}
-
-function birthdayDayLabel(month: number, day: number): string {
-  const abbrev = (MONTH_NAMES[month - 1] ?? '').slice(0, 3).toUpperCase();
-  return `${day} ${abbrev}`;
-}
-
-function getFirstName(name: string): string {
-  return name.trim().split(/\s+/)[0] || 'Atleta';
-}
 
 
 // Matches the level values box-admin's own class-scheduling UI writes
@@ -418,49 +406,13 @@ function HomeViewInner({
         </View>
 
         <View style={[styles.surface, { backgroundColor: colors.cream }]}>
-        {isOwnBirthdayToday ? (
-          <View style={[styles.ownBirthdayCard, { backgroundColor: colors.accent }]}>
-            <View style={[styles.iconBadge, { backgroundColor: colors.card }]}>
-              <Feather name="gift" size={17} color={colors.navActive} />
-            </View>
-            <View style={styles.ownBirthdayTextCol}>
-              <Text style={[styles.ownBirthdayTitle, { color: colors.accentForeground }]}>
-                ¡Feliz cumpleaños, {getFirstName(user.name)}!
-              </Text>
-              <Text style={[styles.ownBirthdaySubtitle, { color: colors.accentForeground }]}>
-                Que tengas un gran entrenamiento hoy
-              </Text>
-            </View>
-          </View>
-        ) : null}
+        {isOwnBirthdayToday ? <OwnBirthdayCard name={user.name} /> : null}
 
         {hasBoxMembership === false ? (
           <JoinBoxCard onPress={() => events.onJoinBox()} />
         ) : null}
 
-        {hasActivePlan && nearPlanLimit ? (
-          <View style={[styles.noticeCard, { backgroundColor: colors.warningBackground }]}>
-            <View style={[styles.noticeIcon, { backgroundColor: colors.warning }]}>
-              <Feather name="alert-circle" size={16} color={colors.warningForeground} />
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              {myPlan!.classesPerPeriod != null &&
-              myPlan!.classesRemaining != null &&
-              myPlan!.classesRemaining <= 2 ? (
-                <Text style={[styles.noticeText, { color: colors.foreground }]}>
-                  Te quedan {myPlan!.classesRemaining} clase{myPlan!.classesRemaining === 1 ? '' : 's'} este período.
-                </Text>
-              ) : null}
-              {myPlan!.daysUntilRenewal != null && myPlan!.daysUntilRenewal <= 7 ? (
-                <Text style={[styles.noticeText, { color: colors.foreground }]}>
-                  Tu plan {myPlan!.daysUntilRenewal <= 0
-                    ? 'vence hoy'
-                    : `vence en ${myPlan!.daysUntilRenewal} día${myPlan!.daysUntilRenewal === 1 ? '' : 's'}`}.
-                </Text>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
+        {hasActivePlan && nearPlanLimit ? <PlanNoticeCard plan={myPlan!} /> : null}
 
         {hasBoxMembership && (nextClassState === 'loading' || nextClassState === 'invite' || (nextClassState === 'booked' && nextBooked)) ? (
           // Cargando (esqueleto), sin reserva (invitación) o con reserva: tres estados con el mismo marco; ver NextClassCard.tsx.
@@ -475,77 +427,11 @@ function HomeViewInner({
 
         <DailyQuoteCard quote={quote} onShare={events.onShareQuote} look={quoteLook} />
 
-        {hasBoxMembership && hasPendingContract ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ir a Contratos Activos"
-            onPress={() => events.onOpenContracts()}
-            style={({ pressed }) => [
-              styles.pinnedAvisoCard,
-              { backgroundColor: pressed ? colors.warningBackgroundPressed : colors.warningBackground },
-            ]}
-          >
-            <View style={styles.cardHeadingRow}>
-              <Text style={[styles.cardEyebrow, { color: colors.creamMuted }]}>Aviso Importante</Text>
-              <Feather name="file-text" size={16} color={colors.warning} />
-            </View>
-            <Text style={[styles.pinnedAvisoTitle, { color: colors.foreground }]}>
-              Tienes un contrato pendiente de leer y aceptar
-            </Text>
-            <Text style={[styles.pinnedAvisoBodyBold, { color: colors.foreground }]}>
-              Toca aquí para revisarlo en Contratos Activos. Mientras esté pendiente, no podrás hacer
-              nuevas reservas.
-            </Text>
-          </Pressable>
-        ) : null}
+        {hasBoxMembership && hasPendingContract ? <PendingContractCard onPress={() => events.onOpenContracts()} /> : null}
 
-        {hasBoxMembership && pinnedPush ? (
-          <View style={[styles.pinnedAvisoCard, { backgroundColor: colors.warningBackground }]}>
-            <View style={styles.cardHeadingRow}>
-              <Text style={[styles.cardEyebrow, { color: colors.creamMuted }]}>Aviso Importante</Text>
-              <Feather name="bell" size={16} color={colors.warning} />
-            </View>
-            {pinnedPush.imageUrl ? (
-              <View style={styles.pinnedAvisoImageWrap}>
-                <AutoFitImage uri={pinnedPush.imageUrl} width={PINNED_AVISO_IMAGE_WIDTH} borderRadius={12} />
-              </View>
-            ) : null}
-            <Text style={[styles.pinnedAvisoTitle, { color: colors.foreground }]}>
-              {pinnedPush.title}
-            </Text>
-            {pinnedPush.body ? (
-              <Text style={[styles.pinnedAvisoBodyBold, { color: colors.foreground }]} numberOfLines={3}>
-                {pinnedPush.body}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+        {hasBoxMembership && pinnedPush ? <PinnedAvisoCard announcement={pinnedPush} /> : null}
 
-        {hasBoxMembership && todayWod ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Ver WOD de hoy"
-            onPress={() => events.onOpenWod()}
-            style={({ pressed }) => [
-              styles.wodCard,
-              { backgroundColor: pressed ? colors.accentPressed : colors.accent },
-            ]}
-          >
-            <View style={styles.smallCardHeader}>
-              <View style={styles.wodTitleRow}>
-                <Feather name="zap" size={18} color={colors.accentForeground} />
-                <Text style={[styles.smallCardLabel, { color: colors.accentForeground, marginTop: 0 }]}>
-                  WOD de hoy{todayWod.myResult ? ' · registrado' : ''}
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.accentForeground} />
-            </View>
-            <Text style={[styles.wodName, { color: colors.accentForeground }]}>{todayWod.name}</Text>
-            <Text style={[styles.wodDescription, { color: colors.accentForeground }]} numberOfLines={2}>
-              {todayWod.description}
-            </Text>
-          </Pressable>
-        ) : null}
+        {hasBoxMembership && todayWod ? <WodTodayCard wod={todayWod} onPress={() => events.onOpenWod()} /> : null}
 
         <MonthlyProgressCard view={planView} fontScale={progressFontScale} />
 
@@ -574,33 +460,7 @@ function HomeViewInner({
           screenWidth={medalsWidth}
         />
 
-        {hasBoxMembership && birthdays.length > 0 ? (
-          <View style={styles.birthdaySection}>
-            <View style={styles.sectionHeadingRow}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Próximos cumpleaños
-              </Text>
-              <Feather name="gift" size={19} color={colors.navActiveTextSmall} />
-            </View>
-            <View style={styles.birthdayList}>
-              {birthdays.map((birthday) => (
-                <View key={`${birthday.name}-${birthday.month}-${birthday.day}`} style={styles.birthdayRow}>
-                  <View style={[styles.avatar, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}>
-                    <Text style={[styles.avatarText, { color: colors.navActiveTextSmall }]}>
-                      {birthdayInitials(birthday.name)}
-                    </Text>
-                  </View>
-                  <Text style={[styles.birthdayName, { color: colors.foreground }]}>
-                    {birthday.name}
-                  </Text>
-                  <Text style={[styles.birthdayDay, { color: colors.creamMuted }]}>
-                    {birthday.daysUntil === 0 ? 'Hoy' : birthdayDayLabel(birthday.month, birthday.day)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
+        {hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSection birthdays={birthdays} /> : null}
         </View>
       </ScrollView>
 
@@ -664,153 +524,5 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.xxl,
     paddingBottom: SPACING.xxxl,
     gap: 11,
-  },
-
-  // Fase 1 (tokens): solo valores que calzan EXACTO con SPACING/RADIUS.
-  // Fase 2, paso 1 (2026-10-21): los 8/4 que eran gap/marginTop reales ya
-  // se migraron a SPACING.sm2/xs2. El borderRadius:8 de BoxLogoImage (más
-  // arriba, estilo inline) NO se tocó: es un radio, no un espaciado, y no
-  // hay un escalón RADIUS de valor 8.
-  // 11, 14, 1, 13, 15, 18, 170, 1, 3, 5, 104, 32, 45, etc. no calzan con
-  // ningún token de la escala y quedan sin tocar a propósito -- ver la
-  // propuesta de Fase 2 (alineación) en AUDITORIA-VISUAL.md antes de
-  // mover cualquiera de esos.
-  pinnedAvisoCard: {
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  pinnedAvisoImageWrap: {
-    marginTop: SPACING.xs,
-  },
-  pinnedAvisoTitle: {
-    fontSize: FONT_SIZE.md,
-    fontFamily: 'Inter_700Bold',
-  },
-  pinnedAvisoBodyBold: {
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    fontFamily: 'Inter_700Bold',
-  },
-  cardHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cardEyebrow: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  noticeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    borderRadius: RADIUS.lg,
-    padding: 13,
-  },
-  ownBirthdayCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    borderRadius: RADIUS.lg,
-    padding: 13,
-  },
-  ownBirthdayTextCol: {
-    flex: 1,
-    gap: 1,
-  },
-  ownBirthdayTitle: {
-    fontSize: FONT_SIZE.sm,
-    fontFamily: 'Inter_700Bold',
-  },
-  ownBirthdaySubtitle: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_500Medium',
-  },
-  noticeIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noticeText: {
-    flex: 1,
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 17,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  wodCard: {
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    marginTop: SPACING.md,
-  },
-  wodTitleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  wodName: { fontSize: FONT_SIZE.lg, fontFamily: 'Anton_400Regular', marginTop: SPACING.sm2 },
-  wodDescription: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_400Regular',
-    marginTop: SPACING.xs2,
-    lineHeight: 16,
-  },
-  smallCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 32,
-  },
-  iconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: RADIUS.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  smallCardLabel: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_600SemiBold',
-    marginTop: SPACING.lg,
-  },
-  birthdaySection: {
-    marginTop: SPACING.xs,
-  },
-  sectionHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
-  },
-  sectionTitle: {
-    fontSize: FONT_SIZE.xl,
-    fontFamily: 'Anton_400Regular',
-  },
-  birthdayList: {
-    gap: SPACING.sm2,
-  },
-  birthdayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    minHeight: 45,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_700Bold',
-  },
-  birthdayName: {
-    flex: 1,
-    fontSize: FONT_SIZE.sm,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  birthdayDay: {
-    fontSize: FONT_SIZE.xs,
-    fontFamily: 'Inter_700Bold',
   },
 });

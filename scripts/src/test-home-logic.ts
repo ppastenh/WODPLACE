@@ -1804,3 +1804,55 @@ describe('Fondos de foto de "Progreso mensual" y "Medallas" (decisiones (v) y (y
     }
   });
 });
+
+describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el modo de desarrollo "Ver avisos" (pedido 42)', () => {
+  const home = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const app = (f: string) => readFileSync(new URL('../../artifacts/wodplace/' + f, import.meta.url), 'utf8');
+  const cards = home('ConditionalCards.tsx');
+  const view = home('HomeView.tsx');
+  const avisos = home('DevAvisosView.tsx');
+
+  it('las seis tarjetas condicionales viven en ConditionalCards.tsx y HomeView las usa con LAS MISMAS condiciones de antes (la condición sigue en HomeView; aquí solo se dibujan)', () => {
+    for (const name of ['OwnBirthdayCard', 'PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard', 'UpcomingBirthdaysSection']) {
+      assert.ok(cards.includes('export function ' + name + '('), name + ' no está exportada');
+      assert.ok(view.includes('<' + name + ' '), 'HomeView no usa ' + name);
+    }
+    for (const cond of [
+      '{isOwnBirthdayToday ? <OwnBirthdayCard name={user.name} /> : null}',
+      '{hasActivePlan && nearPlanLimit ? <PlanNoticeCard plan={myPlan!} /> : null}',
+      '{hasBoxMembership && hasPendingContract ? <PendingContractCard onPress={() => events.onOpenContracts()} /> : null}',
+      '{hasBoxMembership && pinnedPush ? <PinnedAvisoCard announcement={pinnedPush} /> : null}',
+      '{hasBoxMembership && todayWod ? <WodTodayCard wod={todayWod} onPress={() => events.onOpenWod()} /> : null}',
+      '{hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSection birthdays={birthdays} /> : null}',
+    ]) assert.ok(view.includes(cond), 'cambió una condición de HomeView: ' + cond);
+    for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
+  });
+  it('los textos de las tarjetas no cambiaron al moverlas', () => {
+    for (const text of ['¡Feliz cumpleaños, {getFirstName(name)}!', 'Que tengas un gran entrenamiento hoy', 'Te quedan {plan.classesRemaining} clase', 'vence hoy', 'Tienes un contrato pendiente de leer y aceptar', 'Mientras esté pendiente, no podrás hacer nuevas reservas.', 'Aviso Importante', "WOD de hoy{wod.myResult ? ' · registrado' : ''}", 'Próximos cumpleaños']) assert.ok(cards.includes(text), text);
+    assert.ok(cards.includes('accessibilityLabel="Ir a Contratos Activos"') && cards.includes('accessibilityLabel="Ver WOD de hoy"'));
+  });
+  it('estado presionado SÓLIDO (sin opacidad) en las dos tarjetas que son botones', () => {
+    assert.ok(cards.includes('colors.warningBackgroundPressed : colors.warningBackground') && cards.includes('colors.accentPressed : colors.accent'));
+    assert.ok(!/opacity/i.test(cards), 'opacidad en ConditionalCards.tsx');
+  });
+  it('"Ver avisos" muestra los 11 elementos del inventario, cada uno con su nombre, y todo el archivo es solo de desarrollo (nadie en producción lo importa)', () => {
+    const names = [...avisos.matchAll(/^  '(.+)',$/gm)].map((m) => m[1]);
+    assert.equal(names.length, 11);
+    for (let i = 0; i < 11; i++) assert.ok(avisos.includes('name={AVISOS_NAMES[' + i + ']}'), 'falta el elemento ' + (i + 1));
+    for (const label of ['Ver avisos: no', 'Ver avisos: sí']) assert.ok(home('DevHomeScreen.tsx').includes(label), label);
+    assert.ok(home('DevHomeScreen.tsx').includes("{avisos === 'si' ? ("), 'el modo reemplaza al Inicio de ejemplo solo con el chip activado');
+    const importers = ['HomeView.tsx', 'ConditionalCards.tsx', 'NextClassCard.tsx', 'MedalsCard.tsx', 'MonthlyProgressCard.tsx', 'CopperBackdrop.tsx'].filter((f) => home(f).includes('DevAvisosView'));
+    assert.deepEqual(importers, [], 'un archivo de producción importa DevAvisosView');
+    assert.ok(!app('app/home.tsx').includes('DevAvisosView') && app('app/dev-home.tsx').includes('DevHomeScreen'), 'solo la pantalla de desarrollo (que solo se carga con __DEV__) lo trae');
+  });
+  it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
+    // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
+    const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
+    assert.ok(avisos.includes('const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;') && avisos.includes('onRedeem={FAKE_REDEEM}'));
+    const real = app('app/home.tsx');
+    assert.ok(real.includes("'¡Tu box ya está aprobado!'") && real.includes("'Ya puedes administrarlo y empezar a invitar alumnos.'"));
+    assert.ok(avisos.includes("title: '¡Tu box ya está aprobado!'") && avisos.includes("message: 'Ya puedes administrarlo y empezar a invitar alumnos.'"), 'los textos de la alerta cambiaron en home.tsx: actualizar la copia');
+  });
+});

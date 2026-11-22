@@ -19,7 +19,7 @@ export const DEMO_IMAGE =
 /** unreadCount = punto de la campana; popup = popup "Aviso importante" abierto (lo dibuja DevHomeScreen, no HomeView). */
 export type DevDraft = HomeViewData & { unreadCount: number; popup: boolean };
 
-const AVISO: BoxAnnouncement = {
+export const AVISO: BoxAnnouncement = {
   id: 'aviso-demo',
   title: 'Cambio de horario del sábado',
   body: 'Este sábado la clase de las 10:00 pasa a las 09:00. Trae agua y tu toalla; nos vemos en el box.',
@@ -45,7 +45,7 @@ const TODAY_WOD: TodayWod = {
   myResult: null,
 };
 
-function planDemo(over: Partial<MyPlan>): MyPlan {
+export function planDemo(over: Partial<MyPlan>): MyPlan {
   return {
     id: 'plan-demo',
     name: 'Plan demo',
@@ -101,7 +101,7 @@ function bookedSession(coach: string): ClassSession {
 }
 
 /** Cumpleaños dentro de n días (mes y día reales de esa fecha; nunca año ni edad). */
-function birthdayIn(name: string, days: number) {
+export function birthdayIn(name: string, days: number) {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return { name, month: d.getMonth() + 1, day: d.getDate(), daysUntil: days };
