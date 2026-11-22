@@ -259,6 +259,18 @@ export const PAIRS_LIGHT: Pair[] = [
   t('nextClassCardForeground', 'charcoal', 'progreso mensual: texto crema de la cápsula "Plan ilimitado" sobre su carbón'),
   ui('medalCopperLight', 'navActiveTextSmall', 'progreso mensual: borde de cobre claro de la cápsula contra el peor punto del fondo (extremo derecho)'),
   ui('medalCopperLight', '#80522b', 'progreso mensual: borde de cobre claro de la cápsula contra el punto medio del degradado'),
+  // NoticeBanner (pedido 43; components/ui/NoticeBanner.tsx): banner de aviso grafito #18191A (nextClassCard) y #2E2F35 (nextClassCardPressed, sólido) al presionar. Título crema, cuerpo #BDB6A8 (color nuevo, escrito a mano en
+  // noticeBannerSpec.ts), ícono, chevron y rótulo "IMPORTANTE" en cobre claro #C79A6B, contorno del círculo y franja en cobre #B98250. Vale igual a 320, 360 y 412 dp (no depende del tamaño).
+  t('nextClassCardForeground', 'nextClassCard', 'banner de aviso: título (crema) sobre el grafito'),
+  t('nextClassCardForeground', 'nextClassCardPressed', 'banner de aviso: título (crema) sobre el grafito presionado'),
+  t('#BDB6A8', 'nextClassCard', 'banner de aviso: cuerpo (#BDB6A8) sobre el grafito'),
+  t('#BDB6A8', 'nextClassCardPressed', 'banner de aviso: cuerpo (#BDB6A8) sobre el grafito presionado'),
+  t('charcoalAccentLight', 'nextClassCard', 'banner de aviso: rótulo "IMPORTANTE" (cobre claro, texto chico) sobre el grafito'),
+  t('charcoalAccentLight', 'nextClassCardPressed', 'banner de aviso: rótulo "IMPORTANTE" (cobre claro, texto chico) sobre el grafito presionado'),
+  ui('charcoalAccentLight', 'nextClassCard', 'banner de aviso: ícono y chevron (cobre claro) sobre el grafito'),
+  ui('charcoalAccentLight', 'nextClassCardPressed', 'banner de aviso: ícono y chevron (cobre claro) sobre el grafito presionado'),
+  ui('charcoalAccent', 'nextClassCard', 'banner de aviso: contorno del círculo del ícono y franja de cobre sobre el grafito'),
+  ui('charcoalAccent', 'nextClassCardPressed', 'banner de aviso: contorno del círculo del ícono y franja de cobre sobre el grafito presionado'),
   // Fotos de fondo (pedido 40): "Progreso mensual" usa home-fondo-progreso.jpg y "Medallas" home-fondo-medallas.jpg, las dos en duotono de cobre con la MISMA rampa (#5E3A1A a #8B5E34, intensidad media).
   // Peor punto = el píxel MÁS CLARO de toda la foto con los archivos finales (#875D37 en las dos; vale para 320, 360 y 412 dp y cualquier letra). La prueba de scripts/src/test-home-logic.ts fija el hash de cada archivo:
   // si una foto cambia hay que volver a medir y actualizar estos pares. Los pares del degradado de arriba quedan como respaldo (el degradado va debajo de la foto mientras carga).

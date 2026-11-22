@@ -1849,7 +1849,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
     // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
     assert.ok(avisos.includes('const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;') && avisos.includes('onRedeem={FAKE_REDEEM}'));
     const real = app('app/home.tsx');
@@ -1880,5 +1880,78 @@ describe('Aviso del plan: las líneas salen de planNoticeModel.ts y PlanNoticeCa
     assert.deepEqual(planNoticeLines(plan({ classesRemaining: 2, daysUntilRenewal: 0 })), ['Te quedan 2 clases este período.', 'Tu plan vence hoy.']);
     assert.deepEqual(planNoticeLines(plan({ classesPerPeriod: null, classesRemaining: 1, daysUntilRenewal: 20 })), [], 'un plan ilimitado no avisa por clases');
     assert.deepEqual(planNoticeLines(plan({ classesRemaining: null, daysUntilRenewal: null })), []);
+  });
+});
+
+describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banners de aviso, solo en "Ver avisos"', () => {
+  const ui = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/ui/' + f, import.meta.url), 'utf8');
+  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const banner = ui('NoticeBanner.tsx');
+  const spec = ui('noticeBannerSpec.ts');
+  const wrappers = homeF('NoticeBanners.tsx');
+
+  it('medidas pedidas: radio 16, relleno 16, borde de 1 dp en cobre al 40 %, círculo de 32 dp con contorno de 1,5 dp, ícono de 18, título 15 / cuerpo 14 / rótulo 11 con espaciado 1, franja de 3 dp, imagen con radio 10', () => {
+    for (const line of [
+      'NOTICE_RADIUS = 16', 'NOTICE_PADDING = 16', 'NOTICE_BORDER_WIDTH = 1', "NOTICE_BORDER_ALPHA_HEX = '66'", 'NOTICE_STRIPE_WIDTH = 3', 'NOTICE_ICON_CIRCLE = 32', 'NOTICE_ICON_CIRCLE_BORDER = 1.5',
+      'NOTICE_ICON_SIZE = 18', 'NOTICE_TITLE_SIZE = 15', 'NOTICE_BODY_SIZE = 14', 'NOTICE_LABEL_SIZE = 11', 'NOTICE_LABEL_SPACING = 1', 'NOTICE_IMAGE_RADIUS = 10', "NOTICE_LABEL_TEXT = 'IMPORTANTE'", "NOTICE_BODY_COLOR = '#BDB6A8'",
+    ]) assert.ok(spec.includes(line), line);
+    assert.equal(parseInt('66', 16) / 255, 0.4, 'el borde es cobre al 40 %');
+    assert.ok(banner.includes("title: { fontSize: NOTICE_TITLE_SIZE, lineHeight: 20, fontFamily: 'Inter_600SemiBold' }") && banner.includes("body: { fontSize: NOTICE_BODY_SIZE, lineHeight: 20, fontFamily: 'Inter_400Regular' }"));
+    assert.ok(banner.includes("label: { fontSize: NOTICE_LABEL_SIZE, letterSpacing: NOTICE_LABEL_SPACING, fontFamily: 'Inter_600SemiBold' }"));
+  });
+  it('colores: solo tokens de la paleta (grafito, presionado sólido, crema, cobre y cobre claro) y UN color nuevo, el del cuerpo; sin hex escritos a mano en el componente y sin opacidad en el presionado', () => {
+    const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    assert.deepEqual(code(banner).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'hex escrito a mano en NoticeBanner.tsx');
+    assert.deepEqual(code(spec).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], ['#BDB6A8'], 'en la especificación solo se escribe a mano el color del cuerpo');
+    for (const token of ['colors.nextClassCardPressed : colors.nextClassCard', 'colors.nextClassCardForeground', 'colors.charcoalAccentLight', 'colors.charcoalAccent']) assert.ok(banner.includes(token), token);
+    assert.ok(!/opacity/i.test(banner), 'opacidad en NoticeBanner.tsx');
+    assert.equal(light.nextClassCard, '#18191A');
+    assert.equal(light.nextClassCardPressed, '#2E2F35');
+    assert.equal(light.charcoalAccent, '#B98250');
+    assert.equal(light.charcoalAccentLight, '#C79A6B');
+    assert.equal(light.nextClassCardForeground, '#F6F1E8');
+  });
+  it("level 'importante': franja sólida de 3 dp en el borde izquierdo Y el rótulo \"IMPORTANTE\" (no depende solo del color); level 'info': ni franja ni rótulo; con onPress: chevron y presionado a #2E2F35 sólido", () => {
+    assert.ok(banner.includes('{important ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} /> : null}'));
+    assert.ok(banner.includes('{important ? <Text style={[styles.label, { color: colors.charcoalAccentLight }]}>{NOTICE_LABEL_TEXT}</Text> : null}'));
+    assert.ok(banner.includes("const important = level === 'importante';"));
+    assert.ok(banner.includes("stripe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: NOTICE_STRIPE_WIDTH }"));
+    assert.ok(banner.includes('{onPress ? (') && banner.includes('name="chevron-right"') && banner.includes('accessibilityRole="button"'));
+    assert.ok(banner.includes('pressed ? colors.nextClassCardPressed : colors.nextClassCard'));
+    assert.ok(banner.includes('{image ? (') && banner.includes('borderRadius={NOTICE_IMAGE_RADIUS}'), 'la imagen va bajo el texto, a todo el ancho de la tarjeta');
+    assert.equal(360 - 40 - 2 - 32, 286, 'ancho de la imagen en una pantalla de 360 dp');
+    assert.ok(spec.includes('noticeImageWidth = (screenWidth: number): number => screenWidth - 40 - 2 * NOTICE_BORDER_WIDTH - 2 * NOTICE_PADDING;'));
+  });
+  it('los tres avisos en la pieza nueva: el contrato es importante y presionable (mismo destino), el aviso del box y el del plan son info; los textos y reglas son los de siempre (planNoticeLines) y con dos reglas van las dos líneas en la misma tarjeta', () => {
+    assert.ok(wrappers.includes('level="importante"') && wrappers.includes('onPress={onPress}') && wrappers.includes('title="Tienes un contrato pendiente de leer y aceptar"'));
+    assert.ok(wrappers.includes('body="Toca aquí para revisarlo en Contratos Activos. Mientras esté pendiente, no podrás hacer nuevas reservas."'));
+    assert.ok(wrappers.includes('level="info" icon="bell"') && wrappers.includes('bodyMaxLines={3}') && wrappers.includes('image={announcement.imageUrl}'));
+    assert.ok(wrappers.includes('const lines = planNoticeLines(plan);') && wrappers.includes('<NoticeBanner level="info" icon="alert-circle" title={lines} />'), 'aviso del plan: todas las líneas como título');
+    assert.ok(!wrappers.includes('planNoticeLines(plan);\n  if (!title)') && !/body=\{body/.test(wrappers.slice(wrappers.indexOf('export function PlanNoticeBanner'))), 'ninguna línea del plan va como cuerpo (gris)');
+    // dos reglas: las dos líneas con el MISMO estilo de título (crema, Inter SemiBold 15), una bajo la otra
+    assert.ok(banner.includes('const titles = Array.isArray(title) ? title : [title];') && banner.includes('{titles.map((line) => ('));
+    assert.equal((banner.match(/styles\.title/g) ?? []).length, 1, 'un solo estilo de título para todas las líneas');
+    assert.ok(banner.includes("[important ? 'Importante' : null, ...titles, body].filter(Boolean).join('. ')"), 'el label empieza con "Importante." y lee todas las líneas');
+    // contrato: botón con pista para el lector de pantalla
+    assert.ok(banner.includes('<Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={accessibilityHint} onPress={onPress}>'));
+    assert.ok(wrappers.includes('accessibilityHint="Abre Contratos Activos"'));
+    type Plan = Parameters<typeof planNoticeLines>[0];
+    const plan = (over: object): Plan => ({ classesPerPeriod: 8, classesRemaining: 5, daysUntilRenewal: 20, ...over });
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 1 })), ['Te quedan 1 clase este período.']);
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 0 })), ['Te quedan 0 clases este período.']);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 3 })), ['Tu plan vence en 3 días.']);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 1 })), ['Tu plan vence en 1 día.']);
+    assert.deepEqual(planNoticeLines(plan({ daysUntilRenewal: 0 })), ['Tu plan vence hoy.']);
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 2, daysUntilRenewal: 0 })), ['Te quedan 2 clases este período.', 'Tu plan vence hoy.']);
+    assert.deepEqual(planNoticeLines(plan({ classesRemaining: 5, daysUntilRenewal: 20 })), []);
+    assert.deepEqual(planNoticeLines(plan({ classesPerPeriod: null, classesRemaining: 1, daysUntilRenewal: 20 })), [], 'un plan ilimitado no avisa por clases');
+  });
+  it('NO está conectada a Inicio: ni HomeView ni las tarjetas de Inicio importan NoticeBanner ni NoticeBanners; solo "Ver avisos" las muestra, junto al diseño actual de cada caso', () => {
+    for (const f of ['HomeView.tsx', 'ConditionalCards.tsx', 'NextClassCard.tsx', 'MedalsCard.tsx', 'MonthlyProgressCard.tsx', 'PrHighlightCard.tsx', 'LevelStreakCards.tsx', 'DailyQuoteCard.tsx']) {
+      assert.ok(!/NoticeBanner/.test(homeF(f)), f + ' ya usa NoticeBanner: la pieza todavía no se conecta a Inicio');
+    }
+    const avisos = homeF('DevAvisosView.tsx');
+    for (const tag of ['<PendingContractBanner ', '<PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT} />', '<PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }} />', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 20 })} />', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 1 })} />']) assert.ok(avisos.includes(tag), tag);
+    assert.ok(avisos.includes('Diseño actual') && avisos.includes('Diseño nuevo'));
   });
 });

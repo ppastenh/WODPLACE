@@ -11,6 +11,7 @@ import {
   UpcomingBirthdaysSection,
   WodTodayCard,
 } from '@/components/home/ConditionalCards';
+import { PendingContractBanner, PinnedAvisoBanner, PlanNoticeBanner } from '@/components/home/NoticeBanners';
 import { AVISO, DEMO_ANNOUNCEMENT, birthdayIn, planDemo } from '@/components/home/devHomeStates';
 import { useColors } from '@/hooks/useColors';
 import { FONT_SIZE } from '@/constants/typography';
@@ -63,6 +64,12 @@ function Item({ n, name, kind, when, buttons, children }: { n: number; name: str
   );
 }
 
+/** Rótulo de una versión dentro de un elemento ("Diseño actual" o "Diseño nuevo", pedido 43). */
+function VersionLabel({ text }: { text: string }) {
+  const colors = useColors();
+  return <Text style={[styles.versionLabel, { color: colors.navInactive }]}>{text}</Text>;
+}
+
 function OpenButton({ label, onPress }: { label: string; onPress: () => void }) {
   const colors = useColors();
   return (
@@ -99,26 +106,43 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[3]} kind="Tarjeta" buttons="sin botones" when="tiene plan por cantidad y le quedan 2 clases o menos en el período">
+          <VersionLabel text="Diseño actual" />
           <PlanNoticeCard plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 20 })} />
           <PlanNoticeCard plan={planDemo({ classesRemaining: 0, daysUntilRenewal: 20 })} />
+          <VersionLabel text="Diseño nuevo (1 regla)" />
+          <PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 20 })} />
+          <PlanNoticeBanner plan={planDemo({ classesRemaining: 0, daysUntilRenewal: 20 })} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[4]} kind="Tarjeta" buttons="sin botones" when="el plan vence en 7 días o menos (también con el aviso de clases, que se suma en la misma tarjeta)">
+          <VersionLabel text="Diseño actual" />
           <PlanNoticeCard plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 3 })} />
           <PlanNoticeCard plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 0 })} />
           <PlanNoticeCard plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 1 })} />
+          <VersionLabel text="Diseño nuevo (1 regla y 2 reglas)" />
+          <PlanNoticeBanner plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 3 })} />
+          <PlanNoticeBanner plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 0 })} />
+          <PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 1 })} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[5]} kind="Tarjeta (toda es un botón)" buttons="1 botón: abre Contratos Activos" when="tiene box, tiene un contrato pendiente de leer y aceptar y la cuenta no es de personal del box">
+          <VersionLabel text="Diseño actual" />
           <PendingContractCard onPress={simulated('Aquí se abriría Contratos Activos.')} />
+          <VersionLabel text="Diseño nuevo (importante, presionable)" />
+          <PendingContractBanner onPress={simulated('Aquí se abriría Contratos Activos.')} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[6]} kind="Tarjeta" buttons="sin botones (la imagen y el texto no se tocan)" when="tiene box y el box publicó un aviso 'push' (el más reciente se queda fijo aunque ya lo haya leído)">
+          <VersionLabel text="Diseño actual" />
           <PinnedAvisoCard announcement={{ ...AVISO, imageUrl: null }} />
           <PinnedAvisoCard announcement={DEMO_ANNOUNCEMENT} />
           <PinnedAvisoCard
             announcement={{ ...AVISO, imageUrl: null, title: 'Aviso con un texto bastante largo para ver cómo se corta', body: AVISO.body + ' ' + AVISO.body + ' ' + AVISO.body }}
           />
+          <VersionLabel text="Diseño nuevo (sin imagen, con imagen y con texto largo)" />
+          <PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }} />
+          <PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT} />
+          <PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null, title: 'Aviso con un texto bastante largo para ver cómo se corta', body: AVISO.body + ' ' + AVISO.body + ' ' + AVISO.body }} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[7]} kind="Ventana (centrada, con fondo oscuro)" buttons='2 pasos: cerrar → "¿Ya leíste este aviso?" con "Sí, ya lo leí" y "Volver al aviso"' when="tiene box y hay avisos 'push' sin leer (uno por vez, el más reciente primero)">
@@ -153,6 +177,7 @@ const styles = StyleSheet.create({
   itemName: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_700Bold' },
   itemMeta: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_600SemiBold', lineHeight: 16 },
   itemBody: { gap: 11, marginTop: SPACING.sm },
+  versionLabel: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_700Bold', marginTop: SPACING.xs2 },
   openButton: { alignSelf: 'flex-start', borderRadius: RADIUS.full, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.md },
   openButtonText: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_700Bold' },
 });
