@@ -31,6 +31,8 @@ import { PrHighlightCard } from '@/components/home/PrHighlightCard';
 import { MEDALS_LOOK, MedalsCard, type MedalsLook } from '@/components/home/MedalsCard';
 import { medalsStatusOf } from '@/components/home/medalsModel';
 import type { PrStatus } from '@/components/home/prHighlightModel';
+import { WodCard } from '@/components/home/WodCard';
+import { todayKeyInChile, wodCardView, type WodStatus } from '@/components/home/wodCardModel';
 import type { StreakStatus } from '@/components/home/levelStreakModel';
 import type { useBooking } from '@/context/BookingContext';
 import { ThemeOverride, useTheme } from '@/context/ThemeContext';
@@ -75,6 +77,8 @@ export type HomeViewData = {
   pinnedPush: BoxAnnouncement | null;
   todayWod: TodayWod | null;
   planView: PlanProgressView;
+  /** Estado de la consulta del WOD de hoy (cargando, con error o lista). Si no llega, se asume 'ready' (sin WOD = no se dibuja nada, como hasta ahora). */
+  wodStatus?: WodStatus;
   achievementStats: { currentStreakDays?: number | null } | null;
   /** Estado de la consulta de la racha (cargando, con error o lista). Si no llega, se deduce de achievementStats (null = cargando). */
   streakStatus?: StreakStatus;
@@ -191,6 +195,7 @@ export function HomeView({
   medalsLook = MEDALS_LOOK,
   medalsFontScale,
   medalsWidth,
+  wodLook = 'nuevo',
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -213,11 +218,13 @@ export function HomeView({
   medalsLook?: MedalsLook;
   medalsFontScale?: number;
   medalsWidth?: number;
+  /** Solo para la pantalla de desarrollo: 'actual' dibuja la tarjeta del WOD anterior para compararla (por defecto, 'nuevo': WodCard). */
+  wodLook?: 'actual' | 'nuevo';
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prFontScale={prFontScale} prWidth={prWidth} medalsLook={medalsLook} medalsFontScale={medalsFontScale} medalsWidth={medalsWidth} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prFontScale={prFontScale} prWidth={prWidth} medalsLook={medalsLook} medalsFontScale={medalsFontScale} medalsWidth={medalsWidth} wodLook={wodLook} />
     </ThemeOverride>
   );
 }
@@ -268,6 +275,7 @@ function HomeViewInner({
   medalsLook = MEDALS_LOOK,
   medalsFontScale,
   medalsWidth,
+  wodLook,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -282,6 +290,7 @@ function HomeViewInner({
   medalsLook?: MedalsLook;
   medalsFontScale?: number;
   medalsWidth?: number;
+  wodLook: 'actual' | 'nuevo';
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -301,6 +310,7 @@ function HomeViewInner({
     pinnedPush,
     todayWod,
     planView,
+    wodStatus,
     achievementStats,
     streakStatus,
     prStatus,
@@ -430,7 +440,13 @@ function HomeViewInner({
 
         {hasBoxMembership && pinnedPush ? <PinnedAvisoCard announcement={pinnedPush} /> : null}
 
-        {hasBoxMembership && todayWod ? <WodTodayCard wod={todayWod} onPress={() => events.onOpenWod()} /> : null}
+        {hasBoxMembership ? (
+          wodLook === 'actual' ? (
+            todayWod ? <WodTodayCard wod={todayWod} onPress={() => events.onOpenWod()} /> : null
+          ) : (
+            <WodCard view={wodCardView(todayWod, wodStatus ?? 'ready', todayKeyInChile())} onPress={() => events.onOpenWod()} />
+          )
+        ) : null}
 
         <MonthlyProgressCard view={planView} fontScale={progressFontScale} />
 

@@ -9,6 +9,7 @@ import type { BoxAnnouncement, MyPlan, TodayWod } from '@workspace/api-client-re
 import type { HomeViewData } from '@/components/home/HomeView';
 import type { ClassSession } from '@/context/BookingContext';
 import { toDateKey } from '@/lib/dateUtils';
+import { todayKeyInChile } from '@/components/home/wodCardModel';
 import { NO_COACH_LABEL } from '@/lib/nextClassCard';
 import { planProgressView } from '@/lib/planProgress';
 
@@ -33,17 +34,22 @@ export const AVISO: BoxAnnouncement = {
 /** Aviso del popup: el mismo contenido que el fijo "con imagen". */
 export const DEMO_ANNOUNCEMENT: BoxAnnouncement = { ...AVISO, imageUrl: DEMO_IMAGE };
 
-const TODAY_WOD: TodayWod = {
-  wodOfDayId: 'wod-dia-demo',
-  wodId: 'wod-demo',
-  name: 'Fran',
-  format: 'for_time',
-  timeCapMinutes: 10,
-  description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.',
-  notes: null,
-  sessionDate: '2026-01-01',
-  myResult: null,
-};
+/** WOD de ejemplo (SOLO desarrollo): estándar (id "custom-…", como el que escribe un coach) con la fecha de hoy en hora de Chile, para que "SOLO HOY" se pueda ver. */
+function wodDemo(over: Partial<TodayWod>): TodayWod {
+  return {
+    wodOfDayId: 'wod-dia-demo',
+    wodId: 'custom-demo',
+    name: 'Fuerza y pierna',
+    format: 'amrap',
+    timeCapMinutes: 12,
+    description: 'Calentamiento libre. Luego 12 minutos: 8 Back Squats a 60 %, 10 Burpees, 12 Sit-ups. Anota tus rondas.',
+    notes: null,
+    sessionDate: todayKeyInChile(),
+    myResult: null,
+    ...over,
+  };
+}
+const RESULT_DEMO = { timeSeconds: 245, rounds: null, reps: null, level: 'rx', notes: null } as const;
 
 export function planDemo(over: Partial<MyPlan>): MyPlan {
   return {
@@ -365,23 +371,27 @@ export const DEV_GROUPS: DevGroup[] = [
     title: 'WOD de hoy',
     options: [
       { id: 'sin', label: 'Sin WOD', apply: () => {} },
+      { id: 'estandar', label: 'WOD estándar (inventado)', apply: (d) => { d.todayWod = wodDemo({}); } },
+      { id: 'fran', label: 'WOD especial: Fran', apply: (d) => { d.todayWod = wodDemo({ wodId: 'fran', name: 'Fran', format: 'for_time', timeCapMinutes: null, description: '21-15-9 reps for time: Thrusters (95/65 lb), Pull-ups' }); } },
+      { id: 'helen', label: 'WOD especial: Helen', apply: (d) => { d.todayWod = wodDemo({ wodId: 'helen', name: 'Helen', format: 'for_time', timeCapMinutes: null, description: '3 rounds for time: 400m Run, 21 Kettlebell Swings (53/35 lb), 12 Pull-ups' }); } },
+      { id: 'murph', label: 'WOD especial: Murph', apply: (d) => { d.todayWod = wodDemo({ wodId: 'murph', name: 'Murph', format: 'for_time', timeCapMinutes: null, description: 'For time: 1 milla Run, 100 Pull-ups, 200 Push-ups, 300 Squats, 1 milla Run (particioná las reps como necesites; con chaleco de 20/14 lb si podés)' }); } },
       {
-        id: 'sin-registrar',
-        label: 'WOD sin registrar',
+        id: 'largo',
+        label: 'WOD con texto muy largo',
         apply: (d) => {
-          d.todayWod = TODAY_WOD;
+          d.todayWod = wodDemo({
+            wodId: 'custom-demo-largo',
+            name: 'Fuerza máxima y trabajo de gimnásticos del sábado',
+            format: 'max_reps',
+            timeCapMinutes: 17,
+            description:
+              'Parte A: 5 series de 3 repeticiones de Deadlift pesado, con 2 minutos de descanso entre series. Parte B: 3 rondas, 1 minuto por estación (1 minuto de descanso entre rondas): Wall-ball, Sumo deadlift high-pull, Box jump, Push press y Row en calorías. Parte C: 10 minutos de movilidad y core. Puntaje: repeticiones totales de las tres rondas.',
+          });
         },
       },
-      {
-        id: 'registrado',
-        label: 'WOD registrado',
-        apply: (d) => {
-          d.todayWod = {
-            ...TODAY_WOD,
-            myResult: { timeSeconds: 245, rounds: null, reps: null, level: 'rx', notes: null },
-          };
-        },
-      },
+      { id: 'registrado', label: 'WOD especial registrado (Fran)', apply: (d) => { d.todayWod = wodDemo({ wodId: 'fran', name: 'Fran', format: 'for_time', timeCapMinutes: null, description: '21-15-9 reps for time: Thrusters (95/65 lb), Pull-ups', myResult: RESULT_DEMO }); } },
+      { id: 'cargando', label: 'WOD cargando', apply: (d) => { d.todayWod = null; d.wodStatus = 'loading'; } },
+      { id: 'error', label: 'WOD con error', apply: (d) => { d.todayWod = null; d.wodStatus = 'error'; } },
     ],
   },
   {

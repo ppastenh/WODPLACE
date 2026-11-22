@@ -12,7 +12,8 @@ import {
   WodTodayCard,
 } from '@/components/home/ConditionalCards';
 import { OwnBirthdayCardNew, UpcomingBirthdaysSectionNew } from '@/components/home/BirthdayCardsNew';
-import { WodTodayCardNew } from '@/components/home/WodTodayCardNew';
+import { WodCard } from '@/components/home/WodCard';
+import { todayKeyInChile, wodCardView, type WodInput } from '@/components/home/wodCardModel';
 import { PendingContractBanner, PinnedAvisoBanner, PlanNoticeBanner } from '@/components/home/NoticeBanners';
 import { AVISO, DEMO_ANNOUNCEMENT, birthdayIn, planDemo } from '@/components/home/devHomeStates';
 import { useColors } from '@/hooks/useColors';
@@ -27,6 +28,15 @@ import { RADIUS } from '@/constants/radius';
  */
 
 const simulated = (what: string) => () => Alert.alert('Toque simulado', what);
+
+/** WOD de ejemplo (SOLO desarrollo; los textos de Fran, Helen y Murph son los del catálogo). */
+const wodBase = { timeCapMinutes: null, sessionDate: todayKeyInChile(), myResult: null as unknown };
+const WOD_ESTANDAR: WodInput = { ...wodBase, wodId: 'custom-demo', name: 'Fuerza y pierna', format: 'amrap', timeCapMinutes: 12, description: 'Calentamiento libre. Luego 12 minutos: 8 Back Squats a 60 %, 10 Burpees, 12 Sit-ups. Anota tus rondas.' };
+const WOD_LARGO: WodInput = { ...wodBase, wodId: 'custom-demo-largo', name: 'Fuerza máxima y trabajo de gimnásticos del sábado', format: 'max_reps', timeCapMinutes: 17, description: 'Parte A: 5 series de 3 repeticiones de Deadlift pesado, con 2 minutos de descanso entre series. Parte B: 3 rondas, 1 minuto por estación: Wall-ball, Sumo deadlift high-pull, Box jump, Push press y Row en calorías. Parte C: 10 minutos de movilidad y core.' };
+const WOD_FRAN: WodInput = { ...wodBase, wodId: 'fran', name: 'Fran', format: 'for_time', description: '21-15-9 reps for time: Thrusters (95/65 lb), Pull-ups' };
+const WOD_HELEN: WodInput = { ...wodBase, wodId: 'helen', name: 'Helen', format: 'for_time', description: '3 rounds for time: 400m Run, 21 Kettlebell Swings (53/35 lb), 12 Pull-ups' };
+const WOD_MURPH: WodInput = { ...wodBase, wodId: 'murph', name: 'Murph', format: 'for_time', description: 'For time: 1 milla Run, 100 Pull-ups, 200 Push-ups, 300 Squats, 1 milla Run (particioná las reps como necesites; con chaleco de 20/14 lb si podés)' };
+const wodView = (w: WodInput) => wodCardView(w, 'ready', todayKeyInChile());
 
 /** Canje falso: nunca llama al servidor (siempre "código inválido"). */
 type Redeem = React.ComponentProps<typeof JoinBoxModal>['onRedeem'];
@@ -159,11 +169,17 @@ export function DevAvisosView() {
           <VersionLabel text="Diseño actual" />
           <WodTodayCard wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: null }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
           <WodTodayCard wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: {} }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
-          <VersionLabel text="Diseño nuevo (sin registrar, registrado, nombre largo y sin descripción)" />
-          <WodTodayCardNew wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: null }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
-          <WodTodayCardNew wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: {} }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
-          <WodTodayCardNew wod={{ name: 'Murph de los héroes caídos con chaleco y mucho aguante', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.' + ' ' + '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.' + ' ' + '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: null }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
-          <WodTodayCardNew wod={{ name: 'Cindy', description: null, myResult: {} }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <VersionLabel text="Diseño nuevo, estándar (WOD del coach): normal, texto muy largo, sin descripción" />
+          <WodCard view={wodView(WOD_ESTANDAR)} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodCard view={wodView(WOD_LARGO)} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodCard view={wodView({ ...WOD_ESTANDAR, description: null, myResult: {} })} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <VersionLabel text="Diseño nuevo, especial (WOD del catálogo): Fran, Helen registrado y Murph" />
+          <WodCard view={wodView(WOD_FRAN)} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodCard view={wodView({ ...WOD_HELEN, myResult: {} })} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodCard view={wodView(WOD_MURPH)} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <VersionLabel text="Diseño nuevo, estados: cargando y error" />
+          <WodCard view={wodCardView(null, 'loading', todayKeyInChile())} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodCard view={wodCardView(null, 'error', todayKeyInChile())} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[9]} kind="Sección (lista)" buttons="sin botones" when="tiene box y hay cumpleaños próximos de otros alumnos (nunca edad ni año; los menores solo con autorización del apoderado)">

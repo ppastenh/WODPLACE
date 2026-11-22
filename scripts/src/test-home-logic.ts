@@ -15,7 +15,9 @@ import { readLayout, readLines } from '../../artifacts/wodplace/components/home/
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
 import { PHOTO_GRAYS, minVeilFor, quoteContrast } from '../../artifacts/wodplace/components/home/quoteCopper';
 import { birthdayRowA11yLabel, dayLabelOf, firstNameOf, initialsOf } from '../../artifacts/wodplace/components/home/birthdayNewSpec';
-import { hasWodDescription, wodTodayA11yLabel } from '../../artifacts/wodplace/components/home/wodTodaySpec';
+import { CATALOG_WOD_IDS, WOD_A11Y_HINT, blocksVisible, formatLabelOf, isCatalogWodId, timeCapLabelOf, todayKeyInChile, wodCardView, wodNameFontSize, wodStatusFrom, wodSummaryOf } from '../../artifacts/wodplace/components/home/wodCardModel';
+import { WOD_TEXTURE_ALPHA, wodColors, wodMeasure } from '../../artifacts/wodplace/components/home/wodCardColors';
+import { MOVEMENT_ICONS, NEUTRAL_MOVEMENT_ICON, movementIconFor } from '../../artifacts/wodplace/components/home/wodMovementIcons';
 import { planNoticeLines } from '../../artifacts/wodplace/components/home/planNoticeModel';
 import { COPPER_TEXTURE_RAMP } from '../../artifacts/wodplace/components/home/copperSurface';
 import { contrastRatio as ratio } from '../../artifacts/wodplace/components/home/colorMath';
@@ -1817,7 +1819,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
 
   it('las tarjetas condicionales viven en ConditionalCards.tsx (las de cumpleaños, desde el pedido 46, en BirthdayCardsNew.tsx) y HomeView las usa con LAS MISMAS condiciones de antes (la condición sigue en HomeView; aquí solo se dibujan)', () => {
     for (const name of ['OwnBirthdayCard', 'PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard', 'UpcomingBirthdaysSection']) assert.ok(cards.includes('export function ' + name + '('), name + ' (diseño anterior, se conserva para comparar en "Ver avisos") no está exportada');
-    for (const name of ['PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard']) {
+    for (const name of ['PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard']) {
       assert.ok(cards.includes('export function ' + name + '('), name + ' no está exportada');
       assert.ok(view.includes('<' + name + ' '), 'HomeView no usa ' + name);
     }
@@ -1826,10 +1828,9 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
       '{hasActivePlan && nearPlanLimit ? <PlanNoticeCard plan={myPlan!} /> : null}',
       '{hasBoxMembership && hasPendingContract ? <PendingContractCard onPress={() => events.onOpenContracts()} /> : null}',
       '{hasBoxMembership && pinnedPush ? <PinnedAvisoCard announcement={pinnedPush} /> : null}',
-      '{hasBoxMembership && todayWod ? <WodTodayCard wod={todayWod} onPress={() => events.onOpenWod()} /> : null}',
       '{hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSectionNew birthdays={birthdays} /> : null}',
     ]) assert.ok(view.includes(cond), 'cambió una condición de HomeView: ' + cond);
-    for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
+    for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'styles.wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
   });
   it('los textos de las tarjetas no cambiaron al moverlas', () => {
     for (const text of ['¡Feliz cumpleaños, {getFirstName(name)}!', 'Que tengas un gran entrenamiento hoy', 'Tienes un contrato pendiente de leer y aceptar', 'Mientras esté pendiente, no podrás hacer nuevas reservas.', 'Aviso Importante', "WOD de hoy{wod.myResult ? ' · registrado' : ''}", 'Próximos cumpleaños']) assert.ok(cards.includes(text), text);
@@ -1852,7 +1853,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
     // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/WodTodayCardNew', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
     assert.ok(avisos.includes('const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;') && avisos.includes('onRedeem={FAKE_REDEEM}'));
     const real = app('app/home.tsx');
@@ -1959,55 +1960,6 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
   });
 });
 
-describe('Tarjeta nueva "WOD de hoy" (WodTodayCardNew.tsx, pedido 44): solo en "Ver avisos", junto al diseño actual', () => {
-  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
-  const card = homeF('WodTodayCardNew.tsx');
-  const spec = homeF('wodTodaySpec.ts');
-
-  it('medidas pedidas: grafito, radio 16, relleno 20; rótulo "WOD DE HOY" Inter SemiBold 12 con espaciado 1; etiqueta "Registrado" 11 con contorno de 1 dp y radio 999; nombre Anton 28 (2 líneas); descripción 14 (3 líneas)', () => {
-    for (const line of [
-      'WOD_RADIUS = 16', 'WOD_PADDING = 20', "WOD_LABEL_TEXT = 'WOD DE HOY'", 'WOD_LABEL_SIZE = 12', 'WOD_LABEL_SPACING = 1', "WOD_CHIP_TEXT = 'Registrado'", 'WOD_CHIP_SIZE = 11', 'WOD_CHIP_BORDER = 1',
-      'WOD_NAME_SIZE = 28', 'WOD_NAME_MAX_LINES = 2', 'WOD_DESCRIPTION_SIZE = 14', 'WOD_DESCRIPTION_MAX_LINES = 3', "WOD_A11Y_HINT = 'Abre el WOD'",
-    ]) assert.ok(spec.includes(line), line);
-    assert.ok(card.includes("label: { fontSize: WOD_LABEL_SIZE, letterSpacing: WOD_LABEL_SPACING, fontFamily: 'Inter_600SemiBold' }"));
-    assert.ok(card.includes("chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: WOD_CHIP_BORDER, borderRadius: 999,") && card.includes("chipText: { fontSize: WOD_CHIP_SIZE, fontFamily: 'Inter_600SemiBold' }"));
-    assert.ok(card.includes("name: { fontSize: WOD_NAME_SIZE, lineHeight: WOD_NAME_LINE, fontFamily: 'Anton_400Regular' }") && card.includes('numberOfLines={WOD_NAME_MAX_LINES}'));
-    assert.ok(card.includes("description: { fontSize: WOD_DESCRIPTION_SIZE, lineHeight: WOD_DESCRIPTION_LINE, fontFamily: 'Inter_400Regular' }") && card.includes('numberOfLines={WOD_DESCRIPTION_MAX_LINES} ellipsizeMode="tail"'));
-    assert.ok(card.includes('card: { borderRadius: WOD_RADIUS, padding: WOD_PADDING,'));
-  });
-  it('colores: solo tokens (grafito, presionado sólido, crema, cobre, cobre claro) y el gris del cuerpo de NoticeBanner (#BDB6A8, pendiente de token); sin hex escritos a mano y sin opacidad', () => {
-    const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
-    assert.deepEqual(code(card).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], []);
-    assert.deepEqual(code(spec).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], []);
-    for (const token of ['pressed ? colors.nextClassCardPressed : colors.nextClassCard', 'colors.charcoalAccentLight', 'colors.charcoalAccent', 'colors.nextClassCardForeground', 'colors.glassBackground', 'NOTICE_BODY_COLOR']) assert.ok(card.includes(token), token);
-    assert.ok(!/opacity/i.test(card), 'opacidad en WodTodayCardNew.tsx');
-  });
-  it('toda la tarjeta es UN botón (mismo destino): rol de botón, label "WOD de hoy, nombre[, registrado]" y pista "Abre el WOD"; el texto "registrado" se mantiene en el label', () => {
-    assert.equal((card.match(/<Pressable/g) ?? []).length, 1);
-    assert.ok(card.includes('<Pressable accessibilityRole="button" accessibilityLabel={wodTodayA11yLabel(wod.name, registered)} accessibilityHint={WOD_A11Y_HINT} onPress={onPress}>'));
-    assert.equal(wodTodayA11yLabel('Fran', false), 'WOD de hoy, Fran');
-    assert.equal(wodTodayA11yLabel('Fran', true), 'WOD de hoy, Fran, registrado');
-  });
-  it('"Registrado" (check + palabra) solo con resultado; la flecha es la MISMA (ArrowBadge pequeña) con las mismas colores de las otras tarjetas, decorativa y arriba a la derecha; sin descripción no queda hueco', () => {
-    assert.ok(card.includes('{registered ? (') && card.includes('<Feather name="check" size={WOD_CHIP_CHECK_SIZE}') && card.includes('{WOD_CHIP_TEXT}'));
-    assert.ok(card.includes("import { ArrowBadge } from '@/components/home/ArrowBadge';") && card.includes('<ArrowBadge size={ARROW_BADGE_SMALL} borderColor={colors.charcoalAccent} backgroundColor={colors.glassBackground} arrowColor={colors.nextClassCardForeground} />'));
-    assert.ok(card.includes('<View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.arrow}>') && card.includes("arrow: { position: 'absolute', top: WOD_PADDING, right: WOD_PADDING }"));
-    assert.ok(card.includes('{hasWodDescription(wod.description) ? ('));
-    assert.equal(hasWodDescription(null), false);
-    assert.equal(hasWodDescription(''), false);
-    assert.equal(hasWodDescription('   '), false);
-    assert.equal(hasWodDescription('21-15-9'), true);
-  });
-  it('NO está conectada a Inicio (HomeView y ConditionalCards no la importan) y "Ver avisos" la muestra junto al diseño actual en 4 variantes: sin registrar, registrado, nombre largo y sin descripción; los textos del diseño actual no cambiaron', () => {
-    for (const f of ['HomeView.tsx', 'ConditionalCards.tsx', 'NextClassCard.tsx']) assert.ok(!/WodTodayCardNew|wodTodaySpec/.test(homeF(f)), f + ' ya usa la tarjeta nueva');
-    const avisos = homeF('DevAvisosView.tsx');
-    assert.equal((avisos.match(/<WodTodayCardNew /g) ?? []).length, 4);
-    for (const piece of ["myResult: null }}", "myResult: {} }}", "name: 'Murph de los héroes caídos con chaleco y mucho aguante'", "name: 'Cindy', description: null, myResult: {} }}"]) assert.ok(avisos.includes(piece), piece);
-    assert.ok(avisos.includes('<WodTodayCard wod='), 'el diseño actual sigue en la lista');
-    assert.ok(homeF('ConditionalCards.tsx').includes("WOD de hoy{wod.myResult ? ' · registrado' : ''}"), 'el texto del diseño actual no cambió');
-  });
-});
-
 describe('Cumpleaños nuevos (BirthdayCardsNew.tsx, pedido 45): solo en "Ver avisos", junto al diseño actual', () => {
   const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
   const card = homeF('BirthdayCardsNew.tsx');
@@ -2062,5 +2014,134 @@ describe('Cumpleaños nuevos (BirthdayCardsNew.tsx, pedido 45): solo en "Ver avi
     assert.equal((avisos.match(/<OwnBirthdayCardNew /g) ?? []).length, 2);
     assert.equal((avisos.match(/<UpcomingBirthdaysSectionNew /g) ?? []).length, 3);
     for (const piece of ['<OwnBirthdayCardNew name="Anastasia-Valentina Rojas" />', "birthdayIn('Valentina Soto', 0)", "birthdayIn('Isabella Fernanda Contreras Valenzuela de la Rosa', 2)", '<OwnBirthdayCard name="Camila Rojas" />', '<UpcomingBirthdaysSection birthdays=']) assert.ok(avisos.includes(piece), piece);
+  });
+});
+
+describe('Tarjeta del WOD (WodCard.tsx, wodCardModel.ts y wodCardColors.ts; decisión (ab)): dos variantes en una sola pieza', () => {
+  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const apiF = (p: string) => readFileSync(new URL('../../artifacts/api-server/' + p, import.meta.url), 'utf8');
+  const card = homeF('WodCard.tsx');
+  const view = homeF('HomeView.tsx').replace(/\r\n/g, '\n');
+  const model = homeF('wodCardModel.ts');
+  const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  const today = '2026-11-22';
+  const wod = (over: object = {}) => ({ wodId: 'custom-1', name: 'Fuerza', format: 'amrap', timeCapMinutes: 12, description: 'Back Squats y Burpees', sessionDate: today, myResult: null, ...over });
+
+  it('el tipo se decide por el wodId del catálogo, NUNCA por el nombre: la lista es la de HERO_WODS del servidor', () => {
+    const catalogSrc = apiF('src/lib/achievements/catalog.ts');
+    const heroStart = catalogSrc.indexOf('export const HERO_WODS');
+    const heroBlock = catalogSrc.slice(heroStart, catalogSrc.indexOf('];', heroStart));
+    const server = [...heroBlock.matchAll(/\{ id: "([a-z-]+)", name: "[^"]+" \}/g)].map((m) => m[1]!);
+    assert.equal(server.length, 19);
+    assert.deepEqual([...CATALOG_WOD_IDS], server, 'la lista de la app debe ser la de HERO_WODS de api-server');
+    assert.equal(isCatalogWodId('fran'), true);
+    assert.equal(isCatalogWodId('custom-1731-abc'), false);
+    const fran = wodCardView(wod({ wodId: 'custom-1731-abc', name: 'Fran' }), 'ready', today);
+    assert.ok(fran.kind === 'wod' && fran.variant === 'estandar', 'un WOD escrito a mano llamado Fran es estándar');
+    assert.ok(!/\.name\b.*isCatalog|isCatalogWodId\([^)]*name/i.test(model), 'nunca se compara por nombre');
+  });
+  it('estados: cargando = esqueleto (nunca "sin WOD"), error = marco con un guion, listo sin WOD = nada; el estado explícito manda sobre los datos; wodStatusFrom igual que en racha y PR', () => {
+    assert.deepEqual(wodCardView(null, 'loading', today), { kind: 'loading' });
+    assert.deepEqual(wodCardView(null, 'error', today), { kind: 'error' });
+    assert.deepEqual(wodCardView(null, 'ready', today), { kind: 'hidden' });
+    assert.deepEqual(wodCardView(wod() as never, 'loading', today), { kind: 'loading' });
+    assert.equal(wodStatusFrom({ data: { wod: null }, isError: false }), 'ready');
+    assert.equal(wodStatusFrom({ data: undefined, isError: true }), 'error');
+    assert.equal(wodStatusFrom({ data: undefined, isError: false }), 'loading');
+    assert.equal(wodStatusFrom({ data: { wod: { name: 'x' } }, isError: true }), 'ready', 'un refresco que falla no borra los datos');
+  });
+  it('datos reales y nada inventado: modalidad del campo format, tope de tiempo si existe, texto del coach tal cual (solo se recortan los bordes) y sin descripción no hay resumen', () => {
+    assert.equal(formatLabelOf('for_time'), 'For Time');
+    assert.equal(formatLabelOf('amrap'), 'AMRAP');
+    assert.equal(formatLabelOf('max_reps'), 'Max Reps');
+    assert.equal(formatLabelOf('emom'), null, 'una modalidad desconocida no se inventa');
+    assert.equal(timeCapLabelOf(12), 'Tope 12 min');
+    assert.equal(timeCapLabelOf(null), null);
+    assert.equal(timeCapLabelOf(0), null);
+    assert.equal(wodSummaryOf('  21-15-9 reps for time: Thrusters, Pull-ups \n'), '21-15-9 reps for time: Thrusters, Pull-ups');
+    assert.equal(wodSummaryOf(''), null);
+    assert.equal(wodSummaryOf('   '), null);
+    assert.equal(wodSummaryOf(null), null);
+    const v = wodCardView(wod({ description: '' }) as never, 'ready', today);
+    assert.ok(v.kind === 'wod' && v.summary === null);
+    assert.ok(card.includes('{view.summary ? ('), 'sin descripción, sin hueco');
+  });
+  it('"SOLO HOY" solo en la especial y solo si sessionDate es hoy en hora de Chile; "Registrado" con resultado; la frase del lector de pantalla lleva los datos reales', () => {
+    const esp = wodCardView(wod({ wodId: 'fran', name: 'Fran', format: 'for_time', timeCapMinutes: null, description: '21-15-9 reps for time: Thrusters (95/65 lb), Pull-ups' }) as never, 'ready', today);
+    assert.ok(esp.kind === 'wod' && esp.variant === 'especial' && esp.soloHoy === true && esp.registered === false);
+    assert.equal(esp.kind === 'wod' && esp.a11yLabel, 'WOD especial: Fran, For Time. 21-15-9 reps for time: Thrusters (95/65 lb), Pull-ups. Ver detalle');
+    const old = wodCardView(wod({ wodId: 'fran', sessionDate: '2026-11-21' }) as never, 'ready', today);
+    assert.ok(old.kind === 'wod' && old.soloHoy === false, 'sessionDate no es hoy: no se muestra SOLO HOY');
+    const std = wodCardView(wod({ myResult: { timeSeconds: 245 } }) as never, 'ready', today);
+    assert.ok(std.kind === 'wod' && std.variant === 'estandar' && std.soloHoy === false && std.registered === true);
+    assert.equal(std.kind === 'wod' && std.a11yLabel, 'WOD del día: Fuerza, AMRAP, Tope 12 min, registrado. Back Squats y Burpees. Ver detalle');
+    assert.match(todayKeyInChile(), /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(WOD_A11Y_HINT, 'Abre el WOD');
+  });
+  it('nombre en Anton por tramos según el largo (sin adjustsFontSizeToFit ni "…") y MÁS GRANDE en la especial que en la estándar', () => {
+    for (const n of ['Fran', 'Cindy', 'Murphy Cross', 'Fight Gone Bad', 'Un WOD con un nombre bastante largo']) assert.ok(wodNameFontSize(n, 'especial') > wodNameFontSize(n, 'estandar'), n);
+    assert.deepEqual(['Fran', 'Murphy Cross', 'Fight Gone Bad', 'Un nombre de veinte ab', 'Un WOD con un nombre bastante largo'].map((n) => wodNameFontSize(n, 'estandar')), [26, 23, 20, 18, 16]);
+    assert.deepEqual(['Fran', 'Murphy Cross', 'Fight Gone Bad', 'Un nombre de veinte ab', 'Un WOD con un nombre bastante largo'].map((n) => wodNameFontSize(n, 'especial')), [34, 30, 26, 22, 18]);
+    assert.ok(!/adjustsFontSizeToFit/.test(card) && !/numberOfLines=\{[^}]*\}[^>]*>\s*\{view\.name\}/.test(card), 'el nombre no se corta con "…"');
+    assert.ok(card.includes("name: { fontFamily: 'Anton_400Regular' }"));
+  });
+  it('diseño: estándar SIN borde de cobre y especial con borde de cobre claro, sombra discreta, rombos casi invisibles, rayo y cápsula; flecha ArrowBadge con la constante de margen; todo un botón con presionado sólido y pista; adornos en Views con pointerEvents="none"', () => {
+    assert.ok(card.includes("special: { borderWidth: 1, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.18, shadowRadius: 8, elevation: 3 }"));
+    assert.ok(card.includes('special && [styles.special, { borderColor: c.cardBorder, shadowColor: colors.charcoal }]') && !/borderWidth/.test(card.slice(card.indexOf('card: {'), card.indexOf('special: {'))), 'la estándar no lleva borde');
+    assert.ok(card.includes("{special ? 'WOD ESPECIAL' : 'WOD DEL DÍA'}") && card.includes('SOLO HOY') && card.includes('<Feather name="zap"') && card.includes('<Feather name="clock"'));
+    assert.ok(card.includes('{special && view.soloHoy ? (') && card.includes('{special && !pressed ? <Texture color={c.primary} /> : null}'));
+    assert.ok(card.includes('<Pattern id={id} width={12} height={12} patternUnits="userSpaceOnUse">') && card.includes('strokeOpacity={WOD_TEXTURE_ALPHA}') && WOD_TEXTURE_ALPHA <= 0.06);
+    assert.ok(card.includes("import { ARROW_BADGE_SMALL, arrowBadgeCorner } from '@/components/home/arrowBadgeSpec';") && card.includes('style={arrowBadgeCorner}') && card.includes('<ArrowBadge size={ARROW_BADGE_SMALL}'));
+    assert.ok(card.includes('<Pressable accessibilityRole="button" accessibilityLabel={view.a11yLabel} accessibilityHint={WOD_A11Y_HINT} onPress={onPress} onLayout={onLayout}>') && card.includes('pressed ? c.pressed : c.background'));
+    assert.equal((card.match(/<Pressable/g) ?? []).length, 1, 'toda la tarjeta es UN botón');
+    assert.ok(!/<Text[^>]*pointerEvents/.test(card), 'pointerEvents en un Text');
+    assert.ok((card.match(/pointerEvents="none"/g) ?? []).length >= 3 && (card.match(/importantForAccessibility="no-hide-descendants"/g) ?? []).length >= 2);
+    assert.ok(!/opacity/i.test(code(card).replace(/shadowOpacity: 0\.18|strokeOpacity=\{WOD_TEXTURE_ALPHA\}|rgba\(0,0,0,0\.75\)/g, '')), 'opacidad en el estado presionado o en el texto');
+    assert.deepEqual(code(card).replace(/'#FFFFFF'|rgba\(0,0,0,0\.75\)/g, '').match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'hex escrito a mano en WodCard.tsx');
+    assert.ok(card.includes('{view.registered ? (') && card.includes('Registrado'));
+    assert.ok(card.includes("view.kind === 'loading'") && card.includes('Cargando el WOD de hoy') && card.includes('—'));
+  });
+  it('MEDIDO: crema y gris cálido sobre el grafito y sobre #232428 (≥ 4,5:1), bordes de cobre (≥ 3:1), cápsula "SOLO HOY" (texto ≥ 4,5:1, borde ≥ 3:1), rayo y etiquetas, y el peor punto de la textura bajo el texto', () => {
+    const c = wodColors(light);
+    const m = wodMeasure(c);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    assert.equal(c.inner, '#232428');
+    assert.equal(r2(m.primaryOnBg), 15.65);
+    assert.equal(r2(m.primaryOnPressed), 11.86);
+    assert.equal(r2(m.primaryOnInner), 13.78);
+    assert.equal(r2(m.secondaryOnBg), 6.59);
+    assert.equal(r2(m.secondaryOnPressed), 4.99);
+    assert.equal(r2(m.secondaryOnInner), 5.8);
+    assert.equal(r2(m.cardBorderOnBg), 6.93);
+    assert.equal(r2(m.capsuleText), 5.21);
+    assert.equal(r2(m.capsuleBorder), 5.34);
+    assert.equal(r2(m.boltOnBg), 5.34);
+    assert.ok(m.primaryOnBg >= 4.5 && m.primaryOnPressed >= 4.5 && m.primaryOnInner >= 4.5 && m.secondaryOnBg >= 4.5 && m.secondaryOnPressed >= 4.5 && m.secondaryOnInner >= 4.5);
+    assert.ok(m.cardBorderOnBg >= 3 && m.tagBorderSpecialOnInner >= 3 && m.tagBorderStandardOnInner >= 3 && m.capsuleBorder >= 3 && m.boltOnBg >= 3 && m.chipBorderOnBg >= 3);
+    assert.ok(m.capsuleText >= 4.5 && m.labelOnBg >= 4.5 && m.chipTextOnBg >= 4.5);
+    assert.ok(m.textureSecondaryWorst >= 4.5 && m.texturePrimaryWorst >= 4.5, 'peor punto de la textura: ' + m.textureSecondaryWorst);
+    assert.equal(c.secondary, light.charcoalMuted, 'el gris cálido es el token charcoalMuted (#A29E94), no un hex nuevo');
+    assert.deepEqual(code(readFileSync(new URL('../../artifacts/wodplace/components/home/wodCardColors.ts', import.meta.url), 'utf8')).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], []);
+  });
+  it('los bloques por ejercicio están PREPARADOS pero hoy NO se usan (los ejercicios no vienen separados): ni la tarjeta ni Inicio los importan; el mapa de íconos está vacío y todo movimiento usa el ícono neutro', () => {
+    for (const f of ['WodCard.tsx', 'HomeView.tsx', 'ConditionalCards.tsx', 'DevAvisosView.tsx', 'DevHomeScreen.tsx']) assert.ok(!/WodExerciseBlocks|wodMovementIcons/.test(homeF(f)), f + ' usa los bloques por ejercicio');
+    assert.deepEqual(blocksVisible(['a', 'b', 'c', 'd', 'e'], 3), { shown: ['a', 'b', 'c'], more: 2 });
+    assert.deepEqual(blocksVisible(['a'], 3), { shown: ['a'], more: 0 });
+    assert.equal(Object.keys(MOVEMENT_ICONS).length, 0, 'no hay íconos específicos de movimientos todavía');
+    assert.equal(movementIconFor('Thrusters'), NEUTRAL_MOVEMENT_ICON);
+    assert.equal(movementIconFor('  Pull-ups '), NEUTRAL_MOVEMENT_ICON);
+    assert.ok(homeF('WodExerciseBlocks.tsx').includes('movementIconFor(name)') && homeF('wodMovementIcons.ts').includes('export const MOVEMENT_ICONS'), 'un único lugar para el mapa');
+  });
+  it('Inicio usa WodCard con LA MISMA condición de box de antes y un estado opcional (si no llega, "ready": sin WOD no se dibuja nada); el diseño anterior queda solo para el chip "WOD: actual"; los ejemplos de desarrollo no están en producción', () => {
+    assert.ok(view.includes("<WodCard view={wodCardView(todayWod, wodStatus ?? 'ready', todayKeyInChile())} onPress={() => events.onOpenWod()} />"));
+    assert.ok(view.includes("wodLook === 'actual' ? (") && view.includes('todayWod ? <WodTodayCard wod={todayWod} onPress={() => events.onOpenWod()} /> : null'));
+    assert.ok(view.includes("wodLook = 'nuevo',") && view.includes('wodStatus?: WodStatus;'), 'el valor por defecto es el diseño nuevo');
+    assert.ok(view.includes('{hasBoxMembership ? (\n          wodLook'), 'solo con box, como antes');
+    const dev = homeF('DevHomeScreen.tsx');
+    for (const label of ['WOD: actual', 'WOD: nuevo']) assert.ok(dev.includes(label), label);
+    assert.ok(dev.includes('wodLook={wodLook}'));
+    const states = homeF('devHomeStates.ts');
+    for (const label of ['Sin WOD', 'WOD estándar (inventado)', 'WOD especial: Fran', 'WOD especial: Helen', 'WOD especial: Murph', 'WOD con texto muy largo', 'WOD especial registrado (Fran)', 'WOD cargando', 'WOD con error']) assert.ok(states.includes(label), label);
+    assert.ok(!/devHomeStates|DevAvisosView|DevHomeScreen/.test(code(card) + code(model)), 'la tarjeta no depende de los ejemplos');
   });
 });

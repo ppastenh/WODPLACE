@@ -207,6 +207,12 @@ const AVISOS_CHIPS: { id: 'no' | 'si'; label: string }[] = [
   { id: 'si', label: 'Ver avisos: sí' },
 ];
 
+// Tarjeta del WOD: la actual (anterior) o la nueva (por defecto), para compararlas (pedido 43).
+const WOD_LOOK_CHIPS: { id: 'actual' | 'nuevo'; label: string }[] = [
+  { id: 'actual', label: 'WOD: actual' },
+  { id: 'nuevo', label: 'WOD: nuevo' },
+];
+
 const PHOTO_CHIPS: { id: Photo; label: string }[] = [
   { id: 'ok', label: 'Foto: carga' },
   { id: 'falla', label: 'Foto: falla' },
@@ -268,6 +274,7 @@ function DevHomeBody() {
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
   const [avisos, setAvisos] = useState<'no' | 'si'>('no');
+  const [wodLook, setWodLook] = useState<'actual' | 'nuevo'>('nuevo');
   const [photo, setPhoto] = useState<Photo>('ok');
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
@@ -326,6 +333,7 @@ function DevHomeBody() {
       {chipsOpen ? (
         <ScrollView style={styles.chipsScroll} nestedScrollEnabled>
           <ChipGroup title="Ver avisos: todos los avisos, tarjetas y ventanas condicionales" chips={AVISOS_CHIPS} selected={avisos} onSelect={setAvisos} />
+          <ChipGroup title="Tarjeta del WOD: diseño" chips={WOD_LOOK_CHIPS} selected={wodLook} onSelect={setWodLook} />
           <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
           <ChipGroup title="Tarjeta de próxima clase: cobre" chips={COPPER_CHIPS} selected={copper} onSelect={setCopper} />
@@ -404,6 +412,7 @@ function DevHomeBody() {
         medalsLook={medalsLook}
         medalsFontScale={Number(medalsScale)}
         medalsWidth={medalsWidth === 'real' ? undefined : Number(medalsWidth)}
+        wodLook={wodLook}
       />
       )}
       {panel}
