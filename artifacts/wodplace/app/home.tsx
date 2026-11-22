@@ -18,6 +18,7 @@ import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { HomeView, type HomeViewData } from '@/components/home/HomeView';
 import { streakStatusFrom } from '@/components/home/levelStreakModel';
 import { prStatusFrom } from '@/components/home/prHighlightModel';
+import { wodStatusFrom } from '@/components/home/wodCardModel';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import { SideDrawer, DrawerNavItem } from '@/components/SideDrawer';
 import { useAuth } from '@/context/AuthContext';
@@ -329,6 +330,7 @@ export default function HomeScreen() {
     achievementStats,
     streakStatus: streakStatusFrom(achievementsQuery),
     prStatus: prStatusFrom(prsQuery),
+    wodStatus: wodStatusFrom(wodQuery),
     rotatingFeaturedPr,
     medalsSummary,
     birthdays,

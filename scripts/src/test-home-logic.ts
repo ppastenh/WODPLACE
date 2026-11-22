@@ -2145,3 +2145,14 @@ describe('Tarjeta del WOD (WodCard.tsx, wodCardModel.ts y wodCardColors.ts; deci
     assert.ok(!/devHomeStates|DevAvisosView|DevHomeScreen/.test(code(card) + code(model)), 'la tarjeta no depende de los ejemplos');
   });
 });
+
+describe('home.tsx pasa el estado de la consulta del WOD a Inicio (pedido 43, aprobado por Pía: DESIGN_SENSITIVE_OK=artifacts/wodplace/app/home.tsx): solo 2 líneas y ninguna regla cambia', () => {
+  const real = readFileSync(new URL('../../artifacts/wodplace/app/home.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  it('importa wodStatusFrom y lo pasa como wodStatus, igual que la racha y el PR; la consulta, su clave, su condición y el WOD que se entrega siguen igual', () => {
+    assert.ok(real.includes("import { wodStatusFrom } from '@/components/home/wodCardModel';"));
+    assert.ok(real.includes('    prStatus: prStatusFrom(prsQuery),\n    wodStatus: wodStatusFrom(wodQuery),\n'));
+    assert.equal((real.match(/wodStatusFrom/g) ?? []).length, 2, 'solo el import y el uso');
+    assert.ok(real.includes("queryKey: ['wod-today', user?.id],") && real.includes('queryFn: () => getTodayWod(user!.id),') && real.includes('enabled: !!user?.id,'));
+    assert.ok(real.includes('const todayWod = wodQuery.data?.wod ?? null;') && real.includes('    todayWod,\n'), 'qué WOD se entrega no cambió');
+  });
+});
