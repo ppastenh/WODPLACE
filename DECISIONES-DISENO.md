@@ -173,3 +173,9 @@ Cada decisión lleva su fecha y su estado. Lo que no está aquí no está decidi
 - **Fecha:** 2026-11-22
 - **Decisión:** "Cumpleaños: tarjeta propia en cobre oscuro con texto crema (título 15, subtítulo 13); próximos cumpleaños en lista grafito con avatar de cobre y etiqueta 'Hoy'; solo nombre y día/mes, nunca edad ni año."
 - **Estado:** VIGENTE. Aprobada por Pía el 2026-11-22 (incluida su aprobación explícita para editar este archivo) después de revisar ambos diseños en su teléfono ("Próximos cumpleaños" aprobado tal cual; "Cumpleaños propio" con la letra reducida de 17/14 a 15/13, el círculo del ícono de 44 a 40 dp con el regalo de 22 a 20 dp y el relleno de 20 a 16 dp). Reemplaza a las tarjetas de cumpleaños anteriores de Inicio (fondo claro). Mismos textos, mismas condiciones y mismos datos. El texto del propio es crema sobre #8B5E34 (4,98:1).
+
+## (ab) Tarjeta del WOD
+
+- **Fecha:** 2026-11-22
+- **Decisión:** "Tarjeta del WOD en dos variantes: estándar para el WOD del coach (grafito sobria, 'WOD DEL DÍA') y especial para los WOD del catálogo (Dark Athletic Premium con borde de cobre, rayo, 'WOD ESPECIAL' y 'SOLO HOY'); ambas con el texto del coach resumido, sin inventar datos; bloques por ejercicio cuando existan los datos separados."
+- **Estado:** VIGENTE. Aprobada por Pía el 2026-11-22 (incluida su aprobación explícita para editar este archivo; Pía la llamó "(z)", pero esa letra ya la usa la regla de trabajo, así que queda como (ab)). El tipo se decide por el `wodId` (el id de la entrada del catálogo, que `GET /wod/today` ya entrega), nunca por el nombre; "SOLO HOY" se muestra solo si `sessionDate` es hoy en hora de Chile. Reemplaza a la tarjeta "WOD de hoy" actual y a la versión nueva que se vio en "Ver avisos" (esa quedó en un parche local fuera del repositorio).
