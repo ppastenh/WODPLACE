@@ -14,6 +14,7 @@ import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
 import { PHOTO_GRAYS, minVeilFor, quoteContrast } from '../../artifacts/wodplace/components/home/quoteCopper';
+import { birthdayRowA11yLabel, dayLabelOf, firstNameOf, initialsOf } from '../../artifacts/wodplace/components/home/birthdayNewSpec';
 import { hasWodDescription, wodTodayA11yLabel } from '../../artifacts/wodplace/components/home/wodTodaySpec';
 import { planNoticeLines } from '../../artifacts/wodplace/components/home/planNoticeModel';
 import { COPPER_TEXTURE_RAMP } from '../../artifacts/wodplace/components/home/copperSurface';
@@ -1850,7 +1851,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
     // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/WodTodayCardNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/WodTodayCardNew', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
     assert.ok(avisos.includes('const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;') && avisos.includes('onRedeem={FAKE_REDEEM}'));
     const real = app('app/home.tsx');
@@ -2003,5 +2004,59 @@ describe('Tarjeta nueva "WOD de hoy" (WodTodayCardNew.tsx, pedido 44): solo en "
     for (const piece of ["myResult: null }}", "myResult: {} }}", "name: 'Murph de los héroes caídos con chaleco y mucho aguante'", "name: 'Cindy', description: null, myResult: {} }}"]) assert.ok(avisos.includes(piece), piece);
     assert.ok(avisos.includes('<WodTodayCard wod='), 'el diseño actual sigue en la lista');
     assert.ok(homeF('ConditionalCards.tsx').includes("WOD de hoy{wod.myResult ? ' · registrado' : ''}"), 'el texto del diseño actual no cambió');
+  });
+});
+
+describe('Cumpleaños nuevos (BirthdayCardsNew.tsx, pedido 45): solo en "Ver avisos", junto al diseño actual', () => {
+  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const card = homeF('BirthdayCardsNew.tsx');
+  const spec = homeF('birthdayNewSpec.ts');
+  const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+
+  it('cumpleaños propio: cobre oscuro (navActiveTextSmall #8B5E34), radio 16, relleno 16; círculo de 40 dp con contorno crema de 1,5 dp e ícono de regalo de 20; título Inter Bold 15 (2 líneas) y subtítulo Inter Regular 13, los dos en crema; sin degradado, sombra ni opacidad; no es un botón', () => {
+    for (const line of ['OWN_RADIUS = 16', 'OWN_PADDING = 16', 'OWN_ICON_CIRCLE = 40', 'OWN_ICON_CIRCLE_BORDER = 1.5', 'OWN_ICON_SIZE = 20', 'OWN_TITLE_SIZE = 15', 'OWN_TITLE_MAX_LINES = 2', 'OWN_SUBTITLE_SIZE = 13']) assert.ok(spec.includes(line), line);
+    assert.equal(light.navActiveTextSmall, '#8B5E34');
+    assert.ok(card.includes('{ backgroundColor: colors.navActiveTextSmall }') && card.includes('borderColor: colors.nextClassCardForeground'));
+    assert.ok(card.includes("ownTitle: { fontSize: OWN_TITLE_SIZE, lineHeight: 20, fontFamily: 'Inter_700Bold' }") && card.includes("ownSubtitle: { fontSize: OWN_SUBTITLE_SIZE, lineHeight: 18, fontFamily: 'Inter_400Regular' }"));
+    assert.ok(card.includes('numberOfLines={OWN_TITLE_MAX_LINES}'));
+    assert.equal((card.match(/color: colors\.nextClassCardForeground/g) ?? []).length >= 2, true, 'título y subtítulo en crema');
+    assert.ok(!/LinearGradient|shadow|elevation|opacity|Pressable|onPress/i.test(card), 'degradado, sombra, opacidad o botón en los cumpleaños nuevos');
+    assert.ok(card.includes('const subtitle = \'Que tengas un gran entrenamiento hoy\';') && card.includes('`¡Feliz cumpleaños, ${firstNameOf(name)}!`'), 'los textos de siempre');
+  });
+  it('próximos cumpleaños: mismo título de sección; lista en tarjeta grafito (radio 16, relleno horizontal 16); filas de 56 dp mínimo; avatar de 36 dp en cobre con iniciales #18191A Inter SemiBold 13; nombre 15 crema en una línea con "…"; día 12 con espaciado 1 en #BDB6A8; "Hoy" con contorno cobre de 1 dp, radio 999 y regalo de 14; separador de 1 dp #2E2F35 salvo tras la última', () => {
+    for (const line of ['LIST_RADIUS = 16', 'LIST_PADDING_H = 16', 'ROW_MIN_HEIGHT = 56', 'AVATAR_SIZE = 36', 'AVATAR_TEXT_SIZE = 13', 'NAME_SIZE = 15', 'DATE_SIZE = 12', 'DATE_SPACING = 1', 'TODAY_ICON_SIZE = 14', 'TODAY_BORDER = 1', 'SEPARATOR_WIDTH = 1']) assert.ok(spec.includes(line), line);
+    assert.ok(card.includes('>Próximos cumpleaños</Text>') && card.includes("sectionTitle: { fontSize: FONT_SIZE.xl, fontFamily: 'Anton_400Regular' }"), 'el título de siempre');
+    assert.ok(card.includes('{ backgroundColor: colors.nextClassCard }') && card.includes('list: { borderRadius: LIST_RADIUS, paddingHorizontal: LIST_PADDING_H }'));
+    assert.ok(card.includes("avatarText: { fontSize: AVATAR_TEXT_SIZE, fontFamily: 'Inter_600SemiBold' }") && card.includes('{ backgroundColor: colors.charcoalAccent }') && card.includes('{ color: colors.nextClassCard }'));
+    assert.ok(card.includes("name: { flex: 1, fontSize: NAME_SIZE, fontFamily: 'Inter_600SemiBold' }") && card.includes('numberOfLines={1} ellipsizeMode="tail"'));
+    assert.ok(card.includes("date: { fontSize: DATE_SIZE, letterSpacing: DATE_SPACING, fontFamily: 'Inter_600SemiBold' }") && card.includes('{ color: NOTICE_BODY_COLOR }'));
+    assert.ok(card.includes("borderWidth: TODAY_BORDER, borderRadius: 999") && card.includes('borderColor: colors.charcoalAccent') && card.includes('<Feather name="gift" size={TODAY_ICON_SIZE} color={colors.charcoalAccentLight} />') && card.includes('{ color: colors.charcoalAccentLight }'));
+    assert.ok(card.includes('!last && { borderBottomWidth: SEPARATOR_WIDTH, borderBottomColor: colors.nextClassCardPressed }'), 'separador solo entre filas');
+    assert.equal(light.nextClassCardPressed, '#2E2F35');
+    assert.deepEqual(code(card).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'hex escrito a mano en BirthdayCardsNew.tsx');
+    assert.deepEqual(code(spec).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'hex escrito a mano en birthdayNewSpec.ts');
+    assert.ok(!/LinearGradient|shadow|elevation|opacity|Pressable|onPress/i.test(card), 'sin botones, sombras ni opacidad');
+  });
+  it('mismos datos de siempre (nombre y día/mes; NUNCA edad ni año), mismos textos: iniciales, "12 NOV" y la frase del lector de pantalla "[Nombre], cumpleaños [hoy / 12 de noviembre]"', () => {
+    assert.equal(initialsOf('Matías Pérez Rojas'), 'MR');
+    assert.equal(initialsOf('Ana'), 'A');
+    assert.equal(initialsOf('  '), '?');
+    assert.equal(firstNameOf('Camila Rojas'), 'Camila');
+    assert.equal(firstNameOf(''), 'Atleta');
+    assert.equal(dayLabelOf(11, 12), '12 NOV');
+    assert.equal(dayLabelOf(2, 29), '29 FEB');
+    assert.equal(birthdayRowA11yLabel({ name: 'Ana López', month: 11, day: 12, daysUntil: 3 }), 'Ana López, cumpleaños 12 de noviembre');
+    assert.equal(birthdayRowA11yLabel({ name: 'Valentina Soto', month: 11, day: 9, daysUntil: 0 }), 'Valentina Soto, cumpleaños hoy');
+    assert.ok(!/\bbirthdate\b|\bage\b|\bedad\b|\byear\b|\bgetAge\b|(?<![a-zñáéíóú])año(?![a-zñáéíóú])/i.test(code(card) + code(spec)), 'edad o año en los cumpleaños nuevos');
+    assert.ok(card.includes('accessibilityElementsHidden importantForAccessibility="no-hide-descendants"') && card.includes('accessibilityLabel={birthdayRowA11yLabel(birthday)}'), 'iniciales decorativas y fila leída completa');
+    const actual = homeF('ConditionalCards.tsx');
+    assert.ok(actual.includes('¡Feliz cumpleaños, {getFirstName(name)}!') && actual.includes('Que tengas un gran entrenamiento hoy') && actual.includes("birthday.daysUntil === 0 ? 'Hoy' : birthdayDayLabel(birthday.month, birthday.day)"), 'el diseño actual no cambió');
+  });
+  it('NO están conectados a Inicio (HomeView y ConditionalCards no los importan) y "Ver avisos" los muestra junto al diseño actual: propio con nombre corto y largo; próximos con 1 persona, 3 personas con una de "Hoy" y un nombre muy largo', () => {
+    for (const f of ['HomeView.tsx', 'ConditionalCards.tsx', 'NextClassCard.tsx']) assert.ok(!/BirthdayCardsNew|birthdayNewSpec/.test(homeF(f)), f + ' ya usa los cumpleaños nuevos');
+    const avisos = homeF('DevAvisosView.tsx');
+    assert.equal((avisos.match(/<OwnBirthdayCardNew /g) ?? []).length, 2);
+    assert.equal((avisos.match(/<UpcomingBirthdaysSectionNew /g) ?? []).length, 3);
+    for (const piece of ['<OwnBirthdayCardNew name="Anastasia-Valentina Rojas" />', "birthdayIn('Valentina Soto', 0)", "birthdayIn('Isabella Fernanda Contreras Valenzuela de la Rosa', 2)", '<OwnBirthdayCard name="Camila Rojas" />', '<UpcomingBirthdaysSection birthdays=']) assert.ok(avisos.includes(piece), piece);
   });
 });

@@ -11,6 +11,7 @@ import {
   UpcomingBirthdaysSection,
   WodTodayCard,
 } from '@/components/home/ConditionalCards';
+import { OwnBirthdayCardNew, UpcomingBirthdaysSectionNew } from '@/components/home/BirthdayCardsNew';
 import { WodTodayCardNew } from '@/components/home/WodTodayCardNew';
 import { PendingContractBanner, PinnedAvisoBanner, PlanNoticeBanner } from '@/components/home/NoticeBanners';
 import { AVISO, DEMO_ANNOUNCEMENT, birthdayIn, planDemo } from '@/components/home/devHomeStates';
@@ -95,7 +96,11 @@ export function DevAvisosView() {
         </Text>
 
         <Item n={next()} name={AVISOS_NAMES[0]} kind="Tarjeta" buttons="sin botones" when="hoy es el cumpleaños de la alumna (fecha de nacimiento, hora de Chile)">
+          <VersionLabel text="Diseño actual" />
           <OwnBirthdayCard name="Camila Rojas" />
+          <VersionLabel text="Diseño nuevo (nombre corto y nombre largo)" />
+          <OwnBirthdayCardNew name="Camila Rojas" />
+          <OwnBirthdayCardNew name="Anastasia-Valentina Rojas" />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[1]} kind="Tarjeta" buttons='1 botón: "Ingresar código de invitación" (abre la ventana de abajo)' when="la alumna no pertenece a ningún box">
@@ -162,7 +167,12 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[9]} kind="Sección (lista)" buttons="sin botones" when="tiene box y hay cumpleaños próximos de otros alumnos (nunca edad ni año; los menores solo con autorización del apoderado)">
+          <VersionLabel text="Diseño actual" />
           <UpcomingBirthdaysSection birthdays={[birthdayIn('Valentina Soto', 0), birthdayIn('Matías Pérez Rojas', 3), birthdayIn('Ana López', 9)]} />
+          <VersionLabel text="Diseño nuevo (1 persona; 3 personas con una de Hoy; nombre muy largo)" />
+          <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Ana López', 9)]} />
+          <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Valentina Soto', 0), birthdayIn('Matías Pérez Rojas', 3), birthdayIn('Ana López', 9)]} />
+          <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Isabella Fernanda Contreras Valenzuela de la Rosa', 2)]} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[10]} kind="Alerta del sistema (no es un componente diseñable)" buttons='1 botón: "OK" (el del sistema)' when="el dueño del box entra por primera vez después de que su box fue aprobado (una sola vez)">

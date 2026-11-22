@@ -283,6 +283,16 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoalAccent', 'nextClassCardPressed', 'WOD de hoy nuevo: contorno de la etiqueta y borde de la flecha (cobre) sobre el grafito presionado'),
   { ...ui('nextClassCardForeground', 'nextClassCard', 'WOD de hoy nuevo: flecha crema sobre su relleno (negro al 60 % sobre el grafito)'), bgLiteral: { hex: '#000000', over: 'nextClassCard', alpha: 0.6 } },
   { ...ui('nextClassCardForeground', 'nextClassCardPressed', 'WOD de hoy nuevo: flecha crema sobre su relleno (negro al 60 % sobre el grafito presionado)'), bgLiteral: { hex: '#000000', over: 'nextClassCardPressed', alpha: 0.6 } },
+  // Cumpleaños nuevos (pedido 45; components/home/BirthdayCardsNew.tsx). Propio: todo en crema sobre cobre oscuro #8B5E34 (navActiveTextSmall). Próximos: tarjeta grafito #18191A con nombre crema, fecha #BDB6A8 (color pendiente
+  // de token), iniciales #18191A sobre el avatar de cobre #B98250, "Hoy" y su ícono en cobre claro #C79A6B con contorno cobre #B98250. El separador (#2E2F35 sobre #18191A) es un adorno y no se mide. Vale igual a 320, 360 y 412 dp.
+  t('nextClassCardForeground', 'navActiveTextSmall', 'cumpleaños propio nuevo: título y subtítulo (crema) sobre el cobre oscuro'),
+  ui('nextClassCardForeground', 'navActiveTextSmall', 'cumpleaños propio nuevo: ícono de regalo y contorno del círculo (crema) sobre el cobre oscuro'),
+  t('nextClassCard', 'charcoalAccent', 'próximos cumpleaños nuevo: iniciales (#18191A) sobre el avatar de cobre'),
+  t('nextClassCardForeground', 'nextClassCard', 'próximos cumpleaños nuevo: nombre (crema) sobre el grafito'),
+  t('#BDB6A8', 'nextClassCard', 'próximos cumpleaños nuevo: fecha "12 NOV" (#BDB6A8) sobre el grafito'),
+  t('charcoalAccentLight', 'nextClassCard', 'próximos cumpleaños nuevo: etiqueta "Hoy" (cobre claro, texto) sobre el grafito'),
+  ui('charcoalAccentLight', 'nextClassCard', 'próximos cumpleaños nuevo: ícono de regalo de la etiqueta "Hoy" (cobre claro) sobre el grafito'),
+  ui('charcoalAccent', 'nextClassCard', 'próximos cumpleaños nuevo: contorno de la etiqueta "Hoy" (cobre) sobre el grafito'),
   // Fotos de fondo (pedido 40): "Progreso mensual" usa home-fondo-progreso.jpg y "Medallas" home-fondo-medallas.jpg, las dos en duotono de cobre con la MISMA rampa (#5E3A1A a #8B5E34, intensidad media).
   // Peor punto = el píxel MÁS CLARO de toda la foto con los archivos finales (#875D37 en las dos; vale para 320, 360 y 412 dp y cualquier letra). La prueba de scripts/src/test-home-logic.ts fija el hash de cada archivo:
   // si una foto cambia hay que volver a medir y actualizar estos pares. Los pares del degradado de arriba quedan como respaldo (el degradado va debajo de la foto mientras carga).
