@@ -271,6 +271,18 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoalAccentLight', 'nextClassCardPressed', 'banner de aviso: ícono y chevron (cobre claro) sobre el grafito presionado'),
   ui('charcoalAccent', 'nextClassCard', 'banner de aviso: contorno del círculo del ícono y franja de cobre sobre el grafito'),
   ui('charcoalAccent', 'nextClassCardPressed', 'banner de aviso: contorno del círculo del ícono y franja de cobre sobre el grafito presionado'),
+  // Tarjeta nueva "WOD de hoy" (pedido 44; components/home/WodTodayCardNew.tsx): grafito #18191A y #2E2F35 sólido al presionar. Nombre crema (Anton 28), descripción #BDB6A8 (color pendiente de token, el mismo del cuerpo de NoticeBanner),
+  // rótulo y etiqueta "Registrado" en cobre claro #C79A6B, contorno de la etiqueta y borde de la flecha en cobre #B98250, flecha crema sobre negro al 60 % (la misma de las otras tarjetas). Vale igual a 320, 360 y 412 dp.
+  t('nextClassCardForeground', 'nextClassCard', 'WOD de hoy nuevo: nombre (Anton 28, crema) sobre el grafito'),
+  t('nextClassCardForeground', 'nextClassCardPressed', 'WOD de hoy nuevo: nombre (crema) sobre el grafito presionado'),
+  t('#BDB6A8', 'nextClassCard', 'WOD de hoy nuevo: descripción (#BDB6A8) sobre el grafito'),
+  t('#BDB6A8', 'nextClassCardPressed', 'WOD de hoy nuevo: descripción (#BDB6A8) sobre el grafito presionado'),
+  t('charcoalAccentLight', 'nextClassCard', 'WOD de hoy nuevo: rótulo "WOD DE HOY" y texto de la etiqueta "Registrado" (cobre claro, texto chico) sobre el grafito'),
+  t('charcoalAccentLight', 'nextClassCardPressed', 'WOD de hoy nuevo: rótulo y etiqueta "Registrado" (cobre claro) sobre el grafito presionado'),
+  ui('charcoalAccent', 'nextClassCard', 'WOD de hoy nuevo: contorno de la etiqueta "Registrado" y borde de la flecha (cobre) sobre el grafito'),
+  ui('charcoalAccent', 'nextClassCardPressed', 'WOD de hoy nuevo: contorno de la etiqueta y borde de la flecha (cobre) sobre el grafito presionado'),
+  { ...ui('nextClassCardForeground', 'nextClassCard', 'WOD de hoy nuevo: flecha crema sobre su relleno (negro al 60 % sobre el grafito)'), bgLiteral: { hex: '#000000', over: 'nextClassCard', alpha: 0.6 } },
+  { ...ui('nextClassCardForeground', 'nextClassCardPressed', 'WOD de hoy nuevo: flecha crema sobre su relleno (negro al 60 % sobre el grafito presionado)'), bgLiteral: { hex: '#000000', over: 'nextClassCardPressed', alpha: 0.6 } },
   // Fotos de fondo (pedido 40): "Progreso mensual" usa home-fondo-progreso.jpg y "Medallas" home-fondo-medallas.jpg, las dos en duotono de cobre con la MISMA rampa (#5E3A1A a #8B5E34, intensidad media).
   // Peor punto = el píxel MÁS CLARO de toda la foto con los archivos finales (#875D37 en las dos; vale para 320, 360 y 412 dp y cualquier letra). La prueba de scripts/src/test-home-logic.ts fija el hash de cada archivo:
   // si una foto cambia hay que volver a medir y actualizar estos pares. Los pares del degradado de arriba quedan como respaldo (el degradado va debajo de la foto mientras carga).

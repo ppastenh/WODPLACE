@@ -14,6 +14,7 @@ import colorsModule from '../../artifacts/wodplace/constants/colors';
 import { readLayout, readLines } from '../../artifacts/wodplace/components/home/layoutEvents';
 import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifacts/wodplace/components/home/monthlyProgressText';
 import { PHOTO_GRAYS, minVeilFor, quoteContrast } from '../../artifacts/wodplace/components/home/quoteCopper';
+import { hasWodDescription, wodTodayA11yLabel } from '../../artifacts/wodplace/components/home/wodTodaySpec';
 import { planNoticeLines } from '../../artifacts/wodplace/components/home/planNoticeModel';
 import { COPPER_TEXTURE_RAMP } from '../../artifacts/wodplace/components/home/copperSurface';
 import { contrastRatio as ratio } from '../../artifacts/wodplace/components/home/colorMath';
@@ -1849,7 +1850,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
     // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/WodTodayCardNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
     assert.ok(avisos.includes('const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;') && avisos.includes('onRedeem={FAKE_REDEEM}'));
     const real = app('app/home.tsx');
@@ -1953,5 +1954,54 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
     const avisos = homeF('DevAvisosView.tsx');
     for (const tag of ['<PendingContractBanner ', '<PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT} />', '<PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }} />', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 20 })} />', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 1 })} />']) assert.ok(avisos.includes(tag), tag);
     assert.ok(avisos.includes('Diseño actual') && avisos.includes('Diseño nuevo'));
+  });
+});
+
+describe('Tarjeta nueva "WOD de hoy" (WodTodayCardNew.tsx, pedido 44): solo en "Ver avisos", junto al diseño actual', () => {
+  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const card = homeF('WodTodayCardNew.tsx');
+  const spec = homeF('wodTodaySpec.ts');
+
+  it('medidas pedidas: grafito, radio 16, relleno 20; rótulo "WOD DE HOY" Inter SemiBold 12 con espaciado 1; etiqueta "Registrado" 11 con contorno de 1 dp y radio 999; nombre Anton 28 (2 líneas); descripción 14 (3 líneas)', () => {
+    for (const line of [
+      'WOD_RADIUS = 16', 'WOD_PADDING = 20', "WOD_LABEL_TEXT = 'WOD DE HOY'", 'WOD_LABEL_SIZE = 12', 'WOD_LABEL_SPACING = 1', "WOD_CHIP_TEXT = 'Registrado'", 'WOD_CHIP_SIZE = 11', 'WOD_CHIP_BORDER = 1',
+      'WOD_NAME_SIZE = 28', 'WOD_NAME_MAX_LINES = 2', 'WOD_DESCRIPTION_SIZE = 14', 'WOD_DESCRIPTION_MAX_LINES = 3', "WOD_A11Y_HINT = 'Abre el WOD'",
+    ]) assert.ok(spec.includes(line), line);
+    assert.ok(card.includes("label: { fontSize: WOD_LABEL_SIZE, letterSpacing: WOD_LABEL_SPACING, fontFamily: 'Inter_600SemiBold' }"));
+    assert.ok(card.includes("chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: WOD_CHIP_BORDER, borderRadius: 999,") && card.includes("chipText: { fontSize: WOD_CHIP_SIZE, fontFamily: 'Inter_600SemiBold' }"));
+    assert.ok(card.includes("name: { fontSize: WOD_NAME_SIZE, lineHeight: WOD_NAME_LINE, fontFamily: 'Anton_400Regular' }") && card.includes('numberOfLines={WOD_NAME_MAX_LINES}'));
+    assert.ok(card.includes("description: { fontSize: WOD_DESCRIPTION_SIZE, lineHeight: WOD_DESCRIPTION_LINE, fontFamily: 'Inter_400Regular' }") && card.includes('numberOfLines={WOD_DESCRIPTION_MAX_LINES} ellipsizeMode="tail"'));
+    assert.ok(card.includes('card: { borderRadius: WOD_RADIUS, padding: WOD_PADDING,'));
+  });
+  it('colores: solo tokens (grafito, presionado sólido, crema, cobre, cobre claro) y el gris del cuerpo de NoticeBanner (#BDB6A8, pendiente de token); sin hex escritos a mano y sin opacidad', () => {
+    const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    assert.deepEqual(code(card).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], []);
+    assert.deepEqual(code(spec).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], []);
+    for (const token of ['pressed ? colors.nextClassCardPressed : colors.nextClassCard', 'colors.charcoalAccentLight', 'colors.charcoalAccent', 'colors.nextClassCardForeground', 'colors.glassBackground', 'NOTICE_BODY_COLOR']) assert.ok(card.includes(token), token);
+    assert.ok(!/opacity/i.test(card), 'opacidad en WodTodayCardNew.tsx');
+  });
+  it('toda la tarjeta es UN botón (mismo destino): rol de botón, label "WOD de hoy, nombre[, registrado]" y pista "Abre el WOD"; el texto "registrado" se mantiene en el label', () => {
+    assert.equal((card.match(/<Pressable/g) ?? []).length, 1);
+    assert.ok(card.includes('<Pressable accessibilityRole="button" accessibilityLabel={wodTodayA11yLabel(wod.name, registered)} accessibilityHint={WOD_A11Y_HINT} onPress={onPress}>'));
+    assert.equal(wodTodayA11yLabel('Fran', false), 'WOD de hoy, Fran');
+    assert.equal(wodTodayA11yLabel('Fran', true), 'WOD de hoy, Fran, registrado');
+  });
+  it('"Registrado" (check + palabra) solo con resultado; la flecha es la MISMA (ArrowBadge pequeña) con las mismas colores de las otras tarjetas, decorativa y arriba a la derecha; sin descripción no queda hueco', () => {
+    assert.ok(card.includes('{registered ? (') && card.includes('<Feather name="check" size={WOD_CHIP_CHECK_SIZE}') && card.includes('{WOD_CHIP_TEXT}'));
+    assert.ok(card.includes("import { ArrowBadge } from '@/components/home/ArrowBadge';") && card.includes('<ArrowBadge size={ARROW_BADGE_SMALL} borderColor={colors.charcoalAccent} backgroundColor={colors.glassBackground} arrowColor={colors.nextClassCardForeground} />'));
+    assert.ok(card.includes('<View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.arrow}>') && card.includes("arrow: { position: 'absolute', top: WOD_PADDING, right: WOD_PADDING }"));
+    assert.ok(card.includes('{hasWodDescription(wod.description) ? ('));
+    assert.equal(hasWodDescription(null), false);
+    assert.equal(hasWodDescription(''), false);
+    assert.equal(hasWodDescription('   '), false);
+    assert.equal(hasWodDescription('21-15-9'), true);
+  });
+  it('NO está conectada a Inicio (HomeView y ConditionalCards no la importan) y "Ver avisos" la muestra junto al diseño actual en 4 variantes: sin registrar, registrado, nombre largo y sin descripción; los textos del diseño actual no cambiaron', () => {
+    for (const f of ['HomeView.tsx', 'ConditionalCards.tsx', 'NextClassCard.tsx']) assert.ok(!/WodTodayCardNew|wodTodaySpec/.test(homeF(f)), f + ' ya usa la tarjeta nueva');
+    const avisos = homeF('DevAvisosView.tsx');
+    assert.equal((avisos.match(/<WodTodayCardNew /g) ?? []).length, 4);
+    for (const piece of ["myResult: null }}", "myResult: {} }}", "name: 'Murph de los héroes caídos con chaleco y mucho aguante'", "name: 'Cindy', description: null, myResult: {} }}"]) assert.ok(avisos.includes(piece), piece);
+    assert.ok(avisos.includes('<WodTodayCard wod='), 'el diseño actual sigue en la lista');
+    assert.ok(homeF('ConditionalCards.tsx').includes("WOD de hoy{wod.myResult ? ' · registrado' : ''}"), 'el texto del diseño actual no cambió');
   });
 });

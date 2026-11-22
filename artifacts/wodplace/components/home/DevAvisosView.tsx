@@ -11,6 +11,7 @@ import {
   UpcomingBirthdaysSection,
   WodTodayCard,
 } from '@/components/home/ConditionalCards';
+import { WodTodayCardNew } from '@/components/home/WodTodayCardNew';
 import { PendingContractBanner, PinnedAvisoBanner, PlanNoticeBanner } from '@/components/home/NoticeBanners';
 import { AVISO, DEMO_ANNOUNCEMENT, birthdayIn, planDemo } from '@/components/home/devHomeStates';
 import { useColors } from '@/hooks/useColors';
@@ -150,8 +151,14 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[8]} kind="Tarjeta (toda es un botón)" buttons="1 botón: abre el WOD de hoy" when='tiene box y el box programó un WOD para hoy ("· registrado" si ya subió su resultado)'>
+          <VersionLabel text="Diseño actual" />
           <WodTodayCard wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: null }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
           <WodTodayCard wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: {} }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <VersionLabel text="Diseño nuevo (sin registrar, registrado, nombre largo y sin descripción)" />
+          <WodTodayCardNew wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: null }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodTodayCardNew wod={{ name: 'Fran', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: {} }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodTodayCardNew wod={{ name: 'Murph de los héroes caídos con chaleco y mucho aguante', description: '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.' + ' ' + '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.' + ' ' + '21-15-9 de thrusters (43 kg) y dominadas. Lo más rápido que puedas con buena técnica.', myResult: null }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
+          <WodTodayCardNew wod={{ name: 'Cindy', description: null, myResult: {} }} onPress={simulated('Aquí se abriría el WOD de hoy.')} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[9]} kind="Sección (lista)" buttons="sin botones" when="tiene box y hay cumpleaños próximos de otros alumnos (nunca edad ni año; los menores solo con autorización del apoderado)">
