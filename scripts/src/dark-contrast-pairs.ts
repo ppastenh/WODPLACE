@@ -306,6 +306,18 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoalAccent', '#232428', 'sin box: borde de cobre del campo con foco sobre #232428'),
   t('destructive', 'nextClassCard', 'sin box: mensaje de error (destructive) sobre el grafito de la hoja'),
   t('success', 'nextClassCard', 'sin box: mensaje de enviado (success) sobre el grafito de la hoja'),
+  // Ventana de aviso importante nueva (decisión (ad); components/home/AnnouncementModalNew.tsx): hoja grafito #18191A, título y cuerpo en crema, texto secundario en gris cálido, botón principal de cobre con texto carbón (presionado en cobre claro
+  // sólido), botón secundario en crema sin relleno con borde crema (presionado sólido #2E2F35), X de cerrar crema sobre #232428 e ícono de la confirmación en cobre claro con círculo de cobre. Vale igual a 320, 360 y 412 dp.
+  t('nextClassCardForeground', 'nextClassCard', 'aviso importante: título y cuerpo (crema) sobre el grafito'),
+  t('charcoalMuted', 'nextClassCard', 'aviso importante: texto secundario de la confirmación (gris cálido) sobre el grafito'),
+  t('charcoal', 'charcoalAccent', 'aviso importante: texto carbón del botón "Sí, ya lo leí" sobre el cobre'),
+  t('charcoal', 'charcoalAccentLight', 'aviso importante: texto carbón del botón principal sobre el cobre claro (presionado)'),
+  ui('nextClassCardForeground', 'nextClassCard', 'aviso importante: borde crema del botón "Volver al aviso" sobre el grafito'),
+  t('nextClassCardForeground', 'nextClassCardPressed', 'aviso importante: texto crema del botón secundario presionado sobre #2E2F35'),
+  ui('nextClassCardForeground', '#232428', 'aviso importante: X de cerrar (crema) sobre #232428'),
+  ui('nextClassCardForeground', 'nextClassCardPressed', 'aviso importante: X de cerrar (crema) presionada sobre #2E2F35'),
+  ui('charcoalAccentLight', 'nextClassCard', 'aviso importante: ícono de la confirmación (cobre claro) sobre el grafito'),
+  ui('charcoalAccent', 'nextClassCard', 'aviso importante: círculo de cobre del ícono de la confirmación sobre el grafito'),
   // Cumpleaños nuevos (pedido 45; components/home/BirthdayCardsNew.tsx). Propio: todo en crema sobre cobre oscuro #8B5E34 (navActiveTextSmall). Próximos: tarjeta grafito #18191A con nombre crema, fecha #BDB6A8 (color pendiente
   // de token), iniciales #18191A sobre el avatar de cobre #B98250, "Hoy" y su ícono en cobre claro #C79A6B con contorno cobre #B98250. El separador (#2E2F35 sobre #18191A) es un adorno y no se mide. Vale igual a 320, 360 y 412 dp.
   t('nextClassCardForeground', 'navActiveTextSmall', 'cumpleaños propio nuevo: título y subtítulo (crema) sobre el cobre oscuro'),

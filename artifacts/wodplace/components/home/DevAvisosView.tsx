@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
+import { AnnouncementModalNew } from '@/components/home/AnnouncementModalNew';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import {
@@ -31,6 +32,17 @@ import { RADIUS } from '@/constants/radius';
 const simulated = (what: string) => () => Alert.alert('Toque simulado', what);
 
 /** WOD de ejemplo (SOLO desarrollo; los textos de Fran, Helen y Murph son los del catálogo). */
+/** Avisos de ejemplo (SOLO desarrollo) para la ventana de aviso importante: corto, largo (se desplaza dentro) y con imagen. */
+type AvisoExample = 'corto' | 'largo' | 'imagen';
+const AVISO_EXAMPLES: { id: AvisoExample; label: string }[] = [
+  { id: 'corto', label: 'Aviso corto' },
+  { id: 'largo', label: 'Aviso largo' },
+  { id: 'imagen', label: 'Aviso con imagen' },
+];
+const PARRAFO = 'Este sábado la clase de las 10:00 pasa a las 09:00 porque el box va a estar ocupado desde media mañana. Trae agua y tu toalla; nos vemos en el box y empezamos puntuales con el calentamiento.';
+const AVISO_LARGO = { ...AVISO, title: 'Cambio de horario del sábado y recomendaciones para toda la semana', body: Array(6).fill(PARRAFO).join(' ') };
+const avisoFor = (e: AvisoExample) => (e === 'corto' ? { ...AVISO, imageUrl: null } : e === 'largo' ? { ...AVISO_LARGO, imageUrl: null } : DEMO_ANNOUNCEMENT);
+
 const wodBase = { timeCapMinutes: null, sessionDate: todayKeyInChile(), myResult: null as unknown };
 const WOD_ESTANDAR: WodInput = { ...wodBase, wodId: 'custom-demo', name: 'Fuerza y pierna', format: 'amrap', timeCapMinutes: 12, description: 'Calentamiento libre. Luego 12 minutos: 8 Back Squats a 60 %, 10 Burpees, 12 Sit-ups. Anota tus rondas.' };
 const WOD_LARGO: WodInput = { ...wodBase, wodId: 'custom-demo-largo', name: 'Fuerza máxima y trabajo de gimnásticos del sábado', format: 'max_reps', timeCapMinutes: 17, description: 'Parte A: 5 series de 3 repeticiones de Deadlift pesado, con 2 minutos de descanso entre series. Parte B: 3 rondas, 1 minuto por estación: Wall-ball, Sumo deadlift high-pull, Box jump, Push press y Row en calorías. Parte C: 10 minutos de movilidad y core.' };
@@ -76,6 +88,21 @@ export const AVISOS_NAMES = [
   'Alerta "¡Tu box ya está aprobado!"',
 ] as const;
 
+/** Estado de revisión de cada elemento (pedido 49): lo que Pía ya revisó y si está conectado a Inicio, para mirarlos todos juntos. */
+const REVIEW: Record<number, string> = {
+  1: 'REVISADO · conectado a Inicio',
+  2: 'REVISADO · conectado a Inicio',
+  3: 'REVISADO · conectado a Inicio',
+  4: 'REVISADO · sin conectar a Inicio',
+  5: 'REVISADO · sin conectar a Inicio',
+  6: 'REVISADO · sin conectar a Inicio',
+  7: 'REVISADO · sin conectar a Inicio',
+  8: 'SIN REVISAR · en evaluación (Inicio real usa la actual)',
+  9: 'REVISADO · conectado a Inicio',
+  10: 'REVISADO · conectado a Inicio',
+  11: 'Alerta del sistema: no se rediseña',
+};
+
 function Item({ n, name, kind, when, buttons, children }: { n: number; name: string; kind: string; when: string; buttons: string; children: React.ReactNode }) {
   const colors = useColors();
   return (
@@ -83,6 +110,7 @@ function Item({ n, name, kind, when, buttons, children }: { n: number; name: str
       <Text style={[styles.itemName, { color: colors.foreground }]}>
         {n}. {name}
       </Text>
+      <Text style={[styles.reviewTag, { color: REVIEW[n]?.startsWith('SIN REVISAR') ? colors.destructiveTextSmall : colors.navActiveTextSmall }]}>{REVIEW[n]}</Text>
       <Text style={[styles.itemMeta, { color: colors.navInactive }]}>
         {kind} · {buttons}
       </Text>
@@ -110,6 +138,8 @@ function OpenButton({ label, onPress }: { label: string; onPress: () => void }) 
 export function DevAvisosView() {
   const colors = useColors();
   const [popup, setPopup] = useState(false);
+  const [avisoLook, setAvisoLook] = useState<'actual' | 'nuevo'>('nuevo');
+  const [avisoExample, setAvisoExample] = useState<AvisoExample>('corto');
   const [joinOpen, setJoinOpen] = useState(false);
   const [fakeMode, setFakeMode] = useState<FakeMode>('invalido');
   let n = 0;
@@ -189,6 +219,20 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[7]} kind="Ventana (centrada, con fondo oscuro)" buttons='2 pasos: cerrar → "¿Ya leíste este aviso?" con "Sí, ya lo leí" y "Volver al aviso"' when="tiene box y hay avisos 'push' sin leer (uno por vez, el más reciente primero)">
+          <View style={styles.modeRow}>
+            {(['actual', 'nuevo'] as const).map((l) => (
+              <Pressable key={l} accessibilityRole="button" accessibilityState={{ selected: avisoLook === l }} onPress={() => setAvisoLook(l)} style={[styles.modeChip, { backgroundColor: avisoLook === l ? colors.accent : colors.input }]}>
+                <Text style={[styles.modeChipText, { color: avisoLook === l ? colors.accentForeground : colors.foreground }]}>{`Aviso: ${l}`}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.modeRow}>
+            {AVISO_EXAMPLES.map((m) => (
+              <Pressable key={m.id} accessibilityRole="button" accessibilityState={{ selected: avisoExample === m.id }} onPress={() => setAvisoExample(m.id)} style={[styles.modeChip, { backgroundColor: avisoExample === m.id ? colors.accent : colors.input }]}>
+                <Text style={[styles.modeChipText, { color: avisoExample === m.id ? colors.accentForeground : colors.foreground }]}>{m.label}</Text>
+              </Pressable>
+            ))}
+          </View>
           <OpenButton label="Abrir la ventana" onPress={() => setPopup(true)} />
         </Item>
 
@@ -223,7 +267,8 @@ export function DevAvisosView() {
         </Item>
       </ScrollView>
 
-      <AnnouncementModal visible={popup} announcement={DEMO_ANNOUNCEMENT} onClose={() => setPopup(false)} onConfirmRead={() => {}} />
+      <AnnouncementModal visible={popup && avisoLook === 'actual'} announcement={avisoFor(avisoExample)} onClose={() => setPopup(false)} onConfirmRead={() => {}} />
+      <AnnouncementModalNew visible={popup && avisoLook === 'nuevo'} announcement={avisoFor(avisoExample)} onClose={() => setPopup(false)} onConfirmRead={() => {}} />
       <JoinBoxModal visible={joinOpen} onClose={() => setJoinOpen(false)} onRedeem={fakeRedeemFor(fakeMode)} />
     </View>
   );
@@ -235,6 +280,7 @@ const styles = StyleSheet.create({
   title: { fontSize: FONT_SIZE.lg, fontFamily: 'Anton_400Regular' },
   item: { gap: SPACING.xs2 },
   itemName: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_700Bold' },
+  reviewTag: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
   itemMeta: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_600SemiBold', lineHeight: 16 },
   itemBody: { gap: 11, marginTop: SPACING.sm },
   versionLabel: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_700Bold', marginTop: SPACING.xs2 },

@@ -1854,7 +1854,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
     // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/NoBoxCard', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/NoBoxCard', '@/components/home/AnnouncementModalNew', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
     assert.ok(avisos.includes('const fakeRedeemFor = (mode: FakeMode): Redeem =>') && avisos.includes('onRedeem={fakeRedeemFor(fakeMode)}'));
     const real = app('app/home.tsx');
@@ -2277,5 +2277,74 @@ describe('Ventana para unirse (JoinBoxModal.tsx, archivo sensible; DESIGN_SENSIT
     const avisos = readFileSync(new URL('../../artifacts/wodplace/components/home/DevAvisosView.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
     for (const label of ['Código inválido (error)', 'Falla de red (error)', 'Validando… (cargando)', 'Te uniste (enviado)', 'Ya perteneces (enviado)']) assert.ok(avisos.includes(label), label);
     assert.ok(avisos.includes('onRedeem={fakeRedeemFor(fakeMode)}') && avisos.includes("if (mode === 'lento') return new Promise(() => {});"));
+  });
+});
+
+describe('Ventana de aviso importante nueva (AnnouncementModalNew.tsx, decisión (ad)): componente aparte, solo en "Ver avisos"', () => {
+  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const appF = (p: string) => readFileSync(new URL('../../artifacts/wodplace/' + p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const nuevo = homeF('AnnouncementModalNew.tsx');
+  const actual = appF('components/AnnouncementModal.tsx');
+  const avisos = homeF('DevAvisosView.tsx');
+  const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+
+  it('MISMA lógica y MISMOS textos que la ventana actual (que no se toca): dos pasos, cerrar lleva a la confirmación, el fondo y "atrás" no cierran la confirmación, solo "Sí, ya lo leí" marca leído y cierra, "Volver al aviso" regresa al aviso', () => {
+    for (const line of [
+      'const [confirming, setConfirming] = useState(false);',
+      'if (visible) setConfirming(false);',
+      '}, [visible, announcement?.id]);',
+      'if (!announcement) return null;',
+      'if (!confirming) setConfirming(true);',
+      '<Modal visible={visible} transparent animationType="fade" onRequestClose={requestClose}>',
+      '<Pressable style={styles.backdrop} onPress={requestClose} />',
+      'onConfirmRead();',
+      'onClose();',
+      'setConfirming(false)',
+      '¿Ya leíste este aviso?',
+      'Este aviso es importante — confirma que lo leíste para cerrarlo.',
+      'Sí, ya lo leí',
+      'Volver al aviso',
+      'accessibilityLabel="Cerrar"',
+      '{announcement.title}',
+      '{announcement.body}',
+      '{announcement.imageUrl ? ',
+    ]) {
+      assert.ok(actual.includes(line), 'la ventana actual cambió: ' + line);
+      assert.ok(nuevo.includes(line), 'la ventana nueva no tiene: ' + line);
+    }
+    assert.ok(!/paso 1 de 2|paso 2 de 2|1 de 2|2 de 2/i.test(code(nuevo)), 'no se inventa un indicador de pasos: hoy no existe');
+    assert.ok(actual.includes('export function AnnouncementModal('), 'la actual sigue exportada con su nombre');
+  });
+  it('diseño: tarjeta grafito con esquinas RADIUS.xl y como máximo el 80 % del alto (el texto largo se desplaza dentro), título en Anton crema, cuerpo en crema, secundario en gris cálido, botón principal de cobre con texto carbón y secundario en crema sin relleno, presionados sólidos, 48 dp, imagen redondeada; sin opacidad ni hex a mano', () => {
+    assert.ok(nuevo.includes("maxHeight: '80%',") && nuevo.includes('borderRadius: RADIUS.xl,') && nuevo.includes('{ backgroundColor: c.background }'));
+    assert.ok(nuevo.includes('<ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>'), 'el texto largo se desplaza dentro');
+    assert.ok(nuevo.includes("fontFamily: 'Anton_400Regular',") && nuevo.includes('{ color: c.primary }') && nuevo.includes('{ color: c.secondary }'));
+    assert.ok(nuevo.includes('? { backgroundColor: pressed ? c.buttonPressed : c.button }') && nuevo.includes("{ backgroundColor: pressed ? PRESSED_GRAPHITE : 'transparent', borderWidth: 1, borderColor: c.primary }"));
+    assert.ok(nuevo.includes('color: primary ? c.buttonText : c.primary') && nuevo.includes('minHeight: 48'));
+    assert.ok(nuevo.includes('borderRadius={RADIUS.md + 2}'), 'imagen con esquinas redondeadas');
+    assert.ok(nuevo.includes("const PRESSED_GRAPHITE = colors.light.nextClassCardPressed;"));
+    assert.ok(!/opacity/i.test(code(nuevo).replace(/rgba\(10, 10, 14, 0\.6\)/g, '')), 'opacidad en la ventana nueva');
+    assert.deepEqual(code(nuevo).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'hex escrito a mano en AnnouncementModalNew.tsx');
+    assert.ok(code(nuevo).includes("backgroundColor: 'rgba(10, 10, 14, 0.6)'"), 'el fondo oscuro detrás de la ventana es el de siempre');
+  });
+  it('MEDIDO (los mismos colores de "Sin box"): crema y gris cálido sobre grafito ≥ 4,5:1; texto carbón sobre cobre y sobre cobre claro ≥ 4,5:1; borde y texto del botón secundario, X de cerrar sobre #232428 e ícono de la confirmación ≥ 3:1', () => {
+    const c = noBoxColors(light);
+    const m = noBoxMeasure(c);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    assert.deepEqual([m.primaryOnBg, m.secondaryOnBg, m.buttonTextOnButton, m.buttonTextOnPressed, m.primaryOnInner, m.iconOnBg, m.circleBorderOnBg].map(r2), [15.65, 6.59, 5.83, 7.56, 13.78, 6.93, 5.34]);
+    assert.ok(m.primaryOnBg >= 4.5 && m.secondaryOnBg >= 4.5 && m.buttonTextOnButton >= 4.5 && m.buttonTextOnPressed >= 4.5);
+    assert.ok(m.primaryOnInner >= 3 && m.iconOnBg >= 3 && m.circleBorderOnBg >= 3);
+    assert.equal(r2(ratio(light.nextClassCardForeground, light.nextClassCardPressed)), 11.86, 'crema sobre el presionado sólido #2E2F35');
+  });
+  it('NO está conectada a Inicio (HomeView, home.tsx y la ventana actual no la usan) y "Ver avisos" muestra la actual y la nueva con el chip "Aviso: actual / nuevo" y avisos de ejemplo (corto, largo, con imagen)', () => {
+    assert.ok(!/AnnouncementModalNew/.test(homeF('HomeView.tsx')) && !/AnnouncementModalNew/.test(appF('app/home.tsx')) && !/AnnouncementModalNew/.test(actual));
+    assert.ok(avisos.includes('<AnnouncementModalNew visible={popup && avisoLook === \'nuevo\'}') && avisos.includes('<AnnouncementModal visible={popup && avisoLook === \'actual\'}'));
+    for (const label of ['Aviso corto', 'Aviso largo', 'Aviso con imagen']) assert.ok(avisos.includes(label), label);
+    assert.ok(avisos.includes('{`Aviso: ${l}`}') && avisos.includes("(['actual', 'nuevo'] as const)"));
+  });
+  it('"Ver avisos" rotula cada elemento ("REVISADO" o "SIN REVISAR") y si está conectado a Inicio; los banners quedan sin conectar', () => {
+    for (const tag of ['REVISADO · conectado a Inicio', 'REVISADO · sin conectar a Inicio', 'SIN REVISAR · en evaluación (Inicio real usa la actual)']) assert.ok(avisos.includes(tag), tag);
+    assert.equal((avisos.match(/REVISADO · sin conectar a Inicio/g) ?? []).length, 4, 'los cuatro banners (plan, plan, contrato y aviso fijo)');
+    for (const f of ['HomeView.tsx']) assert.ok(!/NoticeBanner|NoticeBanners/.test(homeF(f)), f + ' ya usa los banners: siguen sin conectar');
   });
 });
