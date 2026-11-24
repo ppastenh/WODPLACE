@@ -12,6 +12,7 @@ import {
   WodTodayCard,
 } from '@/components/home/ConditionalCards';
 import { OwnBirthdayCardNew, UpcomingBirthdaysSectionNew } from '@/components/home/BirthdayCardsNew';
+import { NoBoxCard } from '@/components/home/NoBoxCard';
 import { WodCard } from '@/components/home/WodCard';
 import { todayKeyInChile, wodCardView, type WodInput } from '@/components/home/wodCardModel';
 import { PendingContractBanner, PinnedAvisoBanner, PlanNoticeBanner } from '@/components/home/NoticeBanners';
@@ -114,7 +115,10 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[1]} kind="Tarjeta" buttons='1 botón: "Ingresar código de invitación" (abre la ventana de abajo)' when="la alumna no pertenece a ningún box">
+          <VersionLabel text="Diseño anterior (ya no está en Inicio)" />
           <JoinBoxCard onPress={() => setJoinOpen(true)} />
+          <VersionLabel text="Diseño actual en Inicio" />
+          <NoBoxCard onPress={() => setJoinOpen(true)} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[2]} kind="Ventana (hoja desde abajo)" buttons='"Unirme" y cerrar; en esta prueba el canje es falso (siempre "código inválido")' when="la alumna toca el botón de la tarjeta anterior (archivo sensible: JoinBoxModal.tsx)">

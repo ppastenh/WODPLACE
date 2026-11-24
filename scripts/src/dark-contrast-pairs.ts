@@ -292,6 +292,20 @@ export const PAIRS_LIGHT: Pair[] = [
   ui('charcoalAccent', 'nextClassCard', 'WOD: borde de la cápsula "SOLO HOY" (cobre) sobre el grafito'),
   { ...ui('nextClassCardForeground', 'nextClassCard', 'WOD: flecha crema sobre su relleno (negro al 60 % sobre el grafito)'), bgLiteral: { hex: '#000000', over: 'nextClassCard', alpha: 0.6 } },
   { ...ui('nextClassCardForeground', 'nextClassCardPressed', 'WOD: flecha crema sobre su relleno (negro al 60 % sobre el grafito presionado)'), bgLiteral: { hex: '#000000', over: 'nextClassCardPressed', alpha: 0.6 } },
+  // Sin box (decisión (ac); components/home/NoBoxCard.tsx, noBoxCardColors.ts y JoinBoxModal.tsx): grafito #18191A, superficie interna #232428 (campo de la ventana), crema, gris cálido charcoalMuted, botón de cobre #B98250 con texto
+  // carbón #0D0F10 y, al presionar, cobre claro #C79A6B sólido; borde del círculo y foco del campo en cobre; error (destructive) y enviado (success) sobre el grafito de la hoja. Vale igual a 320, 360 y 412 dp.
+  t('nextClassCardForeground', 'nextClassCard', 'sin box: título y texto (crema) sobre el grafito'),
+  t('nextClassCardForeground', '#232428', 'sin box: texto escrito en el campo (crema) sobre #232428'),
+  t('charcoalMuted', 'nextClassCard', 'sin box: subtítulo (gris cálido) sobre el grafito'),
+  t('charcoalMuted', '#232428', 'sin box: marcador del campo (gris cálido) sobre #232428'),
+  { ...t('charcoalMuted', 'nextClassCard', 'sin box: peor punto de la textura (rombos de crema al 5 %) bajo el gris cálido'), bgLiteral: { hex: '#F6F1E8', over: 'nextClassCard', alpha: 0.05 } },
+  t('charcoal', 'charcoalAccent', 'sin box: texto carbón del botón sobre el cobre'),
+  t('charcoal', 'charcoalAccentLight', 'sin box: texto carbón del botón sobre el cobre claro (presionado sólido)'),
+  ui('charcoalAccent', 'nextClassCard', 'sin box: borde de cobre del círculo del ícono sobre el grafito'),
+  ui('charcoalAccentLight', 'nextClassCard', 'sin box: ícono de la llave (cobre claro) sobre el grafito'),
+  ui('charcoalAccent', '#232428', 'sin box: borde de cobre del campo con foco sobre #232428'),
+  t('destructive', 'nextClassCard', 'sin box: mensaje de error (destructive) sobre el grafito de la hoja'),
+  t('success', 'nextClassCard', 'sin box: mensaje de enviado (success) sobre el grafito de la hoja'),
   // Cumpleaños nuevos (pedido 45; components/home/BirthdayCardsNew.tsx). Propio: todo en crema sobre cobre oscuro #8B5E34 (navActiveTextSmall). Próximos: tarjeta grafito #18191A con nombre crema, fecha #BDB6A8 (color pendiente
   // de token), iniciales #18191A sobre el avatar de cobre #B98250, "Hoy" y su ícono en cobre claro #C79A6B con contorno cobre #B98250. El separador (#2E2F35 sobre #18191A) es un adorno y no se mide. Vale igual a 320, 360 y 412 dp.
   t('nextClassCardForeground', 'navActiveTextSmall', 'cumpleaños propio nuevo: título y subtítulo (crema) sobre el cobre oscuro'),

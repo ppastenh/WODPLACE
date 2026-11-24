@@ -16,6 +16,7 @@ import { monthlyProgressA11yLabel, monthlyProgressBarValue } from '../../artifac
 import { PHOTO_GRAYS, minVeilFor, quoteContrast } from '../../artifacts/wodplace/components/home/quoteCopper';
 import { birthdayRowA11yLabel, dayLabelOf, firstNameOf, initialsOf } from '../../artifacts/wodplace/components/home/birthdayNewSpec';
 import { CATALOG_WOD_IDS, WOD_A11Y_HINT, blocksVisible, formatLabelOf, isCatalogWodId, timeCapLabelOf, todayKeyInChile, wodCardView, wodNameFontSize, wodStatusFrom, wodSummaryOf } from '../../artifacts/wodplace/components/home/wodCardModel';
+import { NOBOX_TEXTURE_ALPHA, noBoxColors, noBoxMeasure } from '../../artifacts/wodplace/components/home/noBoxCardColors';
 import { WOD_TEXTURE_ALPHA, wodColors, wodMeasure } from '../../artifacts/wodplace/components/home/wodCardColors';
 import { MOVEMENT_ICONS, NEUTRAL_MOVEMENT_ICON, movementIconFor } from '../../artifacts/wodplace/components/home/wodMovementIcons';
 import { planNoticeLines } from '../../artifacts/wodplace/components/home/planNoticeModel';
@@ -1853,7 +1854,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
     // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/NoBoxCard', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
     assert.ok(avisos.includes('const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;') && avisos.includes('onRedeem={FAKE_REDEEM}'));
     const real = app('app/home.tsx');
@@ -2154,5 +2155,63 @@ describe('home.tsx pasa el estado de la consulta del WOD a Inicio (pedido 43, ap
     assert.equal((real.match(/wodStatusFrom/g) ?? []).length, 2, 'solo el import y el uso');
     assert.ok(real.includes("queryKey: ['wod-today', user?.id],") && real.includes('queryFn: () => getTodayWod(user!.id),') && real.includes('enabled: !!user?.id,'));
     assert.ok(real.includes('const todayWod = wodQuery.data?.wod ?? null;') && real.includes('    todayWod,\n'), 'qué WOD se entrega no cambió');
+  });
+});
+
+describe('Tarjeta "Todavía no tienes un box" nueva (NoBoxCard.tsx y noBoxCardColors.ts; decisión (ac))', () => {
+  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
+  const card = homeF('NoBoxCard.tsx');
+  const view = homeF('HomeView.tsx').replace(/\r\n/g, '\n');
+  const old = readFileSync(new URL('../../artifacts/wodplace/components/JoinBoxCard.tsx', import.meta.url), 'utf8');
+  const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+
+  it('mismos textos y mismo botón que la tarjeta anterior (que sigue en JoinBoxCard.tsx para comparar): título, subtítulo, botón y el mismo evento', () => {
+    for (const text of ['Todavía no tienes un box', 'Ingresa el código de invitación que te dio tu box para unirte y desbloquear el resto de la app.', 'Ingresar código de invitación']) {
+      assert.ok(old.includes(text), 'la tarjeta anterior ya no tiene: ' + text);
+      assert.ok(card.includes(text), 'la tarjeta nueva no tiene: ' + text);
+    }
+    assert.ok(card.includes('accessibilityLabel="Ingresar código de invitación"') && card.includes('accessibilityRole="header"') && card.includes('accessibilityRole="button"'));
+    assert.ok(card.includes('onPress();'), 'el botón llama al mismo evento');
+    assert.ok(card.includes('Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)'), 'conserva el toque háptico del botón anterior');
+  });
+  it('diseño: grafito RADIUS.xl, círculo con borde de cobre, título en Anton, subtítulo en gris cálido, rombos casi invisibles a la derecha y botón ancho de cobre con texto carbón; presionado sólido en cobre claro; 48 dp de alto mínimo; sin opacidad', () => {
+    assert.ok(card.includes('card: { borderRadius: RADIUS.xl, padding: SPACING.xl') && card.includes('{ backgroundColor: c.background }'));
+    assert.ok(card.includes("iconCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5") && card.includes('{ borderColor: c.circleBorder }'));
+    assert.ok(card.includes("title: { flex: 1, fontSize: 22, lineHeight: 26, fontFamily: 'Anton_400Regular' }") && card.includes('{ color: c.primary }') && card.includes('{ color: c.secondary }'));
+    assert.ok(card.includes('minHeight: 48') && card.includes('borderRadius: 999'));
+    assert.ok(card.includes('pressed ? c.buttonPressed : c.button') && card.includes('{ color: c.buttonText }'));
+    assert.ok(card.includes('<Pattern id={id} width={12} height={12} patternUnits="userSpaceOnUse">') && card.includes('strokeOpacity={NOBOX_TEXTURE_ALPHA}') && NOBOX_TEXTURE_ALPHA <= 0.06);
+    assert.ok(card.includes("texture: { position: 'absolute', top: 0, bottom: 0, right: 0, width: '60%' }"), 'la textura va a la derecha');
+    assert.ok(card.includes('<View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.texture}>'));
+    assert.ok(!/<Text[^>]*pointerEvents/.test(card), 'pointerEvents en un Text');
+    assert.ok(!/opacity/i.test(code(card).replace(/strokeOpacity=\{NOBOX_TEXTURE_ALPHA\}|rgba\(0,0,0,0\.75\)/g, '')), 'opacidad en la tarjeta');
+    assert.deepEqual(code(card).replace(/'#FFFFFF'|rgba\(0,0,0,0\.75\)/g, '').match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'hex escrito a mano en NoBoxCard.tsx');
+    assert.deepEqual(code(readFileSync(new URL('../../artifacts/wodplace/components/home/noBoxCardColors.ts', import.meta.url), 'utf8')).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], []);
+  });
+  it('MEDIDO: crema y gris cálido sobre grafito y #232428 (≥ 4,5:1), texto carbón sobre el cobre y sobre el cobre claro del presionado (≥ 4,5:1), borde del círculo, ícono y borde con foco (≥ 3:1), texto de error y de enviado sobre el grafito (≥ 4,5:1) y el peor punto de la textura', () => {
+    const c = noBoxColors(light);
+    const m = noBoxMeasure(c);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    assert.equal(c.inner, '#232428');
+    assert.equal(c.button, '#B98250');
+    assert.equal(c.buttonText, '#0D0F10');
+    assert.equal(c.buttonPressed, '#C79A6B');
+    assert.deepEqual([m.primaryOnBg, m.secondaryOnBg, m.primaryOnInner, m.secondaryOnInner].map(r2), [15.65, 6.59, 13.78, 5.8]);
+    assert.deepEqual([m.buttonTextOnButton, m.buttonTextOnPressed].map(r2), [5.83, 7.56]);
+    assert.deepEqual([m.circleBorderOnBg, m.iconOnBg, m.focusBorderOnInner].map(r2), [5.34, 6.93, 4.7]);
+    assert.deepEqual([m.errorOnBg, m.successOnBg].map(r2), [4.59, 5.15]);
+    assert.deepEqual([m.textureSecondaryWorst, m.texturePrimaryWorst].map(r2), [5.82, 13.83]);
+    assert.ok(m.primaryOnBg >= 4.5 && m.secondaryOnBg >= 4.5 && m.primaryOnInner >= 4.5 && m.secondaryOnInner >= 4.5 && m.buttonTextOnButton >= 4.5 && m.buttonTextOnPressed >= 4.5);
+    assert.ok(m.circleBorderOnBg >= 3 && m.iconOnBg >= 3 && m.focusBorderOnInner >= 3);
+    assert.ok(m.errorOnBg >= 4.5 && m.successOnBg >= 4.5 && m.textureSecondaryWorst >= 4.5 && m.texturePrimaryWorst >= 4.5);
+    assert.equal(c.error, light.destructive, 'el error usa el token destructive (4,59:1 sobre el grafito)');
+  });
+  it('Inicio usa NoBoxCard por defecto con la MISMA condición (hasBoxMembership === false) y el mismo evento; la anterior queda solo para el chip "Sin box: actual"; el chip y el valor por defecto en desarrollo', () => {
+    assert.ok(view.includes("joinBoxLook === 'actual' ? <JoinBoxCard onPress={() => events.onJoinBox()} /> : <NoBoxCard onPress={() => events.onJoinBox()} />"));
+    assert.ok(view.includes('{hasBoxMembership === false ? (') && view.includes("joinBoxLook = 'nuevo',"));
+    const dev = homeF('DevHomeScreen.tsx');
+    for (const label of ['Sin box: actual', 'Sin box: nuevo']) assert.ok(dev.includes(label), label);
+    assert.ok(dev.includes('joinBoxLook={joinBoxLook}') && dev.includes("useState<'actual' | 'nuevo'>('nuevo')"));
+    assert.ok(homeF('DevAvisosView.tsx').includes('<NoBoxCard '), 'Ver avisos muestra la tarjeta nueva junto a la anterior');
   });
 });

@@ -31,6 +31,7 @@ import { PrHighlightCard } from '@/components/home/PrHighlightCard';
 import { MEDALS_LOOK, MedalsCard, type MedalsLook } from '@/components/home/MedalsCard';
 import { medalsStatusOf } from '@/components/home/medalsModel';
 import type { PrStatus } from '@/components/home/prHighlightModel';
+import { NoBoxCard } from '@/components/home/NoBoxCard';
 import { WodCard } from '@/components/home/WodCard';
 import { todayKeyInChile, wodCardView, type WodStatus } from '@/components/home/wodCardModel';
 import type { StreakStatus } from '@/components/home/levelStreakModel';
@@ -196,6 +197,7 @@ export function HomeView({
   medalsFontScale,
   medalsWidth,
   wodLook = 'nuevo',
+  joinBoxLook = 'nuevo',
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -220,11 +222,13 @@ export function HomeView({
   medalsWidth?: number;
   /** Solo para la pantalla de desarrollo: 'actual' dibuja la tarjeta del WOD anterior para compararla (por defecto, 'nuevo': WodCard). */
   wodLook?: 'actual' | 'nuevo';
+  /** Solo para la pantalla de desarrollo: 'actual' dibuja la tarjeta "Todavía no tienes un box" anterior para compararla (por defecto, 'nuevo': NoBoxCard). */
+  joinBoxLook?: 'actual' | 'nuevo';
 }) {
   useInicioStatusBar();
   return (
     <ThemeOverride mode="light">
-      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prFontScale={prFontScale} prWidth={prWidth} medalsLook={medalsLook} medalsFontScale={medalsFontScale} medalsWidth={medalsWidth} wodLook={wodLook} />
+      <HomeViewInner data={data} events={events} photoFails={photoFails} nextClassLook={nextClassLook} quoteLook={quoteLook} progressFontScale={progressFontScale} levelStreakFontScale={levelStreakFontScale} levelStreakWidth={levelStreakWidth} prFontScale={prFontScale} prWidth={prWidth} medalsLook={medalsLook} medalsFontScale={medalsFontScale} medalsWidth={medalsWidth} wodLook={wodLook} joinBoxLook={joinBoxLook} />
     </ThemeOverride>
   );
 }
@@ -276,6 +280,7 @@ function HomeViewInner({
   medalsFontScale,
   medalsWidth,
   wodLook,
+  joinBoxLook,
 }: {
   data: HomeViewData;
   events: HomeViewEvents;
@@ -291,6 +296,7 @@ function HomeViewInner({
   medalsFontScale?: number;
   medalsWidth?: number;
   wodLook: 'actual' | 'nuevo';
+  joinBoxLook: 'actual' | 'nuevo';
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -418,7 +424,7 @@ function HomeViewInner({
         {isOwnBirthdayToday ? <OwnBirthdayCardNew name={user.name} /> : null}
 
         {hasBoxMembership === false ? (
-          <JoinBoxCard onPress={() => events.onJoinBox()} />
+          joinBoxLook === 'actual' ? <JoinBoxCard onPress={() => events.onJoinBox()} /> : <NoBoxCard onPress={() => events.onJoinBox()} />
         ) : null}
 
         {hasActivePlan && nearPlanLimit ? <PlanNoticeCard plan={myPlan!} /> : null}
