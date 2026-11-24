@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
-import { AnnouncementModalNew } from '@/components/home/AnnouncementModalNew';
 import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import {
@@ -138,7 +137,6 @@ function OpenButton({ label, onPress }: { label: string; onPress: () => void }) 
 export function DevAvisosView() {
   const colors = useColors();
   const [popup, setPopup] = useState(false);
-  const [avisoLook, setAvisoLook] = useState<'actual' | 'nuevo'>('nuevo');
   const [avisoExample, setAvisoExample] = useState<AvisoExample>('corto');
   const [joinOpen, setJoinOpen] = useState(false);
   const [fakeMode, setFakeMode] = useState<FakeMode>('invalido');
@@ -220,13 +218,6 @@ export function DevAvisosView() {
 
         <Item n={next()} name={AVISOS_NAMES[7]} kind="Ventana (centrada, con fondo oscuro)" buttons='2 pasos: cerrar → "¿Ya leíste este aviso?" con "Sí, ya lo leí" y "Volver al aviso"' when="tiene box y hay avisos 'push' sin leer (uno por vez, el más reciente primero)">
           <View style={styles.modeRow}>
-            {(['actual', 'nuevo'] as const).map((l) => (
-              <Pressable key={l} accessibilityRole="button" accessibilityState={{ selected: avisoLook === l }} onPress={() => setAvisoLook(l)} style={[styles.modeChip, { backgroundColor: avisoLook === l ? colors.accent : colors.input }]}>
-                <Text style={[styles.modeChipText, { color: avisoLook === l ? colors.accentForeground : colors.foreground }]}>{`Aviso: ${l}`}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={styles.modeRow}>
             {AVISO_EXAMPLES.map((m) => (
               <Pressable key={m.id} accessibilityRole="button" accessibilityState={{ selected: avisoExample === m.id }} onPress={() => setAvisoExample(m.id)} style={[styles.modeChip, { backgroundColor: avisoExample === m.id ? colors.accent : colors.input }]}>
                 <Text style={[styles.modeChipText, { color: avisoExample === m.id ? colors.accentForeground : colors.foreground }]}>{m.label}</Text>
@@ -267,8 +258,7 @@ export function DevAvisosView() {
         </Item>
       </ScrollView>
 
-      <AnnouncementModal visible={popup && avisoLook === 'actual'} announcement={avisoFor(avisoExample)} onClose={() => setPopup(false)} onConfirmRead={() => {}} />
-      <AnnouncementModalNew visible={popup && avisoLook === 'nuevo'} announcement={avisoFor(avisoExample)} onClose={() => setPopup(false)} onConfirmRead={() => {}} />
+      <AnnouncementModal visible={popup} announcement={avisoFor(avisoExample)} onClose={() => setPopup(false)} onConfirmRead={() => {}} />
       <JoinBoxModal visible={joinOpen} onClose={() => setJoinOpen(false)} onRedeem={fakeRedeemFor(fakeMode)} />
     </View>
   );
