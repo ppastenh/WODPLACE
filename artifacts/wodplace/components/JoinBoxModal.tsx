@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import type { RedeemBoxCodeResult } from '@workspace/api-client-react';
-import { useColors } from '@/hooks/useColors';
-import { AppButton } from '@/components/AppButton';
+import colors from '@/constants/colors';
+import { noBoxColors } from '@/components/home/noBoxCardColors';
 import { formatBoxCodeInput } from '@/lib/boxCodeUtils';
 
 interface JoinBoxModalProps {
@@ -20,9 +21,13 @@ interface JoinBoxModalProps {
 
 type Feedback = { tone: 'ok' | 'error'; text: string };
 
+/** Diseño de Inicio (decisión (ac)): grafito, campo #232428 con foco de cobre y botón de cobre con texto carbón; es de claro fijo, no sigue el tema. */
+const c = noBoxColors(colors.light);
+
 export function JoinBoxModal({ visible, onClose, onRedeem, autoFocusInput = true }: JoinBoxModalProps) {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
+  // Solo presentación: si el campo tiene el foco (el borde pasa a cobre).
+  const [focused, setFocused] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -78,28 +83,32 @@ export function JoinBoxModal({ visible, onClose, onRedeem, autoFocusInput = true
         <View
           style={[
             styles.sheet,
-            { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 20) },
+            { backgroundColor: c.background, paddingBottom: Math.max(insets.bottom, 20) },
           ]}
         >
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
-          <Text style={[styles.title, { color: colors.foreground }]}>Agregar código de box</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          <View style={[styles.handle, { backgroundColor: c.handle }]} />
+          <Text style={[styles.title, { color: c.primary }]}>Agregar código de box</Text>
+          <Text style={[styles.subtitle, { color: c.secondary }]}>
             Ingresa el código que te dio tu box para unirte. Puedes pertenecer a más de un box.
           </Text>
 
-          <View style={[styles.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
+          <View style={[styles.inputRow, { backgroundColor: c.inner, borderColor: focused ? c.focusBorder : c.fieldBorder }]}>
             <TextInput
               value={code}
               onChangeText={(v) => setCode(formatBoxCodeInput(v))}
               placeholder="Ej. 4KJ9P-XY2"
-              placeholderTextColor={colors.mutedForeground}
+              placeholderTextColor={c.secondary}
+              selectionColor={c.focusBorder}
+              cursorColor={c.focusBorder}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               autoCapitalize="characters"
               autoCorrect={false}
               maxLength={9}
               autoFocus={autoFocusInput}
               editable={!busy}
               onSubmitEditing={submit}
-              style={[styles.input, { color: colors.foreground }]}
+              style={[styles.input, { color: c.primary }]}
             />
           </View>
 
@@ -107,20 +116,31 @@ export function JoinBoxModal({ visible, onClose, onRedeem, autoFocusInput = true
             <Text
               style={[
                 styles.feedback,
-                { color: feedback.tone === 'ok' ? colors.success : colors.destructive },
+                { color: feedback.tone === 'ok' ? c.success : c.error },
               ]}
             >
               {feedback.text}
             </Text>
           ) : null}
 
-          <AppButton
-            label={busy ? 'Validando…' : 'Unirme'}
-            variant="primary"
-            fullWidth
-            loading={busy}
-            onPress={submit}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={busy ? 'Validando…' : 'Unirme'}
+            disabled={busy}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              submit();
+            }}
+            style={({ pressed }) => [styles.button, { backgroundColor: pressed && !busy ? c.buttonPressed : c.button }]}
+          >
+            {busy ? (
+              <ActivityIndicator color={c.buttonText} />
+            ) : (
+              <Text style={[styles.buttonText, { color: c.buttonText }]} numberOfLines={1}>
+                Unirme
+              </Text>
+            )}
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -139,8 +159,8 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingTop: 12,
     paddingHorizontal: 20,
     gap: 14,
@@ -180,5 +200,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
     marginTop: -6,
+  },
+  button: {
+    minHeight: 48,
+    borderRadius: 999,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    textAlign: 'center',
   },
 });

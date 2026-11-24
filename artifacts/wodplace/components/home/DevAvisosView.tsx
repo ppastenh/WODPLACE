@@ -39,9 +39,24 @@ const WOD_HELEN: WodInput = { ...wodBase, wodId: 'helen', name: 'Helen', format:
 const WOD_MURPH: WodInput = { ...wodBase, wodId: 'murph', name: 'Murph', format: 'for_time', description: 'For time: 1 milla Run, 100 Pull-ups, 200 Push-ups, 300 Squats, 1 milla Run (particioná las reps como necesites; con chaleco de 20/14 lb si podés)' };
 const wodView = (w: WodInput) => wodCardView(w, 'ready', todayKeyInChile());
 
-/** Canje falso: nunca llama al servidor (siempre "código inválido"). */
+/** Canje falso: nunca llama al servidor. Según el modo elegido responde "código inválido", falla (sin red), se queda cargando, "te uniste" o "ya perteneces" (así se ven todos los estados de la ventana sin tocar su lógica). */
+type FakeMode = 'invalido' | 'falla' | 'lento' | 'unido' | 'ya';
+const FAKE_MODES: { id: FakeMode; label: string }[] = [
+  { id: 'invalido', label: 'Código inválido (error)' },
+  { id: 'falla', label: 'Falla de red (error)' },
+  { id: 'lento', label: 'Validando… (cargando)' },
+  { id: 'unido', label: 'Te uniste (enviado)' },
+  { id: 'ya', label: 'Ya perteneces (enviado)' },
+];
 type Redeem = React.ComponentProps<typeof JoinBoxModal>['onRedeem'];
-const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;
+const fakeRedeemFor = (mode: FakeMode): Redeem =>
+  (async () => {
+    if (mode === 'falla') throw new Error('sin red');
+    if (mode === 'lento') return new Promise(() => {});
+    if (mode === 'unido') return { joined: true, alreadyMember: false, boxName: 'Box Demo' };
+    if (mode === 'ya') return { joined: false, alreadyMember: true, boxName: 'Box Demo' };
+    return { joined: false, alreadyMember: false };
+  }) as unknown as Redeem;
 
 /** Textos de la alerta del sistema que home.tsx muestra cuando el box recién fue aprobado (copia: una prueba exige que sigan iguales a los de home.tsx). */
 export const BOX_APPROVED_ALERT = { title: '¡Tu box ya está aprobado!', message: 'Ya puedes administrarlo y empezar a invitar alumnos.' } as const;
@@ -96,6 +111,7 @@ export function DevAvisosView() {
   const colors = useColors();
   const [popup, setPopup] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [fakeMode, setFakeMode] = useState<FakeMode>('invalido');
   let n = 0;
   const next = () => ++n;
   return (
@@ -121,7 +137,14 @@ export function DevAvisosView() {
           <NoBoxCard onPress={() => setJoinOpen(true)} />
         </Item>
 
-        <Item n={next()} name={AVISOS_NAMES[2]} kind="Ventana (hoja desde abajo)" buttons='"Unirme" y cerrar; en esta prueba el canje es falso (siempre "código inválido")' when="la alumna toca el botón de la tarjeta anterior (archivo sensible: JoinBoxModal.tsx)">
+        <Item n={next()} name={AVISOS_NAMES[2]} kind="Ventana (hoja desde abajo)" buttons='"Unirme" y cerrar (tocando fuera); en esta prueba el canje es falso y respondes tú: elige la respuesta, abre la ventana, escribe un código y toca "Unirme" (vacío y escribiendo se ven sin elegir nada)' when="la alumna toca el botón de la tarjeta anterior (archivo sensible: JoinBoxModal.tsx)">
+          <View style={styles.modeRow}>
+            {FAKE_MODES.map((m) => (
+              <Pressable key={m.id} accessibilityRole="button" accessibilityState={{ selected: fakeMode === m.id }} onPress={() => setFakeMode(m.id)} style={[styles.modeChip, { backgroundColor: fakeMode === m.id ? colors.accent : colors.input }]}>
+                <Text style={[styles.modeChipText, { color: fakeMode === m.id ? colors.accentForeground : colors.foreground }]}>{m.label}</Text>
+              </Pressable>
+            ))}
+          </View>
           <OpenButton label="Abrir la ventana" onPress={() => setJoinOpen(true)} />
         </Item>
 
@@ -201,7 +224,7 @@ export function DevAvisosView() {
       </ScrollView>
 
       <AnnouncementModal visible={popup} announcement={DEMO_ANNOUNCEMENT} onClose={() => setPopup(false)} onConfirmRead={() => {}} />
-      <JoinBoxModal visible={joinOpen} onClose={() => setJoinOpen(false)} onRedeem={FAKE_REDEEM} />
+      <JoinBoxModal visible={joinOpen} onClose={() => setJoinOpen(false)} onRedeem={fakeRedeemFor(fakeMode)} />
     </View>
   );
 }
@@ -215,6 +238,9 @@ const styles = StyleSheet.create({
   itemMeta: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_600SemiBold', lineHeight: 16 },
   itemBody: { gap: 11, marginTop: SPACING.sm },
   versionLabel: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_700Bold', marginTop: SPACING.xs2 },
+  modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  modeChip: { borderRadius: RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
+  modeChipText: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_600SemiBold' },
   openButton: { alignSelf: 'flex-start', borderRadius: RADIUS.full, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.md },
   openButtonText: { fontSize: FONT_SIZE.sm, fontFamily: 'Inter_700Bold' },
 });

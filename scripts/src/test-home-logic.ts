@@ -1856,7 +1856,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
     const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/NoBoxCard', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
-    assert.ok(avisos.includes('const FAKE_REDEEM = (async () => ({ joined: false, alreadyMember: false })) as unknown as Redeem;') && avisos.includes('onRedeem={FAKE_REDEEM}'));
+    assert.ok(avisos.includes('const fakeRedeemFor = (mode: FakeMode): Redeem =>') && avisos.includes('onRedeem={fakeRedeemFor(fakeMode)}'));
     const real = app('app/home.tsx');
     assert.ok(real.includes("'¡Tu box ya está aprobado!'") && real.includes("'Ya puedes administrarlo y empezar a invitar alumnos.'"));
     assert.ok(avisos.includes("title: '¡Tu box ya está aprobado!'") && avisos.includes("message: 'Ya puedes administrarlo y empezar a invitar alumnos.'"), 'los textos de la alerta cambiaron en home.tsx: actualizar la copia');
@@ -2213,5 +2213,69 @@ describe('Tarjeta "Todavía no tienes un box" nueva (NoBoxCard.tsx y noBoxCardCo
     for (const label of ['Sin box: actual', 'Sin box: nuevo']) assert.ok(dev.includes(label), label);
     assert.ok(dev.includes('joinBoxLook={joinBoxLook}') && dev.includes("useState<'actual' | 'nuevo'>('nuevo')"));
     assert.ok(homeF('DevAvisosView.tsx').includes('<NoBoxCard '), 'Ver avisos muestra la tarjeta nueva junto a la anterior');
+  });
+});
+
+describe('Ventana para unirse (JoinBoxModal.tsx, archivo sensible; DESIGN_SENSITIVE_OK solo para la presentación, decisión (ac)): solo cambia la apariencia', () => {
+  const modal = readFileSync(new URL('../../artifacts/wodplace/components/JoinBoxModal.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+
+  it('la LÓGICA no cambió: validación del campo vacío, envío con onRedeem, mensajes (unido, ya perteneces, inválido, sin red), cierre a los 1100 ms, normalización del código y las propiedades del campo', () => {
+    for (const line of [
+      "import { formatBoxCodeInput } from '@/lib/boxCodeUtils';",
+      "const [code, setCode] = useState('');",
+      'const [busy, setBusy] = useState(false);',
+      'const [feedback, setFeedback] = useState<Feedback | null>(null);',
+      'const trimmed = code.trim();',
+      "setFeedback({ tone: 'error', text: 'Ingresa el código que te dio tu box.' });",
+      'const result = await onRedeem(trimmed);',
+      "if (result.joined && result.boxName) {",
+      "setFeedback({ tone: 'ok', text: `Te uniste a ${result.boxName}.` });",
+      'setTimeout(onClose, 1100);',
+      '} else if (result.alreadyMember) {',
+      "? `Ya perteneces a ${result.boxName}.`",
+      "text: 'Código inválido. Verifícalo con tu box.',",
+      "text: 'No pudimos validar el código ahora. Intenta más tarde.',",
+      'setBusy(true);',
+      'setBusy(false);',
+      'onChangeText={(v) => setCode(formatBoxCodeInput(v))}',
+      'placeholder="Ej. 4KJ9P-XY2"',
+      'autoCapitalize="characters"',
+      'autoCorrect={false}',
+      'maxLength={9}',
+      'autoFocus={autoFocusInput}',
+      'editable={!busy}',
+      'onSubmitEditing={submit}',
+      '<Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>',
+      '<Pressable style={styles.backdrop} onPress={onClose} />',
+      '<KeyboardAvoidingView behavior="padding" style={styles.avoider} keyboardVerticalOffset={0}>',
+      'paddingBottom: Math.max(insets.bottom, 20)',
+      'Agregar código de box',
+      'Ingresa el código que te dio tu box para unirte. Puedes pertenecer a más de un box.',
+      'export function JoinBoxModal({ visible, onClose, onRedeem, autoFocusInput = true }: JoinBoxModalProps) {',
+    ]) assert.ok(modal.includes(line), 'cambió o falta: ' + line);
+    assert.equal((modal.match(/onRedeem\(/g) ?? []).length, 1, 'un solo envío');
+    assert.ok(modal.includes('submit();') && modal.includes('const submit = async () => {'), 'el botón llama a la misma función de envío');
+  });
+  it('el botón "Unirme" conserva texto, estado de carga ("Validando…"), toque háptico y envío; es de cobre con texto carbón, presionado SÓLIDO en cobre claro, 48 dp de alto mínimo y sin opacidad', () => {
+    assert.ok(modal.includes("accessibilityLabel={busy ? 'Validando…' : 'Unirme'}") && modal.includes('disabled={busy}') && modal.includes('Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)'));
+    assert.ok(modal.includes('Unirme\n') && modal.includes('<ActivityIndicator color={c.buttonText} />'));
+    assert.ok(modal.includes('{ backgroundColor: pressed && !busy ? c.buttonPressed : c.button }') && modal.includes('minHeight: 48'));
+    assert.ok(!/opacity/i.test(code(modal)), 'opacidad en JoinBoxModal.tsx');
+    assert.ok(!modal.includes('AppButton') && !modal.includes('useColors'), 'ya no usa los colores del tema ni el botón genérico');
+  });
+  it('diseño: hoja grafito con esquinas superiores de 20 dp (RADIUS.xl), título en Anton crema, textos en crema y gris cálido, campo #232428 con borde que pasa a cobre con foco, marcador en gris cálido, error y enviado legibles sobre el grafito; es de claro fijo', () => {
+    assert.ok(modal.includes("import { noBoxColors } from '@/components/home/noBoxCardColors';") && modal.includes('const c = noBoxColors(colors.light);'));
+    assert.ok(modal.includes('{ backgroundColor: c.background, paddingBottom') && modal.includes('{ color: c.primary }') && modal.includes('{ color: c.secondary }'));
+    assert.ok(modal.includes('{ backgroundColor: c.inner, borderColor: focused ? c.focusBorder : c.fieldBorder }') && modal.includes('onFocus={() => setFocused(true)}') && modal.includes('onBlur={() => setFocused(false)}'));
+    assert.ok(modal.includes('placeholderTextColor={c.secondary}') && modal.includes("feedback.tone === 'ok' ? c.success : c.error"));
+    assert.ok(modal.includes('borderTopLeftRadius: 20,') && modal.includes('borderTopRightRadius: 20,') && modal.includes("fontFamily: 'Anton_400Regular',"));
+    assert.deepEqual(code(modal).match(/#[0-9A-Fa-f]{3,8}\b/g) ?? [], [], 'hex escrito a mano en JoinBoxModal.tsx');
+    assert.ok(code(modal).includes("backgroundColor: 'rgba(10, 10, 14, 0.5)'"), 'el fondo oscuro detrás de la hoja no cambió');
+  });
+  it('"Ver avisos" muestra la ventana nueva con sus estados de ejemplo (vacío, escribiendo, error, cargando y enviado) con un canje falso que nunca llama al servidor', () => {
+    const avisos = readFileSync(new URL('../../artifacts/wodplace/components/home/DevAvisosView.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    for (const label of ['Código inválido (error)', 'Falla de red (error)', 'Validando… (cargando)', 'Te uniste (enviado)', 'Ya perteneces (enviado)']) assert.ok(avisos.includes(label), label);
+    assert.ok(avisos.includes('onRedeem={fakeRedeemFor(fakeMode)}') && avisos.includes("if (mode === 'lento') return new Promise(() => {});"));
   });
 });
