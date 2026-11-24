@@ -18,13 +18,8 @@ import { MedalBadge } from '@/components/MedalBadge';
 import { DailyQuoteCard, QUOTE_LOOK, type QuoteLook } from '@/components/home/DailyQuoteCard';
 import { NEXT_CLASS_LOOK, NextClassCard, type NextClassLook } from '@/components/home/NextClassCard';
 import { OwnBirthdayCardNew, UpcomingBirthdaysSectionNew } from '@/components/home/BirthdayCardsNew';
-import {
-  PendingContractCard,
-  PinnedAvisoCard,
-  PlanNoticeCard,
-  WodTodayCard,
-  getFirstName,
-} from '@/components/home/ConditionalCards';
+import { WodTodayCard, getFirstName } from '@/components/home/ConditionalCards';
+import { PendingContractBanner, PinnedAvisoBanner, PlanNoticeBanner } from '@/components/home/NoticeBanners';
 import { MonthlyProgressCard } from '@/components/home/MonthlyProgressCard';
 import { LevelStreakCards } from '@/components/home/LevelStreakCards';
 import { PrHighlightCard } from '@/components/home/PrHighlightCard';
@@ -427,7 +422,7 @@ function HomeViewInner({
           joinBoxLook === 'actual' ? <JoinBoxCard onPress={() => events.onJoinBox()} /> : <NoBoxCard onPress={() => events.onJoinBox()} />
         ) : null}
 
-        {hasActivePlan && nearPlanLimit ? <PlanNoticeCard plan={myPlan!} /> : null}
+        {hasActivePlan && nearPlanLimit ? <PlanNoticeBanner plan={myPlan!} /> : null}
 
         {hasBoxMembership && (nextClassState === 'loading' || nextClassState === 'invite' || (nextClassState === 'booked' && nextBooked)) ? (
           // Cargando (esqueleto), sin reserva (invitación) o con reserva: tres estados con el mismo marco; ver NextClassCard.tsx.
@@ -442,9 +437,9 @@ function HomeViewInner({
 
         <DailyQuoteCard quote={quote} onShare={events.onShareQuote} look={quoteLook} />
 
-        {hasBoxMembership && hasPendingContract ? <PendingContractCard onPress={() => events.onOpenContracts()} /> : null}
+        {hasBoxMembership && hasPendingContract ? <PendingContractBanner onPress={() => events.onOpenContracts()} /> : null}
 
-        {hasBoxMembership && pinnedPush ? <PinnedAvisoCard announcement={pinnedPush} /> : null}
+        {hasBoxMembership && pinnedPush ? <PinnedAvisoBanner announcement={pinnedPush} /> : null}
 
         {hasBoxMembership ? (
           wodLook === 'actual' ? (

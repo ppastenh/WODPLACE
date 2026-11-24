@@ -1820,15 +1820,13 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
 
   it('las tarjetas condicionales viven en ConditionalCards.tsx (las de cumpleaños, desde el pedido 46, en BirthdayCardsNew.tsx) y HomeView las usa con LAS MISMAS condiciones de antes (la condición sigue en HomeView; aquí solo se dibujan)', () => {
     for (const name of ['OwnBirthdayCard', 'PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard', 'UpcomingBirthdaysSection']) assert.ok(cards.includes('export function ' + name + '('), name + ' (diseño anterior, se conserva para comparar en "Ver avisos") no está exportada');
-    for (const name of ['PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard']) {
-      assert.ok(cards.includes('export function ' + name + '('), name + ' no está exportada');
-      assert.ok(view.includes('<' + name + ' '), 'HomeView no usa ' + name);
-    }
+    for (const name of ['PlanNoticeBanner', 'PendingContractBanner', 'PinnedAvisoBanner']) assert.ok(view.includes('<' + name + ' '), 'HomeView no usa ' + name + ' (pedido 50: los banners nuevos reemplazaron a las tarjetas)');
+    for (const old of ['<PlanNoticeCard ', '<PendingContractCard ', '<PinnedAvisoCard ']) assert.ok(!view.includes(old), 'HomeView todavía usa ' + old);
     for (const cond of [
       '{isOwnBirthdayToday ? <OwnBirthdayCardNew name={user.name} /> : null}',
-      '{hasActivePlan && nearPlanLimit ? <PlanNoticeCard plan={myPlan!} /> : null}',
-      '{hasBoxMembership && hasPendingContract ? <PendingContractCard onPress={() => events.onOpenContracts()} /> : null}',
-      '{hasBoxMembership && pinnedPush ? <PinnedAvisoCard announcement={pinnedPush} /> : null}',
+      '{hasActivePlan && nearPlanLimit ? <PlanNoticeBanner plan={myPlan!} /> : null}',
+      '{hasBoxMembership && hasPendingContract ? <PendingContractBanner onPress={() => events.onOpenContracts()} /> : null}',
+      '{hasBoxMembership && pinnedPush ? <PinnedAvisoBanner announcement={pinnedPush} /> : null}',
       '{hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSectionNew birthdays={birthdays} /> : null}',
     ]) assert.ok(view.includes(cond), 'cambió una condición de HomeView: ' + cond);
     for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'styles.wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
@@ -1951,13 +1949,13 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
     assert.deepEqual(planNoticeLines(plan({ classesRemaining: 5, daysUntilRenewal: 20 })), []);
     assert.deepEqual(planNoticeLines(plan({ classesPerPeriod: null, classesRemaining: 1, daysUntilRenewal: 20 })), [], 'un plan ilimitado no avisa por clases');
   });
-  it('NO está conectada a Inicio: ni HomeView ni las tarjetas de Inicio importan NoticeBanner ni NoticeBanners; solo "Ver avisos" las muestra, junto al diseño actual de cada caso', () => {
-    for (const f of ['HomeView.tsx', 'ConditionalCards.tsx', 'NextClassCard.tsx', 'MedalsCard.tsx', 'MonthlyProgressCard.tsx', 'PrHighlightCard.tsx', 'LevelStreakCards.tsx', 'DailyQuoteCard.tsx']) {
-      assert.ok(!/NoticeBanner/.test(homeF(f)), f + ' ya usa NoticeBanner: la pieza todavía no se conecta a Inicio');
-    }
+  it('CONECTADOS a Inicio real (pedido 50): HomeView usa PendingContractBanner, PinnedAvisoBanner y PlanNoticeBanner con las mismas condiciones y los mismos destinos; ninguna otra tarjeta los usa; "Ver avisos" conserva solo los ejemplos del diseño nuevo (sin las tarjetas anteriores ni rótulos REVISADO)', () => {
+    const view = homeF('HomeView.tsx');
+    assert.ok(view.includes("import { PendingContractBanner, PinnedAvisoBanner, PlanNoticeBanner } from '@/components/home/NoticeBanners';"));
+    for (const f of ['ConditionalCards.tsx', 'NextClassCard.tsx', 'MedalsCard.tsx', 'MonthlyProgressCard.tsx', 'PrHighlightCard.tsx', 'LevelStreakCards.tsx', 'DailyQuoteCard.tsx']) assert.ok(!/NoticeBanner/.test(homeF(f)), f + ' usa NoticeBanner');
     const avisos = homeF('DevAvisosView.tsx');
     for (const tag of ['<PendingContractBanner ', '<PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT} />', '<PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }} />', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 20 })} />', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 1 })} />']) assert.ok(avisos.includes(tag), tag);
-    assert.ok(avisos.includes('Diseño actual') && avisos.includes('Diseño nuevo'));
+    for (const gone of ['<PlanNoticeCard ', '<PendingContractCard ', '<PinnedAvisoCard ', 'REVISADO', 'SIN REVISAR', 'REVIEW[']) assert.ok(!avisos.includes(gone), 'quedó en Ver avisos: ' + gone);
   });
 });
 

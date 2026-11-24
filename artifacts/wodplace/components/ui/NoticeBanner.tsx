@@ -26,7 +26,7 @@ import {
 
 /**
  * BANNER DE AVISO (pedido 43): una sola pieza para el contrato pendiente, el aviso fijo del box y el aviso del plan, en el estilo oscuro de Inicio (grafito con cobre).
- * Por ahora solo se ve en "Estados de Inicio (dev)" → "Ver avisos"; NO está conectada a Inicio. Es de claro fijo, como todo Inicio.
+ * Conectada a Inicio real desde el pedido 50 (vía components/home/NoticeBanners.tsx); también se ve en "Estados de Inicio (dev)" → "Ver avisos". Es de claro fijo, como todo Inicio.
  *
  *  - level 'importante': franja de cobre sólida de 3 dp en el borde izquierdo y el rótulo "IMPORTANTE" sobre el título (la diferencia no depende solo del color).
  *  - level 'info': sin franja ni rótulo.

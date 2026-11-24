@@ -4,7 +4,7 @@ import { planNoticeLines } from '@/components/home/planNoticeModel';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 
 /**
- * Los tres avisos de Inicio en la pieza NoticeBanner (pedido 43). SOLO se ven en "Estados de Inicio (dev)" → "Ver avisos": NO están conectados a HomeView (una prueba lo exige).
+ * Los tres avisos de Inicio en la pieza NoticeBanner (pedido 43). Están conectados a Inicio real desde el pedido 50 (HomeView los usa en lugar de las tarjetas de ConditionalCards) y también se ven en "Estados de Inicio (dev)" → "Ver avisos".
  * No cambian textos, reglas ni destinos: los textos son los de ConditionalCards.tsx (el mismo planNoticeLines) y el contrato sigue abriendo Contratos Activos.
  */
 

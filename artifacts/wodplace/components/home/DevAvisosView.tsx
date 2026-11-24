@@ -5,9 +5,6 @@ import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import {
   OwnBirthdayCard,
-  PendingContractCard,
-  PinnedAvisoCard,
-  PlanNoticeCard,
   UpcomingBirthdaysSection,
   WodTodayCard,
 } from '@/components/home/ConditionalCards';
@@ -87,21 +84,6 @@ export const AVISOS_NAMES = [
   'Alerta "¡Tu box ya está aprobado!"',
 ] as const;
 
-/** Estado de revisión de cada elemento (pedido 49): lo que Pía ya revisó y si está conectado a Inicio, para mirarlos todos juntos. */
-const REVIEW: Record<number, string> = {
-  1: 'REVISADO · conectado a Inicio',
-  2: 'REVISADO · conectado a Inicio',
-  3: 'REVISADO · conectado a Inicio',
-  4: 'REVISADO · sin conectar a Inicio',
-  5: 'REVISADO · sin conectar a Inicio',
-  6: 'REVISADO · sin conectar a Inicio',
-  7: 'REVISADO · sin conectar a Inicio',
-  8: 'SIN REVISAR · en evaluación (Inicio real usa la actual)',
-  9: 'REVISADO · conectado a Inicio',
-  10: 'REVISADO · conectado a Inicio',
-  11: 'Alerta del sistema: no se rediseña',
-};
-
 function Item({ n, name, kind, when, buttons, children }: { n: number; name: string; kind: string; when: string; buttons: string; children: React.ReactNode }) {
   const colors = useColors();
   return (
@@ -109,7 +91,6 @@ function Item({ n, name, kind, when, buttons, children }: { n: number; name: str
       <Text style={[styles.itemName, { color: colors.foreground }]}>
         {n}. {name}
       </Text>
-      <Text style={[styles.reviewTag, { color: REVIEW[n]?.startsWith('SIN REVISAR') ? colors.destructiveTextSmall : colors.navActiveTextSmall }]}>{REVIEW[n]}</Text>
       <Text style={[styles.itemMeta, { color: colors.navInactive }]}>
         {kind} · {buttons}
       </Text>
@@ -177,40 +158,25 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[3]} kind="Tarjeta" buttons="sin botones" when="tiene plan por cantidad y le quedan 2 clases o menos en el período">
-          <VersionLabel text="Diseño actual" />
-          <PlanNoticeCard plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 20 })} />
-          <PlanNoticeCard plan={planDemo({ classesRemaining: 0, daysUntilRenewal: 20 })} />
-          <VersionLabel text="Diseño nuevo (1 regla)" />
+          <VersionLabel text="Diseño en Inicio (1 regla)" />
           <PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 20 })} />
           <PlanNoticeBanner plan={planDemo({ classesRemaining: 0, daysUntilRenewal: 20 })} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[4]} kind="Tarjeta" buttons="sin botones" when="el plan vence en 7 días o menos (también con el aviso de clases, que se suma en la misma tarjeta)">
-          <VersionLabel text="Diseño actual" />
-          <PlanNoticeCard plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 3 })} />
-          <PlanNoticeCard plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 0 })} />
-          <PlanNoticeCard plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 1 })} />
-          <VersionLabel text="Diseño nuevo (1 regla y 2 reglas)" />
+          <VersionLabel text="Diseño en Inicio (1 regla y 2 reglas)" />
           <PlanNoticeBanner plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 3 })} />
           <PlanNoticeBanner plan={planDemo({ classesRemaining: 5, daysUntilRenewal: 0 })} />
           <PlanNoticeBanner plan={planDemo({ classesRemaining: 1, daysUntilRenewal: 1 })} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[5]} kind="Tarjeta (toda es un botón)" buttons="1 botón: abre Contratos Activos" when="tiene box, tiene un contrato pendiente de leer y aceptar y la cuenta no es de personal del box">
-          <VersionLabel text="Diseño actual" />
-          <PendingContractCard onPress={simulated('Aquí se abriría Contratos Activos.')} />
-          <VersionLabel text="Diseño nuevo (importante, presionable)" />
+          <VersionLabel text="Diseño en Inicio (importante, presionable)" />
           <PendingContractBanner onPress={simulated('Aquí se abriría Contratos Activos.')} />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[6]} kind="Tarjeta" buttons="sin botones (la imagen y el texto no se tocan)" when="tiene box y el box publicó un aviso 'push' (el más reciente se queda fijo aunque ya lo haya leído)">
-          <VersionLabel text="Diseño actual" />
-          <PinnedAvisoCard announcement={{ ...AVISO, imageUrl: null }} />
-          <PinnedAvisoCard announcement={DEMO_ANNOUNCEMENT} />
-          <PinnedAvisoCard
-            announcement={{ ...AVISO, imageUrl: null, title: 'Aviso con un texto bastante largo para ver cómo se corta', body: AVISO.body + ' ' + AVISO.body + ' ' + AVISO.body }}
-          />
-          <VersionLabel text="Diseño nuevo (sin imagen, con imagen y con texto largo)" />
+          <VersionLabel text="Diseño en Inicio (sin imagen, con imagen y con texto largo)" />
           <PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }} />
           <PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT} />
           <PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null, title: 'Aviso con un texto bastante largo para ver cómo se corta', body: AVISO.body + ' ' + AVISO.body + ' ' + AVISO.body }} />
@@ -270,7 +236,6 @@ const styles = StyleSheet.create({
   title: { fontSize: FONT_SIZE.lg, fontFamily: 'Anton_400Regular' },
   item: { gap: SPACING.xs2 },
   itemName: { fontSize: FONT_SIZE.md, fontFamily: 'Inter_700Bold' },
-  reviewTag: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
   itemMeta: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_600SemiBold', lineHeight: 16 },
   itemBody: { gap: 11, marginTop: SPACING.sm },
   versionLabel: { fontSize: FONT_SIZE.xs, fontFamily: 'Inter_700Bold', marginTop: SPACING.xs2 },
