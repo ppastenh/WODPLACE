@@ -1932,7 +1932,7 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
   it('los tres avisos en la pieza nueva: el contrato es importante y presionable (mismo destino), el aviso del box y el del plan son info; los textos y reglas son los de siempre (planNoticeLines) y con dos reglas van las dos líneas en la misma tarjeta', () => {
     assert.ok(wrappers.includes('level="importante"') && wrappers.includes('kind="contrato"') && wrappers.includes('onPress={onPress}') && wrappers.includes('title="Tienes un contrato pendiente de leer y aceptar"'));
     assert.ok(wrappers.includes('body="Toca aquí para revisarlo en Contratos Activos. Mientras esté pendiente, no podrás hacer nuevas reservas."'));
-    assert.ok(wrappers.includes('level="info" kind="fijo" icon="bell"') && wrappers.includes('bodyMaxLines={3}') && wrappers.includes('image={announcement.imageUrl}'));
+    assert.ok(wrappers.includes('level="info" kind="fijo" icon="bell"') && wrappers.includes('bodyMaxLines={4}') && wrappers.includes('image={announcement.imageUrl}'));
     assert.ok(wrappers.includes('const lines = planNoticeLines(plan);') && wrappers.includes('<NoticeBanner level="info" kind="plan" icon="alert-circle" title={lines} />'), 'aviso del plan: todas las líneas como título');
     assert.ok(!wrappers.includes('planNoticeLines(plan);\n  if (!title)') && !/body=\{body/.test(wrappers.slice(wrappers.indexOf('export function PlanNoticeBanner'))), 'ninguna línea del plan va como cuerpo (gris)');
     // dos reglas: las dos líneas con el MISMO estilo de título (crema, Inter SemiBold 15), una bajo la otra
@@ -2402,7 +2402,7 @@ describe('Avisos de Inicio con la letra reducida (−2) y el borde por tipo (dec
     assert.ok(/confirmTitle: \{\s*fontSize: 18,\s*lineHeight: 22,/.test(win) && /confirmSubtitle: \{\s*fontSize: 11,\s*lineHeight: 17,/.test(win), 'ventana paso 2: 18 / 11');
     assert.ok(/buttonText: \{\s*fontSize: 16,/.test(win), 'los botones no cambian');
     const nobox = home('NoBoxCard.tsx');
-    assert.ok(nobox.includes('fontSize: 20, lineHeight: 24') && nobox.includes('fontSize: 11, lineHeight: 17') && nobox.includes('buttonText: { fontSize: 15,'));
+    assert.ok(nobox.includes('fontSize: 20, lineHeight: 24') && nobox.includes('fontSize: 11, lineHeight: 17') && nobox.includes("buttonText: { flexShrink: 1, fontSize: 15, lineHeight: 20, textAlign: 'center',"), 'botón de Sin box: texto de 15 sp que pasa a dos líneas centradas'); assert.ok(!/numberOfLines/.test(nobox.slice(nobox.indexOf('styles.button,'), nobox.indexOf('</Pressable>'))), 'el texto del botón de Sin box no tiene tope de líneas (sin puntos suspensivos)'); assert.ok(nobox.includes('minHeight: 48') && nobox.includes('Ingresar código de invitación'), 'alto mínimo de 48 dp y texto sin cambio');
     const spec = readFileSync(new URL('../../artifacts/wodplace/components/ui/noticeBannerSpec.ts', import.meta.url), 'utf8');
     assert.ok(spec.includes('NOTICE_LABEL_SIZE = 11'), 'el rótulo IMPORTANTE no cambia');
     for (const f of ['components/AnnouncementModal.tsx', 'components/home/NoBoxCard.tsx', 'components/home/BirthdayCardsNew.tsx', 'components/ui/NoticeBanner.tsx']) {

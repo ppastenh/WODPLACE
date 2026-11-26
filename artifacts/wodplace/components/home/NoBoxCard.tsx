@@ -61,7 +61,7 @@ export function NoBoxCard({ onPress }: Props) {
         style={({ pressed }) => [styles.button, { backgroundColor: pressed ? c.buttonPressed : c.button }]}
       >
         <Feather name="plus-circle" size={18} color={c.buttonText} />
-        <Text style={[styles.buttonText, { color: c.buttonText }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        <Text style={[styles.buttonText, { color: c.buttonText }]} maxFontSizeMultiplier={1.3}>
           Ingresar código de invitación
         </Text>
       </Pressable>
@@ -99,8 +99,9 @@ const styles = StyleSheet.create({
   iconCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontSize: 20, lineHeight: 24, fontFamily: 'Anton_400Regular' },
   subtitle: { fontSize: 11, lineHeight: 17, fontFamily: 'Inter_500Medium' },
-  button: { minHeight: 48, borderRadius: 999, paddingHorizontal: 20, marginTop: SPACING.xs2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm2 },
-  buttonText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  button: { minHeight: 48, borderRadius: 999, paddingHorizontal: 20, paddingVertical: SPACING.sm2, marginTop: SPACING.xs2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm2 },
+  // Sin tope de líneas: si no cabe en una, pasa a dos líneas centradas dentro del botón (nunca con "…").
+  buttonText: { flexShrink: 1, fontSize: 15, lineHeight: 20, textAlign: 'center', fontFamily: 'Inter_600SemiBold' },
   // Solo __DEV__ (texto de depuración con el alto medido).
   devBadge: { position: 'absolute', right: 6, top: 4, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
   devBadgeText: { fontSize: 9, color: '#FFFFFF', fontFamily: 'Inter_600SemiBold' },

@@ -23,9 +23,9 @@ export function PendingContractBanner({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Aviso fijo del box: info, con imagen opcional bajo el texto y hasta 3 líneas de cuerpo. */
+/** Aviso fijo del box: info, con imagen opcional bajo el texto y hasta 4 líneas de cuerpo. */
 export function PinnedAvisoBanner({ announcement }: { announcement: BoxAnnouncement }) {
-  return <NoticeBanner level="info" kind="fijo" icon="bell" title={announcement.title} body={announcement.body} bodyMaxLines={3} image={announcement.imageUrl} />;
+  return <NoticeBanner level="info" kind="fijo" icon="bell" title={announcement.title} body={announcement.body} bodyMaxLines={4} image={announcement.imageUrl} />;
 }
 
 /** Aviso del plan: info. Con las dos reglas, las dos líneas van en la misma tarjeta, las dos con el estilo de título (una bajo la otra). Sin ninguna regla no dibuja nada. */
