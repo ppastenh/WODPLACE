@@ -3,7 +3,7 @@ export type PlanNoticeInput = { classesPerPeriod?: number | null; classesRemaini
 
 /**
  * Las líneas del aviso del plan, con sus reglas de siempre: "Te quedan N clase(s) este período." (plan por cantidad con 2 clases o menos) y "Tu plan vence hoy / en N día(s)." (7 días o menos).
- * Sale vacía si no se cumple ninguna. La usan el diseño actual (PlanNoticeCard) y el nuevo (NoticeBanners.tsx), para que los textos y las reglas sean los mismos.
+ * Sale vacía si no se cumple ninguna. La usa PlanNoticeBanner (NoticeBanners.tsx), para que los textos y las reglas sean los mismos.
  */
 export function planNoticeLines(plan: PlanNoticeInput): string[] {
   const lines: string[] = [];

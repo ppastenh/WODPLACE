@@ -12,7 +12,7 @@ import { SPACING } from '@/constants/spacing';
 
 /**
  * TARJETA "TODAVÍA NO TIENES UN BOX" de Inicio (decisión (ac) de DECISIONES-DISENO.md): grafito, rombos del moleteado casi invisibles a la derecha, ícono en un círculo con borde de cobre a la izquierda del título (una sola fila: tarjeta compacta), título en Anton crema, subtítulo en gris cálido
- * y un botón ancho de cobre #B98250 con texto carbón #0D0F10. Mismos textos y mismo botón que la tarjeta anterior (JoinBoxCard.tsx): el botón abre la ventana para unirse (JoinBoxModal) con el mismo evento.
+ * y un botón ancho de cobre #B98250 con texto carbón #0D0F10. Mismos textos y mismo botón que la tarjeta anterior (ya borrada): el botón abre la ventana para unirse (JoinBoxModal) con el mismo evento.
  * Presionado SÓLIDO (cobre claro #C79A6B), nunca opacidad; el botón mide 48 dp de alto como mínimo; los adornos van en Views con pointerEvents="none" (nunca en un Text). Es de claro fijo, como todo Inicio.
  */
 type Props = { onPress: () => void };

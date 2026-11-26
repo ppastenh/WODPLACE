@@ -213,12 +213,6 @@ const WOD_LOOK_CHIPS: { id: 'actual' | 'nuevo'; label: string }[] = [
   { id: 'nuevo', label: 'WOD: nuevo' },
 ];
 
-// Tarjeta "Todavía no tienes un box": la anterior o la nueva (por defecto), para compararlas (pedido 48).
-const JOIN_BOX_LOOK_CHIPS: { id: 'actual' | 'nuevo'; label: string }[] = [
-  { id: 'actual', label: 'Sin box: actual' },
-  { id: 'nuevo', label: 'Sin box: nuevo' },
-];
-
 const PHOTO_CHIPS: { id: Photo; label: string }[] = [
   { id: 'ok', label: 'Foto: carga' },
   { id: 'falla', label: 'Foto: falla' },
@@ -281,7 +275,6 @@ function DevHomeBody() {
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
   const [avisos, setAvisos] = useState<'no' | 'si'>('no');
   const [wodLook, setWodLook] = useState<'actual' | 'nuevo'>('nuevo');
-  const [joinBoxLook, setJoinBoxLook] = useState<'actual' | 'nuevo'>('nuevo');
   const [photo, setPhoto] = useState<Photo>('ok');
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
   const [copper, setCopper] = useState<NextClassCopper>(NEXT_CLASS_LOOK.copper);
@@ -340,7 +333,6 @@ function DevHomeBody() {
       {chipsOpen ? (
         <ScrollView style={styles.chipsScroll} nestedScrollEnabled>
           <ChipGroup title="Ver avisos: todos los avisos, tarjetas y ventanas condicionales" chips={AVISOS_CHIPS} selected={avisos} onSelect={setAvisos} />
-          <ChipGroup title="Tarjeta Sin box: diseño" chips={JOIN_BOX_LOOK_CHIPS} selected={joinBoxLook} onSelect={setJoinBoxLook} />
           <ChipGroup title="Tarjeta del WOD: diseño" chips={WOD_LOOK_CHIPS} selected={wodLook} onSelect={setWodLook} />
           <ChipGroup title="Foto del banner" chips={PHOTO_CHIPS} selected={photo} onSelect={setPhoto} />
           <ChipGroup title="Tarjeta de próxima clase: cápsula" chips={CAPSULE_CHIPS} selected={capsule} onSelect={setCapsule} />
@@ -421,7 +413,6 @@ function DevHomeBody() {
         medalsFontScale={Number(medalsScale)}
         medalsWidth={medalsWidth === 'real' ? undefined : Number(medalsWidth)}
         wodLook={wodLook}
-        joinBoxLook={joinBoxLook}
       />
       )}
       {panel}

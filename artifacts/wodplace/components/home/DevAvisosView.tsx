@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
-import { JoinBoxCard } from '@/components/JoinBoxCard';
 import { JoinBoxModal } from '@/components/JoinBoxModal';
 import {
-  OwnBirthdayCard,
-  UpcomingBirthdaysSection,
   WodTodayCard,
 } from '@/components/home/ConditionalCards';
 import { OwnBirthdayCardNew, UpcomingBirthdaysSectionNew } from '@/components/home/BirthdayCardsNew';
@@ -21,7 +18,7 @@ import { RADIUS } from '@/constants/radius';
 
 /**
  * "VER AVISOS" (solo desarrollo; pedido 42): cada aviso, tarjeta o ventana de Inicio que NO se ve en un Inicio normal, con datos de ejemplo, uno debajo del otro y con su nombre, para revisarlos
- * en el teléfono sin provocarlos. Dibuja los MISMOS componentes que usa Inicio (components/home/ConditionalCards.tsx, JoinBoxCard, AnnouncementModal, JoinBoxModal); no toca la lógica real, home.tsx
+ * en el teléfono sin provocarlos. Dibuja los MISMOS componentes que usa Inicio (HomeView, NoticeBanners, BirthdayCardsNew, NoBoxCard, WodCard, AnnouncementModal, JoinBoxModal); no toca la lógica real, home.tsx
  * ni ningún archivo sensible (JoinBoxModal solo se importa para abrirlo con un canje falso). Nadie lo importa fuera de DevHomeScreen, que solo se carga con __DEV__: no llega a producción.
  */
 
@@ -132,17 +129,13 @@ export function DevAvisosView() {
         </Text>
 
         <Item n={next()} name={AVISOS_NAMES[0]} kind="Tarjeta" buttons="sin botones" when="hoy es el cumpleaños de la alumna (fecha de nacimiento, hora de Chile)">
-          <VersionLabel text="Diseño anterior (ya no está en Inicio)" />
-          <OwnBirthdayCard name="Camila Rojas" />
-          <VersionLabel text="Diseño actual en Inicio (nombre corto y nombre largo)" />
+          <VersionLabel text="Diseño en Inicio (nombre corto y nombre largo)" />
           <OwnBirthdayCardNew name="Camila Rojas" />
           <OwnBirthdayCardNew name="Anastasia-Valentina Rojas" />
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[1]} kind="Tarjeta" buttons='1 botón: "Ingresar código de invitación" (abre la ventana de abajo)' when="la alumna no pertenece a ningún box">
-          <VersionLabel text="Diseño anterior (ya no está en Inicio)" />
-          <JoinBoxCard onPress={() => setJoinOpen(true)} />
-          <VersionLabel text="Diseño actual en Inicio" />
+          <VersionLabel text="Diseño en Inicio" />
           <NoBoxCard onPress={() => setJoinOpen(true)} />
         </Item>
 
@@ -211,9 +204,7 @@ export function DevAvisosView() {
         </Item>
 
         <Item n={next()} name={AVISOS_NAMES[9]} kind="Sección (lista)" buttons="sin botones" when="tiene box y hay cumpleaños próximos de otros alumnos (nunca edad ni año; los menores solo con autorización del apoderado)">
-          <VersionLabel text="Diseño anterior (ya no está en Inicio)" />
-          <UpcomingBirthdaysSection birthdays={[birthdayIn('Valentina Soto', 0), birthdayIn('Matías Pérez Rojas', 3), birthdayIn('Ana López', 9)]} />
-          <VersionLabel text="Diseño actual en Inicio (1 persona; 3 personas con una de Hoy; nombre muy largo)" />
+          <VersionLabel text="Diseño en Inicio (1 persona; 3 personas con una de Hoy; nombre muy largo)" />
           <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Ana López', 9)]} />
           <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Valentina Soto', 0), birthdayIn('Matías Pérez Rojas', 3), birthdayIn('Ana López', 9)]} />
           <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Isabella Fernanda Contreras Valenzuela de la Rosa', 2)]} />

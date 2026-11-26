@@ -1819,7 +1819,8 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   const avisos = home('DevAvisosView.tsx');
 
   it('las tarjetas condicionales viven en ConditionalCards.tsx (las de cumpleaños, desde el pedido 46, en BirthdayCardsNew.tsx) y HomeView las usa con LAS MISMAS condiciones de antes (la condición sigue en HomeView; aquí solo se dibujan)', () => {
-    for (const name of ['OwnBirthdayCard', 'PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'WodTodayCard', 'UpcomingBirthdaysSection']) assert.ok(cards.includes('export function ' + name + '('), name + ' (diseño anterior, se conserva para comparar en "Ver avisos") no está exportada');
+    for (const name of ['WodTodayCard', 'getFirstName']) assert.ok(cards.includes('export function ' + name + '('), name + ' no está exportada');
+    for (const gone of ['OwnBirthdayCard', 'PlanNoticeCard', 'PendingContractCard', 'PinnedAvisoCard', 'UpcomingBirthdaysSection']) assert.ok(!cards.includes(gone), gone + ' (diseño anterior, borrado en el pedido 51) sigue en ConditionalCards.tsx');
     for (const name of ['PlanNoticeBanner', 'PendingContractBanner', 'PinnedAvisoBanner']) assert.ok(view.includes('<' + name + ' '), 'HomeView no usa ' + name + ' (pedido 50: los banners nuevos reemplazaron a las tarjetas)');
     for (const old of ['<PlanNoticeCard ', '<PendingContractCard ', '<PinnedAvisoCard ']) assert.ok(!view.includes(old), 'HomeView todavía usa ' + old);
     for (const cond of [
@@ -1832,11 +1833,11 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
     for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'styles.wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
   });
   it('los textos de las tarjetas no cambiaron al moverlas', () => {
-    for (const text of ['¡Feliz cumpleaños, {getFirstName(name)}!', 'Que tengas un gran entrenamiento hoy', 'Tienes un contrato pendiente de leer y aceptar', 'Mientras esté pendiente, no podrás hacer nuevas reservas.', 'Aviso Importante', "WOD de hoy{wod.myResult ? ' · registrado' : ''}", 'Próximos cumpleaños']) assert.ok(cards.includes(text), text);
-    assert.ok(cards.includes('accessibilityLabel="Ir a Contratos Activos"') && cards.includes('accessibilityLabel="Ver WOD de hoy"'));
+    for (const text of ["WOD de hoy{wod.myResult ? ' · registrado' : ''}"]) assert.ok(cards.includes(text), text);
+    assert.ok(cards.includes('accessibilityLabel="Ver WOD de hoy"'));
   });
-  it('estado presionado SÓLIDO (sin opacidad) en las dos tarjetas que son botones', () => {
-    assert.ok(cards.includes('colors.warningBackgroundPressed : colors.warningBackground') && cards.includes('colors.accentPressed : colors.accent'));
+  it('estado presionado SÓLIDO (sin opacidad) en la tarjeta del WOD anterior, que es un botón', () => {
+    assert.ok(cards.includes('colors.accentPressed : colors.accent'));
     assert.ok(!/opacity/i.test(cards), 'opacidad en ConditionalCards.tsx');
   });
   it('"Ver avisos" muestra los 11 elementos del inventario, cada uno con su nombre, y todo el archivo es solo de desarrollo (nadie en producción lo importa)', () => {
@@ -1852,7 +1853,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   it('"Ver avisos" no llama al servidor ni a la base y no toca lo sensible: el canje de código es falso y los textos de la alerta del box aprobado son los de home.tsx', () => {
     // todos los módulos que nombra el archivo entre comillas simples: los alias de la app (@/...) y react / react-native
     const imports = [...avisos.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxCard', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/NoBoxCard', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/JoinBoxModal', '@/components/home/ConditionalCards', '@/components/home/NoticeBanners', '@/components/home/NoBoxCard', '@/components/home/WodCard', '@/components/home/wodCardModel', '@/components/home/BirthdayCardsNew', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
     assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevAvisosView importa algo fuera de la lista: nada de red, cuenta ni almacenamiento');
     assert.ok(avisos.includes('const fakeRedeemFor = (mode: FakeMode): Redeem =>') && avisos.includes('onRedeem={fakeRedeemFor(fakeMode)}'));
     const real = app('app/home.tsx');
@@ -1861,13 +1862,13 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
   });
 });
 
-describe('Aviso del plan: las líneas salen de planNoticeModel.ts y PlanNoticeCard las usa (pedido 43, parte a)', () => {
-  const cards = readFileSync(new URL('../../artifacts/wodplace/components/home/ConditionalCards.tsx', import.meta.url), 'utf8');
+describe('Aviso del plan: las líneas salen de planNoticeModel.ts y PlanNoticeBanner las usa (pedido 43, parte a)', () => {
+  const cards = readFileSync(new URL('../../artifacts/wodplace/components/home/NoticeBanners.tsx', import.meta.url), 'utf8');
   type Plan = Parameters<typeof planNoticeLines>[0];
   const plan = (over: object): Plan => ({ classesPerPeriod: 8, classesRemaining: 5, daysUntilRenewal: 20, ...over });
-  it('PlanNoticeCard dibuja una línea por cada regla que se cumple, con el mismo estilo de siempre, y las frases ya no están escritas en la tarjeta', () => {
+  it('PlanNoticeBanner dibuja una línea por cada regla que se cumple (todas como título) y las frases no están escritas en el banner', () => {
     assert.ok(cards.includes("import { planNoticeLines } from '@/components/home/planNoticeModel';"));
-    assert.ok(cards.includes('{planNoticeLines(plan).map((line) => (') && cards.includes('style={[styles.noticeText, { color: colors.foreground }]}'));
+    assert.ok(cards.includes('const lines = planNoticeLines(plan);') && cards.includes('title={lines}'));
     assert.ok(!cards.includes('Te quedan ') && !cards.includes('vence hoy'), 'las frases viven en planNoticeModel.ts');
   });
   it('los textos y las reglas son los de siempre: "Te quedan N clase(s) este período." con 2 clases o menos en un plan por cantidad y "Tu plan vence hoy / en N día(s)." con 7 días o menos', () => {
@@ -2001,8 +2002,8 @@ describe('Cumpleaños nuevos (BirthdayCardsNew.tsx, pedido 45): solo en "Ver avi
     assert.equal(birthdayRowA11yLabel({ name: 'Valentina Soto', month: 11, day: 9, daysUntil: 0 }), 'Valentina Soto, cumpleaños hoy');
     assert.ok(!/\bbirthdate\b|\bage\b|\bedad\b|\byear\b|\bgetAge\b|(?<![a-zñáéíóú])año(?![a-zñáéíóú])/i.test(code(card) + code(spec)), 'edad o año en los cumpleaños nuevos');
     assert.ok(card.includes('accessibilityElementsHidden importantForAccessibility="no-hide-descendants"') && card.includes('accessibilityLabel={birthdayRowA11yLabel(birthday)}'), 'iniciales decorativas y fila leída completa');
-    const actual = homeF('ConditionalCards.tsx');
-    assert.ok(actual.includes('¡Feliz cumpleaños, {getFirstName(name)}!') && actual.includes('Que tengas un gran entrenamiento hoy') && actual.includes("birthday.daysUntil === 0 ? 'Hoy' : birthdayDayLabel(birthday.month, birthday.day)"), 'el diseño actual no cambió');
+
+    assert.ok(!homeF('ConditionalCards.tsx').includes('Feliz cumpleaños'), 'el diseño anterior de cumpleaños sigue en ConditionalCards.tsx');
   });
   it('ESTÁN conectados a Inicio (HomeView usa los dos con las mismas condiciones y los mismos datos; ya no usa el diseño anterior) y "Ver avisos" muestra el anterior junto al actual: propio con nombre corto y largo; próximos con 1 persona, 3 personas con una de "Hoy" y un nombre muy largo', () => {
     const view = homeF('HomeView.tsx');
@@ -2012,7 +2013,8 @@ describe('Cumpleaños nuevos (BirthdayCardsNew.tsx, pedido 45): solo en "Ver avi
     const avisos = homeF('DevAvisosView.tsx');
     assert.equal((avisos.match(/<OwnBirthdayCardNew /g) ?? []).length, 2);
     assert.equal((avisos.match(/<UpcomingBirthdaysSectionNew /g) ?? []).length, 3);
-    for (const piece of ['<OwnBirthdayCardNew name="Anastasia-Valentina Rojas" />', "birthdayIn('Valentina Soto', 0)", "birthdayIn('Isabella Fernanda Contreras Valenzuela de la Rosa', 2)", '<OwnBirthdayCard name="Camila Rojas" />', '<UpcomingBirthdaysSection birthdays=']) assert.ok(avisos.includes(piece), piece);
+    for (const piece of ['<OwnBirthdayCardNew name="Anastasia-Valentina Rojas" />', "birthdayIn('Valentina Soto', 0)", "birthdayIn('Isabella Fernanda Contreras Valenzuela de la Rosa', 2)"]) assert.ok(avisos.includes(piece), piece);
+    assert.ok(!avisos.includes('<OwnBirthdayCard ') && !avisos.includes('<UpcomingBirthdaysSection '), 'Ver avisos todavía muestra el diseño anterior de cumpleaños');
   });
 });
 
@@ -2160,12 +2162,12 @@ describe('Tarjeta "Todavía no tienes un box" nueva (NoBoxCard.tsx y noBoxCardCo
   const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8');
   const card = homeF('NoBoxCard.tsx');
   const view = homeF('HomeView.tsx').replace(/\r\n/g, '\n');
-  const old = readFileSync(new URL('../../artifacts/wodplace/components/JoinBoxCard.tsx', import.meta.url), 'utf8');
+
   const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
 
-  it('mismos textos y mismo botón que la tarjeta anterior (que sigue en JoinBoxCard.tsx para comparar): título, subtítulo, botón y el mismo evento', () => {
+  it('mismos textos y mismo botón que la tarjeta anterior (borrada en el pedido 51): título, subtítulo, botón y el mismo evento', () => {
     for (const text of ['Todavía no tienes un box', 'Ingresa el código de invitación que te dio tu box para unirte y desbloquear el resto de la app.', 'Ingresar código de invitación']) {
-      assert.ok(old.includes(text), 'la tarjeta anterior ya no tiene: ' + text);
+
       assert.ok(card.includes(text), 'la tarjeta nueva no tiene: ' + text);
     }
     assert.ok(card.includes('accessibilityLabel="Ingresar código de invitación"') && card.includes('accessibilityRole="header"') && card.includes('accessibilityRole="button"'));
@@ -2204,13 +2206,14 @@ describe('Tarjeta "Todavía no tienes un box" nueva (NoBoxCard.tsx y noBoxCardCo
     assert.ok(m.errorOnBg >= 4.5 && m.successOnBg >= 4.5 && m.textureSecondaryWorst >= 4.5 && m.texturePrimaryWorst >= 4.5);
     assert.equal(c.error, light.destructive, 'el error usa el token destructive (4,59:1 sobre el grafito)');
   });
-  it('Inicio usa NoBoxCard por defecto con la MISMA condición (hasBoxMembership === false) y el mismo evento; la anterior queda solo para el chip "Sin box: actual"; el chip y el valor por defecto en desarrollo', () => {
-    assert.ok(view.includes("joinBoxLook === 'actual' ? <JoinBoxCard onPress={() => events.onJoinBox()} /> : <NoBoxCard onPress={() => events.onJoinBox()} />"));
-    assert.ok(view.includes('{hasBoxMembership === false ? (') && view.includes("joinBoxLook = 'nuevo',"));
+  it('Inicio usa NoBoxCard con la MISMA condición (hasBoxMembership === false) y el mismo evento; la tarjeta anterior y el chip "Sin box: actual / nuevo" ya no existen (pedido 51)', () => {
+    assert.ok(view.includes('<NoBoxCard onPress={() => events.onJoinBox()} />') && !view.includes('JoinBoxCard') && !view.includes('joinBoxLook'));
+    assert.ok(view.includes('{hasBoxMembership === false ? ('));
     const dev = homeF('DevHomeScreen.tsx');
-    for (const label of ['Sin box: actual', 'Sin box: nuevo']) assert.ok(dev.includes(label), label);
-    assert.ok(dev.includes('joinBoxLook={joinBoxLook}') && dev.includes("useState<'actual' | 'nuevo'>('nuevo')"));
-    assert.ok(homeF('DevAvisosView.tsx').includes('<NoBoxCard '), 'Ver avisos muestra la tarjeta nueva junto a la anterior');
+    for (const gone of ['Sin box: actual', 'Sin box: nuevo', 'joinBoxLook']) assert.ok(!dev.includes(gone), 'quedó en DevHomeScreen: ' + gone);
+    assert.ok(!existsSync(new URL('../../artifacts/wodplace/components/JoinBoxCard.tsx', import.meta.url)), 'JoinBoxCard.tsx sigue en el repositorio');
+
+    assert.ok(homeF('DevAvisosView.tsx').includes('<NoBoxCard '), 'Ver avisos muestra la tarjeta nueva');
   });
 });
 
