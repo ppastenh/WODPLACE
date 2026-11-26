@@ -2321,7 +2321,7 @@ describe('Ventana de aviso importante (AnnouncementModal.tsx, decisión (ad)): a
     assert.ok(!existsSync(new URL('../../artifacts/wodplace/components/home/AnnouncementModalNew.tsx', import.meta.url)), 'ya no hay dos componentes');
   });
   it('diseño: tarjeta grafito con esquinas RADIUS.xl y como máximo el 80 % del alto (el texto largo se desplaza dentro), título en Anton crema, cuerpo en crema, secundario en gris cálido, botón principal de cobre con texto carbón y secundario en crema sin relleno, presionados sólidos, 48 dp, imagen redondeada; sin opacidad ni hex a mano', () => {
-    assert.ok(ventana.includes("maxHeight: '80%',") && ventana.includes('borderRadius: RADIUS.xl,') && ventana.includes('{ backgroundColor: c.background }'));
+    assert.ok(ventana.includes('borderRadius: RADIUS.xl,') && ventana.includes('{ backgroundColor: c.background, maxHeight: maxCardHeight }') && ventana.includes('useWindowDimensions().height * 0.8') && !ventana.includes("maxHeight: '80%'"), 'alto máximo en dp (80 % de la pantalla), no en porcentaje: la vista previa sin alto propio dejaba el mensaje cortado'); assert.ok(/scroll: \{\s*marginTop: 4,\s*flexShrink: 1,/.test(ventana), 'el desplazamiento interno se encoge dentro de la hoja');
     assert.ok(ventana.includes('<ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>'), 'el texto largo se desplaza dentro');
     assert.ok(ventana.includes("fontFamily: 'Anton_400Regular',") && ventana.includes('{ color: c.primary }') && ventana.includes('{ color: c.secondary }'));
     assert.ok(ventana.includes('? { backgroundColor: pressed ? c.buttonPressed : c.button }') && ventana.includes("{ backgroundColor: pressed ? PRESSED_GRAPHITE : 'transparent', borderWidth: 1, borderColor: c.primary }"));

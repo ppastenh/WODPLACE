@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { BoxAnnouncement } from '@workspace/api-client-react';
@@ -75,9 +75,11 @@ export function AnnouncementModal({ visible, announcement, onClose, onConfirmRea
  */
 export function AnnouncementCard({ announcement, confirming, onRequestClose, onConfirm, onBack }: { announcement: BoxAnnouncement; confirming: boolean; onRequestClose: () => void; onConfirm: () => void; onBack: () => void }) {
   const look = useAvisoLook();
+  // Alto máximo en dp (80 % de la pantalla), no en porcentaje: un porcentaje contra un contenedor sin alto propio (la vista previa de desarrollo) dejaba la hoja a medio alto y el mensaje cortado.
+  const maxCardHeight = Math.round(useWindowDimensions().height * 0.8);
   const sized = look.step !== 0;
   return (
-    <View style={[styles.card, { backgroundColor: c.background }]}>
+    <View style={[styles.card, { backgroundColor: c.background, maxHeight: maxCardHeight }]}>
       {confirming ? (
         <View style={styles.confirmContent}>
           <View style={[styles.iconCircle, { borderColor: c.circleBorder }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
@@ -163,7 +165,6 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: CARD_MAX_WIDTH,
-    maxHeight: '80%',
     borderRadius: RADIUS.xl,
     padding: CARD_PADDING,
   },
@@ -180,6 +181,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     marginTop: 4,
+    flexShrink: 1,
   },
   image: {
     marginBottom: 14,
