@@ -39,9 +39,9 @@ export function DevTodosAvisosView() {
           <Tag text="5. Contrato pendiente" />
           <PendingContractBanner onPress={noop} />
           <Tag text="6. Aviso fijo del box (sin imagen)" />
-          <PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }} />
+          <PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }} onPress={noop} />
           <Tag text="7. Aviso fijo del box (con imagen)" />
-          <PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT} />
+          <PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT} onPress={noop} />
           <Tag text="8. Próximos cumpleaños" />
           <UpcomingBirthdaysSectionNew birthdays={[birthdayIn('Valentina Soto', 0), birthdayIn('Matías Pérez Rojas', 3), birthdayIn('Ana López', 9)]} />
           <Tag text="9. Ventana de aviso importante, paso 1 (vista previa)" />
@@ -51,6 +51,10 @@ export function DevTodosAvisosView() {
           <Tag text="10. Ventana de aviso importante, paso 2: ¿Ya leíste este aviso? (vista previa)" />
           <View style={[styles.scrim, { backgroundColor: colors.charcoal }]}>
             <AnnouncementCard announcement={{ ...AVISO, imageUrl: null }} confirming onRequestClose={noop} onConfirm={noop} onBack={noop} />
+          </View>
+          <Tag text="11. Hoja de solo lectura del aviso fijo, con imagen (vista previa)" />
+          <View style={[styles.scrim, { backgroundColor: colors.charcoal }]}>
+            <AnnouncementCard announcement={DEMO_ANNOUNCEMENT} confirming={false} readOnly onRequestClose={noop} onConfirm={noop} onBack={noop} />
           </View>
         </View>
       </ScrollView>

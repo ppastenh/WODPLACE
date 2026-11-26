@@ -102,6 +102,8 @@ export type HomeViewEvents = {
   onOpenRm: () => void;
   onOpenProfile: () => void;
   onOpenMedals: () => void;
+  /** Abre el aviso fijo del box completo (hoja de solo lectura). Sin este evento el banner no es un botón. */
+  onOpenPinnedAviso?: () => void;
   onShareQuote: () => void;
   /** Abre el menú lateral. */
   onMenu?: () => void;
@@ -434,7 +436,7 @@ function HomeViewInner({
 
         {hasBoxMembership && hasPendingContract ? <PendingContractBanner onPress={() => events.onOpenContracts()} /> : null}
 
-        {hasBoxMembership && pinnedPush ? <PinnedAvisoBanner announcement={pinnedPush} /> : null}
+        {hasBoxMembership && pinnedPush ? <PinnedAvisoBanner announcement={pinnedPush} onPress={events.onOpenPinnedAviso} /> : null}
 
         {hasBoxMembership ? (
           wodLook === 'actual' ? (

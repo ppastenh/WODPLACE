@@ -26,15 +26,17 @@ interface AnnouncementModalProps {
   announcement: BoxAnnouncement | null;
   /** Called once the athlete has confirmed reading it and the modal is actually done closing. */
   onClose: () => void;
-  /** Called exactly once, when the athlete confirms having read it. */
-  onConfirmRead: () => void;
+  /** Called exactly once, when the athlete confirms having read it. No se usa (ni se pasa) en modo solo lectura. */
+  onConfirmRead?: () => void;
+  /** Modo SOLO LECTURA (aviso fijo de Inicio, decisión (af)): título, texto completo e imagen con un solo botón "Cerrar"; sin el paso "¿Ya leíste este aviso?", sin marcar como leído y sin háptico; el fondo y atrás lo cierran. */
+  readOnly?: boolean;
 }
 
 /**
  * Home's must-acknowledge popup for a "push" aviso: closing it is a two-step action — tapping close (or the backdrop, or the Android back button) shows a "¿ya leíste esto?" confirmation, and only confirming
  * that actually dismisses it. There's no bare single-step close here on purpose.
  */
-export function AnnouncementModal({ visible, announcement, onClose, onConfirmRead }: AnnouncementModalProps) {
+export function AnnouncementModal({ visible, announcement, onClose, onConfirmRead, readOnly = false }: AnnouncementModalProps) {
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -44,6 +46,11 @@ export function AnnouncementModal({ visible, announcement, onClose, onConfirmRea
   if (!announcement) return null;
 
   const requestClose = () => {
+    // Solo lectura: no hay confirmación, el fondo y atrás cierran.
+    if (readOnly) {
+      onClose();
+      return;
+    }
     // Backdrop tap / Android back button while the confirm step is already showing must NOT close it — only the two explicit buttons below can.
     if (!confirming) setConfirming(true);
   };
@@ -55,11 +62,16 @@ export function AnnouncementModal({ visible, announcement, onClose, onConfirmRea
         <AnnouncementCard
           announcement={announcement}
           confirming={confirming}
+          readOnly={readOnly}
           onRequestClose={requestClose}
-          onConfirm={() => {
-            onConfirmRead();
-            onClose();
-          }}
+          onConfirm={
+            readOnly
+              ? onClose
+              : () => {
+                  onConfirmRead?.();
+                  onClose();
+                }
+          }
           onBack={() => setConfirming(false)}
         />
       </View>
@@ -71,12 +83,12 @@ export function AnnouncementModal({ visible, announcement, onClose, onConfirmRea
  * La hoja de la ventana (los dos pasos), separada para poder dibujarla también dentro de una pantalla (vista previa de desarrollo "Todos los avisos", pedido 51). Sin lógica propia: el paso (confirming) y las acciones vienen
  * de la ventana. Letra reducida (decisión (ae)): título 18, cuerpo 12 (paso 1) y subtítulo 11 (paso 2).
  */
-export function AnnouncementCard({ announcement, confirming, onRequestClose, onConfirm, onBack }: { announcement: BoxAnnouncement; confirming: boolean; onRequestClose: () => void; onConfirm: () => void; onBack: () => void }) {
+export function AnnouncementCard({ announcement, confirming, readOnly = false, onRequestClose, onConfirm, onBack }: { announcement: BoxAnnouncement; confirming: boolean; readOnly?: boolean; onRequestClose: () => void; onConfirm: () => void; onBack: () => void }) {
   // Alto máximo en dp (80 % de la pantalla), no en porcentaje: un porcentaje contra un contenedor sin alto propio (la vista previa de desarrollo) dejaba la hoja a medio alto y el mensaje cortado.
   const maxCardHeight = Math.round(useWindowDimensions().height * 0.8);
   return (
     <View style={[styles.card, { backgroundColor: c.background, maxHeight: maxCardHeight }]}>
-      {confirming ? (
+      {confirming && !readOnly ? (
         <View style={styles.confirmContent}>
           <View style={[styles.iconCircle, { borderColor: c.circleBorder }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
             <Feather name="help-circle" size={22} color={c.icon} />
@@ -94,19 +106,21 @@ export function AnnouncementCard({ announcement, confirming, onRequestClose, onC
         </View>
       ) : (
         <>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar"
-            onPress={onRequestClose}
-            hitSlop={8}
-            style={({ pressed }) => [styles.closeButton, { backgroundColor: pressed ? PRESSED_GRAPHITE : c.inner }]}
-          >
-            <Feather name="x" size={16} color={c.primary} />
-          </Pressable>
+          {readOnly ? null : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+              onPress={onRequestClose}
+              hitSlop={8}
+              style={({ pressed }) => [styles.closeButton, { backgroundColor: pressed ? PRESSED_GRAPHITE : c.inner }]}
+            >
+              <Feather name="x" size={16} color={c.primary} />
+            </Pressable>
+          )}
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
             {announcement.imageUrl ? <AutoFitImage uri={announcement.imageUrl} width={CARD_WIDTH} borderRadius={RADIUS.md + 2} style={styles.image} /> : null}
-            <View style={styles.textWrap}>
+            <View style={[styles.textWrap, readOnly ? styles.textWrapReadOnly : null]}>
               <Text style={[styles.title, { color: c.primary }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
                 {announcement.title}
               </Text>
@@ -117,6 +131,11 @@ export function AnnouncementCard({ announcement, confirming, onRequestClose, onC
               ) : null}
             </View>
           </ScrollView>
+          {readOnly ? (
+            <View style={styles.readOnlyActions}>
+              <SheetButton label="Cerrar" kind="secondary" haptic={false} onPress={onRequestClose} />
+            </View>
+          ) : null}
         </>
       )}
     </View>
@@ -124,13 +143,13 @@ export function AnnouncementCard({ announcement, confirming, onRequestClose, onC
 }
 
 /** Botón ancho de la ventana: principal = cobre con texto carbón (presionado sólido en cobre claro); secundario = crema sin relleno con borde crema (presionado sólido #2E2F35). 48 dp de alto mínimo; sin opacidad. */
-function SheetButton({ label, kind, onPress }: { label: string; kind: 'primary' | 'secondary'; onPress: () => void }) {
+function SheetButton({ label, kind, onPress, haptic = true }: { label: string; kind: 'primary' | 'secondary'; onPress: () => void; haptic?: boolean }) {
   const primary = kind === 'primary';
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        if (haptic) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         onPress();
       }}
       style={({ pressed }) => [
@@ -186,6 +205,12 @@ const styles = StyleSheet.create({
     paddingRight: 28,
     paddingBottom: 4,
     gap: 8,
+  },
+  textWrapReadOnly: {
+    paddingRight: 0,
+  },
+  readOnlyActions: {
+    marginTop: 14,
   },
   title: {
     fontSize: 18,

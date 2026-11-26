@@ -1829,7 +1829,7 @@ describe('Avisos y tarjetas condicionales de Inicio: ConditionalCards.tsx y el m
       '{isOwnBirthdayToday ? <OwnBirthdayCardNew name={user.name} /> : null}',
       '{hasActivePlan && nearPlanLimit ? <PlanNoticeBanner plan={myPlan!} /> : null}',
       '{hasBoxMembership && hasPendingContract ? <PendingContractBanner onPress={() => events.onOpenContracts()} /> : null}',
-      '{hasBoxMembership && pinnedPush ? <PinnedAvisoBanner announcement={pinnedPush} /> : null}',
+      '{hasBoxMembership && pinnedPush ? <PinnedAvisoBanner announcement={pinnedPush} onPress={events.onOpenPinnedAviso} /> : null}',
       '{hasBoxMembership && birthdays.length > 0 ? <UpcomingBirthdaysSectionNew birthdays={birthdays} /> : null}',
     ]) assert.ok(view.includes(cond), 'cambió una condición de HomeView: ' + cond);
     for (const moved of ['pinnedAvisoCard', 'noticeCard', 'ownBirthdayCard', 'styles.wodCard', 'birthdaySection', 'Tienes un contrato pendiente', 'Próximos cumpleaños', 'Feliz cumpleaños']) assert.ok(!view.includes(moved), 'quedó en HomeView: ' + moved);
@@ -1923,7 +1923,7 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
     assert.ok(banner.includes('{important ? <Text style={[styles.label, { color: colors.charcoalAccentLight }]}>{NOTICE_LABEL_TEXT}</Text> : null}'));
     assert.ok(banner.includes("const important = level === 'importante';"));
     assert.ok(banner.includes("stripe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: NOTICE_STRIPE_WIDTH }"));
-    assert.ok(banner.includes('{onPress ? (') && banner.includes('name="chevron-right"') && banner.includes('accessibilityRole="button"'));
+    assert.ok(banner.includes('{onPress && !showArrow ? (') && banner.includes('name="chevron-right"') && banner.includes('accessibilityRole="button"'));
     assert.ok(banner.includes('pressed ? colors.nextClassCardPressed : colors.nextClassCard'));
     assert.ok(banner.includes('{image ? (') && banner.includes('borderRadius={NOTICE_IMAGE_RADIUS}'), 'la imagen va bajo el texto, a todo el ancho de la tarjeta');
     assert.equal(360 - 40 - 3 - 32, 285, 'ancho de la imagen en una pantalla de 360 dp (borde de 1,5 dp)');
@@ -1932,7 +1932,7 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
   it('los tres avisos en la pieza nueva: el contrato es importante y presionable (mismo destino), el aviso del box y el del plan son info; los textos y reglas son los de siempre (planNoticeLines) y con dos reglas van las dos líneas en la misma tarjeta', () => {
     assert.ok(wrappers.includes('level="importante"') && wrappers.includes('kind="contrato"') && wrappers.includes('onPress={onPress}') && wrappers.includes('title="Tienes un contrato pendiente de leer y aceptar"'));
     assert.ok(wrappers.includes('body="Toca aquí para revisarlo en Contratos Activos. Mientras esté pendiente, no podrás hacer nuevas reservas."'));
-    assert.ok(wrappers.includes('level="info" kind="fijo" icon="bell"') && wrappers.includes('bodyMaxLines={4}') && wrappers.includes('image={announcement.imageUrl}'));
+    assert.ok(wrappers.includes('level="info"\n      kind="fijo"\n      icon="bell"') && wrappers.includes('bodyMaxLines={4}') && wrappers.includes('image={announcement.imageUrl}'));
     assert.ok(wrappers.includes('const lines = planNoticeLines(plan);') && wrappers.includes('<NoticeBanner level="info" kind="plan" icon="alert-circle" title={lines} />'), 'aviso del plan: todas las líneas como título');
     assert.ok(!wrappers.includes('planNoticeLines(plan);\n  if (!title)') && !/body=\{body/.test(wrappers.slice(wrappers.indexOf('export function PlanNoticeBanner'))), 'ninguna línea del plan va como cuerpo (gris)');
     // dos reglas: las dos líneas con el MISMO estilo de título (crema, Inter SemiBold 15), una bajo la otra
@@ -2300,7 +2300,7 @@ describe('Ventana de aviso importante (AnnouncementModal.tsx, decisión (ad)): a
       'if (!confirming) setConfirming(true);',
       '<Modal visible={visible} transparent animationType="fade" onRequestClose={requestClose}>',
       '<Pressable style={styles.backdrop} onPress={requestClose} />',
-      'onConfirmRead();',
+      'onConfirmRead?.();',
       'onClose();',
       'setConfirming(false)',
       '¿Ya leíste este aviso?',
@@ -2315,7 +2315,7 @@ describe('Ventana de aviso importante (AnnouncementModal.tsx, decisión (ad)): a
       'visible: boolean;',
       'announcement: BoxAnnouncement | null;',
       'onClose: () => void;',
-      'onConfirmRead: () => void;',
+      'onConfirmRead?: () => void;',
       'Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)',
     ]) assert.ok(ventana.includes(line), 'la ventana no tiene: ' + line);
     assert.ok(!/paso 1 de 2|paso 2 de 2|1 de 2|2 de 2/i.test(code(ventana)), 'no se inventa un indicador de pasos');
@@ -2426,5 +2426,53 @@ describe('Avisos de Inicio con la letra reducida (−2) y el borde por tipo (dec
     assert.ok(dev.includes("{ id: 'todos', label: 'Todos los avisos' }") && dev.includes('<DevTodosAvisosView />'));
     for (const f of ['HomeView.tsx', 'NextClassCard.tsx', 'WodCard.tsx', 'MedalsCard.tsx']) assert.ok(!/DevTodosAvisosView/.test(home(f)), f);
     assert.ok(!/AvisoLook|avisoLook/.test(app('app/home.tsx')), 'Inicio real no menciona el ajuste');
+  });
+});
+
+describe('Aviso fijo de Inicio tocable y hoja de aviso en SOLO LECTURA (decisión (af), pedido 53)', () => {
+  const app = (p: string) => readFileSync(new URL('../../artifacts/wodplace/' + p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const palette = light as unknown as Record<string, string>;
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const win = app('components/AnnouncementModal.tsx');
+  const banner = app('components/ui/NoticeBanner.tsx');
+
+  it('la hoja de solo lectura (componente) NUNCA marca como leído ni da háptico de confirmación: en solo lectura onConfirm es onClose (sin onConfirmRead), no hay paso "¿Ya leíste este aviso?" ni la X, y el fondo/atrás solo cierran', () => {
+    assert.ok(win.includes('readOnly\n              ? onClose\n              : () => {\n                  onConfirmRead?.();\n                  onClose();\n                }'), 'en solo lectura onConfirm = onClose');
+    assert.ok(win.includes('if (readOnly) {\n      onClose();\n      return;\n    }'), 'el fondo y atrás cierran directo');
+    assert.ok(win.includes('{confirming && !readOnly ? ('), 'sin paso de confirmación');
+    assert.ok(win.includes('{readOnly ? null : (') && win.includes('<SheetButton label="Cerrar" kind="secondary" haptic={false} onPress={onRequestClose} />'), 'un solo botón Cerrar, secundario y sin háptico');
+    assert.ok(win.includes('if (haptic) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)'), 'el háptico solo con haptic');
+  });
+  it('el banner del aviso fijo es un botón con flecha pequeña de Inicio (ArrowBadge, margen común), presionado sólido, área táctil completa y la frase "Aviso del box: {texto}. Ver aviso completo"; sin onPress se dibuja como antes', () => {
+    const w = app('components/home/NoticeBanners.tsx');
+    assert.ok(w.includes('onPress={onPress}') && w.includes('arrow\n') && w.includes('`Aviso del box: ${text}. Ver aviso completo`') && w.includes("[announcement.title, announcement.body].filter(Boolean).join('. ')"));
+    assert.ok(banner.includes('<ArrowBadge size={ARROW_BADGE_SMALL} borderColor={colors.charcoalAccent} backgroundColor={colors.glassBackground} arrowColor={colors.nextClassCardForeground} />') && banner.includes('style={arrowBadgeCorner}'));
+    assert.ok(banner.includes('const showArrow = arrow && !!onPress;') && banner.includes('{onPress && !showArrow ? (') && banner.includes('accessibilityLabel={label}') && banner.includes('<Pressable accessibilityRole="button"'), 'toda la tarjeta es el botón');
+    assert.ok(banner.includes('pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={arrowBadgeCorner}'), 'la flecha es decorativa');
+    assert.ok(!/opacity/i.test(banner.replace(/NOTICE_BORDER_ALPHA/g, '')), 'sin opacidad en el banner');
+    assert.ok(app('components/home/HomeView.tsx').includes('<PinnedAvisoBanner announcement={pinnedPush} onPress={events.onOpenPinnedAviso} />'));
+    // la flecha no choca con el texto: el texto se retira lo que la flecha entra en la tarjeta (+ 8 dp de aire)
+    assert.ok(banner.includes('Math.max(0, ARROW_BADGE_CORNER_MARGIN + ARROW_BADGE_SMALL - NOTICE_PADDING + 8)'));
+    assert.equal(r2(ARROW_BADGE_CORNER_MARGIN + ARROW_BADGE_SMALL - 16 + 8), 22.4);
+    // y no choca con la imagen: la flecha ocupa de 8 a 30,4 dp desde arriba y la imagen empieza bajo la fila de texto (relleno 16 + al menos una línea de 18 + 12 de separación)
+    assert.ok(ARROW_BADGE_CORNER_MARGIN + ARROW_BADGE_SMALL < 16 + 18 + 12);
+  });
+  it('MEDIDO (≥ 3:1): el borde de cobre de la flecha contra el banner (5,34) y contra el banner presionado, y la flecha crema contra su círculo (negro al 60 % sobre el banner)', () => {
+    const border = palette.charcoalAccent!;
+    const bg = palette.nextClassCard!;
+    const pressed = palette.nextClassCardPressed!;
+    assert.equal(r2(ratio(border, bg)), 5.34);
+    assert.ok(ratio(border, pressed) >= 3, 'borde de la flecha contra el banner presionado: ' + r2(ratio(border, pressed)));
+    const mix = (over: string, under: string, a: number) => {
+      const o = [1, 3, 5].map((i) => parseInt(over.slice(i, i + 2), 16));
+      const u = [1, 3, 5].map((i) => parseInt(under.slice(i, i + 2), 16));
+      return '#' + o.map((v, k) => Math.round(v * a + u[k]! * (1 - a)).toString(16).padStart(2, '0')).join('');
+    };
+    for (const under of [bg, pressed]) {
+      const glass = mix('#000000', under, 0.6);
+      assert.ok(ratio(palette.nextClassCardForeground!, glass) >= 4.5, 'flecha crema contra su círculo sobre ' + under + ': ' + r2(ratio(palette.nextClassCardForeground!, glass)));
+      assert.ok(ratio(border, glass) >= 3, 'borde contra su propio círculo sobre ' + under);
+    }
+    assert.equal(light.glassBackground, 'rgba(0,0,0,0.6)');
   });
 });

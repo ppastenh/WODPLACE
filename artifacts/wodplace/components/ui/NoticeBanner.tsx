@@ -2,6 +2,8 @@ import React from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AutoFitImage } from '@/components/AutoFitImage';
+import { ArrowBadge } from '@/components/home/ArrowBadge';
+import { ARROW_BADGE_CORNER_MARGIN, ARROW_BADGE_SMALL, arrowBadgeCorner } from '@/components/home/arrowBadgeSpec';
 import { avisoBorderColor, type AvisoKind } from '@/components/home/avisoBorderSpec';
 import { useColors } from '@/hooks/useColors';
 import {
@@ -49,13 +51,18 @@ export type NoticeBannerProps = {
   accessibilityHint?: string;
   /** El tipo de aviso: define el color de su borde (contrato cobre, aviso fijo crema, plan cobre claro). */
   kind: AvisoKind;
+  /** Solo con onPress: en vez del chevron, la flecha pequeña de Inicio (ArrowBadge) en la esquina superior derecha, con el margen común (aviso fijo del box, decisión (af)). */
+  arrow?: boolean;
+  /** Frase para el lector de pantalla; si no se indica se arma con el rótulo, los títulos y el cuerpo. */
+  accessibilityLabel?: string;
 };
 
-export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, onPress, accessibilityHint, kind }: NoticeBannerProps) {
+export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, onPress, accessibilityHint, kind, arrow = false, accessibilityLabel }: NoticeBannerProps) {
   const colors = useColors();
   const important = level === 'importante';
   const titles = Array.isArray(title) ? title : [title];
-  const label = [important ? 'Importante' : null, ...titles, body].filter(Boolean).join('. ');
+  const showArrow = arrow && !!onPress;
+  const label = accessibilityLabel ?? [important ? 'Importante' : null, ...titles, body].filter(Boolean).join('. ');
 
   const render = (pressed: boolean) => (
     <View
@@ -72,7 +79,7 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
         <View style={[styles.iconCircle, { borderColor: colors.charcoalAccent }]} importantForAccessibility="no-hide-descendants">
           <Feather name={icon} size={NOTICE_ICON_SIZE} color={colors.charcoalAccentLight} />
         </View>
-        <View style={styles.textCol}>
+        <View style={[styles.textCol, showArrow ? { marginRight: NOTICE_ARROW_RESERVE } : null]}>
           {important ? <Text style={[styles.label, { color: colors.charcoalAccentLight }]}>{NOTICE_LABEL_TEXT}</Text> : null}
           {titles.map((line) => (
             <Text key={line} style={[styles.title, { color: colors.nextClassCardForeground }]}>
@@ -85,12 +92,17 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
             </Text>
           ) : null}
         </View>
-        {onPress ? (
+        {onPress && !showArrow ? (
           <View importantForAccessibility="no-hide-descendants" style={styles.chevron}>
             <Feather name="chevron-right" size={NOTICE_CHEVRON_SIZE} color={colors.charcoalAccentLight} />
           </View>
         ) : null}
       </View>
+      {showArrow ? (
+        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={arrowBadgeCorner}>
+          <ArrowBadge size={ARROW_BADGE_SMALL} borderColor={colors.charcoalAccent} backgroundColor={colors.glassBackground} arrowColor={colors.nextClassCardForeground} />
+        </View>
+      ) : null}
       {image ? (
         <View style={styles.imageWrap}>
           <AutoFitImage uri={image} width={noticeImageWidth(Dimensions.get('window').width)} borderRadius={NOTICE_IMAGE_RADIUS} />
@@ -112,6 +124,9 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
     </View>
   );
 }
+
+/** Espacio que se le quita al texto a la derecha cuando hay flecha: lo que la flecha entra en la tarjeta (margen + diámetro − relleno) más 8 dp de aire. */
+const NOTICE_ARROW_RESERVE = Math.max(0, ARROW_BADGE_CORNER_MARGIN + ARROW_BADGE_SMALL - NOTICE_PADDING + 8);
 
 const styles = StyleSheet.create({
   card: {

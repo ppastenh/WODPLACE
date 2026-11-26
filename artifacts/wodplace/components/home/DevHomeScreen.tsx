@@ -44,6 +44,7 @@ const EVENTS: HomeViewEvents = {
   onOpenRm: simulated('Aquí se abriría Progreso y PRs.'),
   onOpenProfile: simulated('Aquí se abrirían tus Datos personales.'),
   onOpenMedals: simulated('Aquí se abrirían las Medallas.'),
+  onOpenPinnedAviso: simulated('Aquí se abriría el aviso completo (hoja de solo lectura).'),
   onShareQuote: simulated('Aquí se abriría el menú de compartir.'),
 };
 

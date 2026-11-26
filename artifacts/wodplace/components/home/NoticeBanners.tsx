@@ -23,9 +23,26 @@ export function PendingContractBanner({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** Aviso fijo del box: info, con imagen opcional bajo el texto y hasta 4 líneas de cuerpo. */
-export function PinnedAvisoBanner({ announcement }: { announcement: BoxAnnouncement }) {
-  return <NoticeBanner level="info" kind="fijo" icon="bell" title={announcement.title} body={announcement.body} bodyMaxLines={4} image={announcement.imageUrl} />;
+/**
+ * Aviso fijo del box: info, con imagen opcional bajo el texto y hasta 4 líneas de cuerpo. Con `onPress` es un botón (flecha pequeña de Inicio, presionado sólido) que abre el aviso completo en la hoja de solo lectura (decisión (af));
+ * sin `onPress` (los ejemplos de desarrollo antiguos) se dibuja como antes.
+ */
+export function PinnedAvisoBanner({ announcement, onPress }: { announcement: BoxAnnouncement; onPress?: () => void }) {
+  const text = [announcement.title, announcement.body].filter(Boolean).join('. ');
+  return (
+    <NoticeBanner
+      level="info"
+      kind="fijo"
+      icon="bell"
+      title={announcement.title}
+      body={announcement.body}
+      bodyMaxLines={4}
+      image={announcement.imageUrl}
+      onPress={onPress}
+      arrow
+      accessibilityLabel={onPress ? `Aviso del box: ${text}. Ver aviso completo` : undefined}
+    />
+  );
 }
 
 /** Aviso del plan: info. Con las dos reglas, las dos líneas van en la misma tarjeta, las dos con el estilo de título (una bajo la otra). Sin ninguna regla no dibuja nada. */
