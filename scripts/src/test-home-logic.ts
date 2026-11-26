@@ -2476,3 +2476,17 @@ describe('Aviso fijo de Inicio tocable y hoja de aviso en SOLO LECTURA (decisió
     assert.equal(light.glassBackground, 'rgba(0,0,0,0.6)');
   });
 });
+
+describe('app/home.tsx abre la hoja de solo lectura del aviso fijo sin tocar nada más (decisión (af), pedido 53)', () => {
+  const home = readFileSync(new URL('../../artifacts/wodplace/app/home.tsx', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  it('la hoja de solo lectura no recibe el marcado de leído y la ventana de aviso importante de siempre queda idéntica', () => {
+    const i = home.indexOf('<AnnouncementModal\n        readOnly');
+    assert.ok(i >= 0, 'home.tsx abre la hoja de solo lectura');
+    const tag = home.slice(i, home.indexOf('/>', i) + 2);
+    assert.ok(tag.includes('visible={pinnedOpen && !!pinnedPush}') && tag.includes('announcement={pinnedPush}') && tag.includes('onClose={() => setPinnedOpen(false)}'));
+    assert.ok(!/onConfirmRead|markAnnouncementRead/.test(tag), 'la hoja de solo lectura recibió el marcado de leído');
+    assert.ok(home.includes('onConfirmRead={() => {\n          const current = pushQueue[0];\n          if (current && user?.id) markAnnouncementRead(current.id, user.id).catch(() => {});\n        }}'), 'la ventana de aviso importante cambió');
+    assert.ok(home.includes('visible={pushQueue.length > 0}') && home.includes('onClose={() => setPushQueue((q) => q.slice(1))}'));
+    assert.ok(home.includes('onOpenPinnedAviso: () => setPinnedOpen(true),') && home.includes('const [pinnedOpen, setPinnedOpen] = useState(false);'));
+  });
+});

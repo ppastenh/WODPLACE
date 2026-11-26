@@ -77,6 +77,7 @@ export default function HomeScreen() {
   // stays on screen for as long as hasBoxMembership is false instead of
   // showing once and disappearing).
   const [joinBoxVisible, setJoinBoxVisible] = useState(false);
+  const [pinnedOpen, setPinnedOpen] = useState(false);
 
   // Defensive re-sync every time Home gains focus — e.g. right after "Crear
   // mi Box" grants the box_admin role server-side, so the drawer's admin
@@ -350,6 +351,7 @@ export default function HomeScreen() {
           onOpenRm: () => router.push('/rm'),
           onOpenProfile: () => router.push('/personal-data'),
           onOpenMedals: () => router.push('/medallas'),
+          onOpenPinnedAviso: () => setPinnedOpen(true),
           onShareQuote: shareQuote,
           onMenu: () => setDrawerVisible(true),
           onBell: () => router.push('/notifications'),
@@ -377,6 +379,12 @@ export default function HomeScreen() {
           if (result.joined || result.alreadyMember) void refreshActivationStatus();
           return result;
         }}
+      />
+      <AnnouncementModal
+        readOnly
+        visible={pinnedOpen && !!pinnedPush}
+        announcement={pinnedPush}
+        onClose={() => setPinnedOpen(false)}
       />
       <AnnouncementModal
         visible={pushQueue.length > 0}
