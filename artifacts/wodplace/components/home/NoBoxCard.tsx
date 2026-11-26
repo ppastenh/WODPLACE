@@ -4,8 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, Path, Pattern, Rect } from 'react-native-svg';
-import { useAvisoLook } from '@/components/home/AvisoLookContext';
-import { avisoBorderPlan, avisoLine, avisoSize } from '@/components/home/avisoLookSpec';
+import { AVISO_BORDER_WIDTH, avisoBorderColor } from '@/components/home/avisoBorderSpec';
 import { readLayout } from '@/components/home/layoutEvents';
 import { NOBOX_TEXTURE_ALPHA, noBoxColors } from '@/components/home/noBoxCardColors';
 import { useColors } from '@/hooks/useColors';
@@ -26,9 +25,7 @@ let uid = 0;
 export function NoBoxCard({ onPress }: Props) {
   const colors = useColors();
   const c = noBoxColors(colors);
-  const look = useAvisoLook();
-  const plan = avisoBorderPlan(look.border, 'sinbox', colors as unknown as Record<string, string>);
-  const sized = look.step !== 0;
+  const borderColor = avisoBorderColor('sinbox', colors as unknown as Record<string, string>);
   // Alto medido (solo desarrollo). El evento se lee de forma SINCRÓNICA (readLayout) y solo después se usa setState.
   const [boxH, setBoxH] = useState(0);
   const onLayout = __DEV__
@@ -44,18 +41,17 @@ export function NoBoxCard({ onPress }: Props) {
     onPress();
   };
   return (
-    <View onLayout={onLayout} style={[styles.card, { backgroundColor: c.background }, plan.borderWidth ? { borderWidth: plan.borderWidth, borderColor: plan.borderColor } : null]}>
-      {plan.stripeColor ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: plan.stripeColor, width: plan.stripeWidth }]} /> : null}
+    <View onLayout={onLayout} style={[styles.card, { backgroundColor: c.background, borderColor }]}>
       <Texture color={c.primary} background={c.background} />
       <View style={styles.header}>
         <View style={[styles.iconCircle, { borderColor: c.circleBorder }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
           <Feather name="key" size={18} color={c.icon} />
         </View>
-        <Text style={[styles.title, { color: c.primary }, sized ? { fontSize: avisoSize(22, look.step), lineHeight: avisoLine(26, 22, look.step) } : null]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
+        <Text style={[styles.title, { color: c.primary }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
           Todavía no tienes un box
         </Text>
       </View>
-      <Text style={[styles.subtitle, { color: c.secondary }, sized ? { fontSize: avisoSize(13, look.step), lineHeight: avisoLine(19, 13, look.step) } : null]} maxFontSizeMultiplier={1.3}>
+      <Text style={[styles.subtitle, { color: c.secondary }]} maxFontSizeMultiplier={1.3}>
         Ingresa el código de invitación que te dio tu box para unirte y desbloquear el resto de la app.
       </Text>
       <Pressable
@@ -97,13 +93,12 @@ function Texture({ color, background }: { color: string; background: string }) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: RADIUS.xl, padding: SPACING.xl, gap: SPACING.sm2, overflow: 'hidden' },
-  stripe: { position: 'absolute', top: 0, bottom: 0, left: 0 },
+  card: { borderRadius: RADIUS.xl, padding: SPACING.xl, gap: SPACING.sm2, overflow: 'hidden', borderWidth: AVISO_BORDER_WIDTH },
   texture: { position: 'absolute', top: 0, bottom: 0, right: 0, width: '60%' },
   header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   iconCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, fontSize: 22, lineHeight: 26, fontFamily: 'Anton_400Regular' },
-  subtitle: { fontSize: 13, lineHeight: 19, fontFamily: 'Inter_500Medium' },
+  title: { flex: 1, fontSize: 20, lineHeight: 24, fontFamily: 'Anton_400Regular' },
+  subtitle: { fontSize: 11, lineHeight: 17, fontFamily: 'Inter_500Medium' },
   button: { minHeight: 48, borderRadius: 999, paddingHorizontal: 20, marginTop: SPACING.xs2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm2 },
   buttonText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   // Solo __DEV__ (texto de depuración con el alto medido).

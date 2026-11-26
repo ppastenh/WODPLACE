@@ -9,17 +9,22 @@ export const OWN_PADDING = 16;
 export const OWN_ICON_CIRCLE = 40;
 export const OWN_ICON_CIRCLE_BORDER = 1.5;
 export const OWN_ICON_SIZE = 20;
-export const OWN_TITLE_SIZE = 15;
+export const OWN_TITLE_SIZE = 13;
 export const OWN_TITLE_MAX_LINES = 2;
-export const OWN_SUBTITLE_SIZE = 13;
+export const OWN_SUBTITLE_SIZE = 11;
+/** Interlineado de la tarjeta del cumpleaños propio con la letra reducida (decisión (ae)): 18 y 16. */
+export const OWN_TITLE_LINE = 18;
+export const OWN_SUBTITLE_LINE = 16;
+/** Título de la sección "Próximos cumpleaños": 16 sp (antes 18). */
+export const SECTION_TITLE_SIZE = 16;
 
 export const LIST_RADIUS = 16;
 export const LIST_PADDING_H = 16;
 export const ROW_MIN_HEIGHT = 56;
 export const AVATAR_SIZE = 36;
-export const AVATAR_TEXT_SIZE = 13;
-export const NAME_SIZE = 15;
-export const DATE_SIZE = 12;
+export const AVATAR_TEXT_SIZE = 11;
+export const NAME_SIZE = 13;
+export const DATE_SIZE = 11;
 export const DATE_SPACING = 1;
 export const TODAY_ICON_SIZE = 14;
 export const TODAY_BORDER = 1;

@@ -16,9 +16,12 @@ import {
   OWN_PADDING,
   OWN_RADIUS,
   OWN_SUBTITLE_SIZE,
+  OWN_SUBTITLE_LINE,
+  OWN_TITLE_LINE,
   OWN_TITLE_MAX_LINES,
   OWN_TITLE_SIZE,
   ROW_MIN_HEIGHT,
+  SECTION_TITLE_SIZE,
   SEPARATOR_WIDTH,
   TODAY_BORDER,
   TODAY_ICON_SIZE,
@@ -27,11 +30,9 @@ import {
   firstNameOf,
   initialsOf,
 } from '@/components/home/birthdayNewSpec';
-import { useAvisoLook } from '@/components/home/AvisoLookContext';
-import { avisoBorderPlan, avisoLine, avisoSize } from '@/components/home/avisoLookSpec';
+import { AVISO_BORDER_WIDTH, avisoBorderColor } from '@/components/home/avisoBorderSpec';
 import { NOTICE_BODY_COLOR } from '@/components/ui/noticeBannerSpec';
 import { useColors } from '@/hooks/useColors';
-import { FONT_SIZE } from '@/constants/typography';
 import { SPACING } from '@/constants/spacing';
 
 /**
@@ -42,22 +43,19 @@ import { SPACING } from '@/constants/spacing';
 /** Tarjeta de celebración del cumpleaños propio: cobre oscuro #8B5E34 con todo en crema (no es un botón). */
 export function OwnBirthdayCardNew({ name }: { name: string }) {
   const colors = useColors();
-  const look = useAvisoLook();
-  const plan = avisoBorderPlan(look.border, 'cumple', colors as unknown as Record<string, string>);
-  const sized = look.step !== 0;
+  const borderColor = avisoBorderColor('cumple', colors as unknown as Record<string, string>);
   const title = `¡Feliz cumpleaños, ${firstNameOf(name)}!`;
   const subtitle = 'Que tengas un gran entrenamiento hoy';
   return (
-    <View accessible accessibilityRole="text" accessibilityLabel={`${title} ${subtitle}`} style={[styles.ownCard, { backgroundColor: colors.navActiveTextSmall }, plan.borderWidth !== undefined ? { borderWidth: plan.borderWidth, borderColor: plan.borderColor } : null, plan.stripeColor ? { overflow: 'hidden' } : null]}>
-      {plan.stripeColor ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: plan.stripeColor, width: plan.stripeWidth }]} /> : null}
+    <View accessible accessibilityRole="text" accessibilityLabel={`${title} ${subtitle}`} style={[styles.ownCard, { backgroundColor: colors.navActiveTextSmall, borderColor }]}>
       <View style={[styles.ownIconCircle, { borderColor: colors.nextClassCardForeground }]} importantForAccessibility="no-hide-descendants">
         <Feather name="gift" size={OWN_ICON_SIZE} color={colors.nextClassCardForeground} />
       </View>
       <View style={styles.ownTextCol} importantForAccessibility="no-hide-descendants">
-        <Text style={[styles.ownTitle, { color: colors.nextClassCardForeground }, sized ? { fontSize: avisoSize(OWN_TITLE_SIZE, look.step), lineHeight: avisoLine(20, OWN_TITLE_SIZE, look.step) } : null]} numberOfLines={OWN_TITLE_MAX_LINES} maxFontSizeMultiplier={1.3}>
+        <Text style={[styles.ownTitle, { color: colors.nextClassCardForeground }]} numberOfLines={OWN_TITLE_MAX_LINES} maxFontSizeMultiplier={1.3}>
           {title}
         </Text>
-        <Text style={[styles.ownSubtitle, { color: colors.nextClassCardForeground }, sized ? { fontSize: avisoSize(OWN_SUBTITLE_SIZE, look.step), lineHeight: avisoLine(18, OWN_SUBTITLE_SIZE, look.step) } : null]} maxFontSizeMultiplier={1.3}>
+        <Text style={[styles.ownSubtitle, { color: colors.nextClassCardForeground }]} maxFontSizeMultiplier={1.3}>
           {subtitle}
         </Text>
       </View>
@@ -68,18 +66,14 @@ export function OwnBirthdayCardNew({ name }: { name: string }) {
 /** Sección "Próximos cumpleaños": el mismo título de siempre y la lista en una tarjeta grafito (sin botones). */
 export function UpcomingBirthdaysSectionNew({ birthdays }: { birthdays: UpcomingBirthday[] }) {
   const colors = useColors();
-  const look = useAvisoLook();
-  const plan = avisoBorderPlan(look.border, 'cumple', colors as unknown as Record<string, string>);
-  const sized = look.step !== 0;
-  const sz = (base: number) => avisoSize(base, look.step);
+  const borderColor = avisoBorderColor('cumple', colors as unknown as Record<string, string>);
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeadingRow}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }, sized ? { fontSize: sz(FONT_SIZE.xl) } : null]}>Próximos cumpleaños</Text>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Próximos cumpleaños</Text>
         <Feather name="gift" size={19} color={colors.navActiveTextSmall} />
       </View>
-      <View style={[styles.list, { backgroundColor: colors.nextClassCard }, plan.borderWidth !== undefined ? { borderWidth: plan.borderWidth, borderColor: plan.borderColor } : null, plan.stripeColor ? { overflow: 'hidden' } : null]}>
-        {plan.stripeColor ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: plan.stripeColor, width: plan.stripeWidth }]} /> : null}
+      <View style={[styles.list, { backgroundColor: colors.nextClassCard, borderColor }]}>
         {birthdays.map((birthday, i) => {
           const isToday = birthday.daysUntil === 0;
           const last = i === birthdays.length - 1;
@@ -92,22 +86,22 @@ export function UpcomingBirthdaysSectionNew({ birthdays }: { birthdays: Upcoming
               style={[styles.row, !last && { borderBottomWidth: SEPARATOR_WIDTH, borderBottomColor: colors.nextClassCardPressed }]}
             >
               <View style={[styles.avatar, { backgroundColor: colors.charcoalAccent }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                <Text style={[styles.avatarText, { color: colors.nextClassCard }, sized ? { fontSize: sz(AVATAR_TEXT_SIZE) } : null]} maxFontSizeMultiplier={1.3}>
+                <Text style={[styles.avatarText, { color: colors.nextClassCard }]} maxFontSizeMultiplier={1.3}>
                   {initialsOf(birthday.name)}
                 </Text>
               </View>
-              <Text style={[styles.name, { color: colors.nextClassCardForeground }, sized ? { fontSize: sz(NAME_SIZE) } : null]} numberOfLines={1} ellipsizeMode="tail" maxFontSizeMultiplier={1.3}>
+              <Text style={[styles.name, { color: colors.nextClassCardForeground }]} numberOfLines={1} ellipsizeMode="tail" maxFontSizeMultiplier={1.3}>
                 {birthday.name}
               </Text>
               {isToday ? (
                 <View style={[styles.todayChip, { borderColor: colors.charcoalAccent }]}>
                   <Feather name="gift" size={TODAY_ICON_SIZE} color={colors.charcoalAccentLight} />
-                  <Text style={[styles.todayText, { color: colors.charcoalAccentLight }, sized ? { fontSize: sz(DATE_SIZE) } : null]} maxFontSizeMultiplier={1.3}>
+                  <Text style={[styles.todayText, { color: colors.charcoalAccentLight }]} maxFontSizeMultiplier={1.3}>
                     Hoy
                   </Text>
                 </View>
               ) : (
-                <Text style={[styles.date, { color: NOTICE_BODY_COLOR }, sized ? { fontSize: sz(DATE_SIZE) } : null]} maxFontSizeMultiplier={1.3}>
+                <Text style={[styles.date, { color: NOTICE_BODY_COLOR }]} maxFontSizeMultiplier={1.3}>
                   {dayLabelOf(birthday.month, birthday.day)}
                 </Text>
               )}
@@ -120,18 +114,17 @@ export function UpcomingBirthdaysSectionNew({ birthdays }: { birthdays: Upcoming
 }
 
 const styles = StyleSheet.create({
-  stripe: { position: 'absolute', top: 0, bottom: 0, left: 0 },
-  ownCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: OWN_RADIUS, padding: OWN_PADDING },
+  ownCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: OWN_RADIUS, padding: OWN_PADDING, borderWidth: AVISO_BORDER_WIDTH },
   ownIconCircle: { width: OWN_ICON_CIRCLE, height: OWN_ICON_CIRCLE, borderRadius: OWN_ICON_CIRCLE / 2, borderWidth: OWN_ICON_CIRCLE_BORDER, alignItems: 'center', justifyContent: 'center' },
   ownTextCol: { flex: 1, gap: 2 },
-  ownTitle: { fontSize: OWN_TITLE_SIZE, lineHeight: 20, fontFamily: 'Inter_700Bold' },
-  ownSubtitle: { fontSize: OWN_SUBTITLE_SIZE, lineHeight: 18, fontFamily: 'Inter_400Regular' },
+  ownTitle: { fontSize: OWN_TITLE_SIZE, lineHeight: OWN_TITLE_LINE, fontFamily: 'Inter_700Bold' },
+  ownSubtitle: { fontSize: OWN_SUBTITLE_SIZE, lineHeight: OWN_SUBTITLE_LINE, fontFamily: 'Inter_400Regular' },
 
   // Título de sección: el de siempre (mismo texto, tamaño y fuente).
   section: { marginTop: SPACING.xs },
   sectionHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.md },
-  sectionTitle: { fontSize: FONT_SIZE.xl, fontFamily: 'Anton_400Regular' },
-  list: { borderRadius: LIST_RADIUS, paddingHorizontal: LIST_PADDING_H },
+  sectionTitle: { fontSize: SECTION_TITLE_SIZE, fontFamily: 'Anton_400Regular' },
+  list: { borderRadius: LIST_RADIUS, paddingHorizontal: LIST_PADDING_H, borderWidth: AVISO_BORDER_WIDTH },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: ROW_MIN_HEIGHT },
   avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: AVATAR_TEXT_SIZE, fontFamily: 'Inter_600SemiBold' },

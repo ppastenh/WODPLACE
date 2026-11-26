@@ -4,8 +4,6 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { BoxAnnouncement } from '@workspace/api-client-react';
 import { AutoFitImage } from '@/components/AutoFitImage';
-import { useAvisoLook } from '@/components/home/AvisoLookContext';
-import { avisoLine, avisoSize } from '@/components/home/avisoLookSpec';
 import { noBoxColors } from '@/components/home/noBoxCardColors';
 import colors from '@/constants/colors';
 import { RADIUS } from '@/constants/radius';
@@ -71,13 +69,11 @@ export function AnnouncementModal({ visible, announcement, onClose, onConfirmRea
 
 /**
  * La hoja de la ventana (los dos pasos), separada para poder dibujarla también dentro de una pantalla (vista previa de desarrollo "Todos los avisos", pedido 51). Sin lógica propia: el paso (confirming) y las acciones vienen
- * de la ventana; con el ajuste de letra por defecto (useAvisoLook) se dibuja exactamente como siempre.
+ * de la ventana. Letra reducida (decisión (ae)): título 18, cuerpo 12 (paso 1) y subtítulo 11 (paso 2).
  */
 export function AnnouncementCard({ announcement, confirming, onRequestClose, onConfirm, onBack }: { announcement: BoxAnnouncement; confirming: boolean; onRequestClose: () => void; onConfirm: () => void; onBack: () => void }) {
-  const look = useAvisoLook();
   // Alto máximo en dp (80 % de la pantalla), no en porcentaje: un porcentaje contra un contenedor sin alto propio (la vista previa de desarrollo) dejaba la hoja a medio alto y el mensaje cortado.
   const maxCardHeight = Math.round(useWindowDimensions().height * 0.8);
-  const sized = look.step !== 0;
   return (
     <View style={[styles.card, { backgroundColor: c.background, maxHeight: maxCardHeight }]}>
       {confirming ? (
@@ -85,10 +81,10 @@ export function AnnouncementCard({ announcement, confirming, onRequestClose, onC
           <View style={[styles.iconCircle, { borderColor: c.circleBorder }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
             <Feather name="help-circle" size={22} color={c.icon} />
           </View>
-          <Text style={[styles.confirmTitle, { color: c.primary }, sized ? { fontSize: avisoSize(20, look.step), lineHeight: avisoLine(24, 20, look.step) } : null]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
+          <Text style={[styles.confirmTitle, { color: c.primary }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
             ¿Ya leíste este aviso?
           </Text>
-          <Text style={[styles.confirmSubtitle, { color: c.secondary }, sized ? { fontSize: avisoSize(13, look.step), lineHeight: avisoLine(19, 13, look.step) } : null]} maxFontSizeMultiplier={1.3}>
+          <Text style={[styles.confirmSubtitle, { color: c.secondary }]} maxFontSizeMultiplier={1.3}>
             Este aviso es importante — confirma que lo leíste para cerrarlo.
           </Text>
           <View style={styles.actions}>
@@ -111,11 +107,11 @@ export function AnnouncementCard({ announcement, confirming, onRequestClose, onC
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
             {announcement.imageUrl ? <AutoFitImage uri={announcement.imageUrl} width={CARD_WIDTH} borderRadius={RADIUS.md + 2} style={styles.image} /> : null}
             <View style={styles.textWrap}>
-              <Text style={[styles.title, { color: c.primary }, sized ? { fontSize: avisoSize(20, look.step), lineHeight: avisoLine(24, 20, look.step) } : null]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
+              <Text style={[styles.title, { color: c.primary }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
                 {announcement.title}
               </Text>
               {announcement.body ? (
-                <Text style={[styles.body, { color: c.primary }, sized ? { fontSize: avisoSize(14, look.step), lineHeight: avisoLine(20, 14, look.step) } : null]} maxFontSizeMultiplier={1.3}>
+                <Text style={[styles.body, { color: c.primary }]} maxFontSizeMultiplier={1.3}>
                   {announcement.body}
                 </Text>
               ) : null}
@@ -192,14 +188,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 22,
     fontFamily: 'Anton_400Regular',
   },
   body: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   confirmContent: {
     alignItems: 'center',
@@ -215,14 +211,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmTitle: {
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 22,
     fontFamily: 'Anton_400Regular',
     textAlign: 'center',
   },
   confirmSubtitle: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 11,
+    lineHeight: 17,
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
     marginBottom: 8,

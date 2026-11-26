@@ -19,8 +19,8 @@ import { CATALOG_WOD_IDS, WOD_A11Y_HINT, blocksVisible, formatLabelOf, isCatalog
 import { NOBOX_TEXTURE_ALPHA, noBoxColors, noBoxMeasure } from '../../artifacts/wodplace/components/home/noBoxCardColors';
 import { WOD_TEXTURE_ALPHA, wodColors, wodMeasure } from '../../artifacts/wodplace/components/home/wodCardColors';
 import { MOVEMENT_ICONS, NEUTRAL_MOVEMENT_ICON, movementIconFor } from '../../artifacts/wodplace/components/home/wodMovementIcons';
-import { AVISO_LOOK_DEFAULT } from '../../artifacts/wodplace/components/home/AvisoLookContext';
-import { avisoBorderContrasts, avisoBorderPlan, avisoKindColor, avisoLine, avisoSize } from '../../artifacts/wodplace/components/home/avisoLookSpec';
+import { NOTICE_BORDER_WIDTH as NOTICE_BORDER_W } from '../../artifacts/wodplace/components/ui/noticeBannerSpec';
+import { AVISO_BORDER_WIDTH, AVISO_KIND_TOKEN, avisoBorderColor, avisoBorderContrasts } from '../../artifacts/wodplace/components/home/avisoBorderSpec';
 import { planNoticeLines } from '../../artifacts/wodplace/components/home/planNoticeModel';
 import { COPPER_TEXTURE_RAMP } from '../../artifacts/wodplace/components/home/copperSurface';
 import { contrastRatio as ratio } from '../../artifacts/wodplace/components/home/colorMath';
@@ -1896,13 +1896,14 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
   const spec = ui('noticeBannerSpec.ts');
   const wrappers = homeF('NoticeBanners.tsx');
 
-  it('medidas pedidas: radio 16, relleno 16, borde de 1 dp en cobre al 40 %, círculo de 32 dp con contorno de 1,5 dp, ícono de 18, título 15 / cuerpo 14 / rótulo 11 con espaciado 1, franja de 3 dp, imagen con radio 10', () => {
+  it('medidas (decisión (ae)): radio 16, relleno 16, borde sólido de 1,5 dp del color del tipo, círculo de 32 dp con contorno de 1,5 dp, ícono de 18, título 13 / cuerpo 12 (interlineado 18) / rótulo 11 con espaciado 1, franja de 3 dp, imagen con radio 10', () => {
     for (const line of [
-      'NOTICE_RADIUS = 16', 'NOTICE_PADDING = 16', 'NOTICE_BORDER_WIDTH = 1', "NOTICE_BORDER_ALPHA_HEX = '66'", 'NOTICE_STRIPE_WIDTH = 3', 'NOTICE_ICON_CIRCLE = 32', 'NOTICE_ICON_CIRCLE_BORDER = 1.5',
-      'NOTICE_ICON_SIZE = 18', 'NOTICE_TITLE_SIZE = 15', 'NOTICE_BODY_SIZE = 14', 'NOTICE_LABEL_SIZE = 11', 'NOTICE_LABEL_SPACING = 1', 'NOTICE_IMAGE_RADIUS = 10', "NOTICE_LABEL_TEXT = 'IMPORTANTE'", "NOTICE_BODY_COLOR = '#BDB6A8'",
+      'NOTICE_RADIUS = 16', 'NOTICE_PADDING = 16', 'NOTICE_BORDER_WIDTH = 1.5', 'NOTICE_STRIPE_WIDTH = 3', 'NOTICE_ICON_CIRCLE = 32', 'NOTICE_ICON_CIRCLE_BORDER = 1.5',
+      'NOTICE_ICON_SIZE = 18', 'NOTICE_TITLE_SIZE = 13', 'NOTICE_BODY_SIZE = 12', 'NOTICE_LINE_HEIGHT = 18', 'NOTICE_LABEL_SIZE = 11', 'NOTICE_LABEL_SPACING = 1', 'NOTICE_IMAGE_RADIUS = 10', "NOTICE_LABEL_TEXT = 'IMPORTANTE'", "NOTICE_BODY_COLOR = '#BDB6A8'",
     ]) assert.ok(spec.includes(line), line);
-    assert.equal(parseInt('66', 16) / 255, 0.4, 'el borde es cobre al 40 %');
-    assert.ok(banner.includes("title: { fontSize: NOTICE_TITLE_SIZE, lineHeight: 20, fontFamily: 'Inter_600SemiBold' }") && banner.includes("body: { fontSize: NOTICE_BODY_SIZE, lineHeight: 20, fontFamily: 'Inter_400Regular' }"));
+    assert.ok(!spec.includes('NOTICE_BORDER_ALPHA_HEX') && !banner.includes('NOTICE_BORDER_ALPHA_HEX'), 'el borde ya no es translúcido');
+    assert.equal(NOTICE_BORDER_W, AVISO_BORDER_WIDTH, 'el borde del banner y el de las demás tarjetas miden lo mismo');
+    assert.ok(banner.includes("title: { fontSize: NOTICE_TITLE_SIZE, lineHeight: NOTICE_LINE_HEIGHT, fontFamily: 'Inter_600SemiBold' }") && banner.includes("body: { fontSize: NOTICE_BODY_SIZE, lineHeight: NOTICE_LINE_HEIGHT, fontFamily: 'Inter_400Regular' }"));
     assert.ok(banner.includes("label: { fontSize: NOTICE_LABEL_SIZE, letterSpacing: NOTICE_LABEL_SPACING, fontFamily: 'Inter_600SemiBold' }"));
   });
   it('colores: solo tokens de la paleta (grafito, presionado sólido, crema, cobre y cobre claro) y UN color nuevo, el del cuerpo; sin hex escritos a mano en el componente y sin opacidad en el presionado', () => {
@@ -1918,14 +1919,14 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
     assert.equal(light.nextClassCardForeground, '#F6F1E8');
   });
   it("level 'importante': franja sólida de 3 dp en el borde izquierdo Y el rótulo \"IMPORTANTE\" (no depende solo del color); level 'info': ni franja ni rótulo; con onPress: chevron y presionado a #2E2F35 sólido", () => {
-    assert.ok(banner.includes('      ) : important ? (\n        <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} />\n      ) : null}'), 'la franja de 3 dp del contrato (sin el ajuste de desarrollo)');
+    assert.ok(banner.includes('{important ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} /> : null}'), 'la franja de 3 dp del contrato se conserva');
     assert.ok(banner.includes('{important ? <Text style={[styles.label, { color: colors.charcoalAccentLight }]}>{NOTICE_LABEL_TEXT}</Text> : null}'));
     assert.ok(banner.includes("const important = level === 'importante';"));
     assert.ok(banner.includes("stripe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: NOTICE_STRIPE_WIDTH }"));
     assert.ok(banner.includes('{onPress ? (') && banner.includes('name="chevron-right"') && banner.includes('accessibilityRole="button"'));
     assert.ok(banner.includes('pressed ? colors.nextClassCardPressed : colors.nextClassCard'));
     assert.ok(banner.includes('{image ? (') && banner.includes('borderRadius={NOTICE_IMAGE_RADIUS}'), 'la imagen va bajo el texto, a todo el ancho de la tarjeta');
-    assert.equal(360 - 40 - 2 - 32, 286, 'ancho de la imagen en una pantalla de 360 dp');
+    assert.equal(360 - 40 - 3 - 32, 285, 'ancho de la imagen en una pantalla de 360 dp (borde de 1,5 dp)');
     assert.ok(spec.includes('noticeImageWidth = (screenWidth: number): number => screenWidth - 40 - 2 * NOTICE_BORDER_WIDTH - 2 * NOTICE_PADDING;'));
   });
   it('los tres avisos en la pieza nueva: el contrato es importante y presionable (mismo destino), el aviso del box y el del plan son info; los textos y reglas son los de siempre (planNoticeLines) y con dos reglas van las dos líneas en la misma tarjeta', () => {
@@ -1968,20 +1969,20 @@ describe('Cumpleaños nuevos (BirthdayCardsNew.tsx, pedido 45): solo en "Ver avi
   const spec = homeF('birthdayNewSpec.ts');
   const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
 
-  it('cumpleaños propio: cobre oscuro (navActiveTextSmall #8B5E34), radio 16, relleno 16; círculo de 40 dp con contorno crema de 1,5 dp e ícono de regalo de 20; título Inter Bold 15 (2 líneas) y subtítulo Inter Regular 13, los dos en crema; sin degradado, sombra ni opacidad; no es un botón', () => {
-    for (const line of ['OWN_RADIUS = 16', 'OWN_PADDING = 16', 'OWN_ICON_CIRCLE = 40', 'OWN_ICON_CIRCLE_BORDER = 1.5', 'OWN_ICON_SIZE = 20', 'OWN_TITLE_SIZE = 15', 'OWN_TITLE_MAX_LINES = 2', 'OWN_SUBTITLE_SIZE = 13']) assert.ok(spec.includes(line), line);
+  it('cumpleaños propio: cobre oscuro (navActiveTextSmall #8B5E34), radio 16, relleno 16; círculo de 40 dp con contorno crema de 1,5 dp e ícono de regalo de 20; título Inter Bold 13 (2 líneas) y subtítulo Inter Regular 11 (decisión (ae)), los dos en crema; borde arena de 1,5 dp; sin degradado, sombra ni opacidad; no es un botón', () => {
+    for (const line of ['OWN_RADIUS = 16', 'OWN_PADDING = 16', 'OWN_ICON_CIRCLE = 40', 'OWN_ICON_CIRCLE_BORDER = 1.5', 'OWN_ICON_SIZE = 20', 'OWN_TITLE_SIZE = 13', 'OWN_TITLE_MAX_LINES = 2', 'OWN_SUBTITLE_SIZE = 11', 'OWN_TITLE_LINE = 18', 'OWN_SUBTITLE_LINE = 16']) assert.ok(spec.includes(line), line);
     assert.equal(light.navActiveTextSmall, '#8B5E34');
-    assert.ok(card.includes('{ backgroundColor: colors.navActiveTextSmall }') && card.includes('borderColor: colors.nextClassCardForeground'));
-    assert.ok(card.includes("ownTitle: { fontSize: OWN_TITLE_SIZE, lineHeight: 20, fontFamily: 'Inter_700Bold' }") && card.includes("ownSubtitle: { fontSize: OWN_SUBTITLE_SIZE, lineHeight: 18, fontFamily: 'Inter_400Regular' }"));
+    assert.ok(card.includes('{ backgroundColor: colors.navActiveTextSmall, borderColor }') && card.includes('borderColor: colors.nextClassCardForeground') && card.includes('borderWidth: AVISO_BORDER_WIDTH }'));
+    assert.ok(card.includes("ownTitle: { fontSize: OWN_TITLE_SIZE, lineHeight: OWN_TITLE_LINE, fontFamily: 'Inter_700Bold' }") && card.includes("ownSubtitle: { fontSize: OWN_SUBTITLE_SIZE, lineHeight: OWN_SUBTITLE_LINE, fontFamily: 'Inter_400Regular' }"));
     assert.ok(card.includes('numberOfLines={OWN_TITLE_MAX_LINES}'));
     assert.equal((card.match(/color: colors\.nextClassCardForeground/g) ?? []).length >= 2, true, 'título y subtítulo en crema');
     assert.ok(!/LinearGradient|shadow|elevation|opacity|Pressable|onPress/i.test(card), 'degradado, sombra, opacidad o botón en los cumpleaños nuevos');
     assert.ok(card.includes('const subtitle = \'Que tengas un gran entrenamiento hoy\';') && card.includes('`¡Feliz cumpleaños, ${firstNameOf(name)}!`'), 'los textos de siempre');
   });
-  it('próximos cumpleaños: mismo título de sección; lista en tarjeta grafito (radio 16, relleno horizontal 16); filas de 56 dp mínimo; avatar de 36 dp en cobre con iniciales #18191A Inter SemiBold 13; nombre 15 crema en una línea con "…"; día 12 con espaciado 1 en #BDB6A8; "Hoy" con contorno cobre de 1 dp, radio 999 y regalo de 14; separador de 1 dp #2E2F35 salvo tras la última', () => {
-    for (const line of ['LIST_RADIUS = 16', 'LIST_PADDING_H = 16', 'ROW_MIN_HEIGHT = 56', 'AVATAR_SIZE = 36', 'AVATAR_TEXT_SIZE = 13', 'NAME_SIZE = 15', 'DATE_SIZE = 12', 'DATE_SPACING = 1', 'TODAY_ICON_SIZE = 14', 'TODAY_BORDER = 1', 'SEPARATOR_WIDTH = 1']) assert.ok(spec.includes(line), line);
-    assert.ok(card.includes('>Próximos cumpleaños</Text>') && card.includes("sectionTitle: { fontSize: FONT_SIZE.xl, fontFamily: 'Anton_400Regular' }"), 'el título de siempre');
-    assert.ok(card.includes('{ backgroundColor: colors.nextClassCard }') && card.includes('list: { borderRadius: LIST_RADIUS, paddingHorizontal: LIST_PADDING_H }'));
+  it('próximos cumpleaños: mismo título de sección; lista en tarjeta grafito (radio 16, relleno horizontal 16); filas de 56 dp mínimo; avatar de 36 dp en cobre con iniciales #18191A Inter SemiBold 11; título de sección 16; nombre 13 crema en una línea con "…"; día 11 con espaciado 1 en #BDB6A8; "Hoy" con contorno cobre de 1 dp, radio 999 y regalo de 14; separador de 1 dp #2E2F35 salvo tras la última', () => {
+    for (const line of ['LIST_RADIUS = 16', 'LIST_PADDING_H = 16', 'ROW_MIN_HEIGHT = 56', 'AVATAR_SIZE = 36', 'AVATAR_TEXT_SIZE = 11', 'NAME_SIZE = 13', 'DATE_SIZE = 11', 'SECTION_TITLE_SIZE = 16', 'DATE_SPACING = 1', 'TODAY_ICON_SIZE = 14', 'TODAY_BORDER = 1', 'SEPARATOR_WIDTH = 1']) assert.ok(spec.includes(line), line);
+    assert.ok(card.includes('>Próximos cumpleaños</Text>') && card.includes("sectionTitle: { fontSize: SECTION_TITLE_SIZE, fontFamily: 'Anton_400Regular' }"), 'el título de siempre, a 16 sp');
+    assert.ok(card.includes('{ backgroundColor: colors.nextClassCard, borderColor }') && card.includes('list: { borderRadius: LIST_RADIUS, paddingHorizontal: LIST_PADDING_H, borderWidth: AVISO_BORDER_WIDTH }'));
     assert.ok(card.includes("avatarText: { fontSize: AVATAR_TEXT_SIZE, fontFamily: 'Inter_600SemiBold' }") && card.includes('{ backgroundColor: colors.charcoalAccent }') && card.includes('{ color: colors.nextClassCard }'));
     assert.ok(card.includes("name: { flex: 1, fontSize: NAME_SIZE, fontFamily: 'Inter_600SemiBold' }") && card.includes('numberOfLines={1} ellipsizeMode="tail"'));
     assert.ok(card.includes("date: { fontSize: DATE_SIZE, letterSpacing: DATE_SPACING, fontFamily: 'Inter_600SemiBold' }") && card.includes('{ color: NOTICE_BODY_COLOR }'));
@@ -2177,9 +2178,9 @@ describe('Tarjeta "Todavía no tienes un box" nueva (NoBoxCard.tsx y noBoxCardCo
     assert.ok(card.includes('Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)'), 'conserva el toque háptico del botón anterior');
   });
   it('diseño: grafito RADIUS.xl, círculo con borde de cobre, título en Anton, subtítulo en gris cálido, rombos casi invisibles a la derecha y botón ancho de cobre con texto carbón; presionado sólido en cobre claro; 48 dp de alto mínimo; sin opacidad', () => {
-    assert.ok(card.includes('card: { borderRadius: RADIUS.xl, padding: SPACING.xl') && card.includes('{ backgroundColor: c.background }'));
+    assert.ok(card.includes('card: { borderRadius: RADIUS.xl, padding: SPACING.xl') && card.includes('{ backgroundColor: c.background, borderColor }') && card.includes('borderWidth: AVISO_BORDER_WIDTH }'), 'borde gris cálido de 1,5 dp');
     assert.ok(card.includes("iconCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5") && card.includes('{ borderColor: c.circleBorder }'));
-    assert.ok(card.includes("title: { flex: 1, fontSize: 22, lineHeight: 26, fontFamily: 'Anton_400Regular' }") && card.includes('{ color: c.primary }') && card.includes('{ color: c.secondary }'));
+    assert.ok(card.includes("title: { flex: 1, fontSize: 20, lineHeight: 24, fontFamily: 'Anton_400Regular' }") && card.includes("subtitle: { fontSize: 11, lineHeight: 17,") && card.includes('{ color: c.primary }') && card.includes('{ color: c.secondary }'));
     assert.ok(card.includes('minHeight: 48') && card.includes('borderRadius: 999'));
     assert.ok(card.includes('pressed ? c.buttonPressed : c.button') && card.includes('{ color: c.buttonText }'));
     assert.ok(card.includes('<Pattern id={id} width={12} height={12} patternUnits="userSpaceOnUse">') && card.includes('strokeOpacity={NOBOX_TEXTURE_ALPHA}') && NOBOX_TEXTURE_ALPHA <= 0.06);
@@ -2350,50 +2351,70 @@ describe('Ventana de aviso importante (AnnouncementModal.tsx, decisión (ad)): a
   });
 });
 
-describe('Todos los avisos y ajuste de letra y borde (pedido 51, SOLO desarrollo): con el ajuste en 0 Inicio queda idéntico', () => {
-  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-  const appF = (p: string) => readFileSync(new URL('../../artifacts/wodplace/' + p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-  const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+describe('Avisos de Inicio con la letra reducida (−2) y el borde por tipo (decisión (ae), pedido 52)', () => {
+  const home = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const app = (p: string) => readFileSync(new URL('../../artifacts/wodplace/' + p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const palette = light as unknown as Record<string, string>;
+  const r2 = (n: number) => Math.round(n * 100) / 100;
 
-  it('letra: con 0 nada cambia; con −1 y −2 se restan puntos pero nunca se baja de 11 sp ni se sube un texto que ya era más chico; el interlineado baja lo mismo', () => {
-    for (const base of [9, 11, 12, 13, 14, 15, 16, 20, 22]) assert.equal(avisoSize(base, 0), base);
-    assert.deepEqual([22, 20, 15, 14, 13, 12, 11].map((b) => avisoSize(b, -1)), [21, 19, 14, 13, 12, 11, 11]);
-    assert.deepEqual([22, 20, 15, 14, 13, 12, 11].map((b) => avisoSize(b, -2)), [20, 18, 13, 12, 11, 11, 11]);
-    assert.equal(avisoSize(9, -2), 9, 'un texto menor de 11 no se sube');
-    assert.equal(avisoLine(20, 14, -2), 18);
-    assert.equal(avisoLine(20, 14, 0), 20);
-  });
-  it('bordes: "actual" no cambia nada; "por tipo" = 1,5 dp del color del tipo; "franja" = franja izquierda de 4 dp sin borde; "sin" = sin borde', () => {
-    for (const kind of ['contrato', 'fijo', 'plan', 'sinbox', 'cumple'] as const) {
-      assert.deepEqual(avisoBorderPlan('actual', kind, palette), {});
-      assert.deepEqual(avisoBorderPlan('sin', kind, palette), { borderWidth: 0 });
-      assert.deepEqual(avisoBorderPlan('tipo', kind, palette), { borderWidth: 1.5, borderColor: avisoKindColor('tipo', kind, palette) });
-      assert.deepEqual(avisoBorderPlan('franja', kind, palette), { borderWidth: 0, stripeColor: avisoKindColor('franja', kind, palette), stripeWidth: 4 });
+  it('el borde de cada tipo es un token de la paleta (cumpleaños en arena = el token accent, #F0D9A8, sin crear ni cambiar colores) y mide 1,5 dp en todos', () => {
+    assert.deepEqual(AVISO_KIND_TOKEN, { contrato: 'charcoalAccent', fijo: 'nextClassCardForeground', plan: 'charcoalAccentLight', sinbox: 'charcoalMuted', cumple: 'accent' });
+    assert.deepEqual((['contrato', 'fijo', 'plan', 'sinbox', 'cumple'] as const).map((k) => avisoBorderColor(k, palette)), ['#B98250', '#F6F1E8', '#C79A6B', '#A29E94', '#F0D9A8']);
+    assert.equal(AVISO_BORDER_WIDTH, 1.5);
+    for (const [f, kind] of [['components/ui/NoticeBanner.tsx', 'kind'], ['components/home/NoBoxCard.tsx', "'sinbox'"], ['components/home/BirthdayCardsNew.tsx', "'cumple'"]] as const) {
+      assert.ok(app(f).includes('avisoBorderColor(' + kind), f + ' no toma su borde del tipo');
     }
-    assert.deepEqual((['contrato', 'fijo', 'plan', 'sinbox', 'cumple'] as const).map((k) => avisoKindColor('tipo', k, palette)), ['#B98250', '#F6F1E8', '#C79A6B', '#A29E94', '#8B5E34']);
-    assert.equal(avisoKindColor('tipoAlt', 'cumple', palette), '#F0D9A8');
-    assert.deepEqual(AVISO_LOOK_DEFAULT, { step: 0, border: 'actual' });
+    const wrappers = app('components/home/NoticeBanners.tsx');
+    assert.ok(wrappers.includes('kind="contrato"') && wrappers.includes('kind="fijo"') && wrappers.includes('kind="plan"'));
   });
-  it('MEDIDO (borde o franja contra el fondo de su tarjeta; pedido ≥ 3:1): contrato, aviso fijo, plan y sin box llegan; cumpleaños en cobre oscuro llega a la lista (3,14) pero NO a la tarjeta del propio cumpleaños (1,00: es del mismo color); la alternativa arena llega a las dos', () => {
-    const r2 = (n: number) => Math.round(n * 100) / 100;
-    const por = (mode: 'tipo' | 'tipoAlt') => Object.fromEntries(avisoBorderContrasts(mode, palette).map((c) => [c.kind, [r2(c.worst), c.ok]]));
-    assert.deepEqual(por('tipo'), { contrato: [5.34, true], fijo: [15.65, true], plan: [6.93, true], sinbox: [6.59, true], cumple: [1, false] });
-    assert.deepEqual(por('tipoAlt'), { contrato: [5.34, true], fijo: [15.65, true], plan: [6.93, true], sinbox: [6.59, true], cumple: [4.05, true] });
-    assert.equal(r2(ratio(palette.navActiveTextSmall!, palette.nextClassCard!)), 3.14, 'cobre oscuro sobre la lista de próximos cumpleaños');
+  it('MEDIDO: el borde de cada tipo contra el fondo de su tarjeta llega a 3:1 (contrato 5,34, aviso fijo 15,65, plan 6,93, sin box 6,59; cumpleaños arena 4,05 contra su peor fondo, la tarjeta cobre oscuro del propio cumpleaños)', () => {
+    const med = Object.fromEntries(avisoBorderContrasts(palette).map((c) => [c.kind, [r2(c.worst), c.ok]]));
+    assert.deepEqual(med, { contrato: [5.34, true], fijo: [15.65, true], plan: [6.93, true], sinbox: [6.59, true], cumple: [4.05, true] });
+    assert.ok(ratio(palette.accent!, palette.nextClassCard!) >= 3, 'arena contra la lista de próximos cumpleaños');
+    assert.ok(ratio(palette.accent!, palette.navActiveTextSmall!) >= 3, 'arena contra la tarjeta del cumpleaños propio');
   });
-  it('con el ajuste por defecto Inicio no cambia: los cuatro componentes solo leen el ajuste y aplican cambios con step !== 0 o con un borde distinto de "actual"; Inicio real (HomeView, home.tsx) no lo menciona y "Todos los avisos" solo vive en desarrollo', () => {
-    for (const [f, file] of [['NoBoxCard.tsx', homeF('NoBoxCard.tsx')], ['BirthdayCardsNew.tsx', homeF('BirthdayCardsNew.tsx')], ['AnnouncementModal.tsx', appF('components/AnnouncementModal.tsx')], ['NoticeBanner.tsx', appF('components/ui/NoticeBanner.tsx')]] as const) {
-      assert.ok(file.includes('useAvisoLook()'), f + ' no lee el ajuste');
-      assert.ok(/look\.step !== 0|sized \? \{/.test(file), f + ' aplica la letra sin comprobar step');
+  it('MEDIDO: los textos con sus tamaños nuevos siguen llegando a 4,5:1 sobre su fondo (banners, sin box, cumpleaños, ventana)', () => {
+    const c = noBoxColors(light);
+    const pares: [string, string, string][] = [
+      ['banner título 13', palette.nextClassCardForeground!, palette.nextClassCard!],
+      ['banner título 13 presionado', palette.nextClassCardForeground!, palette.nextClassCardPressed!],
+      ['banner cuerpo 12', '#BDB6A8', palette.nextClassCard!],
+      ['banner cuerpo 12 presionado', '#BDB6A8', palette.nextClassCardPressed!],
+      ['rótulo IMPORTANTE 11', palette.charcoalAccentLight!, palette.nextClassCard!],
+      ['sin box título 20', c.primary, c.background],
+      ['sin box subtítulo 11', c.secondary, c.background],
+      ['cumpleaños propio título 13', palette.nextClassCardForeground!, palette.navActiveTextSmall!],
+      ['cumpleaños propio subtítulo 11', palette.nextClassCardForeground!, palette.navActiveTextSmall!],
+      ['próximos: nombre 13', palette.nextClassCardForeground!, palette.nextClassCard!],
+      ['próximos: fecha 11', '#BDB6A8', palette.nextClassCard!],
+      ['próximos: Hoy 11', palette.charcoalAccentLight!, palette.nextClassCard!],
+      ['próximos: iniciales 11', palette.nextClassCard!, palette.charcoalAccent!],
+      ['título de sección 16', palette.foreground!, palette.cream!],
+      ['ventana título 18', c.primary, c.background],
+      ['ventana cuerpo 12', c.primary, c.background],
+      ['ventana subtítulo 11', c.secondary, c.background],
+    ];
+    for (const [nombre, fg, bg] of pares) assert.ok(ratio(fg, bg) >= 4.5, `${nombre}: ${r2(ratio(fg, bg))}:1`);
+  });
+  it('tamaños finales de la letra −2 en cada componente (nunca menos de 11 sp), el rótulo IMPORTANTE y los botones sin cambio', () => {
+    const win = app('components/AnnouncementModal.tsx');
+    assert.ok(/title: \{\s*fontSize: 18,\s*lineHeight: 22,/.test(win) && /body: \{\s*fontSize: 12,[\s\S]*?lineHeight: 18,/.test(win), 'ventana paso 1: 18 / 12');
+    assert.ok(/confirmTitle: \{\s*fontSize: 18,\s*lineHeight: 22,/.test(win) && /confirmSubtitle: \{\s*fontSize: 11,\s*lineHeight: 17,/.test(win), 'ventana paso 2: 18 / 11');
+    assert.ok(/buttonText: \{\s*fontSize: 16,/.test(win), 'los botones no cambian');
+    const nobox = home('NoBoxCard.tsx');
+    assert.ok(nobox.includes('fontSize: 20, lineHeight: 24') && nobox.includes('fontSize: 11, lineHeight: 17') && nobox.includes('buttonText: { fontSize: 15,'));
+    const spec = readFileSync(new URL('../../artifacts/wodplace/components/ui/noticeBannerSpec.ts', import.meta.url), 'utf8');
+    assert.ok(spec.includes('NOTICE_LABEL_SIZE = 11'), 'el rótulo IMPORTANTE no cambia');
+    for (const f of ['components/AnnouncementModal.tsx', 'components/home/NoBoxCard.tsx', 'components/home/BirthdayCardsNew.tsx', 'components/ui/NoticeBanner.tsx']) {
+      for (const m of app(f).matchAll(/fontSize: (\d+)\b/g)) assert.ok(Number(m[1]) >= 11 || /devBadgeText/.test(app(f).slice(Math.max(0, m.index! - 40), m.index!)), `${f}: letra de ${m[1]} sp (mínimo 11)`);
     }
-    assert.ok(!/AvisoLook|avisoLook|DevTodosAvisosView/.test(homeF('HomeView.tsx')) && !/AvisoLook|avisoLook/.test(appF('app/home.tsx')));
-    const dev = homeF('DevHomeScreen.tsx');
-    assert.ok(dev.includes("{ id: 'todos', label: 'Todos los avisos' }") && dev.includes("avisos === 'todos' ? (") && dev.includes('<DevTodosAvisosView />'));
-    for (const f of ['HomeView.tsx', 'NextClassCard.tsx', 'WodCard.tsx', 'MedalsCard.tsx']) assert.ok(!/DevTodosAvisosView/.test(homeF(f)), f);
+    for (const line of ['_SIZE = 13', '_SIZE = 11', 'SECTION_TITLE_SIZE = 16']) assert.ok(app('components/home/birthdayNewSpec.ts').includes(line), line);
   });
-  it('"Todos los avisos" muestra, en el orden de Inicio, cumpleaños propio, sin box, plan (clases y vencimiento), contrato, aviso fijo (sin y con imagen), próximos cumpleaños y la ventana en sus dos pasos, con los chips de letra y de borde; sin red, cuenta ni almacenamiento', () => {
-    const v = homeF('DevTodosAvisosView.tsx');
+  it('el mecanismo de ajuste (desplazamiento de letra y elección de borde) ya no existe y "Todos los avisos" solo muestra los avisos con el diseño final, sin chips de letra ni de borde', () => {
+    for (const f of ['components/home/avisoLookSpec.ts', 'components/home/AvisoLookContext.ts']) assert.ok(!existsSync(new URL('../../artifacts/wodplace/' + f, import.meta.url)), f + ' sigue existiendo');
+    for (const f of ['components/AnnouncementModal.tsx', 'components/home/NoBoxCard.tsx', 'components/home/BirthdayCardsNew.tsx', 'components/ui/NoticeBanner.tsx', 'components/home/DevTodosAvisosView.tsx']) assert.ok(!/AvisoLook|avisoLook|avisoSize|avisoLine|avisoBorderPlan|look\.step/.test(app(f)), f + ' conserva algo del ajuste');
+    const v = home('DevTodosAvisosView.tsx');
+    assert.ok(!/Letra de los avisos|Letra: −|Borde de los avisos|franja por tipo|sin borde|Chip|useState/.test(v.replace(/\/\*\*[\s\S]*?\*\//g, '')), 'chips de ajuste en "Todos los avisos"');
     const order = ['<OwnBirthdayCardNew ', '<NoBoxCard ', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 5', '<PendingContractBanner ', '<PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }}', '<PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT}', '<UpcomingBirthdaysSectionNew ', 'confirming={false}', 'confirming onRequestClose'];
     let at = -1;
     for (const piece of order) {
@@ -2401,10 +2422,9 @@ describe('Todos los avisos y ajuste de letra y borde (pedido 51, SOLO desarrollo
       assert.ok(i > at, 'fuera de orden o falta: ' + piece);
       at = i;
     }
-    for (const label of ['Letra de los avisos: actual', 'Letra: −1', 'Letra: −2', 'Borde de los avisos: actual', 'por tipo', 'franja por tipo', 'sin borde']) assert.ok(v.includes(label), label);
-    const imports = [...v.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
-    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/home/BirthdayCardsNew', '@/components/home/NoBoxCard', '@/components/home/NoticeBanners', '@/components/home/AvisoLookContext', '@/components/home/avisoLookSpec', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
-    assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevTodosAvisosView importa algo fuera de la lista');
-    assert.ok(!/opacity/i.test(code(v)), 'opacidad');
+    const dev = home('DevHomeScreen.tsx');
+    assert.ok(dev.includes("{ id: 'todos', label: 'Todos los avisos' }") && dev.includes('<DevTodosAvisosView />'));
+    for (const f of ['HomeView.tsx', 'NextClassCard.tsx', 'WodCard.tsx', 'MedalsCard.tsx']) assert.ok(!/DevTodosAvisosView/.test(home(f)), f);
+    assert.ok(!/AvisoLook|avisoLook/.test(app('app/home.tsx')), 'Inicio real no menciona el ajuste');
   });
 });

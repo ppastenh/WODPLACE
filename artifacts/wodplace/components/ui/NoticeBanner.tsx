@@ -2,18 +2,17 @@ import React from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AutoFitImage } from '@/components/AutoFitImage';
-import { useAvisoLook } from '@/components/home/AvisoLookContext';
-import { avisoBorderPlan, avisoLine, avisoSize, type AvisoKind } from '@/components/home/avisoLookSpec';
+import { avisoBorderColor, type AvisoKind } from '@/components/home/avisoBorderSpec';
 import { useColors } from '@/hooks/useColors';
 import {
   NOTICE_BODY_COLOR,
   NOTICE_BODY_SIZE,
-  NOTICE_BORDER_ALPHA_HEX,
   NOTICE_BORDER_WIDTH,
   NOTICE_CHEVRON_SIZE,
   NOTICE_ICON_CIRCLE,
   NOTICE_ICON_CIRCLE_BORDER,
   NOTICE_ICON_SIZE,
+  NOTICE_LINE_HEIGHT,
   NOTICE_IMAGE_RADIUS,
   NOTICE_LABEL_SIZE,
   NOTICE_LABEL_SPACING,
@@ -29,6 +28,7 @@ import {
 /**
  * BANNER DE AVISO (pedido 43): una sola pieza para el contrato pendiente, el aviso fijo del box y el aviso del plan, en el estilo oscuro de Inicio (grafito con cobre).
  * Conectada a Inicio real desde el pedido 50 (vía components/home/NoticeBanners.tsx); también se ve en "Estados de Inicio (dev)" → "Ver avisos". Es de claro fijo, como todo Inicio.
+ * Decisión (ae): letra reducida (título 13 / cuerpo 12) y borde sólido de 1,5 dp del color de su tipo (`kind`).
  *
  *  - level 'importante': franja de cobre sólida de 3 dp en el borde izquierdo y el rótulo "IMPORTANTE" sobre el título (la diferencia no depende solo del color).
  *  - level 'info': sin franja ni rótulo.
@@ -47,17 +47,12 @@ export type NoticeBannerProps = {
   onPress?: () => void;
   /** Lo que lee el lector de pantalla tras el nombre (solo con onPress): a dónde lleva. */
   accessibilityHint?: string;
-  /** Solo para el modo de desarrollo "Todos los avisos" (pedido 51): el tipo de aviso, para elegir su borde. Sin efecto con el ajuste por defecto. */
-  kind?: AvisoKind;
+  /** El tipo de aviso: define el color de su borde (contrato cobre, aviso fijo crema, plan cobre claro). */
+  kind: AvisoKind;
 };
 
 export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, onPress, accessibilityHint, kind }: NoticeBannerProps) {
   const colors = useColors();
-  const look = useAvisoLook();
-  // Con el ajuste por defecto el plan es {} y todo se dibuja como siempre.
-  const plan = kind ? avisoBorderPlan(look.border, kind, colors as unknown as Record<string, string>) : {};
-  const titleSize = avisoSize(NOTICE_TITLE_SIZE, look.step);
-  const bodySize = avisoSize(NOTICE_BODY_SIZE, look.step);
   const important = level === 'importante';
   const titles = Array.isArray(title) ? title : [title];
   const label = [important ? 'Importante' : null, ...titles, body].filter(Boolean).join('. ');
@@ -68,17 +63,11 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
         styles.card,
         {
           backgroundColor: pressed ? colors.nextClassCardPressed : colors.nextClassCard,
-          borderColor: `${colors.charcoalAccent}${NOTICE_BORDER_ALPHA_HEX}`,
+          borderColor: avisoBorderColor(kind, colors as unknown as Record<string, string>),
         },
-        plan.borderWidth !== undefined ? { borderWidth: plan.borderWidth } : null,
-        plan.borderColor ? { borderColor: plan.borderColor } : null,
       ]}
     >
-      {plan.stripeColor ? (
-        <View pointerEvents="none" style={[styles.stripe, { backgroundColor: plan.stripeColor, width: plan.stripeWidth }]} />
-      ) : important ? (
-        <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} />
-      ) : null}
+      {important ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} /> : null}
       <View style={styles.row}>
         <View style={[styles.iconCircle, { borderColor: colors.charcoalAccent }]} importantForAccessibility="no-hide-descendants">
           <Feather name={icon} size={NOTICE_ICON_SIZE} color={colors.charcoalAccentLight} />
@@ -86,12 +75,12 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
         <View style={styles.textCol}>
           {important ? <Text style={[styles.label, { color: colors.charcoalAccentLight }]}>{NOTICE_LABEL_TEXT}</Text> : null}
           {titles.map((line) => (
-            <Text key={line} style={[styles.title, { color: colors.nextClassCardForeground }, look.step !== 0 ? { fontSize: titleSize, lineHeight: avisoLine(20, NOTICE_TITLE_SIZE, look.step) } : null]}>
+            <Text key={line} style={[styles.title, { color: colors.nextClassCardForeground }]}>
               {line}
             </Text>
           ))}
           {body ? (
-            <Text style={[styles.body, { color: NOTICE_BODY_COLOR }, look.step !== 0 ? { fontSize: bodySize, lineHeight: avisoLine(20, NOTICE_BODY_SIZE, look.step) } : null]} numberOfLines={bodyMaxLines}>
+            <Text style={[styles.body, { color: NOTICE_BODY_COLOR }]} numberOfLines={bodyMaxLines}>
               {body}
             </Text>
           ) : null}
@@ -104,7 +93,7 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
       </View>
       {image ? (
         <View style={styles.imageWrap}>
-          <AutoFitImage uri={image} width={noticeImageWidth(Dimensions.get('window').width) + 2 * (NOTICE_BORDER_WIDTH - (plan.borderWidth ?? NOTICE_BORDER_WIDTH))} borderRadius={NOTICE_IMAGE_RADIUS} />
+          <AutoFitImage uri={image} width={noticeImageWidth(Dimensions.get('window').width)} borderRadius={NOTICE_IMAGE_RADIUS} />
         </View>
       ) : null}
     </View>
@@ -144,8 +133,8 @@ const styles = StyleSheet.create({
   },
   textCol: { flex: 1, gap: 2 },
   label: { fontSize: NOTICE_LABEL_SIZE, letterSpacing: NOTICE_LABEL_SPACING, fontFamily: 'Inter_600SemiBold' },
-  title: { fontSize: NOTICE_TITLE_SIZE, lineHeight: 20, fontFamily: 'Inter_600SemiBold' },
-  body: { fontSize: NOTICE_BODY_SIZE, lineHeight: 20, fontFamily: 'Inter_400Regular' },
+  title: { fontSize: NOTICE_TITLE_SIZE, lineHeight: NOTICE_LINE_HEIGHT, fontFamily: 'Inter_600SemiBold' },
+  body: { fontSize: NOTICE_BODY_SIZE, lineHeight: NOTICE_LINE_HEIGHT, fontFamily: 'Inter_400Regular' },
   chevron: { alignSelf: 'center' },
   imageWrap: { alignItems: 'center' },
 });
