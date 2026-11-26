@@ -19,6 +19,8 @@ import { CATALOG_WOD_IDS, WOD_A11Y_HINT, blocksVisible, formatLabelOf, isCatalog
 import { NOBOX_TEXTURE_ALPHA, noBoxColors, noBoxMeasure } from '../../artifacts/wodplace/components/home/noBoxCardColors';
 import { WOD_TEXTURE_ALPHA, wodColors, wodMeasure } from '../../artifacts/wodplace/components/home/wodCardColors';
 import { MOVEMENT_ICONS, NEUTRAL_MOVEMENT_ICON, movementIconFor } from '../../artifacts/wodplace/components/home/wodMovementIcons';
+import { AVISO_LOOK_DEFAULT } from '../../artifacts/wodplace/components/home/AvisoLookContext';
+import { avisoBorderContrasts, avisoBorderPlan, avisoKindColor, avisoLine, avisoSize } from '../../artifacts/wodplace/components/home/avisoLookSpec';
 import { planNoticeLines } from '../../artifacts/wodplace/components/home/planNoticeModel';
 import { COPPER_TEXTURE_RAMP } from '../../artifacts/wodplace/components/home/copperSurface';
 import { contrastRatio as ratio } from '../../artifacts/wodplace/components/home/colorMath';
@@ -1916,7 +1918,7 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
     assert.equal(light.nextClassCardForeground, '#F6F1E8');
   });
   it("level 'importante': franja sólida de 3 dp en el borde izquierdo Y el rótulo \"IMPORTANTE\" (no depende solo del color); level 'info': ni franja ni rótulo; con onPress: chevron y presionado a #2E2F35 sólido", () => {
-    assert.ok(banner.includes('{important ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} /> : null}'));
+    assert.ok(banner.includes('      ) : important ? (\n        <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} />\n      ) : null}'), 'la franja de 3 dp del contrato (sin el ajuste de desarrollo)');
     assert.ok(banner.includes('{important ? <Text style={[styles.label, { color: colors.charcoalAccentLight }]}>{NOTICE_LABEL_TEXT}</Text> : null}'));
     assert.ok(banner.includes("const important = level === 'importante';"));
     assert.ok(banner.includes("stripe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: NOTICE_STRIPE_WIDTH }"));
@@ -1927,10 +1929,10 @@ describe('NoticeBanner (components/ui, pedido 43): una pieza para los tres banne
     assert.ok(spec.includes('noticeImageWidth = (screenWidth: number): number => screenWidth - 40 - 2 * NOTICE_BORDER_WIDTH - 2 * NOTICE_PADDING;'));
   });
   it('los tres avisos en la pieza nueva: el contrato es importante y presionable (mismo destino), el aviso del box y el del plan son info; los textos y reglas son los de siempre (planNoticeLines) y con dos reglas van las dos líneas en la misma tarjeta', () => {
-    assert.ok(wrappers.includes('level="importante"') && wrappers.includes('onPress={onPress}') && wrappers.includes('title="Tienes un contrato pendiente de leer y aceptar"'));
+    assert.ok(wrappers.includes('level="importante"') && wrappers.includes('kind="contrato"') && wrappers.includes('onPress={onPress}') && wrappers.includes('title="Tienes un contrato pendiente de leer y aceptar"'));
     assert.ok(wrappers.includes('body="Toca aquí para revisarlo en Contratos Activos. Mientras esté pendiente, no podrás hacer nuevas reservas."'));
-    assert.ok(wrappers.includes('level="info" icon="bell"') && wrappers.includes('bodyMaxLines={3}') && wrappers.includes('image={announcement.imageUrl}'));
-    assert.ok(wrappers.includes('const lines = planNoticeLines(plan);') && wrappers.includes('<NoticeBanner level="info" icon="alert-circle" title={lines} />'), 'aviso del plan: todas las líneas como título');
+    assert.ok(wrappers.includes('level="info" kind="fijo" icon="bell"') && wrappers.includes('bodyMaxLines={3}') && wrappers.includes('image={announcement.imageUrl}'));
+    assert.ok(wrappers.includes('const lines = planNoticeLines(plan);') && wrappers.includes('<NoticeBanner level="info" kind="plan" icon="alert-circle" title={lines} />'), 'aviso del plan: todas las líneas como título');
     assert.ok(!wrappers.includes('planNoticeLines(plan);\n  if (!title)') && !/body=\{body/.test(wrappers.slice(wrappers.indexOf('export function PlanNoticeBanner'))), 'ninguna línea del plan va como cuerpo (gris)');
     // dos reglas: las dos líneas con el MISMO estilo de título (crema, Inter SemiBold 15), una bajo la otra
     assert.ok(banner.includes('const titles = Array.isArray(title) ? title : [title];') && banner.includes('{titles.map((line) => ('));
@@ -2345,5 +2347,64 @@ describe('Ventana de aviso importante (AnnouncementModal.tsx, decisión (ad)): a
     assert.ok(avisos.includes('<AnnouncementModal visible={popup} announcement={avisoFor(avisoExample)}'));
     for (const label of ['Aviso corto', 'Aviso largo', 'Aviso con imagen']) assert.ok(avisos.includes(label), label);
     assert.ok(!avisos.includes('avisoLook') && !avisos.includes('Aviso: ${l}') && !avisos.includes('AnnouncementModalNew'), 'quedó el chip actual / nuevo o el componente aparte');
+  });
+});
+
+describe('Todos los avisos y ajuste de letra y borde (pedido 51, SOLO desarrollo): con el ajuste en 0 Inicio queda idéntico', () => {
+  const homeF = (f: string) => readFileSync(new URL('../../artifacts/wodplace/components/home/' + f, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const appF = (p: string) => readFileSync(new URL('../../artifacts/wodplace/' + p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const code = (src: string) => src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  const palette = light as unknown as Record<string, string>;
+
+  it('letra: con 0 nada cambia; con −1 y −2 se restan puntos pero nunca se baja de 11 sp ni se sube un texto que ya era más chico; el interlineado baja lo mismo', () => {
+    for (const base of [9, 11, 12, 13, 14, 15, 16, 20, 22]) assert.equal(avisoSize(base, 0), base);
+    assert.deepEqual([22, 20, 15, 14, 13, 12, 11].map((b) => avisoSize(b, -1)), [21, 19, 14, 13, 12, 11, 11]);
+    assert.deepEqual([22, 20, 15, 14, 13, 12, 11].map((b) => avisoSize(b, -2)), [20, 18, 13, 12, 11, 11, 11]);
+    assert.equal(avisoSize(9, -2), 9, 'un texto menor de 11 no se sube');
+    assert.equal(avisoLine(20, 14, -2), 18);
+    assert.equal(avisoLine(20, 14, 0), 20);
+  });
+  it('bordes: "actual" no cambia nada; "por tipo" = 1,5 dp del color del tipo; "franja" = franja izquierda de 4 dp sin borde; "sin" = sin borde', () => {
+    for (const kind of ['contrato', 'fijo', 'plan', 'sinbox', 'cumple'] as const) {
+      assert.deepEqual(avisoBorderPlan('actual', kind, palette), {});
+      assert.deepEqual(avisoBorderPlan('sin', kind, palette), { borderWidth: 0 });
+      assert.deepEqual(avisoBorderPlan('tipo', kind, palette), { borderWidth: 1.5, borderColor: avisoKindColor('tipo', kind, palette) });
+      assert.deepEqual(avisoBorderPlan('franja', kind, palette), { borderWidth: 0, stripeColor: avisoKindColor('franja', kind, palette), stripeWidth: 4 });
+    }
+    assert.deepEqual((['contrato', 'fijo', 'plan', 'sinbox', 'cumple'] as const).map((k) => avisoKindColor('tipo', k, palette)), ['#B98250', '#F6F1E8', '#C79A6B', '#A29E94', '#8B5E34']);
+    assert.equal(avisoKindColor('tipoAlt', 'cumple', palette), '#F0D9A8');
+    assert.deepEqual(AVISO_LOOK_DEFAULT, { step: 0, border: 'actual' });
+  });
+  it('MEDIDO (borde o franja contra el fondo de su tarjeta; pedido ≥ 3:1): contrato, aviso fijo, plan y sin box llegan; cumpleaños en cobre oscuro llega a la lista (3,14) pero NO a la tarjeta del propio cumpleaños (1,00: es del mismo color); la alternativa arena llega a las dos', () => {
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const por = (mode: 'tipo' | 'tipoAlt') => Object.fromEntries(avisoBorderContrasts(mode, palette).map((c) => [c.kind, [r2(c.worst), c.ok]]));
+    assert.deepEqual(por('tipo'), { contrato: [5.34, true], fijo: [15.65, true], plan: [6.93, true], sinbox: [6.59, true], cumple: [1, false] });
+    assert.deepEqual(por('tipoAlt'), { contrato: [5.34, true], fijo: [15.65, true], plan: [6.93, true], sinbox: [6.59, true], cumple: [4.05, true] });
+    assert.equal(r2(ratio(palette.navActiveTextSmall!, palette.nextClassCard!)), 3.14, 'cobre oscuro sobre la lista de próximos cumpleaños');
+  });
+  it('con el ajuste por defecto Inicio no cambia: los cuatro componentes solo leen el ajuste y aplican cambios con step !== 0 o con un borde distinto de "actual"; Inicio real (HomeView, home.tsx) no lo menciona y "Todos los avisos" solo vive en desarrollo', () => {
+    for (const [f, file] of [['NoBoxCard.tsx', homeF('NoBoxCard.tsx')], ['BirthdayCardsNew.tsx', homeF('BirthdayCardsNew.tsx')], ['AnnouncementModal.tsx', appF('components/AnnouncementModal.tsx')], ['NoticeBanner.tsx', appF('components/ui/NoticeBanner.tsx')]] as const) {
+      assert.ok(file.includes('useAvisoLook()'), f + ' no lee el ajuste');
+      assert.ok(/look\.step !== 0|sized \? \{/.test(file), f + ' aplica la letra sin comprobar step');
+    }
+    assert.ok(!/AvisoLook|avisoLook|DevTodosAvisosView/.test(homeF('HomeView.tsx')) && !/AvisoLook|avisoLook/.test(appF('app/home.tsx')));
+    const dev = homeF('DevHomeScreen.tsx');
+    assert.ok(dev.includes("{ id: 'todos', label: 'Todos los avisos' }") && dev.includes("avisos === 'todos' ? (") && dev.includes('<DevTodosAvisosView />'));
+    for (const f of ['HomeView.tsx', 'NextClassCard.tsx', 'WodCard.tsx', 'MedalsCard.tsx']) assert.ok(!/DevTodosAvisosView/.test(homeF(f)), f);
+  });
+  it('"Todos los avisos" muestra, en el orden de Inicio, cumpleaños propio, sin box, plan (clases y vencimiento), contrato, aviso fijo (sin y con imagen), próximos cumpleaños y la ventana en sus dos pasos, con los chips de letra y de borde; sin red, cuenta ni almacenamiento', () => {
+    const v = homeF('DevTodosAvisosView.tsx');
+    const order = ['<OwnBirthdayCardNew ', '<NoBoxCard ', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 1', '<PlanNoticeBanner plan={planDemo({ classesRemaining: 5', '<PendingContractBanner ', '<PinnedAvisoBanner announcement={{ ...AVISO, imageUrl: null }}', '<PinnedAvisoBanner announcement={DEMO_ANNOUNCEMENT}', '<UpcomingBirthdaysSectionNew ', 'confirming={false}', 'confirming onRequestClose'];
+    let at = -1;
+    for (const piece of order) {
+      const i = v.indexOf(piece);
+      assert.ok(i > at, 'fuera de orden o falta: ' + piece);
+      at = i;
+    }
+    for (const label of ['Letra de los avisos: actual', 'Letra: −1', 'Letra: −2', 'Borde de los avisos: actual', 'por tipo', 'franja por tipo', 'sin borde']) assert.ok(v.includes(label), label);
+    const imports = [...v.matchAll(/'(@\/[^']+|react(?:-native)?)'/g)].map((m) => m[1]!);
+    const allowed = ['react', 'react-native', '@/components/AnnouncementModal', '@/components/home/BirthdayCardsNew', '@/components/home/NoBoxCard', '@/components/home/NoticeBanners', '@/components/home/AvisoLookContext', '@/components/home/avisoLookSpec', '@/components/home/devHomeStates', '@/hooks/useColors', '@/constants/typography', '@/constants/spacing', '@/constants/radius'];
+    assert.deepEqual(imports.filter((i) => !allowed.includes(i)), [], 'DevTodosAvisosView importa algo fuera de la lista');
+    assert.ok(!/opacity/i.test(code(v)), 'opacidad');
   });
 });

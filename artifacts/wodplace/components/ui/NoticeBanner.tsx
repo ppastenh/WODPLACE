@@ -2,6 +2,8 @@ import React from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AutoFitImage } from '@/components/AutoFitImage';
+import { useAvisoLook } from '@/components/home/AvisoLookContext';
+import { avisoBorderPlan, avisoLine, avisoSize, type AvisoKind } from '@/components/home/avisoLookSpec';
 import { useColors } from '@/hooks/useColors';
 import {
   NOTICE_BODY_COLOR,
@@ -45,10 +47,17 @@ export type NoticeBannerProps = {
   onPress?: () => void;
   /** Lo que lee el lector de pantalla tras el nombre (solo con onPress): a dónde lleva. */
   accessibilityHint?: string;
+  /** Solo para el modo de desarrollo "Todos los avisos" (pedido 51): el tipo de aviso, para elegir su borde. Sin efecto con el ajuste por defecto. */
+  kind?: AvisoKind;
 };
 
-export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, onPress, accessibilityHint }: NoticeBannerProps) {
+export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, onPress, accessibilityHint, kind }: NoticeBannerProps) {
   const colors = useColors();
+  const look = useAvisoLook();
+  // Con el ajuste por defecto el plan es {} y todo se dibuja como siempre.
+  const plan = kind ? avisoBorderPlan(look.border, kind, colors as unknown as Record<string, string>) : {};
+  const titleSize = avisoSize(NOTICE_TITLE_SIZE, look.step);
+  const bodySize = avisoSize(NOTICE_BODY_SIZE, look.step);
   const important = level === 'importante';
   const titles = Array.isArray(title) ? title : [title];
   const label = [important ? 'Importante' : null, ...titles, body].filter(Boolean).join('. ');
@@ -61,9 +70,15 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
           backgroundColor: pressed ? colors.nextClassCardPressed : colors.nextClassCard,
           borderColor: `${colors.charcoalAccent}${NOTICE_BORDER_ALPHA_HEX}`,
         },
+        plan.borderWidth !== undefined ? { borderWidth: plan.borderWidth } : null,
+        plan.borderColor ? { borderColor: plan.borderColor } : null,
       ]}
     >
-      {important ? <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} /> : null}
+      {plan.stripeColor ? (
+        <View pointerEvents="none" style={[styles.stripe, { backgroundColor: plan.stripeColor, width: plan.stripeWidth }]} />
+      ) : important ? (
+        <View pointerEvents="none" style={[styles.stripe, { backgroundColor: colors.charcoalAccent }]} />
+      ) : null}
       <View style={styles.row}>
         <View style={[styles.iconCircle, { borderColor: colors.charcoalAccent }]} importantForAccessibility="no-hide-descendants">
           <Feather name={icon} size={NOTICE_ICON_SIZE} color={colors.charcoalAccentLight} />
@@ -71,12 +86,12 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
         <View style={styles.textCol}>
           {important ? <Text style={[styles.label, { color: colors.charcoalAccentLight }]}>{NOTICE_LABEL_TEXT}</Text> : null}
           {titles.map((line) => (
-            <Text key={line} style={[styles.title, { color: colors.nextClassCardForeground }]}>
+            <Text key={line} style={[styles.title, { color: colors.nextClassCardForeground }, look.step !== 0 ? { fontSize: titleSize, lineHeight: avisoLine(20, NOTICE_TITLE_SIZE, look.step) } : null]}>
               {line}
             </Text>
           ))}
           {body ? (
-            <Text style={[styles.body, { color: NOTICE_BODY_COLOR }]} numberOfLines={bodyMaxLines}>
+            <Text style={[styles.body, { color: NOTICE_BODY_COLOR }, look.step !== 0 ? { fontSize: bodySize, lineHeight: avisoLine(20, NOTICE_BODY_SIZE, look.step) } : null]} numberOfLines={bodyMaxLines}>
               {body}
             </Text>
           ) : null}
@@ -89,7 +104,7 @@ export function NoticeBanner({ level, icon, title, body, bodyMaxLines, image, on
       </View>
       {image ? (
         <View style={styles.imageWrap}>
-          <AutoFitImage uri={image} width={noticeImageWidth(Dimensions.get('window').width)} borderRadius={NOTICE_IMAGE_RADIUS} />
+          <AutoFitImage uri={image} width={noticeImageWidth(Dimensions.get('window').width) + 2 * (NOTICE_BORDER_WIDTH - (plan.borderWidth ?? NOTICE_BORDER_WIDTH))} borderRadius={NOTICE_IMAGE_RADIUS} />
         </View>
       ) : null}
     </View>

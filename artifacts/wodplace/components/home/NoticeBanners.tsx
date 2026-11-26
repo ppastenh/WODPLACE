@@ -13,6 +13,7 @@ export function PendingContractBanner({ onPress }: { onPress: () => void }) {
   return (
     <NoticeBanner
       level="importante"
+      kind="contrato"
       icon="file-text"
       title="Tienes un contrato pendiente de leer y aceptar"
       body="Toca aquí para revisarlo en Contratos Activos. Mientras esté pendiente, no podrás hacer nuevas reservas."
@@ -24,12 +25,12 @@ export function PendingContractBanner({ onPress }: { onPress: () => void }) {
 
 /** Aviso fijo del box: info, con imagen opcional bajo el texto y hasta 3 líneas de cuerpo. */
 export function PinnedAvisoBanner({ announcement }: { announcement: BoxAnnouncement }) {
-  return <NoticeBanner level="info" icon="bell" title={announcement.title} body={announcement.body} bodyMaxLines={3} image={announcement.imageUrl} />;
+  return <NoticeBanner level="info" kind="fijo" icon="bell" title={announcement.title} body={announcement.body} bodyMaxLines={3} image={announcement.imageUrl} />;
 }
 
 /** Aviso del plan: info. Con las dos reglas, las dos líneas van en la misma tarjeta, las dos con el estilo de título (una bajo la otra). Sin ninguna regla no dibuja nada. */
 export function PlanNoticeBanner({ plan }: { plan: MyPlan }) {
   const lines = planNoticeLines(plan);
   if (lines.length === 0) return null;
-  return <NoticeBanner level="info" icon="alert-circle" title={lines} />;
+  return <NoticeBanner level="info" kind="plan" icon="alert-circle" title={lines} />;
 }

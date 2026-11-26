@@ -4,6 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { BoxAnnouncement } from '@workspace/api-client-react';
 import { AutoFitImage } from '@/components/AutoFitImage';
+import { useAvisoLook } from '@/components/home/AvisoLookContext';
+import { avisoLine, avisoSize } from '@/components/home/avisoLookSpec';
 import { noBoxColors } from '@/components/home/noBoxCardColors';
 import colors from '@/constants/colors';
 import { RADIUS } from '@/constants/radius';
@@ -52,60 +54,74 @@ export function AnnouncementModal({ visible, announcement, onClose, onConfirmRea
     <Modal visible={visible} transparent animationType="fade" onRequestClose={requestClose}>
       <Pressable style={styles.backdrop} onPress={requestClose} />
       <View style={styles.centerWrap} pointerEvents="box-none">
-        <View style={[styles.card, { backgroundColor: c.background }]}>
-          {confirming ? (
-            <View style={styles.confirmContent}>
-              <View style={[styles.iconCircle, { borderColor: c.circleBorder }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-                <Feather name="help-circle" size={22} color={c.icon} />
-              </View>
-              <Text style={[styles.confirmTitle, { color: c.primary }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
-                ¿Ya leíste este aviso?
-              </Text>
-              <Text style={[styles.confirmSubtitle, { color: c.secondary }]} maxFontSizeMultiplier={1.3}>
-                Este aviso es importante — confirma que lo leíste para cerrarlo.
-              </Text>
-              <View style={styles.actions}>
-                <SheetButton
-                  label="Sí, ya lo leí"
-                  kind="primary"
-                  onPress={() => {
-                    onConfirmRead();
-                    onClose();
-                  }}
-                />
-                <SheetButton label="Volver al aviso" kind="secondary" onPress={() => setConfirming(false)} />
-              </View>
-            </View>
-          ) : (
-            <>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar"
-                onPress={requestClose}
-                hitSlop={8}
-                style={({ pressed }) => [styles.closeButton, { backgroundColor: pressed ? PRESSED_GRAPHITE : c.inner }]}
-              >
-                <Feather name="x" size={16} color={c.primary} />
-              </Pressable>
-
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
-                {announcement.imageUrl ? <AutoFitImage uri={announcement.imageUrl} width={CARD_WIDTH} borderRadius={RADIUS.md + 2} style={styles.image} /> : null}
-                <View style={styles.textWrap}>
-                  <Text style={[styles.title, { color: c.primary }]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
-                    {announcement.title}
-                  </Text>
-                  {announcement.body ? (
-                    <Text style={[styles.body, { color: c.primary }]} maxFontSizeMultiplier={1.3}>
-                      {announcement.body}
-                    </Text>
-                  ) : null}
-                </View>
-              </ScrollView>
-            </>
-          )}
-        </View>
+        <AnnouncementCard
+          announcement={announcement}
+          confirming={confirming}
+          onRequestClose={requestClose}
+          onConfirm={() => {
+            onConfirmRead();
+            onClose();
+          }}
+          onBack={() => setConfirming(false)}
+        />
       </View>
     </Modal>
+  );
+}
+
+/**
+ * La hoja de la ventana (los dos pasos), separada para poder dibujarla también dentro de una pantalla (vista previa de desarrollo "Todos los avisos", pedido 51). Sin lógica propia: el paso (confirming) y las acciones vienen
+ * de la ventana; con el ajuste de letra por defecto (useAvisoLook) se dibuja exactamente como siempre.
+ */
+export function AnnouncementCard({ announcement, confirming, onRequestClose, onConfirm, onBack }: { announcement: BoxAnnouncement; confirming: boolean; onRequestClose: () => void; onConfirm: () => void; onBack: () => void }) {
+  const look = useAvisoLook();
+  const sized = look.step !== 0;
+  return (
+    <View style={[styles.card, { backgroundColor: c.background }]}>
+      {confirming ? (
+        <View style={styles.confirmContent}>
+          <View style={[styles.iconCircle, { borderColor: c.circleBorder }]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            <Feather name="help-circle" size={22} color={c.icon} />
+          </View>
+          <Text style={[styles.confirmTitle, { color: c.primary }, sized ? { fontSize: avisoSize(20, look.step), lineHeight: avisoLine(24, 20, look.step) } : null]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
+            ¿Ya leíste este aviso?
+          </Text>
+          <Text style={[styles.confirmSubtitle, { color: c.secondary }, sized ? { fontSize: avisoSize(13, look.step), lineHeight: avisoLine(19, 13, look.step) } : null]} maxFontSizeMultiplier={1.3}>
+            Este aviso es importante — confirma que lo leíste para cerrarlo.
+          </Text>
+          <View style={styles.actions}>
+            <SheetButton label="Sí, ya lo leí" kind="primary" onPress={onConfirm} />
+            <SheetButton label="Volver al aviso" kind="secondary" onPress={onBack} />
+          </View>
+        </View>
+      ) : (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+            onPress={onRequestClose}
+            hitSlop={8}
+            style={({ pressed }) => [styles.closeButton, { backgroundColor: pressed ? PRESSED_GRAPHITE : c.inner }]}
+          >
+            <Feather name="x" size={16} color={c.primary} />
+          </Pressable>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
+            {announcement.imageUrl ? <AutoFitImage uri={announcement.imageUrl} width={CARD_WIDTH} borderRadius={RADIUS.md + 2} style={styles.image} /> : null}
+            <View style={styles.textWrap}>
+              <Text style={[styles.title, { color: c.primary }, sized ? { fontSize: avisoSize(20, look.step), lineHeight: avisoLine(24, 20, look.step) } : null]} accessibilityRole="header" maxFontSizeMultiplier={1.3}>
+                {announcement.title}
+              </Text>
+              {announcement.body ? (
+                <Text style={[styles.body, { color: c.primary }, sized ? { fontSize: avisoSize(14, look.step), lineHeight: avisoLine(20, 14, look.step) } : null]} maxFontSizeMultiplier={1.3}>
+                  {announcement.body}
+                </Text>
+              ) : null}
+            </View>
+          </ScrollView>
+        </>
+      )}
+    </View>
   );
 }
 

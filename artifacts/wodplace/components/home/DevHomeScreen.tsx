@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { BottomNavView, NAV_ITEMS, type NavKey } from '@/components/BottomNavBar';
 import { DevAvisosView } from '@/components/home/DevAvisosView';
+import { DevTodosAvisosView } from '@/components/home/DevTodosAvisosView';
 import { HomeView, type HomeViewEvents } from '@/components/home/HomeView';
 import { QUOTE_LOOK, type QuoteCenter, type QuoteHighlight, type QuoteLook, type QuoteVariant } from '@/components/home/DailyQuoteCard';
 import {
@@ -202,9 +203,10 @@ const MENU_FONT_CHIPS: { id: MenuFont; label: string }[] = [
 ];
 
 // Modo "Ver avisos" (pedido 42): cada aviso, tarjeta o ventana condicional de Inicio con datos de ejemplo, uno debajo del otro.
-const AVISOS_CHIPS: { id: 'no' | 'si'; label: string }[] = [
+const AVISOS_CHIPS: { id: 'no' | 'si' | 'todos'; label: string }[] = [
   { id: 'no', label: 'Ver avisos: no' },
   { id: 'si', label: 'Ver avisos: sí' },
+  { id: 'todos', label: 'Todos los avisos' },
 ];
 
 // Tarjeta del WOD: la actual (anterior) o la nueva (por defecto), para compararlas (pedido 43).
@@ -273,7 +275,7 @@ function DevHomeBody() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [selection, setSelection] = useState<DevSelection>(defaultSelection);
-  const [avisos, setAvisos] = useState<'no' | 'si'>('no');
+  const [avisos, setAvisos] = useState<'no' | 'si' | 'todos'>('no');
   const [wodLook, setWodLook] = useState<'actual' | 'nuevo'>('nuevo');
   const [photo, setPhoto] = useState<Photo>('ok');
   const [capsule, setCapsule] = useState<NextClassCapsule>(NEXT_CLASS_LOOK.capsule);
@@ -397,6 +399,8 @@ function DevHomeBody() {
     <View style={[styles.container, { backgroundColor: colors.charcoal }]}>
       {avisos === 'si' ? (
         <DevAvisosView />
+      ) : avisos === 'todos' ? (
+        <DevTodosAvisosView />
       ) : (
       <HomeView
         data={{ ...state, quote: QUOTE_LENGTHS[quoteLength] }}
